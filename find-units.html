@@ -3,73 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Физикалык бирдиктер оюну | Mugalim.AI</title>
+    <title>Физикалык тест-оюну | Mugalim.AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
         .glass-card {
             background: rgba(15, 23, 42, 0.6);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.2); transform: scale(1.05); }
-        .matched { visibility: hidden; opacity: 0; pointer-events: none; }
-        .shake { animation: shake 0.5s; }
+        .selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.3); transform: translateY(-5px); box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5); }
+        .matched { visibility: hidden; opacity: 0; transform: scale(0.5); pointer-events: none; }
+        .shake { animation: shake 0.5s; border-color: #ef4444; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-8px); }
+            80% { transform: translateX(8px); }
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-4">
 
-    <div class="w-full max-w-4xl flex justify-between items-center mb-8 mt-4">
-        <a href="../index.html" class="text-blue-400 hover:text-white transition"><i class="fas fa-arrow-left"></i> Артка</a>
-        <div class="text-center">
-            <h1 class="text-2xl font-black text-blue-500 uppercase tracking-widest">Бирдиктерди тап</h1>
-            <p id="level-title" class="text-gray-400 text-sm">Деңгээл: 1</p>
+    <div class="w-full max-w-5xl flex justify-between items-center mb-6 mt-2">
+        <a href="../index.html" class="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl transition border border-white/10"><i class="fas fa-home mr-2"></i> Башкы бет</a>
+        <div id="timer-display" class="text-2xl font-black text-red-500 bg-red-500/10 px-6 py-2 rounded-full border border-red-500/20">
+            <i class="fas fa-clock mr-2"></i> <span id="time-left">45</span>с
         </div>
-        <div id="score" class="font-bold text-xl text-yellow-500">Упай: 0</div>
+        <div class="text-right">
+            <div id="score" class="font-black text-2xl text-yellow-500">Упай: 0</div>
+        </div>
     </div>
 
-    <div class="w-full max-w-4xl h-2 bg-gray-800 rounded-full mb-8 overflow-hidden">
-        <div id="progress" class="h-full bg-blue-600 transition-all duration-500" style="width: 0%"></div>
+    <div class="w-full max-w-4xl mb-8">
+        <div class="flex justify-between items-end mb-2">
+            <h1 id="level-title" class="text-xl font-bold text-blue-400 uppercase tracking-tighter">Деңгээл: 1</h1>
+            <span id="pairs-count" class="text-gray-500 text-sm font-medium">Табыла элек: 4/4</span>
+        </div>
+        <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden border border-white/5">
+            <div id="progress" class="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-700" style="width: 0%"></div>
+        </div>
     </div>
 
-    <div id="game-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
+    <div id="game-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mb-20">
         </div>
 
-    <div id="win-modal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center z-50 p-6 text-center">
-        <h2 class="text-5xl font-black text-green-500 mb-4">КУТТУКТАЙБЫЗ!</h2>
-        <p id="modal-text" class="text-xl mb-8">Сиз бул деңгээлди ийгиликтүү аяктадыңыз.</p>
-        <button onclick="nextLevel()" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-full font-bold text-lg transition">Кийинки деңгээл →</button>
+    <div id="modal" class="fixed inset-0 bg-black/90 hidden flex-col items-center justify-center z-50 p-6 text-center backdrop-blur-md">
+        <div id="modal-icon" class="text-8xl mb-4"></div>
+        <h2 id="modal-title" class="text-5xl font-black mb-4"></h2>
+        <p id="modal-text" class="text-xl mb-8 text-gray-400"></p>
+        <button id="modal-btn" onclick="handleModalAction()" class="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-black text-xl transition-all shadow-lg shadow-blue-600/30">КЕЙИНКИСИ</button>
     </div>
 
     <script>
         const gameData = [
             {
-                level: 1, title: "1-деңгээл: Негизги бирдиктер",
+                level: 1, title: "1-деңгээл: Негизги бирдиктер", time: 45,
                 pairs: [
                     {q: "Күч", a: "Ньютон"}, {q: "Убакыт", a: "Секунд"},
                     {q: "Масса", a: "Килограмм"}, {q: "Ылдамдык", a: "м/с"}
                 ]
             },
             {
-                level: 2, title: "2-деңгээл: Туунду бирдиктер",
+                level: 2, title: "2-деңгээл: Динамика & Басым", time: 40,
                 pairs: [
                     {q: "Басым", a: "Паскаль"}, {q: "Энергия", a: "Джоуль"},
-                    {q: "Кубат", a: "Ватт"}, {q: "Жыштык", a: "Герц"}
+                    {q: "Кубат", a: "Ватт"}, {q: "Жыштык", a: "Герц"},
+                    {q: "Тартуу күчү", a: "F = mg"}, {q: "Тыгыздык", a: "кг/м³"}
                 ]
             },
             {
-                level: 3, title: "3-деңгээл: Астрофизика & Электр",
+                level: 3, title: "3-деңгээл: Астрофизика & Электр", time: 35,
                 pairs: [
                     {q: "Ток күчү", a: "Ампер"}, {q: "Аралык", a: "Жарык жылы"},
-                    {q: "Каршылык", a: "Ом"}, {q: "Жердин тартылуусу", a: "9.8 м/с²"}
+                    {q: "Каршылык", a: "Ом"}, {q: "Чыңалуу", a: "Вольт"},
+                    {q: "Жердин тартылуусу", a: "9.8 м/с²"}, {q: "Жарык ылдамдыгы", a: "300 000 км/с"}
                 ]
             }
         ];
@@ -78,13 +90,20 @@
         let selected = [];
         let score = 0;
         let matchedCount = 0;
+        let timeLeft = 0;
+        let timerInterval;
 
         function initGame() {
+            clearInterval(timerInterval);
             const grid = document.getElementById('game-grid');
             const data = gameData[currentLevel];
+            
             document.getElementById('level-title').innerText = data.title;
+            timeLeft = data.time;
+            document.getElementById('time-left').innerText = timeLeft;
             grid.innerHTML = '';
             matchedCount = 0;
+            updatePairsText();
             
             let cards = [];
             data.pairs.forEach(p => {
@@ -96,23 +115,34 @@
 
             cards.forEach(cardData => {
                 const card = document.createElement('div');
-                card.className = 'glass-card p-6 min-h-[100px] flex items-center justify-center rounded-2xl cursor-pointer font-bold text-center hover:border-blue-400 select-none';
+                card.className = 'glass-card p-6 min-h-[120px] flex items-center justify-center rounded-[2rem] cursor-pointer font-bold text-center text-lg hover:border-blue-500/50 select-none';
                 card.innerText = cardData.text;
                 card.dataset.match = cardData.match;
                 card.onclick = () => handleCardClick(card);
                 grid.appendChild(card);
             });
+            
+            startTimer();
             updateProgress();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time-left').innerText = timeLeft;
+                if (timeLeft <= 10) document.getElementById('timer-display').classList.add('animate-pulse');
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showEndModal(false);
+                }
+            }, 1000);
         }
 
         function handleCardClick(card) {
             if (selected.length < 2 && !card.classList.contains('selected')) {
                 card.classList.add('selected');
                 selected.push(card);
-
-                if (selected.length === 2) {
-                    setTimeout(checkMatch, 500);
-                }
+                if (selected.length === 2) setTimeout(checkMatch, 400);
             }
         }
 
@@ -121,10 +151,12 @@
             if (c1.innerText === c2.dataset.match) {
                 c1.classList.add('matched');
                 c2.classList.add('matched');
-                score += 10;
+                score += (timeLeft * 2); // Убакытка жараша бонус упай
                 matchedCount++;
+                updatePairsText();
                 if (matchedCount === gameData[currentLevel].pairs.length) {
-                    showWinModal();
+                    clearInterval(timerInterval);
+                    showEndModal(true);
                 }
             } else {
                 c1.classList.add('shake');
@@ -133,11 +165,16 @@
                     c1.classList.remove('selected', 'shake');
                     c2.classList.remove('selected', 'shake');
                 }, 500);
-                score = Math.max(0, score - 5);
+                score = Math.max(0, score - 10);
             }
             selected = [];
             document.getElementById('score').innerText = `Упай: ${score}`;
             updateProgress();
+        }
+
+        function updatePairsText() {
+            const total = gameData[currentLevel].pairs.length;
+            document.getElementById('pairs-count').innerText = `Табыла элек: ${total - matchedCount}/${total}`;
         }
 
         function updateProgress() {
@@ -146,23 +183,42 @@
             document.getElementById('progress').style.width = percent + "%";
         }
 
-        function showWinModal() {
-            document.getElementById('win-modal').style.display = 'flex';
-            if(currentLevel === gameData.length - 1) {
-                document.getElementById('modal-text').innerText = "Сиз бардык деңгээлдерди жеңдиңиз! Чыныгы физиксиз!";
-                document.querySelector('#win-modal button').innerText = "Башынан баштоо";
+        function showEndModal(isWin) {
+            const modal = document.getElementById('modal');
+            const title = document.getElementById('modal-title');
+            const text = document.getElementById('modal-text');
+            const icon = document.getElementById('modal-icon');
+            const btn = document.getElementById('modal-btn');
+
+            modal.style.display = 'flex';
+            if (isWin) {
+                icon.innerHTML = "🏆";
+                title.innerText = "МЫКТЫ!";
+                title.className = "text-5xl font-black mb-4 text-green-500";
+                text.innerText = `Деңгээлди ${timeLeft} секунд калганда бүтүрдүңүз!`;
+                btn.innerText = currentLevel === gameData.length - 1 ? "БАШЫНАН БАШТОО" : "КИЙИНКИ ДЕҢГЭЭЛ";
+            } else {
+                icon.innerHTML = "⏰";
+                title.innerText = "УБАКЫТ БҮТТҮ!";
+                title.className = "text-5xl font-black mb-4 text-red-500";
+                text.innerText = "Кайра аракет кылып көрүңүз.";
+                btn.innerText = "КАЙТАЛОО";
             }
         }
 
-        function nextLevel() {
-            document.getElementById('win-modal').style.display = 'none';
-            if (currentLevel < gameData.length - 1) {
+        function handleModalAction() {
+            document.getElementById('modal').style.display = 'none';
+            document.getElementById('timer-display').classList.remove('animate-pulse');
+            
+            const btnText = document.getElementById('modal-btn').innerText;
+            if (btnText === "КИЙИНКИ ДЕҢГЭЭЛ") {
                 currentLevel++;
-            } else {
+            } else if (btnText === "БАШЫНАН БАШТОО") {
                 currentLevel = 0;
                 score = 0;
-                document.getElementById('score').innerText = `Упай: 0`;
+                document.getElementById('score').innerText = "Упай: 0";
             }
+            // "КАЙТАЛОО" болсо currentLevel ошол бойдон калат
             initGame();
         }
 
