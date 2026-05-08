@@ -2,82 +2,141 @@
 <html lang="ky">
 <head>
     <meta charset="UTF-8">
-    <title>Физикалык чоңдуктар оюну</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бирдиктерди тап | Mugalim.AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0f172a; color: white; }
-        .game-card { cursor: pointer; transition: 0.3s; }
-        .game-card:active { transform: scale(0.95); }
-        .match-success { background-color: #22c55e !important; }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
+        
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .selected { 
+            border-color: #3b82f6; 
+            background: rgba(59, 130, 246, 0.3); 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5); 
+        }
+
+        .matched { visibility: hidden; opacity: 0; transform: scale(0.5); pointer-events: none; }
+        
+        .shake { animation: shake 0.5s; border-color: #ef4444; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-8px); }
+            80% { transform: translateX(8px); }
+        }
+
+        .hero-gradient {
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
     </style>
 </head>
-<body class="p-8">
-    <div class="max-w-4xl mx-auto text-center">
-        <h1 class="text-3xl font-bold mb-8 text-blue-400">Физикалык чоңдуктар жана бирдиктер</h1>
-        <p class="mb-8 text-gray-400">Төмөндөгү чоңдуктарды алардын туура өлчөө бирдиктери менен жупташтырыңыз!</p>
-        
-        <div id="game-board" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            </div>
+<body class="min-h-screen flex flex-col items-center p-4">
 
-        <div id="result" class="mt-10 hidden">
-            <h2 class="text-2xl font-bold text-green-500">Куттуктайбыз! Сиз баарын таптыңыз! 🎉</h2>
-            <button onclick="location.reload()" class="mt-4 bg-blue-600 px-6 py-2 rounded-full">Кайра баштоо</button>
+    <div class="w-full max-w-5xl flex justify-between items-center mb-6 mt-4">
+        <a href="index.html" class="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl transition border border-white/10">
+            <i class="fas fa-arrow-left mr-2"></i> Тизмеге кайтуу
+        </a>
+        <div id="timer-box" class="text-2xl font-black text-red-500 bg-red-500/10 px-6 py-2 rounded-full border border-red-500/20">
+            <i class="fas fa-clock mr-2"></i> <span id="time-left">45</span>с
+        </div>
+        <div class="text-right">
+            <div id="score" class="font-black text-2xl text-yellow-500">Упай: 0</div>
         </div>
     </div>
 
+    <div class="w-full max-w-4xl mb-8">
+        <div class="flex justify-between items-end mb-3">
+            <div>
+                <h1 id="level-title" class="text-2xl font-black hero-gradient uppercase">Деңгээл: 1</h1>
+                <p class="text-gray-400 text-sm">Туура жуптарды тапкыла</p>
+            </div>
+            <span id="pairs-count" class="text-blue-400 font-bold bg-blue-400/10 px-3 py-1 rounded-lg">4/4</span>
+        </div>
+        <div class="w-full h-3 bg-gray-800 rounded-full overflow-hidden border border-white/5">
+            <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500 transition-all duration-700" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <div id="game-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mb-20">
+        </div>
+
+    <div id="modal" class="fixed inset-0 bg-black/90 hidden flex-col items-center justify-center z-50 p-6 text-center backdrop-blur-md">
+        <div id="modal-icon" class="text-9xl mb-6"></div>
+        <h2 id="modal-title" class="text-6xl font-black mb-4"></h2>
+        <p id="modal-text" class="text-xl mb-10 text-gray-400 max-w-md"></p>
+        <button id="modal-btn" onclick="handleModalAction()" class="bg-blue-600 hover:bg-blue-500 text-white px-16 py-5 rounded-2xl font-black text-2xl transition-all shadow-xl shadow-blue-600/30">
+            УЛАНТУУ
+        </button>
+    </div>
+
     <script>
-        const data = [
-            { name: 'Күч', unit: 'Ньютон' },
-            { name: 'Масса', unit: 'Килограмм' },
-            { name: 'Убакыт', unit: 'Секунд' },
-            { name: 'Тартуу күчү', unit: 'Жердин тартылуусу' },
-            { name: 'Ылдамдык', unit: 'м/с' },
-            { name: 'Басым', unit: 'Паскаль' }
+        const gameLevels = [
+            {
+                level: 1, title: "1-деңгээл: Негизги бирдиктер", time: 45,
+                pairs: [
+                    {q: "Күч", a: "Ньютон"}, {q: "Убакыт", a: "Секунд"},
+                    {q: "Масса", a: "Килограмм"}, {q: "Ылдамдык", a: "м/с"}
+                ]
+            },
+            {
+                level: 2, title: "2-деңгээл: Динамика & Басым", time: 40,
+                pairs: [
+                    {q: "Басым", a: "Паскаль"}, {q: "Энергия", a: "Джоуль"},
+                    {q: "Кубат", a: "Ватт"}, {q: "Жыштык", a: "Герц"},
+                    {q: "Тартуу күчү", a: "F = mg"}, {q: "Тыгыздык", a: "кг/м³"}
+                ]
+            },
+            {
+                level: 3, title: "3-деңгээл: Астрофизика & Электр", time: 35,
+                pairs: [
+                    {q: "Ток күчү", a: "Ампер"}, {q: "Аралык", a: "Жарык жылы"},
+                    {q: "Каршылык", a: "Ом"}, {q: "Чыңалуу", a: "Вольт"},
+                    {q: "Жердин тартылуусу", a: "9.8 м/с²"}, {q: "Жарык ылдамдыгы", a: "300 000 км/с"}
+                ]
+            }
         ];
 
-        let cards = [];
-        data.forEach(item => {
-            cards.push({ text: item.name, match: item.unit });
-            cards.push({ text: item.unit, match: item.name });
-        });
+        let currentLevel = 0;
+        let selectedCards = [];
+        let totalScore = 0;
+        let matchedPairs = 0;
+        let timeLeft = 0;
+        let timer;
 
-        // Карточкаларды аралаштыруу
-        cards.sort(() => Math.random() - 0.5);
-
-        const board = document.getElementById('game-board');
-        let firstCard = null;
-        let matches = 0;
-
-        cards.forEach(cardData => {
-            const div = document.createElement('div');
-            div.className = 'game-card bg-gray-800 p-6 rounded-xl border border-gray-700 text-lg font-bold flex items-center justify-center h-24 text-center';
-            div.innerText = cardData.text;
+        function initGame() {
+            clearInterval(timer);
+            const grid = document.getElementById('game-grid');
+            const data = gameLevels[currentLevel];
             
-            div.onclick = () => {
-                if (div.classList.contains('match-success')) return;
-                
-                div.classList.add('bg-blue-600');
-                
-                if (!firstCard) {
-                    firstCard = div;
-                } else if (firstCard !== div) {
-                    if (firstCard.innerText === cardData.match) {
-                        firstCard.classList.add('match-success');
-                        div.classList.add('match-success');
-                        matches++;
-                        if (matches === data.length) document.getElementById('result').classList.remove('hidden');
-                    } else {
-                        const temp = firstCard;
-                        setTimeout(() => {
-                            temp.classList.remove('bg-blue-600');
-                            div.classList.remove('bg-blue-600');
-                        }, 500);
-                    }
-                    firstCard = null;
-                }
-            };
-            board.appendChild(div);
-        });
-    </script>
-</body>
-</html>
+            document.getElementById('level-title').innerText = data.title;
+            timeLeft = data.time;
+            document.getElementById('time-left').innerText = timeLeft;
+            grid.innerHTML = '';
+            matchedPairs = 0;
+            updateUI();
+            
+            let deck = [];
+            data.pairs.forEach(p => {
+                deck.push({text: p.q, match: p.a});
+                deck.push({text: p.a, match: p.q});
+            });
+
+            deck.sort(() => Math.random() - 0.5);
+
+            deck.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'glass-card p-6 min-h-[130px] flex items-center justify-center rounded-[2.5rem] cursor-pointer font-bold text-center text-lg hover:border-blue-400 select-none';
+                card.innerText = item.text;
+                card.dataset.match = item.match;
