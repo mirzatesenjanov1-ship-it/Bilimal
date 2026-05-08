@@ -234,7 +234,7 @@
                         <input type="text" id="contact" placeholder="Телеграм же телефон" class="custom-input" required>
                     </div>
                     <textarea id="message" rows="5" placeholder="Билдирүүңүздү жазыңыз..." class="custom-input" required></textarea>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all uppercase tracking-widest">
+                    <button type="submit" id="submit-btn" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all uppercase tracking-widest">
                         Жөнөтүү <i class="fas fa-paper-plane ml-2"></i>
                     </button>
                 </form>
@@ -274,34 +274,44 @@
     </footer>
 
     <script>
-        // Скрипт: Билдирүүнү Telegram'га жөнөтүү
         const BOT_TOKEN = '8747194233:AAE6SfJHAKuN0lciudl80FUBNrtyn8eIvFM';
-        const CHAT_ID = '6261546740'; // Бул жерге өзүңүздүн Telegram ID'ңизди жазыңыз
+        const CHAT_ID = 6261546740;
 
         document.getElementById('tg-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            const btn = document.getElementById('submit-btn');
             const name = document.getElementById('name').value;
             const contact = document.getElementById('contact').value;
             const message = document.getElementById('message').value;
             
             const fullText = `🚀 Жаңы билдирүү!\n\n👤 Аты: ${name}\n📞 Байланыш: ${contact}\n📝 Билдирүү: ${message}`;
             
+            btn.disabled = true;
+            btn.innerText = "Жөнөтүлүүдө...";
+
             fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chat_id: CHAT_ID, text: fullText })
-            }).then(response => {
+            })
+            .then(response => {
                 if (response.ok) {
                     alert("Билдирүү ийгиликтүү жөнөтүлдү!");
-                    this.reset();
+                    document.getElementById('tg-form').reset();
                 } else {
-                    alert("Ката кетти, кайра аракет кылыңыз.");
+                    alert("Ката кетти. Ботту /start кылганыңызды текшериңиз.");
                 }
+            })
+            .catch(error => {
+                alert("Тармак катасы! Интернетти текшериңиз.");
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = 'Жөнөтүү <i class="fas fa-paper-plane ml-2"></i>';
             });
         });
 
-        // Жылдыздуу фон скрипти (мурункудай)
         const canvas = document.getElementById('starsCanvas');
         const ctx = canvas.getContext('2d');
         let stars = [];
