@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Физикалык бирдиктер оюну | Mugalim.AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .selected { border-color: #3b82f6; background: rgba(59, 130, 246, 0.2); transform: scale(1.05); }
+        .matched { visibility: hidden; opacity: 0; pointer-events: none; }
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-4xl flex justify-between items-center mb-8 mt-4">
+        <a href="../index.html" class="text-blue-400 hover:text-white transition"><i class="fas fa-arrow-left"></i> Артка</a>
+        <div class="text-center">
+            <h1 class="text-2xl font-black text-blue-500 uppercase tracking-widest">Бирдиктерди тап</h1>
+            <p id="level-title" class="text-gray-400 text-sm">Деңгээл: 1</p>
+        </div>
+        <div id="score" class="font-bold text-xl text-yellow-500">Упай: 0</div>
+    </div>
+
+    <div class="w-full max-w-4xl h-2 bg-gray-800 rounded-full mb-8 overflow-hidden">
+        <div id="progress" class="h-full bg-blue-600 transition-all duration-500" style="width: 0%"></div>
+    </div>
+
+    <div id="game-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl">
+        </div>
+
+    <div id="win-modal" class="fixed inset-0 bg-black/80 hidden flex-col items-center justify-center z-50 p-6 text-center">
+        <h2 class="text-5xl font-black text-green-500 mb-4">КУТТУКТАЙБЫЗ!</h2>
+        <p id="modal-text" class="text-xl mb-8">Сиз бул деңгээлди ийгиликтүү аяктадыңыз.</p>
+        <button onclick="nextLevel()" class="bg-blue-600 hover:bg-blue-500 text-white px-10 py-4 rounded-full font-bold text-lg transition">Кийинки деңгээл →</button>
+    </div>
+
+    <script>
+        const gameData = [
+            {
+                level: 1, title: "1-деңгээл: Негизги бирдиктер",
+                pairs: [
+                    {q: "Күч", a: "Ньютон"}, {q: "Убакыт", a: "Секунд"},
+                    {q: "Масса", a: "Килограмм"}, {q: "Ылдамдык", a: "м/с"}
+                ]
+            },
+            {
+                level: 2, title: "2-деңгээл: Туунду бирдиктер",
+                pairs: [
+                    {q: "Басым", a: "Паскаль"}, {q: "Энергия", a: "Джоуль"},
+                    {q: "Кубат", a: "Ватт"}, {q: "Жыштык", a: "Герц"}
+                ]
+            },
+            {
+                level: 3, title: "3-деңгээл: Астрофизика & Электр",
+                pairs: [
+                    {q: "Ток күчү", a: "Ампер"}, {q: "Аралык", a: "Жарык жылы"},
+                    {q: "Каршылык", a: "Ом"}, {q: "Жердин тартылуусу", a: "9.8 м/с²"}
+                ]
+            }
+        ];
+
+        let currentLevel = 0;
+        let selected = [];
+        let score = 0;
+        let matchedCount = 0;
+
+        function initGame() {
+            const grid = document.getElementById('game-grid');
+            const data = gameData[currentLevel];
+            document.getElementById('level-title').innerText = data.title;
+            grid.innerHTML = '';
+            matchedCount = 0;
+            
+            let cards = [];
+            data.pairs.forEach(p => {
+                cards.push({text: p.q, match: p.a});
+                cards.push({text: p.a, match: p.q});
+            });
+
+            cards.sort(() => Math.random() - 0.5);
+
+            cards.forEach(cardData => {
+                const card = document.createElement('div');
+                card.className = 'glass-card p-6 min-h-[100px] flex items-center justify-center rounded-2xl cursor-pointer font-bold text-center hover:border-blue-400 select-none';
+                card.innerText = cardData.text;
+                card.dataset.match = cardData.match;
+                card.onclick = () => handleCardClick(card);
+                grid.appendChild(card);
+            });
+            updateProgress();
+        }
+
+        function handleCardClick(card) {
+            if (selected.length < 2 && !card.classList.contains('selected')) {
+                card.classList.add('selected');
+                selected.push(card);
+
+                if (selected.length === 2) {
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [c1, c2] = selected;
+            if (c1.innerText === c2.dataset.match) {
+                c1.classList.add('matched');
+                c2.classList.add('matched');
+                score += 10;
+                matchedCount++;
+                if (matchedCount === gameData[currentLevel].pairs.length) {
+                    showWinModal();
+                }
+            } else {
+                c1.classList.add('shake');
+                c2.classList.add('shake');
+                setTimeout(() => {
+                    c1.classList.remove('selected', 'shake');
+                    c2.classList.remove('selected', 'shake');
+                }, 500);
+                score = Math.max(0, score - 5);
+            }
+            selected = [];
+            document.getElementById('score').innerText = `Упай: ${score}`;
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const total = gameData[currentLevel].pairs.length;
+            const percent = (matchedCount / total) * 100;
+            document.getElementById('progress').style.width = percent + "%";
+        }
+
+        function showWinModal() {
+            document.getElementById('win-modal').style.display = 'flex';
+            if(currentLevel === gameData.length - 1) {
+                document.getElementById('modal-text').innerText = "Сиз бардык деңгээлдерди жеңдиңиз! Чыныгы физиксиз!";
+                document.querySelector('#win-modal button').innerText = "Башынан баштоо";
+            }
+        }
+
+        function nextLevel() {
+            document.getElementById('win-modal').style.display = 'none';
+            if (currentLevel < gameData.length - 1) {
+                currentLevel++;
+            } else {
+                currentLevel = 0;
+                score = 0;
+                document.getElementById('score').innerText = `Упай: 0`;
+            }
+            initGame();
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
