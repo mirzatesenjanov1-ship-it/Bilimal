@@ -13,7 +13,7 @@
             background: radial-gradient(circle at center, #0a0f1e 0%, #02050a 100%);
             color: #e2e8f0;
             font-family: 'Montserrat', sans-serif;
-            min-height: 100-screen;
+            min-height: 100vh;
             overflow-x: hidden;
         }
 
@@ -30,6 +30,14 @@
             border-color: #3b82f6;
             box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
             transform: translateY(-5px);
+        }
+
+        /* 2-ЭТАП: МОБИЛДИК АДАПТАЦИЯ ҮЧҮН GRID */
+        #game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 5rem;
         }
 
         .selected {
@@ -56,7 +64,6 @@
             text-shadow: 0 10px 30px rgba(167, 139, 250, 0.3);
         }
 
-        /* Прогресс тилкеси */
         .progress-container {
             width: 100%;
             height: 6px;
@@ -71,13 +78,20 @@
             transition: width 0.5s ease;
         }
 
-        /* Анимацияланган фон */
         .bg-dots {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
             background-size: 50px 50px;
             z-index: -1;
+        }
+
+        @media (max-width: 480px) {
+            #game-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+            .glass-card { h-28; }
         }
     </style>
 </head>
@@ -112,8 +126,7 @@
             <div id="progress" class="progress-bar"></div>
         </div>
 
-        <div id="game-grid" class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
-            </div>
+        <div id="game-grid"></div>
     </div>
 
     <div id="modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center z-50 backdrop-blur-xl">
@@ -123,13 +136,38 @@
             </div>
             <h2 id="modal-title" class="text-3xl font-black mb-2">МЫКТЫ!</h2>
             <p id="modal-desc" class="text-gray-400 mb-8">Сиз кийинки деңгээлге даярсыз.</p>
-            <button onclick="nextLevel()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black transition-all shadow-lg shadow-blue-600/30">
+            <button onclick="nextLevel()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black transition-all shadow-lg shadow-blue-600/30 text-white">
                 УЛАНТУУ
             </button>
         </div>
     </div>
 
     <script>
+        // 3-ЭТАП: ҮН ЭФФЕКТТЕРИНИН ФУНКЦИЯЛАРЫ
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(freq, type, duration) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const soundEffects = {
+            correct: () => playSound(880, 'sine', 0.2),
+            wrong: () => playSound(220, 'square', 0.3),
+            victory: () => {
+                playSound(523, 'sine', 0.2);
+                setTimeout(() => playSound(659, 'sine', 0.2), 150);
+                setTimeout(() => playSound(783, 'sine', 0.4), 300);
+            }
+        };
+
         const levels = [
             {
                 title: "Деңгээл: 1 (Негизги)",
@@ -173,6 +211,7 @@
             timeLeft = data.time;
             document.getElementById('level-name').innerText = data.title;
             document.getElementById('timer').innerText = timeLeft;
+            document.getElementById('timer').style.color = '#3b82f6';
             document.getElementById('progress').style.width = '0%';
 
             let cards = [];
@@ -202,6 +241,7 @@
                 if(timeLeft <= 10) document.getElementById('timer').style.color = '#ef4444';
                 if(timeLeft <= 0) {
                     clearInterval(timer);
+                    soundEffects.wrong();
                     alert("Убакыт бүттү! Кайра баштаңыз.");
                     location.reload();
                 }
@@ -224,6 +264,7 @@
             const isMatch = c1.data.match === c2.data.text;
 
             if (isMatch) {
+                soundEffects.correct();
                 setTimeout(() => {
                     c1.el.classList.add('matched');
                     c2.el.classList.add('matched');
@@ -236,10 +277,12 @@
 
                     if (matchedCount === levels[currentLevel].pairs.length) {
                         clearInterval(timer);
+                        soundEffects.victory();
                         showModal();
                     }
                 }, 400);
             } else {
+                soundEffects.wrong();
                 setTimeout(() => {
                     c1.el.classList.remove('selected');
                     c2.el.classList.remove('selected');
