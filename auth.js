@@ -5,13 +5,14 @@
 
 // Сиздин Firebase конфигурацияңыз (bilimal-org долбоорунан)
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY", // Бул жерге өзүңүздүн API Key'ди коюңуз
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
     authDomain: "bilimal-org.firebaseapp.com",
     databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
     projectId: "bilimal-org",
-    storageBucket: "bilimal-org.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
 };
 
 // Firebase'ти ишке киргизүү
