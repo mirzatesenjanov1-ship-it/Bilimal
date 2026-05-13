@@ -1,46 +1,90 @@
 /**
  * Mugalim.AI - Авторизация логикасы
- * Бул файл Firebase туташканга чейинки убактылуу функцияларды аткарат.
+ * Firebase Authentication менен толук туташтырылды.
  */
 
+// Сиздин Firebase конфигурацияңыз (bilimal-org долбоорунан)
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY", // Бул жерге өзүңүздүн API Key'ди коюңуз
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+
+// Firebase'ти ишке киргизүү
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = firebase.auth();
+
+/**
+ * КИРҮҮ ФУНКЦИЯСЫ
+ */
 function login() {
-    // Формадагы маалыматтарды алуу
     const email = document.getElementById('email').value.trim();
     const pass = document.getElementById('password').value.trim();
     
-    // Текшерүү (Validation)
     if (!email || !pass) {
         showStatus("Сураныч, бардык талааларды толтуруңуз!", "error");
         return;
     }
 
-    // Email форматын текшерүү (жөнөкөй формат)
-    if (!email.includes("@")) {
-        showStatus("Сураныч, туура электрондук почта киргизиңиз!", "error");
-        return;
-    }
-
-    // Ийгиликтүү кирүү (симуляция)
-    console.log("Кирүү аракети:", email);
-    showStatus(email + " кош келиңиз! Базага туташуу текшерилүүдө...", "success");
-
-    // БУЛ ЖЕРГЕ КИЙИН FIREBASE ТУТАШТЫРАБЫЗ
-    // Мисалы: auth.signInWithEmailAndPassword(email, pass)...
-}
-
-function register() {
-    showStatus("Каттоо системасы даярдалууда. Firebase туташтырылгандан кийин активдешет.", "info");
+    // Firebase аркылуу кирүү логикасы
+    auth.signInWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+            const user = userCredential.user;
+            console.log("Кирди:", user.email);
+            showStatus("Кош келиңиз! Башкаруу панелине өтүп жатасыз...", "success");
+            
+            // Ийгиликтүү киргенден кийин 1.5 секунддан соң панелге жиберебиз
+            setTimeout(() => {
+                window.location.href = "teacher-dashboard.html";
+            }, 1500);
+        })
+        .catch((error) => {
+            let errorMessage = "Ката кетти: " + error.message;
+            if (error.code === 'auth/user-not-found') errorMessage = "Мындай колдонуучу табылган жок!";
+            if (error.code === 'auth/wrong-password') errorMessage = "Сөз айкашы ката!";
+            
+            showStatus(errorMessage, "error");
+        });
 }
 
 /**
- * Колдонуучуга билдирүү көрсөтүү функциясы (alert ордуна кооздоо үчүн)
- * @param {string} message - Көрсөтүлө турган текст
- * @param {string} type - 'success', 'error', же 'info'
+ * КАТТОО ФУНКЦИЯСЫ
+ */
+function register() {
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('password').value.trim();
+
+    if (!email || !pass) {
+        showStatus("Каттоо үчүн почта жана сөз айкашын толтуруңуз!", "error");
+        return;
+    }
+
+    if (pass.length < 6) {
+        showStatus("Сөз айкашы кеминде 6 белгиден турушу керек!", "error");
+        return;
+    }
+
+    // Firebase аркылуу жаңы колдонуучу түзүү
+    auth.createUserWithEmailAndPassword(email, pass)
+        .then((userCredential) => {
+            showStatus("Каттоо ийгиликтүү өттү! Эми кире аласыз.", "success");
+            console.log("Жаңы мугалим катталды:", userCredential.user.email);
+        })
+        .catch((error) => {
+            showStatus("Каттоодо ката: " + error.message, "error");
+        });
+}
+
+/**
+ * Статус билдирүүсү
  */
 function showStatus(message, type) {
-    // Эгерде браузерде alert колдонууну кааласаңыз, төмөнкү кодду калтырыңыз:
     alert(message);
-    
-    // Келечекте бул жерге экрандын бурчуна чыга турган кооз "Toast" билдирүүлөрүн кошсо болот.
     console.log(`[${type.toUpperCase()}]: ${message}`);
 }
