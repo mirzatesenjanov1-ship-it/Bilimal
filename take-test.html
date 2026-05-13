@@ -44,11 +44,12 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Сиздин Firebase конфигурацияңыз (bilimal.org)
+        // Сиздин Firebase конфигурацияңыз
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -63,23 +64,26 @@
 
         let currentQuestions = [];
         let userAnswers = {};
+        let currentTeacherId = ""; // Мугалимдин ID-син сактоо үчүн
+        let currentTestId = "";    // Тесттин ID-син сактоо үчүн
 
-        // Тестти базадан алуу (Мисалы, URL'деги ID аркылуу)
         function loadTest() {
-            // Убактылуу тестти класс боюнча издөө (кийин ID'ге алмаштырса болот)
             database.ref('tests').once('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
-                    // Биринчи табылган тестти алабыз (мисал катары)
-                    const firstTeacher = Object.keys(data)[0];
-                    const firstTestId = Object.keys(data[firstTeacher])[0];
-                    const test = data[firstTeacher][firstTestId];
+                    // Биринчи табылган тестти алуу (мисал иретинде)
+                    // Иш жүзүндө бул жерде URL аркылуу келген ID колдонулат
+                    currentTeacherId = Object.keys(data)[0];
+                    currentTestId = Object.keys(data[currentTeacherId])[0];
+                    const test = data[currentTeacherId][currentTestId];
 
                     document.getElementById('display-test-title').innerText = test.title;
-                    document.getElementById('display-test-info').innerText = test.class + "-класс | Автор: " + test.author;
+                    document.getElementById('display-test-info').innerText = `${test.class}-класс | Автор: ${test.author}`;
                     
                     currentQuestions = test.questions;
                     renderQuestions();
+                } else {
+                    document.getElementById('display-test-title').innerText = "Тест табылган жок";
                 }
             });
         }
@@ -114,16 +118,26 @@
         }
 
         function selectOption(qIdx, optIdx, element) {
-            // Мурунку тандоону алып салуу
             const parent = element.parentElement;
             parent.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
-            
-            // Жаңысын кошуу
             element.classList.add('selected');
             userAnswers[qIdx] = optIdx;
         }
 
         function calculateResult() {
+            // Бардык суроолорго жооп берилгенин текшерүү
+            if (Object.keys(userAnswers).length < currentQuestions.length) {
+                if (!confirm("Сиз бардык суроолорго жооп бере элексиз. Баары бир аяктоону каалайсызбы?")) {
+                    return;
+                }
+            }
+
+            const studentName = prompt("Жыйынтыкты сактоо үчүн аты-жөнүңүздү киргизиңиз:");
+            if (!studentName) {
+                alert("Аты-жөнүңүздү жазбасаңыз, жыйынтык мугалимге көрүнбөйт!");
+                return;
+            }
+
             let score = 0;
             currentQuestions.forEach((q, index) => {
                 if (userAnswers[index] == q.correct) {
@@ -131,8 +145,24 @@
                 }
             });
 
-            document.getElementById('score-display').innerText = `${score} / ${currentQuestions.length}`;
-            document.getElementById('result-modal').classList.remove('hidden');
+            // Жыйынтыкты Firebase базасына сактоо
+            const resultData = {
+                student: studentName,
+                score: score,
+                total: currentQuestions.length,
+                testTitle: document.getElementById('display-test-title').innerText,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            // Мугалимдин жыйынтыктар папкасына сактайбыз
+            database.ref(`results/${currentTeacherId}/${currentTestId}`).push(resultData)
+                .then(() => {
+                    document.getElementById('score-display').innerText = `${score} / ${currentQuestions.length}`;
+                    document.getElementById('result-modal').classList.remove('hidden');
+                })
+                .catch((error) => {
+                    alert("Жыйынтыкты сактоодо ката кетти: " + error.message);
+                });
         }
 
         window.onload = loadTest;
