@@ -3,22 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мугалимдин кабинети - Bilimal</title>
-    <link rel="stylesheet" href="style.css"> <!-- Стилдер үчүн -->
-</head>
-<body style="background-color: #001f3f; color: white; font-family: sans-serif;">
+    <title>Мугалимдин кабинети | MUGALIM.AI</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        
+        body { 
+            background-color: #050a18; 
+            color: #e2e8f0; 
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden; /* Ашыкча сыдырууну алып салабыз */
+        }
 
-    <div id="auth-section" style="max-width: 400px; margin: 100px auto; text-align: center; border: 1px solid #1a3a5a; padding: 30px; border-radius: 15px;">
-        <h2>Мугалимдер үчүн кирүү</h2>
-        <p>Өзүңүздүн жеке кабинетиңизге кириңиз</p>
-        
-        <input type="email" id="email" placeholder="Электрондук почта" style="width: 100%; padding: 10px; margin: 10px 0;">
-        <input type="password" id="password" placeholder="Сөз айкашы" style="width: 100%; padding: 10px; margin: 10px 0;">
-        
-        <button onclick="login()" style="background: #007bff; color: white; border: none; padding: 10px 20px; cursor: pointer; width: 100%; margin-top: 10px;">Кирүү</button>
-        <button onclick="register()" style="background: transparent; color: #ccc; border: none; margin-top: 15px; cursor: pointer;">Каттоодон өтүү</button>
+        #stars-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at center, #1B2735 0%, #090A0F 100%);
+        }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: 0.3s;
+        }
+
+        .custom-input:focus {
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .hero-text {
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <!-- Жылдыздуу фон сакталды -->
+    <div id="stars-container">
+        <canvas id="starsCanvas"></canvas>
     </div>
 
-    <script src="auth.js"></script> <!-- Логиканы бөлүп жазабыз -->
+    <!-- Артка кайтуу баскычы -->
+    <a href="index.html" class="absolute top-8 left-8 text-gray-400 hover:text-white transition flex items-center gap-2">
+        <i class="fas fa-arrow-left"></i> Башкы бетке
+    </a>
+
+    <!-- Авторизация картасы -->
+    <div id="auth-section" class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center">
+        <div class="mb-8">
+            <div class="w-20 h-20 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <h2 class="text-3xl font-black mb-2 uppercase tracking-tight hero-text">Кирүү</h2>
+            <p class="text-gray-400 text-sm">Мугалимдин жеке кабинетине кирүү</p>
+        </div>
+
+        <div class="space-y-4 text-left">
+            <div>
+                <label class="text-xs font-bold uppercase tracking-widest text-gray-500 ml-2">Почта</label>
+                <input type="email" id="email" placeholder="example@mail.com" class="custom-input w-full p-4 rounded-xl mt-1">
+            </div>
+            <div>
+                <label class="text-xs font-bold uppercase tracking-widest text-gray-500 ml-2">Сөз айкашы (пароль)</label>
+                <input type="password" id="password" placeholder="••••••••" class="custom-input w-full p-4 rounded-xl mt-1">
+            </div>
+        </div>
+
+        <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl mt-8 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-600/30">
+            КИРҮҮ <i class="fas fa-sign-in-alt ml-2"></i>
+        </button>
+
+        <p class="mt-6 text-gray-500 text-sm">
+            Аккаунтуңуз жокпу? 
+            <button onclick="register()" class="text-blue-400 font-bold hover:underline">Каттоодон өтүү</button>
+        </p>
+    </div>
+
+    <!-- Жылдыздардын анимациясы (индекстегидей) -->
+    <script>
+        const canvas = document.getElementById('starsCanvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+
+        function initCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 1.5,
+                    opacity: Math.random(),
+                    speed: Math.random() * 0.2,
+                    twinkle: Math.random() * 0.02, 
+                    color: '#ffffff'
+                });
+            }
+        }
+
+        function drawStars() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            stars.forEach(star => {
+                star.opacity += star.twinkle;
+                if (star.opacity > 1 || star.opacity < 0.2) star.twinkle *= -1;
+                ctx.globalAlpha = Math.abs(star.opacity);
+                ctx.fillStyle = star.color;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                star.y += star.speed;
+                if (star.y > canvas.height) star.y = 0;
+            });
+            requestAnimationFrame(drawStars);
+        }
+
+        window.addEventListener('resize', initCanvas);
+        initCanvas();
+        drawStars();
+
+        // auth.js файлына шилтеме (логика үчүн)
+    </script>
+    <script src="auth.js"></script>
 </body>
 </html>
