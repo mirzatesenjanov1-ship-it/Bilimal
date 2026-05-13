@@ -3,11 +3,10 @@
  * Firebase Authentication менен толук туташтырылды.
  */
 
-// Сиздин Firebase конфигурацияңыз (bilimal-org долбоорунан)
+// Сиздин Firebase конфигурацияңыз (image_1ff39a.png негизинде)
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
     authDomain: "bilimal-org.firebaseapp.com",
-    databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.firebasestorage.app",
     messagingSenderId: "241750360816",
@@ -33,14 +32,11 @@ function login() {
         return;
     }
 
-    // Firebase аркылуу кирүү логикасы
     auth.signInWithEmailAndPassword(email, pass)
         .then((userCredential) => {
-            const user = userCredential.user;
-            console.log("Кирди:", user.email);
+            console.log("Кирди:", userCredential.user.email);
             showStatus("Кош келиңиз! Башкаруу панелине өтүп жатасыз...", "success");
             
-            // Ийгиликтүү киргенден кийин 1.5 секунддан соң панелге жиберебиз
             setTimeout(() => {
                 window.location.href = "teacher-dashboard.html";
             }, 1500);
@@ -49,6 +45,7 @@ function login() {
             let errorMessage = "Ката кетти: " + error.message;
             if (error.code === 'auth/user-not-found') errorMessage = "Мындай колдонуучу табылган жок!";
             if (error.code === 'auth/wrong-password') errorMessage = "Сөз айкашы ката!";
+            if (error.code === 'auth/configuration-not-found') errorMessage = "Firebase консолунда Email/Password күйгүзүлгөн эмес!";
             
             showStatus(errorMessage, "error");
         });
@@ -71,20 +68,15 @@ function register() {
         return;
     }
 
-    // Firebase аркылуу жаңы колдонуучу түзүү
     auth.createUserWithEmailAndPassword(email, pass)
         .then((userCredential) => {
             showStatus("Каттоо ийгиликтүү өттү! Эми кире аласыз.", "success");
-            console.log("Жаңы мугалим катталды:", userCredential.user.email);
         })
         .catch((error) => {
             showStatus("Каттоодо ката: " + error.message, "error");
         });
 }
 
-/**
- * Статус билдирүүсү
- */
 function showStatus(message, type) {
     alert(message);
     console.log(`[${type.toUpperCase()}]: ${message}`);
