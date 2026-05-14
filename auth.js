@@ -22,6 +22,7 @@ const auth = firebase.auth();
 
 /**
  * КИРҮҮ ФУНКЦИЯСЫ
+ * Катталган колдонуучулар үчүн
  */
 function login() {
     const email = document.getElementById('email').value.trim();
@@ -32,7 +33,11 @@ function login() {
         return;
     }
 
-    auth.signInWithEmailAndPassword(email, pass)
+    // Браузерде сессияны сактоо
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .then(() => {
+            return auth.signInWithEmailAndPassword(email, pass);
+        })
         .then((userCredential) => {
             console.log("Кирди:", userCredential.user.email);
             showStatus("Кош келиңиз! Башкаруу панелине өтүп жатасыз...", "success");
@@ -43,7 +48,7 @@ function login() {
         })
         .catch((error) => {
             let errorMessage = "Ката кетти: " + error.message;
-            if (error.code === 'auth/user-not-found') errorMessage = "Мындай колдонуучу табылган жок!";
+            if (error.code === 'auth/user-not-found') errorMessage = "Мындай колдонуучу табылган жок! Алгач каттоодон өтүңүз.";
             if (error.code === 'auth/wrong-password') errorMessage = "Сөз айкашы ката!";
             if (error.code === 'auth/configuration-not-found') errorMessage = "Firebase консолунда Email/Password күйгүзүлгөн эмес!";
             
@@ -53,6 +58,7 @@ function login() {
 
 /**
  * КАТТОО ФУНКЦИЯСЫ
+ * Биринчи жолу кирген колдонуучулар үчүн
  */
 function register() {
     const email = document.getElementById('email').value.trim();
@@ -70,10 +76,15 @@ function register() {
 
     auth.createUserWithEmailAndPassword(email, pass)
         .then((userCredential) => {
-            showStatus("Каттоо ийгиликтүү өттү! Эми кире аласыз.", "success");
+            // Катталгандан кийин дароо киргизбөө үчүн (логин аркылуу кирүүсүн талап кылуу)
+            auth.signOut(); 
+            showStatus("Каттоо ийгиликтүү өттү! Эми сактаган почтаңыз менен кире аласыз.", "success");
         })
         .catch((error) => {
-            showStatus("Каттоодо ката: " + error.message, "error");
+            let errorMessage = "Каттоодо ката: " + error.message;
+            if (error.code === 'auth/email-already-in-use') errorMessage = "Бул почта мурда катталган!";
+            
+            showStatus(errorMessage, "error");
         });
 }
 
