@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Менин тесттерим | MUGALIM.AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .gradient-text { background: linear-gradient(45deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .test-item { transition: 0.3s; border-left: 4px solid transparent; }
+        .test-item:hover { background: rgba(59, 130, 246, 0.1); border-left-color: #3b82f6; transform: translateX(10px); }
+    </style>
+</head>
+<body class="min-h-screen p-6 md:p-12">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Башкы бетке кайтуу -->
+        <a href="teacher-dashboard.html" class="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-all">
+            <i class="fas fa-arrow-left"></i> Артка кайтуу
+        </a>
+
+        <div class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl md:text-5xl font-black uppercase tracking-tighter">Менин <span class="gradient-text">тесттерим</span></h1>
+            <a href="create-test.html" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2">
+                <i class="fas fa-plus"></i> Жаңы тест
+            </a>
+        </div>
+
+        <!-- Тизме чыга турган жер -->
+        <div id="tests-container" class="space-y-4">
+            <div class="text-center py-20 animate-pulse text-gray-500">
+                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                <p class="font-bold uppercase tracking-widest">Тесттер жүктөлүүдө...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                loadUserTests(user.uid);
+            } else {
+                window.location.replace("cabinet.html");
+            }
+        });
+
+        function loadUserTests(uid) {
+            const container = document.getElementById('tests-container');
+            
+            database.ref('tests').orderByChild('authorUid').equalTo(uid).on('value', (snapshot) => {
+                container.innerHTML = '';
+                
+                if (!snapshot.exists()) {
+                    container.innerHTML = `
+                        <div class="glass-card p-12 rounded-[2rem] text-center">
+                            <i class="fas fa-folder-open text-6xl text-gray-700 mb-4"></i>
+                            <p class="text-gray-400 font-bold uppercase tracking-widest">Азырынча тесттер жок</p>
+                        </div>`;
+                    return;
+                }
+
+                snapshot.forEach((childSnapshot) => {
+                    const test = childSnapshot.val();
+                    const testId = childSnapshot.key;
+                    
+                    const testHtml = `
+                        <div class="glass-card p-6 rounded-3xl test-item flex justify-between items-center">
+                            <div>
+                                <h3 class="text-xl font-black text-white mb-1 uppercase tracking-tight">${test.title || 'Аталышы жок тест'}</h3>
+                                <div class="flex gap-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    <span><i class="fas fa-list-ul text-blue-500"></i> ${test.questions ? Object.keys(test.questions).length : 0} суроо</span>
+                                    <span><i class="fas fa-clock text-purple-500"></i> 14.05.2026</span>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="copyLink('${testId}')" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all" title="Шилтемени көчүрүү">
+                                    <i class="fas fa-link text-sm"></i>
+                                </button>
+                                <button onclick="deleteTest('${testId}')" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-red-600 flex items-center justify-center transition-all" title="Өчүрүү">
+                                    <i class="fas fa-trash-alt text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += testHtml;
+                });
+            });
+        }
+
+        function copyLink(id) {
+            const link = `https://bilimal.org/quiz.html?id=${id}`;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Шилтеме көчүрүлдү! Окуучуларга жөнөтсөңүз болот.");
+            });
+        }
+
+        function deleteTest(id) {
+            if (confirm("Бул тестти өчүрүүнү каалайсызбы?")) {
+                database.ref('tests/' + id).remove();
+            }
+        }
+    </script>
+</body>
+</html>
