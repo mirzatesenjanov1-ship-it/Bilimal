@@ -15,15 +15,11 @@
         
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 md:p-8">
 
     <div class="max-w-4xl mx-auto">
-        <!-- Жогорку навигация -->
         <div class="flex justify-between items-center mb-8">
             <a href="teacher-dashboard.html" class="text-gray-400 hover:text-white transition flex items-center gap-2">
                 <i class="fas fa-arrow-left"></i> Панелге кайтуу
@@ -31,7 +27,6 @@
             <h1 class="text-xl md:text-2xl font-black text-blue-500 uppercase tracking-tighter">Жаңы тест түзүү</h1>
         </div>
 
-        <!-- Тесттин негизги маалыматы -->
         <div class="glass-card p-6 rounded-3xl mb-6 shadow-2xl">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -51,10 +46,8 @@
             </div>
         </div>
 
-        <!-- Суроолордун тизмеси -->
         <div id="questions-container"></div>
 
-        <!-- Башкаруу баскычтары -->
         <div class="flex flex-col md:flex-row gap-4 mt-10 mb-20">
             <button onclick="addQuestion()" class="flex-1 bg-blue-600/10 border border-blue-500/50 text-blue-400 py-4 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">
                 <i class="fas fa-plus mr-2"></i> Суроо кошуу
@@ -71,10 +64,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // 1-КАДАМ: Жаңыртылган Firebase конфигурациясы (Бельгия сервери үчүн)
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app", // image_921939.png боюнча оңдолду
             projectId: "bilimal-org",
             storageBucket: "bilimal-org.firebasestorage.app",
             messagingSenderId: "241750360816",
@@ -102,10 +96,10 @@
             questionCount++;
             const container = document.getElementById('questions-container');
             const qHtml = `
-                <div class="glass-card p-6 rounded-3xl mt-6 border-l-4 border-blue-500 animate-fade-in" id="q-block-${questionCount}">
+                <div class="glass-card p-6 rounded-3xl mt-6 border-l-4 border-blue-500" id="q-block-${questionCount}">
                     <div class="flex justify-between items-center mb-4">
                         <span class="font-black text-blue-500 tracking-tighter uppercase">Суроо #${questionCount}</span>
-                        <button onclick="removeQuestion(${questionCount})" class="text-red-500 hover:scale-110 transition"><i class="fas fa-trash"></i></button>
+                        <button onclick="removeQuestion(${questionCount})" class="text-red-500"><i class="fas fa-trash"></i></button>
                     </div>
                     <input type="text" placeholder="Суроону жазыңыз..." class="input-style mb-4 q-text font-bold">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,13 +117,10 @@
 
         function removeQuestion(id) {
             const blocks = document.querySelectorAll('[id^="q-block-"]');
-            if (blocks.length > 1) {
-                document.getElementById(`q-block-${id}`).remove();
-            } else {
-                alert("Кеминде бир суроо болушу керек!");
-            }
+            if (blocks.length > 1) document.getElementById(`q-block-${id}`).remove();
         }
 
+        // 2-ЖАНА 3-КАДАМ: Тез сактоо жана катаны көзөмөлдөө функциясы
         function saveTest() {
             if (!currentUser) return;
 
@@ -151,35 +142,38 @@
                     block.querySelector('.opt-3').value.trim()
                 ];
                 const correct = block.querySelector(`input[name^="correct-"]:checked`).value;
-
                 if (!qText || !opts[0] || !opts[1]) isValid = false;
                 questions.push({ qText, options: opts, correct: parseInt(correct) });
             });
 
             if (!title || !isValid) {
-                alert("Сураныч, бардык талааларды толтуруңуз!");
+                alert("Бардык талааларды толтуруңуз!");
                 return;
             }
 
             saveBtn.disabled = true;
-            saveText.innerHTML = '<span class="loader"></span> Сакталууда...';
+            saveText.innerHTML = '<span class="loader"></span> Жиберилүүдө...';
 
+            // Firebase'ге сактоо
             const testRef = database.ref('tests').push();
             testRef.set({
-                title,
+                title: title,
                 class: testClass,
-                questions,
+                questions: questions,
                 authorUid: currentUser.uid,
                 authorEmail: currentUser.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
-            }, (error) => {
-                if (error) {
-                    alert("Ката кетти: " + error.message);
-                    saveBtn.disabled = false;
-                    saveText.innerHTML = '<i class="fas fa-save mr-2"></i> Тестти сактоо';
-                } else {
-                    window.location.href = "teacher-dashboard.html";
-                }
+            })
+            .then(() => {
+                // Ийгиликтүү сакталса панелге өтүү
+                window.location.href = "teacher-dashboard.html";
+            })
+            .catch((error) => {
+                // Ката болсо баскычты кайра жандыруу
+                console.error("Ката:", error);
+                alert("Ката кетти! Firebase эрежелерин (Rules) текшериңиз.");
+                saveBtn.disabled = false;
+                saveText.innerHTML = '<i class="fas fa-save mr-2"></i> Тестти сактоо';
             });
         }
 
