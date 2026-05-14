@@ -8,33 +8,62 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
-        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .gradient-text { background: linear-gradient(45deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .test-item { transition: 0.3s; border-left: 4px solid transparent; }
-        .test-item:hover { background: rgba(59, 130, 246, 0.1); border-left-color: #3b82f6; transform: translateX(10px); }
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
+        
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.6); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .test-item:hover { 
+            background: rgba(59, 130, 246, 0.1); 
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateX(8px);
+        }
+
+        .gradient-text { 
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+
+        /* Ыңгайлаштырылган Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050a18; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
     </style>
 </head>
 <body class="min-h-screen p-6 md:p-12">
 
     <div class="max-w-4xl mx-auto">
-        <!-- Башкы бетке кайтуу -->
-        <a href="teacher-dashboard.html" class="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-all">
-            <i class="fas fa-arrow-left"></i> Артка кайтуу
-        </a>
-
-        <div class="flex justify-between items-center mb-10">
-            <h1 class="text-3xl md:text-5xl font-black uppercase tracking-tighter">Менин <span class="gradient-text">тесттерим</span></h1>
-            <a href="create-test.html" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold transition-all flex items-center gap-2">
-                <i class="fas fa-plus"></i> Жаңы тест
+        <!-- Жогорку навигация -->
+        <div class="flex justify-between items-center mb-12">
+            <a href="teacher-dashboard.html" class="group flex items-center gap-3 text-gray-400 hover:text-white transition-all">
+                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-600 transition-all">
+                    <i class="fas fa-arrow-left text-sm"></i>
+                </div>
+                <span class="font-bold uppercase tracking-widest text-xs">Панелге кайтуу</span>
+            </a>
+            
+            <a href="create-test.html" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black transition-all flex items-center gap-3 shadow-lg shadow-blue-900/20 uppercase tracking-tighter text-sm">
+                <i class="fas fa-plus"></i> Жаңы тест түзүү
             </a>
         </div>
 
-        <!-- Тизме чыга турган жер -->
+        <div class="mb-10">
+            <h1 class="text-4xl md:text-6xl font-black uppercase tracking-tighter mb-2">Менин <span class="gradient-text">тесттерим</span></h1>
+            <p class="text-gray-500 font-medium">Түзүлгөн тесттерди башкарыңыз жана окуучуларга жөнөтүңүз</p>
+        </div>
+
+        <!-- Тесттердин тизмеси контейнери -->
         <div id="tests-container" class="space-y-4">
-            <div class="text-center py-20 animate-pulse text-gray-500">
-                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
-                <p class="font-bold uppercase tracking-widest">Тесттер жүктөлүүдө...</p>
+            <!-- Жүктөө анимациясы -->
+            <div class="text-center py-24">
+                <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
+                <p class="text-gray-500 font-bold uppercase tracking-[0.3em] text-xs">Маалыматтар жүктөлүүдө...</p>
             </div>
         </div>
     </div>
@@ -45,6 +74,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // Firebase конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -55,10 +85,14 @@
             appId: "1:241750360816:web:a991434eb5afbc470d7835"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
         const auth = firebase.auth();
         const database = firebase.database();
 
+        // Колдонуучунун киргенин текшерүү
         auth.onAuthStateChanged((user) => {
             if (user) {
                 loadUserTests(user.uid);
@@ -67,6 +101,7 @@
             }
         });
 
+        // Тесттерди базадан жүктөө
         function loadUserTests(uid) {
             const container = document.getElementById('tests-container');
             
@@ -75,9 +110,13 @@
                 
                 if (!snapshot.exists()) {
                     container.innerHTML = `
-                        <div class="glass-card p-12 rounded-[2rem] text-center">
-                            <i class="fas fa-folder-open text-6xl text-gray-700 mb-4"></i>
-                            <p class="text-gray-400 font-bold uppercase tracking-widest">Азырынча тесттер жок</p>
+                        <div class="glass-card p-16 rounded-[3rem] text-center border-dashed border-2 border-white/10">
+                            <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i class="fas fa-folder-open text-3xl text-gray-600"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2">Азырынча тесттер жок</h3>
+                            <p class="text-gray-500 mb-8">Биринчи тестиңизди азыр түзүп баштаңыз!</p>
+                            <a href="create-test.html" class="text-blue-500 font-bold uppercase tracking-widest text-xs hover:underline italic">Тест түзүүгө өтүү -></a>
                         </div>`;
                     return;
                 }
@@ -85,22 +124,29 @@
                 snapshot.forEach((childSnapshot) => {
                     const test = childSnapshot.val();
                     const testId = childSnapshot.key;
+                    const questionCount = test.questions ? Object.keys(test.questions).length : 0;
                     
                     const testHtml = `
-                        <div class="glass-card p-6 rounded-3xl test-item flex justify-between items-center">
-                            <div>
-                                <h3 class="text-xl font-black text-white mb-1 uppercase tracking-tight">${test.title || 'Аталышы жок тест'}</h3>
-                                <div class="flex gap-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                                    <span><i class="fas fa-list-ul text-blue-500"></i> ${test.questions ? Object.keys(test.questions).length : 0} суроо</span>
-                                    <span><i class="fas fa-clock text-purple-500"></i> 14.05.2026</span>
+                        <div class="glass-card p-6 rounded-[2rem] test-item flex justify-between items-center cursor-pointer group" onclick="viewTest('${testId}')">
+                            <div class="flex items-center gap-6">
+                                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600/20 to-purple-600/20 flex items-center justify-center text-blue-500 group-hover:from-blue-600 group-hover:to-purple-600 group-hover:text-white transition-all duration-500">
+                                    <i class="fas fa-file-alt text-xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-black text-white mb-1 uppercase tracking-tight group-hover:text-blue-400 transition-colors">${test.title || 'Аталышы жок тест'}</h3>
+                                    <div class="flex gap-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                                        <span class="flex items-center gap-2"><i class="fas fa-layer-group text-blue-500"></i> ${questionCount} суроо</span>
+                                        <span class="flex items-center gap-2"><i class="fas fa-calendar-alt text-purple-500"></i> 14.05.2026</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="flex gap-2">
-                                <button onclick="copyLink('${testId}')" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all" title="Шилтемени көчүрүү">
-                                    <i class="fas fa-link text-sm"></i>
+                            
+                            <div class="flex gap-3" onclick="event.stopPropagation()">
+                                <button onclick="copyLink('${testId}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Шилтемени көчүрүү">
+                                    <i class="fas fa-link text-sm group-hover/btn:scale-110 transition-transform"></i>
                                 </button>
-                                <button onclick="deleteTest('${testId}')" class="w-10 h-10 rounded-xl bg-white/5 hover:bg-red-600 flex items-center justify-center transition-all" title="Өчүрүү">
-                                    <i class="fas fa-trash-alt text-sm"></i>
+                                <button onclick="deleteTest('${testId}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-red-600 flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Өчүрүүнү">
+                                    <i class="fas fa-trash-alt text-sm group-hover/btn:scale-110 transition-transform"></i>
                                 </button>
                             </div>
                         </div>
@@ -110,16 +156,29 @@
             });
         }
 
+        // Тесттин ичине кирүү (Окуучулар көрө турган бет)
+        function viewTest(id) {
+            window.location.href = `quiz.html?id=${id}`;
+        }
+
+        // Шилтемени көчүрүү
         function copyLink(id) {
             const link = `https://bilimal.org/quiz.html?id=${id}`;
             navigator.clipboard.writeText(link).then(() => {
-                alert("Шилтеме көчүрүлдү! Окуучуларга жөнөтсөңүз болот.");
+                const notify = document.createElement('div');
+                notify.className = 'fixed bottom-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl z-50 animate-bounce';
+                notify.innerText = '✅ ШИЛТЕМЕ КӨЧҮРҮЛДҮ!';
+                document.body.appendChild(notify);
+                setTimeout(() => notify.remove(), 3000);
             });
         }
 
+        // Тестти өчүрүү
         function deleteTest(id) {
-            if (confirm("Бул тестти өчүрүүнү каалайсызбы?")) {
-                database.ref('tests/' + id).remove();
+            if (confirm("Бул тестти биротоло өчүрүүнү каалайсызбы? Бул аракетти артка кайтаруу мүмкүн эмес.")) {
+                database.ref('tests/' + id).remove()
+                    .then(() => alert("Тест ийгиликтүү өчүрүлдү."))
+                    .catch((error) => console.error("Ката кетти:", error));
             }
         }
     </script>
