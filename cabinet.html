@@ -53,6 +53,24 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+
+        /* Жүктөө индикатору */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -86,20 +104,21 @@
         </div>
 
         <button id="main-btn" onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl mt-8 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-600/30">
-            КИРҮҮ <i class="fas fa-sign-in-alt ml-2"></i>
+            <span id="btn-text">КИРҮҮ</span> <i class="fas fa-sign-in-alt ml-2"></i>
         </button>
 
         <p class="mt-6 text-gray-500 text-sm">
             <span id="toggle-text">Аккаунтуңуз жокпу?</span> 
-            <button onclick="toggleMode()" id="toggle-btn" class="text-blue-400 font-bold hover:underline">Каттоодон өтүү</button>
+            <button onclick="toggleMode()" id="toggle-btn" class="text-blue-400 font-bold hover:underline transition-all">Каттоодон өтүү</button>
         </p>
     </div>
 
-    <!-- Firebase SDK (v8 колдонулуп жатат) -->
+    <!-- Firebase SDK (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
+        // Firebase конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -116,35 +135,56 @@
         }
         const auth = firebase.auth();
 
+        // 1. КОШУМЧА: Колдонуучу мурун кирген болсо, автоматтык түрдө панелге жиберүү
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                window.location.replace("teacher-dashboard.html");
+            }
+        });
+
         let isLoginMode = true;
 
-        // Кирүү же Каттоо режимине которуу
         function toggleMode() {
             isLoginMode = !isLoginMode;
             const title = document.getElementById('auth-title');
             const subtitle = document.getElementById('auth-subtitle');
             const mainBtn = document.getElementById('main-btn');
+            const btnText = document.getElementById('btn-text');
             const toggleText = document.getElementById('toggle-text');
             const toggleBtn = document.getElementById('toggle-btn');
 
             if (isLoginMode) {
                 title.innerText = "Кирүү";
                 subtitle.innerText = "Мугалимдин жеке кабинетине кирүү";
-                mainBtn.innerHTML = 'КИРҮҮ <i class="fas fa-sign-in-alt ml-2"></i>';
+                btnText.innerText = "КИРҮҮ";
                 mainBtn.onclick = login;
                 toggleText.innerText = "Аккаунтуңуз жокпу?";
                 toggleBtn.innerText = "Каттоодон өтүү";
             } else {
                 title.innerText = "Каттоо";
                 subtitle.innerText = "Жаңы мугалим катары катталуу";
-                mainBtn.innerHTML = 'КАТТАЛУУ <i class="fas fa-user-plus ml-2"></i>';
+                btnText.innerText = "КАТТАЛУУ";
                 mainBtn.onclick = register;
                 toggleText.innerText = "Аккаунтуңуз барбы?";
                 toggleBtn.innerText = "Кирүү барагына";
             }
         }
 
-        // Кирүү функциясы
+        // Жүктөө абалын көрсөтүүчү жардамчы функция
+        function setLoading(isLoading) {
+            const btn = document.getElementById('main-btn');
+            const btnText = document.getElementById('btn-text');
+            if (isLoading) {
+                btn.disabled = true;
+                btn.style.opacity = "0.7";
+                btnText.innerHTML = '<span class="loader"></span> Күтө туруңуз...';
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = "1";
+                btnText.innerText = isLoginMode ? "КИРҮҮ" : "КАТТАЛУУ";
+            }
+        }
+
         function login() {
             const email = document.getElementById('email').value.trim();
             const pass = document.getElementById('password').value.trim();
@@ -154,23 +194,25 @@
                 return;
             }
 
-            // Сессияны сактоо (браузер жабылса да чыгып кетпейт)
+            setLoading(true);
+
             auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
                 .then(() => {
                     return auth.signInWithEmailAndPassword(email, pass);
                 })
-                .then((userCredential) => {
+                .then(() => {
                     window.location.replace("teacher-dashboard.html");
                 })
                 .catch((error) => {
-                    let msg = "Кирүүдө ката кетти!";
+                    setLoading(false);
+                    let msg = "Ката кетти: " + error.message;
                     if (error.code === 'auth/wrong-password') msg = "Сыр сөз туура эмес!";
                     if (error.code === 'auth/user-not-found') msg = "Мындай почта катталган эмес!";
+                    if (error.code === 'auth/invalid-email') msg = "Почта дареги туура эмес жазылган!";
                     alert(msg);
                 });
         }
 
-        // Каттоо функциясы
         function register() {
             const email = document.getElementById('email').value.trim();
             const pass = document.getElementById('password').value.trim();
@@ -181,28 +223,27 @@
             }
 
             if (pass.length < 6) {
-                alert("Сыр сөз кеминде 6 белгиден турушу керек!");
+                alert("Сыр сөз коопсуздук үчүн кеминде 6 белгиден турушу керек!");
                 return;
             }
 
+            setLoading(true);
+
             auth.createUserWithEmailAndPassword(email, pass)
-                .then((userCredential) => {
-                    // Катталгандан кийин дароо киргизбей, авторизациядан өтүүнү суранабыз
-                    auth.signOut().then(() => {
-                        alert("Ийгиликтүү катталдыңыз! Эми почтаңыз менен кириңиз.");
-                        document.getElementById('email').value = "";
-                        document.getElementById('password').value = "";
-                        if (!isLoginMode) toggleMode(); 
-                    });
+                .then(() => {
+                    alert("Ийгиликтүү катталдыңыз! Эми кире аласыз.");
+                    setLoading(false);
+                    toggleMode(); // Кирүү режимине которуу
                 })
                 .catch((error) => {
+                    setLoading(false);
                     let msg = "Каттоодо ката кетти!";
                     if (error.code === 'auth/email-already-in-use') msg = "Бул почта мурунтан катталган!";
                     alert(msg);
                 });
         }
 
-        // Кооздук үчүн жылдыздардын анимациясы (Canvas)
+        // Анимация бөлүгү
         const canvas = document.getElementById('starsCanvas');
         const ctx = canvas.getContext('2d');
         let stars = [];
@@ -217,8 +258,8 @@
                     y: Math.random() * canvas.height,
                     size: Math.random() * 1.5,
                     opacity: Math.random(),
-                    speed: Math.random() * 0.2,
-                    twinkle: Math.random() * 0.02, 
+                    speed: Math.random() * 0.15,
+                    twinkle: Math.random() * 0.015, 
                     color: '#ffffff'
                 });
             }
