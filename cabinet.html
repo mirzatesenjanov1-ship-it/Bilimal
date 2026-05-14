@@ -14,7 +14,7 @@
             background-color: #050a18; 
             color: #e2e8f0; 
             font-family: 'Montserrat', sans-serif;
-            overflow: hidden; /* Ашыкча сыдырууну алып салабыз */
+            overflow: hidden;
         }
 
         #stars-container {
@@ -57,7 +57,7 @@
 </head>
 <body class="flex items-center justify-center min-h-screen">
 
-    <!-- Жылдыздуу фон сакталды -->
+    <!-- Жылдыздуу фон -->
     <div id="stars-container">
         <canvas id="starsCanvas"></canvas>
     </div>
@@ -73,8 +73,8 @@
             <div class="w-20 h-20 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30">
                 <i class="fas fa-user-shield"></i>
             </div>
-            <h2 class="text-3xl font-black mb-2 uppercase tracking-tight hero-text">Кирүү</h2>
-            <p class="text-gray-400 text-sm">Мугалимдин жеке кабинетине кирүү</p>
+            <h2 id="auth-title" class="text-3xl font-black mb-2 uppercase tracking-tight hero-text">Кирүү</h2>
+            <p id="auth-subtitle" class="text-gray-400 text-sm">Мугалимдин жеке кабинетине кирүү</p>
         </div>
 
         <div class="space-y-4 text-left">
@@ -88,13 +88,13 @@
             </div>
         </div>
 
-        <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl mt-8 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-600/30">
+        <button id="main-btn" onclick="login()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl mt-8 transition-all transform hover:scale-[1.02] active:scale-95 shadow-lg shadow-blue-600/30">
             КИРҮҮ <i class="fas fa-sign-in-alt ml-2"></i>
         </button>
 
         <p class="mt-6 text-gray-500 text-sm">
-            Аккаунтуңуз жокпу? 
-            <button onclick="register()" class="text-blue-400 font-bold hover:underline">Каттоодон өтүү</button>
+            <span id="toggle-text">Аккаунтуңуз жокпу?</span> 
+            <button onclick="toggleMode()" id="toggle-btn" class="text-blue-400 font-bold hover:underline">Каттоодон өтүү</button>
         </p>
     </div>
 
@@ -103,7 +103,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
-        // Firebase Конфигурациясы (image_1ff39a.png негизинде)
+        // Firebase Конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -114,16 +114,47 @@
             measurementId: "G-9GSQV60QV0"
         };
 
-        // Firebase'ти ишке киргизүү
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
         const auth = firebase.auth();
 
-        // Кирүү функциясы
+        let isLoginMode = true;
+
+        // Кирүү/Каттоо режимин которуу
+        function toggleMode() {
+            isLoginMode = !isLoginMode;
+            const title = document.getElementById('auth-title');
+            const subtitle = document.getElementById('auth-subtitle');
+            const mainBtn = document.getElementById('main-btn');
+            const toggleText = document.getElementById('toggle-text');
+            const toggleBtn = document.getElementById('toggle-btn');
+
+            if (isLoginMode) {
+                title.innerText = "Кирүү";
+                subtitle.innerText = "Мугалимдин жеке кабинетине кирүү";
+                mainBtn.innerHTML = 'КИРҮҮ <i class="fas fa-sign-in-alt ml-2"></i>';
+                mainBtn.onclick = login;
+                toggleText.innerText = "Аккаунтуңуз жокпу?";
+                toggleBtn.innerText = "Каттоодон өтүү";
+            } else {
+                title.innerText = "Каттоо";
+                subtitle.innerText = "Жаңы мугалим катары катталуу";
+                mainBtn.innerHTML = 'КАТТАЛУУ <i class="fas fa-user-plus ml-2"></i>';
+                mainBtn.onclick = register;
+                toggleText.innerText = "Аккаунтуңуз барбы?";
+                toggleBtn.innerText = "Кирүү барагына";
+            }
+        }
+
         function login() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
+            const email = document.getElementById('email').value.trim();
+            const pass = document.getElementById('password').value.trim();
+
+            if (!email || !pass) {
+                alert("Почта жана сөз айкашын жазыңыз!");
+                return;
+            }
 
             auth.signInWithEmailAndPassword(email, pass)
                 .then((userCredential) => {
@@ -134,10 +165,14 @@
                 });
         }
 
-        // Каттоо функциясы
         function register() {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
+            const email = document.getElementById('email').value.trim();
+            const pass = document.getElementById('password').value.trim();
+
+            if (!email || !pass) {
+                alert("Каттоо үчүн бардык талааларды толтуруңуз!");
+                return;
+            }
 
             if (pass.length < 6) {
                 alert("Сөз айкашы кеминде 6 белгиден турушу керек!");
@@ -146,14 +181,17 @@
 
             auth.createUserWithEmailAndPassword(email, pass)
                 .then((userCredential) => {
-                    alert("Ийгиликтүү катталдыңыз!");
+                    // Катталгандан кийин автоматтык кирбөө үчүн
+                    auth.signOut(); 
+                    alert("Ийгиликтүү катталдыңыз! Эми почтаңыз жана сөз айкашыңыз менен кириңиз.");
+                    toggleMode(); // Кайра кирүү барагына которуу
                 })
                 .catch((error) => {
                     alert("Каттоодо ката: " + error.message);
                 });
         }
 
-        // Жылдыздардын анимациясы
+        // Жылдыздар анимациясы (өзгөрүүсүз калды)
         const canvas = document.getElementById('starsCanvas');
         const ctx = canvas.getContext('2d');
         let stars = [];
