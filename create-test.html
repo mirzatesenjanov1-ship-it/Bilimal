@@ -13,9 +13,11 @@
         .input-style { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; width: 100%; outline: none; transition: 0.3s; color: white; }
         .input-style:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
         
-        /* Loading spinner */
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .animate-fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -34,7 +36,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Тесттин аталышы</label>
-                    <input type="text" id="test-title" placeholder="Мисалы: Молекулалык физика" class="input-style">
+                    <input type="text" id="test-title" placeholder="Мисалы: Механика" class="input-style">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Класс</label>
@@ -50,16 +52,14 @@
         </div>
 
         <!-- Суроолордун тизмеси -->
-        <div id="questions-container">
-            <!-- Суроолор JS аркылуу кошулат -->
-        </div>
+        <div id="questions-container"></div>
 
         <!-- Башкаруу баскычтары -->
         <div class="flex flex-col md:flex-row gap-4 mt-10 mb-20">
             <button onclick="addQuestion()" class="flex-1 bg-blue-600/10 border border-blue-500/50 text-blue-400 py-4 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">
                 <i class="fas fa-plus mr-2"></i> Суроо кошуу
             </button>
-            <button id="save-btn" onclick="saveTest()" class="flex-1 bg-green-600 py-4 rounded-2xl font-bold text-white shadow-lg shadow-green-900/20 hover:bg-green-500 transition-all transform active:scale-95">
+            <button id="save-btn" onclick="saveTest()" class="flex-1 bg-green-600 py-4 rounded-2xl font-bold text-white shadow-lg hover:bg-green-500 transition-all transform active:scale-95">
                 <span id="save-text"><i class="fas fa-save mr-2"></i> Тестти сактоо</span>
             </button>
         </div>
@@ -71,7 +71,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // Сиздин Firebase конфигурацияңыз (Cabinet.html менен бирдей болушу керек)
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -91,13 +90,10 @@
         let questionCount = 0;
         let currentUser = null;
 
-        // Авторизацияны текшерүү
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
-                console.log("Мугалим кирди:", user.email);
             } else {
-                alert("Сессия аяктады. Кайра кириңиз!");
                 window.location.replace("cabinet.html");
             }
         });
@@ -108,30 +104,17 @@
             const qHtml = `
                 <div class="glass-card p-6 rounded-3xl mt-6 border-l-4 border-blue-500 animate-fade-in" id="q-block-${questionCount}">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="font-black text-blue-500 tracking-tighter">СУРОО #${questionCount}</span>
-                        <button onclick="removeQuestion(${questionCount})" class="w-8 h-8 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition">
-                            <i class="fas fa-trash text-xs"></i>
-                        </button>
+                        <span class="font-black text-blue-500 tracking-tighter uppercase">Суроо #${questionCount}</span>
+                        <button onclick="removeQuestion(${questionCount})" class="text-red-500 hover:scale-110 transition"><i class="fas fa-trash"></i></button>
                     </div>
                     <input type="text" placeholder="Суроону жазыңыз..." class="input-style mb-4 q-text font-bold">
-                    
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="relative group">
-                            <input type="radio" name="correct-${questionCount}" value="0" checked class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 accent-blue-500">
-                            <input type="text" placeholder="А варианты" class="input-style text-sm opt-0 pr-10">
-                        </div>
-                        <div class="relative group">
-                            <input type="radio" name="correct-${questionCount}" value="1" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 accent-blue-500">
-                            <input type="text" placeholder="Б варианты" class="input-style text-sm opt-1 pr-10">
-                        </div>
-                        <div class="relative group">
-                            <input type="radio" name="correct-${questionCount}" value="2" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 accent-blue-500">
-                            <input type="text" placeholder="В варианты" class="input-style text-sm opt-2 pr-10">
-                        </div>
-                        <div class="relative group">
-                            <input type="radio" name="correct-${questionCount}" value="3" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 accent-blue-500">
-                            <input type="text" placeholder="Г варианты" class="input-style text-sm opt-3 pr-10">
-                        </div>
+                        ${[0,1,2,3].map(i => `
+                            <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/10">
+                                <input type="radio" name="correct-${questionCount}" value="${i}" ${i===0 ? 'checked' : ''} class="w-5 h-5 accent-blue-500">
+                                <input type="text" placeholder="Вариант ${i+1}" class="bg-transparent outline-none w-full text-sm opt-${i}">
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
             `;
@@ -139,83 +122,67 @@
         }
 
         function removeQuestion(id) {
-            const block = document.getElementById(`q-block-${id}`);
-            if (document.querySelectorAll('[id^="q-block-"]').length > 1) {
-                block.remove();
+            const blocks = document.querySelectorAll('[id^="q-block-"]');
+            if (blocks.length > 1) {
+                document.getElementById(`q-block-${id}`).remove();
             } else {
                 alert("Кеминде бир суроо болушу керек!");
             }
         }
 
         function saveTest() {
-            if (!currentUser) {
-                alert("Кайра кириңиз!");
-                window.location.replace("cabinet.html");
-                return;
-            }
+            if (!currentUser) return;
 
             const title = document.getElementById('test-title').value.trim();
             const testClass = document.getElementById('test-class').value;
             const saveBtn = document.getElementById('save-btn');
             const saveText = document.getElementById('save-text');
-            const questions = [];
-
-            const blocks = document.querySelectorAll('[id^="q-block-"]');
             
+            const questions = [];
+            const blocks = document.querySelectorAll('[id^="q-block-"]');
             let isValid = true;
+
             blocks.forEach(block => {
                 const qText = block.querySelector('.q-text').value.trim();
-                const opt0 = block.querySelector('.opt-0').value.trim();
-                const opt1 = block.querySelector('.opt-1').value.trim();
-                const opt2 = block.querySelector('.opt-2').value.trim();
-                const opt3 = block.querySelector('.opt-3').value.trim();
+                const opts = [
+                    block.querySelector('.opt-0').value.trim(),
+                    block.querySelector('.opt-1').value.trim(),
+                    block.querySelector('.opt-2').value.trim(),
+                    block.querySelector('.opt-3').value.trim()
+                ];
                 const correct = block.querySelector(`input[name^="correct-"]:checked`).value;
 
-                if (!qText || !opt0 || !opt1) {
-                    isValid = false;
-                }
-
-                questions.push({
-                    qText: qText,
-                    options: [opt0, opt1, opt2, opt3],
-                    correct: parseInt(correct)
-                });
+                if (!qText || !opts[0] || !opts[1]) isValid = false;
+                questions.push({ qText, options: opts, correct: parseInt(correct) });
             });
 
             if (!title || !isValid) {
-                alert("Сураныч, бардык талааларды (аталышы, суроо, жооптор) толтуруңуз!");
+                alert("Сураныч, бардык талааларды толтуруңуз!");
                 return;
             }
 
-            // Сактоо башталды
             saveBtn.disabled = true;
             saveText.innerHTML = '<span class="loader"></span> Сакталууда...';
 
-            const testData = {
-                title: title,
+            const testRef = database.ref('tests').push();
+            testRef.set({
+                title,
                 class: testClass,
-                questions: questions,
+                questions,
                 authorUid: currentUser.uid,
                 authorEmail: currentUser.email,
                 createdAt: firebase.database.ServerValue.TIMESTAMP
-            };
-
-            // Ар бир мугалимдин өзүнүн папкасына сактоо
-            const newTestRef = database.ref('tests').push();
-            newTestRef.set(testData)
-                .then(() => {
-                    alert("Тест ийгиликтүү сакталды!");
-                    window.location.href = "teacher-dashboard.html";
-                })
-                .catch((error) => {
-                    console.error(error);
+            }, (error) => {
+                if (error) {
                     alert("Ката кетти: " + error.message);
                     saveBtn.disabled = false;
                     saveText.innerHTML = '<i class="fas fa-save mr-2"></i> Тестти сактоо';
-                });
+                } else {
+                    window.location.href = "teacher-dashboard.html";
+                }
+            });
         }
 
-        // Баштапкы суроо
         addQuestion();
     </script>
 </body>
