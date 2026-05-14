@@ -57,17 +57,14 @@
 </head>
 <body class="flex items-center justify-center min-h-screen">
 
-    <!-- Жылдыздуу фон -->
     <div id="stars-container">
         <canvas id="starsCanvas"></canvas>
     </div>
 
-    <!-- Артка кайтуу баскычы -->
     <a href="index.html" class="absolute top-8 left-8 text-gray-400 hover:text-white transition flex items-center gap-2">
         <i class="fas fa-arrow-left"></i> Башкы бетке
     </a>
 
-    <!-- Авторизация картасы -->
     <div id="auth-section" class="glass-card w-full max-w-md p-10 rounded-[2.5rem] text-center">
         <div class="mb-8">
             <div class="w-20 h-20 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 border border-blue-500/30">
@@ -83,7 +80,7 @@
                 <input type="email" id="email" placeholder="example@mail.com" class="custom-input w-full p-4 rounded-xl mt-1">
             </div>
             <div>
-                <label class="text-xs font-bold uppercase tracking-widest text-gray-500 ml-2">Сөз айкашы (пароль)</label>
+                <label class="text-xs font-bold uppercase tracking-widest text-gray-500 ml-2">Сыр сөз</label>
                 <input type="password" id="password" placeholder="••••••••" class="custom-input w-full p-4 rounded-xl mt-1">
             </div>
         </div>
@@ -98,12 +95,10 @@
         </p>
     </div>
 
-    <!-- Firebase Scripts -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
-        // Firebase Конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -121,7 +116,6 @@
 
         let isLoginMode = true;
 
-        // Кирүү/Каттоо режимин которуу
         function toggleMode() {
             isLoginMode = !isLoginMode;
             const title = document.getElementById('auth-title');
@@ -152,16 +146,20 @@
             const pass = document.getElementById('password').value.trim();
 
             if (!email || !pass) {
-                alert("Почта жана сөз айкашын жазыңыз!");
+                alert("Почта жана сыр сөзүңүздү жазыңыз!");
                 return;
             }
 
             auth.signInWithEmailAndPassword(email, pass)
                 .then((userCredential) => {
-                    window.location.href = "teacher-dashboard.html";
+                    // Багыттоо ишенимдүү болушу үчүн replace колдонобуз
+                    window.location.replace("teacher-dashboard.html");
                 })
                 .catch((error) => {
-                    alert("Ката: " + error.message);
+                    let msg = error.message;
+                    if (error.code === 'auth/wrong-password') msg = "Сыр сөз туура эмес!";
+                    if (error.code === 'auth/user-not-found') msg = "Мындай почта катталган эмес!";
+                    alert("Кирүүдө ката: " + msg);
                 });
         }
 
@@ -175,23 +173,28 @@
             }
 
             if (pass.length < 6) {
-                alert("Сөз айкашы кеминде 6 белгиден турушу керек!");
+                alert("Сыр сөз кеминде 6 белгиден турушу керек!");
                 return;
             }
 
             auth.createUserWithEmailAndPassword(email, pass)
                 .then((userCredential) => {
-                    // Катталгандан кийин автоматтык кирбөө үчүн
-                    auth.signOut(); 
-                    alert("Ийгиликтүү катталдыңыз! Эми почтаңыз жана сөз айкашыңыз менен кириңиз.");
-                    toggleMode(); // Кайра кирүү барагына которуу
+                    // Катталгандан кийин сессияны токтотуу жана кирүүгө багыттоо
+                    auth.signOut().then(() => {
+                        alert("Ийгиликтүү катталдыңыз! Эми почтаңыз жана сыр сөзүңүз менен кириңиз.");
+                        document.getElementById('email').value = "";
+                        document.getElementById('password').value = "";
+                        toggleMode(); 
+                    });
                 })
                 .catch((error) => {
-                    alert("Каттоодо ката: " + error.message);
+                    let msg = error.message;
+                    if (error.code === 'auth/email-already-in-use') msg = "Бул почта мурунтан катталган!";
+                    alert("Каттоодо ката: " + msg);
                 });
         }
 
-        // Жылдыздар анимациясы (өзгөрүүсүз калды)
+        // Жылдыздардын анимациясы
         const canvas = document.getElementById('starsCanvas');
         const ctx = canvas.getContext('2d');
         let stars = [];
