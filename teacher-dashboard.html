@@ -14,31 +14,38 @@
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .sidebar-link:hover { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .sidebar-link { transition: 0.3s; color: #94a3b8; }
+        .sidebar-link:hover, .sidebar-link.active { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
         .hero-text { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Скроллду кооздоо */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #050a18; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
     </style>
 </head>
 <body class="flex min-h-screen">
 
     <!-- Капталдагы меню (Sidebar) -->
-    <aside class="w-64 glass-card border-r border-white/10 hidden md:flex flex-col">
+    <aside class="w-64 glass-card border-r border-white/10 hidden md:flex flex-col sticky top-0 h-screen">
         <div class="p-6">
             <div class="text-xl font-black text-blue-500 tracking-tighter uppercase">Mugalim.AI</div>
         </div>
         <nav class="flex-grow px-4 space-y-2">
-            <a href="teacher-dashboard.html" class="sidebar-link flex items-center p-3 rounded-xl transition font-bold text-blue-400">
+            <a href="teacher-dashboard.html" class="sidebar-link active flex items-center p-3 rounded-xl font-bold">
                 <i class="fas fa-home mr-3"></i> Башкы бет
             </a>
-            <a href="create-test.html" class="sidebar-link flex items-center p-3 rounded-xl transition">
+            <a href="create-test.html" class="sidebar-link flex items-center p-3 rounded-xl font-bold">
                 <i class="fas fa-plus-circle mr-3"></i> Жаңы тест түзүү
             </a>
-            <a href="view-results.html" class="sidebar-link flex items-center p-3 rounded-xl transition">
+            <a href="view-results.html" class="sidebar-link flex items-center p-3 rounded-xl font-bold">
                 <i class="fas fa-chart-line mr-3"></i> Жыйынтыктар
             </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-xl transition">
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-xl font-bold">
                 <i class="fas fa-file-alt mr-3"></i> Менин сабактарым
             </a>
-            <a href="#" class="sidebar-link flex items-center p-3 rounded-xl transition">
+            <a href="#" class="sidebar-link flex items-center p-3 rounded-xl font-bold">
                 <i class="fas fa-users mr-3"></i> Окуучулар
             </a>
         </nav>
@@ -54,7 +61,7 @@
         <header class="flex justify-between items-center mb-10">
             <div>
                 <h1 class="text-3xl font-black">Кош келиңиз, <span id="user-email" class="text-blue-400">...</span>!</h1>
-                <p class="text-gray-400">Бүгүн кандай жаңылыктар бар?</p>
+                <p class="text-gray-400">Бүгүн кандай жаңы пландар бар?</p>
             </div>
             <div class="flex items-center space-x-4">
                 <div class="glass-card px-4 py-2 rounded-xl text-sm font-bold border-blue-500/30">
@@ -112,50 +119,65 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
     <script>
+        // БУЛ ЖЕРГЕ cabinet.html'деги apiKey'ди жазыңыз
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
             databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
             projectId: "bilimal-org",
-            storageBucket: "bilimal-org.appspot.com",
-            messagingSenderId: "YOUR_ID",
-            appId: "YOUR_APP_ID"
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835"
         };
-        firebase.initializeApp(firebaseConfig);
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
 
         const auth = firebase.auth();
         const database = firebase.database();
 
+        // Колдонуучунун абалын текшерүү
         auth.onAuthStateChanged((user) => {
             if (user) {
+                console.log("Колдонуучу кирген:", user.email);
                 document.getElementById('user-email').innerText = user.email;
                 fetchStats(user.uid);
             } else {
-                window.location.href = "cabinet.html";
+                console.log("Колдонуучу кирген эмес, кайра багыттоо...");
+                window.location.replace("cabinet.html");
             }
         });
 
         // Статистиканы базадан реалдуу убакытта алуу
         function fetchStats(uid) {
-            // Тесттердин санын алуу
-            database.ref(`tests/${uid}`).on('value', (snapshot) => {
-                const count = snapshot.numChildren();
-                document.getElementById('total-tests-count').innerText = count;
-            });
-
-            // Жалпы тапшырган окуучулардын санын алуу
-            database.ref(`results/${uid}`).on('value', (snapshot) => {
-                let totalResults = 0;
-                snapshot.forEach((test) => {
-                    totalResults += test.numChildren();
+            try {
+                // Тесттердин санын алуу
+                database.ref(`tests/${uid}`).on('value', (snapshot) => {
+                    const count = snapshot.exists() ? snapshot.numChildren() : 0;
+                    document.getElementById('total-tests-count').innerText = count;
                 });
-                document.getElementById('total-students-count').innerText = totalResults;
-            });
+
+                // Жалпы тапшырган окуучулардын санын алуу
+                database.ref(`results/${uid}`).on('value', (snapshot) => {
+                    let totalResults = 0;
+                    if (snapshot.exists()) {
+                        snapshot.forEach((test) => {
+                            totalResults += test.numChildren();
+                        });
+                    }
+                    document.getElementById('total-students-count').innerText = totalResults;
+                });
+            } catch (error) {
+                console.error("Статистика алууда ката кетти:", error);
+            }
         }
 
         function logout() {
             auth.signOut().then(() => {
-                window.location.href = "index.html";
+                window.location.replace("index.html");
+            }).catch((error) => {
+                alert("Чыгууда ката кетти: " + error.message);
             });
         }
     </script>
