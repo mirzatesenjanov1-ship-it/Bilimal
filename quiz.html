@@ -8,55 +8,97 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
-        .glass-card { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .option-card { transition: 0.3s; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); }
-        .option-card:hover { background: rgba(59, 130, 246, 0.1); border-color: #3b82f6; }
-        .option-card.selected { background: #3b82f6; border-color: #3b82f6; color: white; }
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
+        
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.8); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .option-card { 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+        }
+        
+        .option-card:hover { 
+            background: rgba(59, 130, 246, 0.1); 
+            border-color: rgba(59, 130, 246, 0.5); 
+            transform: translateY(-2px);
+        }
+        
+        .option-card.selected { 
+            background: #3b82f6 !important; 
+            border-color: #3b82f6; 
+            color: white; 
+            box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.4);
+        }
+
+        .gradient-text { 
+            background: linear-gradient(45deg, #3b82f6, #8b5cf6); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+
+        .progress-bar { transition: width 0.5s ease-in-out; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-4 md:p-8">
 
     <div id="quiz-container" class="max-w-2xl w-full">
-        <!-- Жүктөө анимациясы -->
-        <div id="loader" class="text-center">
-            <i class="fas fa-spinner fa-spin text-5xl text-blue-500 mb-4"></i>
-            <p class="font-bold uppercase tracking-widest">Тест даярдалууда...</p>
+        <!-- Жүктөө экраны -->
+        <div id="loader" class="text-center py-20">
+            <div class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6"></div>
+            <p class="font-black uppercase tracking-[0.3em] text-sm animate-pulse">Тест даярдалууда...</p>
         </div>
 
         <!-- Тесттин мазмуну -->
-        <div id="quiz-content" class="hidden">
-            <div class="glass-card p-8 rounded-[2.5rem] relative overflow-hidden">
-                <div class="flex justify-between items-center mb-8">
-                    <span id="question-number" class="text-xs font-black bg-blue-600 px-4 py-2 rounded-full uppercase tracking-widest">Суроо 1/10</span>
-                    <div id="timer" class="text-blue-400 font-bold"><i class="fas fa-clock mr-2"></i>--:--</div>
+        <div id="quiz-content" class="hidden animate-in fade-in duration-700">
+            <!-- Прогресс -->
+            <div class="w-full bg-white/5 h-1.5 rounded-full mb-8 overflow-hidden">
+                <div id="progress" class="progress-bar h-full bg-gradient-to-r from-blue-600 to-purple-600" style="width: 0%"></div>
+            </div>
+
+            <div class="glass-card p-8 md:p-12 rounded-[3rem] relative">
+                <div class="flex justify-between items-center mb-10">
+                    <span id="question-number" class="text-[10px] font-black bg-white/10 px-4 py-2 rounded-full uppercase tracking-[0.2em] text-blue-400">Суроо 1/10</span>
+                    <div id="timer" class="text-sm font-bold text-gray-500 uppercase tracking-widest"><i class="fas fa-clock mr-2 text-blue-500"></i>14.05.2026</div>
                 </div>
 
-                <h2 id="question-text" class="text-2xl md:text-3xl font-black mb-8 leading-tight">...</h2>
+                <h2 id="question-text" class="text-2xl md:text-3xl font-black mb-10 leading-tight">Жүктөлүүдө...</h2>
 
                 <div id="options-container" class="grid gap-4">
-                    <!-- Варианттар ушул жерге чыгат -->
+                    <!-- Варианттар JavaScript аркылуу кошулат -->
                 </div>
 
-                <button id="next-btn" class="w-full mt-10 bg-gradient-to-r from-blue-600 to-purple-600 p-5 rounded-2xl font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-blue-900/20">
-                    Кийинки суроо
+                <button id="next-btn" class="w-full mt-12 bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-blue-900/20 active:scale-[0.98]">
+                    Кийинки суроо <i class="fas fa-chevron-right ml-2 text-xs"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Жыйынтык баракчасы -->
+        <!-- Жыйынтык экраны -->
         <div id="result-content" class="hidden glass-card p-12 rounded-[3rem] text-center">
-            <div class="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-trophy text-4xl text-green-500"></i>
+            <div class="w-24 h-24 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-8">
+                <i class="fas fa-award text-4xl text-blue-500"></i>
             </div>
-            <h2 class="text-4xl font-black mb-2 uppercase">Тест аяктады!</h2>
-            <p id="score-text" class="text-gray-400 font-bold mb-8 uppercase tracking-widest">Сиздин жыйынтык: 0/0</p>
-            <button onclick="location.reload()" class="bg-white text-black px-10 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
-                Кайра баштоо
-            </button>
+            <h2 class="text-4xl font-black mb-2 uppercase tracking-tighter">Тест аяктады!</h2>
+            <p class="text-gray-500 font-bold mb-10 uppercase tracking-widest text-sm">Сиздин ийгилигиңиз:</p>
+            
+            <div class="text-7xl font-black mb-12 gradient-text" id="score-display">0/0</div>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="location.reload()" class="bg-white text-black px-10 py-5 rounded-2xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all">
+                    Кайра баштоо
+                </button>
+                <a href="index.html" class="text-gray-500 font-bold py-4 hover:text-white transition-all uppercase text-xs tracking-widest">Башкы бетке кайтуу</a>
+            </div>
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
@@ -70,10 +112,11 @@
             appId: "1:241750360816:web:a991434eb5afbc470d7835"
         };
 
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const database = firebase.database();
 
-        // URL'ден ID алуу
         const urlParams = new URLSearchParams(window.location.search);
         const testId = urlParams.get('id');
 
@@ -83,16 +126,31 @@
         let selectedOption = null;
 
         if (testId) {
-            database.ref('tests/' + testId).once('value', (snapshot) => {
-                const testData = snapshot.val();
-                if (testData && testData.questions) {
-                    currentQuestions = Object.values(testData.questions);
-                    document.title = testData.title + " | MUGALIM.AI";
-                    startQuiz();
-                } else {
-                    alert("Тест табылган жок!");
-                }
-            });
+            database.ref('tests/' + testId).once('value')
+                .then((snapshot) => {
+                    const testData = snapshot.val();
+                    if (testData && testData.questions) {
+                        currentQuestions = Object.values(testData.questions);
+                        document.title = (testData.title || "Тест") + " | MUGALIM.AI";
+                        startQuiz();
+                    } else {
+                        showError("Бул тест бош же өчүрүлгөн.");
+                    }
+                })
+                .catch((err) => {
+                    console.error(err);
+                    showError("База менен байланыш үзүлдү.");
+                });
+        } else {
+            showError("Тест табылган жок (ID жок).");
+        }
+
+        function showError(msg) {
+            document.getElementById('loader').innerHTML = `
+                <i class="fas fa-circle-exclamation text-red-500 text-5xl mb-4"></i>
+                <p class="font-bold text-gray-400 uppercase tracking-widest">${msg}</p>
+                <a href="index.html" class="mt-6 inline-block text-blue-500 font-bold uppercase text-xs">Артка кайтуу</a>
+            `;
         }
 
         function startQuiz() {
@@ -105,6 +163,10 @@
             const q = currentQuestions[currentIndex];
             selectedOption = null;
             
+            // Прогресс балкасын жаңыртуу
+            const progressPercent = ((currentIndex) / currentQuestions.length) * 100;
+            document.getElementById('progress').style.width = progressPercent + '%';
+
             document.getElementById('question-number').innerText = `Суроо ${currentIndex + 1}/${currentQuestions.length}`;
             document.getElementById('question-text').innerText = q.text;
             
@@ -113,8 +175,11 @@
             
             q.options.forEach((opt, idx) => {
                 const btn = document.createElement('div');
-                btn.className = 'option-card p-5 rounded-2xl font-bold flex items-center gap-4';
-                btn.innerHTML = `<span class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs">${String.fromCharCode(65 + idx)}</span> ${opt}`;
+                btn.className = 'option-card p-6 rounded-2xl font-bold flex items-center gap-5 bg-white/5';
+                btn.innerHTML = `
+                    <span class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-xs text-gray-400 border border-white/10 group-hover:border-blue-500 transition-all">${String.fromCharCode(65 + idx)}</span> 
+                    <span class="flex-1 text-lg">${opt}</span>
+                `;
                 btn.onclick = () => {
                     document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
                     btn.classList.add('selected');
@@ -126,11 +191,12 @@
 
         document.getElementById('next-btn').onclick = () => {
             if (selectedOption === null) {
-                alert("Сураныч, бир вариантты тандаңыз!");
+                alert("Бир вариантты тандаңыз!");
                 return;
             }
 
-            if (selectedOption === currentQuestions[currentIndex].correct) {
+            // Жоопту текшерүү (сан катары салыштыруу)
+            if (Number(selectedOption) === Number(currentQuestions[currentIndex].correct)) {
                 score++;
             }
 
@@ -143,9 +209,10 @@
         };
 
         function showResults() {
+            document.getElementById('progress').style.width = '100%';
             document.getElementById('quiz-content').classList.add('hidden');
             document.getElementById('result-content').classList.remove('hidden');
-            document.getElementById('score-text').innerText = `Сиздин жыйынтык: ${score}/${currentQuestions.length}`;
+            document.getElementById('score-display').innerText = `${score}/${currentQuestions.length}`;
         }
     </script>
 </body>
