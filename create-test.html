@@ -3,181 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест түзүү | MUGALIM.AI</title>
+    <title>Жаңы тест түзүү | MUGALIM.AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; min-height: 100vh; }
-        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input-style { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 12px; width: 100%; outline: none; transition: 0.3s; color: white; }
-        .input-style:focus { border-color: #3b82f6; background: rgba(255,255,255,0.1); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
-        
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.05); }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-8 flex items-center justify-center min-h-screen">
 
-    <div class="max-w-4xl mx-auto">
-        <div class="flex justify-between items-center mb-8">
-            <a href="teacher-dashboard.html" class="text-gray-400 hover:text-white transition flex items-center gap-2">
-                <i class="fas fa-arrow-left"></i> Панелге кайтуу
-            </a>
-            <h1 class="text-xl md:text-2xl font-black text-blue-500 uppercase tracking-tighter">Жаңы тест түзүү</h1>
+    <div class="w-full max-w-2xl glass-card p-8 rounded-[2.5rem]">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-black text-blue-500">Жаңы тест түзүү</h2>
+            <a href="teacher-dashboard.html" class="text-gray-400 hover:text-white"><i class="fas fa-arrow-left mr-2"></i> Панелге кайтуу</a>
         </div>
 
-        <div class="glass-card p-6 rounded-3xl mb-6 shadow-2xl">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Тесттин аталышы</label>
-                    <input type="text" id="test-title" placeholder="Мисалы: Механика" class="input-style">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Класс</label>
-                    <select id="test-class" class="input-style appearance-none">
-                        <option value="7">7-класс</option>
-                        <option value="8">8-класс</option>
-                        <option value="9">9-класс</option>
-                        <option value="10">10-класс</option>
-                        <option value="11">11-класс</option>
-                    </select>
-                </div>
+        <div class="space-y-4 mb-6">
+            <label class="block text-xs font-bold uppercase text-gray-400">Тесттин аталышы</label>
+            <input id="quiz-title-input" type="text" placeholder="Мисалы: Кыргыз тили 5-класс" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500">
+        </div>
+
+        <div id="questions-list" class="space-y-6 mb-6">
             </div>
-        </div>
 
-        <div id="questions-container"></div>
+        <button onclick="addQuestionField()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all mb-4">
+            <i class="fas fa-plus mr-2 text-blue-500"></i> Суроо кошуу
+        </button>
 
-        <div class="flex flex-col md:flex-row gap-4 mt-10 mb-20">
-            <button onclick="addQuestion()" class="flex-1 bg-blue-600/10 border border-blue-500/50 text-blue-400 py-4 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">
-                <i class="fas fa-plus mr-2"></i> Суроо кошуу
-            </button>
-            <button id="save-btn" onclick="saveTest()" class="flex-1 bg-green-600 py-4 rounded-2xl font-bold text-white shadow-lg hover:bg-green-500 transition-all transform active:scale-95">
-                <span id="save-text"><i class="fas fa-save mr-2"></i> Тестти сактоо</span>
-            </button>
-        </div>
+        <button onclick="saveQuizToFirebase()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+            Тестти сактоо жана жарыялоо
+        </button>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
-        // 1-КАДАМ: Жаңыртылган Firebase конфигурациясы (Бельгия сервери үчүн)
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app", // image_921939.png боюнча оңдолду
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
             projectId: "bilimal-org",
             storageBucket: "bilimal-org.firebasestorage.app",
-            messagingSenderId: "241750360816",
             appId: "1:241750360816:web:a991434eb5afbc470d7835"
         };
-
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const database = firebase.database();
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const database = firebase.database();
+
+        let currentUserId = null;
+        auth.onAuthStateChanged(user => { if (user) { currentUserId = user.uid; } else { window.location.href = 'login.html'; } });
 
         let questionCount = 0;
-        let currentUser = null;
 
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-            } else {
-                window.location.replace("cabinet.html");
-            }
-        });
-
-        function addQuestion() {
+        function addQuestionField() {
             questionCount++;
-            const container = document.getElementById('questions-container');
+            const container = document.getElementById('questions-list');
             const qHtml = `
-                <div class="glass-card p-6 rounded-3xl mt-6 border-l-4 border-blue-500" id="q-block-${questionCount}">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="font-black text-blue-500 tracking-tighter uppercase">Суроо #${questionCount}</span>
-                        <button onclick="removeQuestion(${questionCount})" class="text-red-500"><i class="fas fa-trash"></i></button>
+                <div class="p-6 bg-white/5 rounded-2xl border border-white/5 relative question-item">
+                    <p class="text-sm font-bold mb-3 text-blue-400">Суроо #${questionCount}</p>
+                    <input type="text" placeholder="Суроону жазыңыз" class="q-text w-full bg-white/10 border border-white/5 rounded-xl p-3 text-white mb-3 focus:outline-none">
+                    <div class="space-y-2">
+                        <input type="text" placeholder="Вариант А" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" placeholder="Вариант Б" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" placeholder="Вариант В" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" placeholder="Вариант Г" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
                     </div>
-                    <input type="text" placeholder="Суроону жазыңыз..." class="input-style mb-4 q-text font-bold">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${[0,1,2,3].map(i => `
-                            <div class="flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/10">
-                                <input type="radio" name="correct-${questionCount}" value="${i}" ${i===0 ? 'checked' : ''} class="w-5 h-5 accent-blue-500">
-                                <input type="text" placeholder="Вариант ${i+1}" class="bg-transparent outline-none w-full text-sm opt-${i}">
-                            </div>
-                        `).join('')}
-                    </div>
+                    <input type="number" placeholder="Туура варианттын индекси (0, 1, 2 же 3)" class="q-correct w-full bg-blue-500/10 border border-blue-500/20 rounded-xl p-2 text-xs text-blue-400 mt-3 focus:outline-none">
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', qHtml);
         }
 
-        function removeQuestion(id) {
-            const blocks = document.querySelectorAll('[id^="q-block-"]');
-            if (blocks.length > 1) document.getElementById(`q-block-${id}`).remove();
-        }
+        function saveQuizToFirebase() {
+            const title = document.getElementById('quiz-title-input').value.trim();
+            if (!title) return alert("Тесттин аталышын жазыңыз!");
 
-        // 2-ЖАНА 3-КАДАМ: Тез сактоо жана катаны көзөмөлдөө функциясы
-        function saveTest() {
-            if (!currentUser) return;
-
-            const title = document.getElementById('test-title').value.trim();
-            const testClass = document.getElementById('test-class').value;
-            const saveBtn = document.getElementById('save-btn');
-            const saveText = document.getElementById('save-text');
-            
+            const qElements = document.querySelectorAll('.question-item');
             const questions = [];
-            const blocks = document.querySelectorAll('[id^="q-block-"]');
-            let isValid = true;
 
-            blocks.forEach(block => {
-                const qText = block.querySelector('.q-text').value.trim();
-                const opts = [
-                    block.querySelector('.opt-0').value.trim(),
-                    block.querySelector('.opt-1').value.trim(),
-                    block.querySelector('.opt-2').value.trim(),
-                    block.querySelector('.opt-3').value.trim()
-                ];
-                const correct = block.querySelector(`input[name^="correct-"]:checked`).value;
-                if (!qText || !opts[0] || !opts[1]) isValid = false;
-                questions.push({ qText, options: opts, correct: parseInt(correct) });
+            qElements.forEach(el => {
+                const text = el.querySelector('.q-text').value.trim();
+                const opts = Array.from(el.querySelectorAll('.q-opt')).map(i => i.value.trim()).filter(i => i !== "");
+                const correct = parseInt(el.querySelector('.q-correct').value);
+
+                if (text && opts.length > 0) {
+                    questions.push({ questionText: text, options: opts, correctAnswer: correct });
+                }
             });
 
-            if (!title || !isValid) {
-                alert("Бардык талааларды толтуруңуз!");
-                return;
-            }
+            if (questions.length === 0) return alert("Жок дегенде бир суроо толук жазылышы керек!");
 
-            saveBtn.disabled = true;
-            saveText.innerHTML = '<span class="loader"></span> Жиберилүүдө...';
-
-            // Firebase'ге сактоо
-            const testRef = database.ref('tests').push();
-            testRef.set({
+            const newQuizRef = database.ref('tests').push();
+            newQuizRef.set({
+                id: newQuizRef.key,
                 title: title,
-                class: testClass,
-                questions: questions,
-                authorUid: currentUser.uid,
-                authorEmail: currentUser.email,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            })
-            .then(() => {
-                // Ийгиликтүү сакталса панелге өтүү
+                authorUid: currentUserId,
+                questions: questions
+            }).then(() => {
+                alert("Тест ийгиликтүү сакталды!");
                 window.location.href = "teacher-dashboard.html";
-            })
-            .catch((error) => {
-                // Ката болсо баскычты кайра жандыруу
-                console.error("Ката:", error);
-                alert("Ката кетти! Firebase эрежелерин (Rules) текшериңиз.");
-                saveBtn.disabled = false;
-                saveText.innerHTML = '<i class="fas fa-save mr-2"></i> Тестти сактоо';
             });
         }
 
-        addQuestion();
+        // Баштапкы бир талаа кошуу
+        addQuestionField();
     </script>
 </body>
 </html>
