@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Жаңы тест түзүү | MUGALIM.AI</title>
+    <title>Тест Конструктору | BILIMAL.ORG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -18,7 +18,7 @@
 
     <div class="w-full max-w-3xl glass-card p-6 md:p-8 rounded-[2.5rem]">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-black text-blue-500 uppercase tracking-tight">Профессионалдык Тест Конструктору</h2>
+            <h2 id="page-title" class="text-2xl font-black text-blue-500 uppercase tracking-tight">Жаңы тест түзүү</h2>
             <a href="teacher-dashboard.html" class="text-gray-400 hover:text-white text-sm"><i class="fas fa-arrow-left mr-2"></i> Кайтуу</a>
         </div>
 
@@ -26,22 +26,22 @@
             <h3 class="text-sm font-black uppercase tracking-widest text-blue-400"><i class="fas fa-sliders-h mr-2"></i> Тесттин башкаруу жөндөөлөрү</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Таймер (мүнөт менен)</label>
+                    <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Таймер (мүнөт)</label>
                     <input id="quiz-time" type="number" value="20" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500">
                 </div>
                 <div class="flex items-center gap-3 pt-6">
-                    <input id="shuffle-questions" type="checkbox" class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded focus:ring-0">
-                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="shuffle-questions">Суроолорду аралаштыруу</label>
+                    <input id="shuffle-questions" type="checkbox" class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
+                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="shuffle-questions">Аралаштыруу</label>
                 </div>
                 <div class="flex items-center gap-3 pt-6">
-                    <input id="show-results-instantly" type="checkbox" checked class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded focus:ring-0">
+                    <input id="show-results-instantly" type="checkbox" checked class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
                     <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="show-results-instantly">Жыйынтыкты дароо көрсөтүү</label>
                 </div>
             </div>
         </div>
 
-        <div class="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl mb-6 flex items-center justify-between">
-            <span class="text-xs font-bold text-blue-400 uppercase tracking-wider"><i class="fas fa-keyboard mr-2"></i> Кыргыз тамгалары (Текст талаасына басыңыз):</span>
+        <div class="p-4 bg-blue-900/10 border border-blue-500/20 rounded-2xl mb-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span class="text-xs font-bold text-blue-400 uppercase tracking-wider"><i class="fas fa-keyboard mr-2"></i> Кыргыз тамгалары:</span>
             <div class="flex gap-2">
                 <button type="button" class="kyrgyz-btn" onclick="insertChar('Ө')">Ө</button>
                 <button type="button" class="kyrgyz-btn" onclick="insertChar('ө')">ө</button>
@@ -54,7 +54,7 @@
 
         <div class="space-y-4 mb-6">
             <label class="block text-xs font-bold uppercase text-gray-400">Тесттин аталышы</label>
-            <input id="quiz-title-input" type="text" placeholder="Мисалы: Сүйлөмдүн бир өңчөй мүчөлөрү - 6-класс" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 font-bold">
+            <input id="quiz-title-input" type="text" placeholder="Мисалы: Сүйлөмдүн бир өңчөй мүчөлөрү" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 font-bold">
         </div>
 
         <div id="questions-list" class="space-y-6 mb-6"></div>
@@ -87,13 +87,20 @@
 
         let currentUserId = null;
         let lastFocusedInput = null;
+        let editQuizId = new URLSearchParams(window.location.search).get('edit'); // Түзөтүлө турган тест ID
+        let questionCount = 0;
         
-        auth.onAuthStateChanged(user => { if (user) { currentUserId = user.uid; } else { window.location.href = 'login.html'; } });
+        auth.onAuthStateChanged(user => { 
+            if (user) { 
+                currentUserId = user.uid; 
+                if(editQuizId) { loadExistingQuizData(); } else { addQuestionField(); }
+            } else { 
+                window.location.href = 'login.html'; 
+            } 
+        });
 
         document.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-                lastFocusedInput = e.target;
-            }
+            if (e.target.tagName === 'INPUT') lastFocusedInput = e.target;
         });
 
         function insertChar(char) {
@@ -107,25 +114,50 @@
             }
         }
 
-        let questionCount = 0;
-
-        function addQuestionField() {
+        function addQuestionField(text = "", options = ["", "", "", ""], correct = "") {
             questionCount++;
             const container = document.getElementById('questions-list');
             const qHtml = `
-                <div class="p-6 bg-white/5 rounded-2xl border border-white/5 relative question-item animate-fade-in">
-                    <p class="text-sm font-bold mb-3 text-blue-400">Суроо #${questionCount}</p>
-                    <input type="text" placeholder="Суроону жазыңыз (Каалаган сөздү белгилеп кыргыз тамгаларын кошуңуз)" class="q-text w-full bg-white/10 border border-white/5 rounded-xl p-3 text-white mb-3 focus:outline-none focus:border-blue-500">
-                    <div class="space-y-2">
-                        <input type="text" placeholder="Вариант А" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" placeholder="Вариант Б" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" placeholder="Вариант В" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" placeholder="Вариант Г" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                <div class="p-6 bg-white/5 rounded-2xl border border-white/5 relative question-item">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-sm font-bold text-blue-400">Суроо #${questionCount}</p>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-trash"></i> Өчүрүү</button>
                     </div>
-                    <input type="number" placeholder="Туура варианттын индекси (0, 1, 2 же 3)" class="q-correct w-full bg-blue-500/10 border border-blue-500/20 rounded-xl p-2 text-xs text-blue-400 mt-3 focus:outline-none">
+                    <input type="text" value="${text}" placeholder="Суроону жазыңыз" class="q-text w-full bg-white/10 border border-white/5 rounded-xl p-3 text-white mb-3 focus:outline-none focus:border-blue-500">
+                    <div class="space-y-2">
+                        <input type="text" value="${options[0] || ''}" placeholder="Вариант А" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[1] || ''}" placeholder="Вариант Б" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[2] || ''}" placeholder="Вариант В" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[3] || ''}" placeholder="Вариант Г" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                    </div>
+                    <input type="number" value="${correct}" placeholder="Туура варианттын индекси (0, 1, 2 же 3)" class="q-correct w-full bg-blue-500/10 border border-blue-500/20 rounded-xl p-2 text-xs text-blue-400 mt-3 focus:outline-none">
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', qHtml);
+        }
+
+        // Эски маалыматтарды базадан тартып келип толтуруу
+        function loadExistingQuizData() {
+            document.getElementById('page-title').innerText = "Тестти түзөтүү / өзгөртүү";
+            database.ref('tests/' + editQuizId).once('value').then(snapshot => {
+                const quiz = snapshot.val();
+                if(quiz && quiz.authorUid === currentUserId) {
+                    document.getElementById('quiz-title-input').value = quiz.title;
+                    if(quiz.settings) {
+                        document.getElementById('quiz-time').value = quiz.settings.timeLimit || 20;
+                        document.getElementById('shuffle-questions').checked = quiz.settings.shuffle || false;
+                        document.getElementById('show-results-instantly').checked = quiz.settings.instantResult !== false;
+                    }
+                    if(quiz.questions) {
+                        Object.values(quiz.questions).forEach(q => {
+                            addQuestionField(q.questionText, q.options, q.correctAnswer);
+                        });
+                    }
+                } else {
+                    alert("Ката! Бул тестти түзөтүүгө сизде уруксат жок же тест табылган жок.");
+                    window.location.href = 'teacher-dashboard.html';
+                }
+            });
         }
 
         function saveQuizToFirebase() {
@@ -144,16 +176,20 @@
                 const opts = Array.from(el.querySelectorAll('.q-opt')).map(i => i.value.trim()).filter(i => i !== "");
                 const correct = parseInt(el.querySelector('.q-correct').value);
 
-                if (text && opts.length > 0) {
+                if (text && opts.length > 0 && !isNaN(correct)) {
                     questions.push({ questionText: text, options: opts, correctAnswer: correct });
                 }
             });
 
-            if (questions.length === 0) return alert("Кем дегенде бир суроо жазыңыз!");
+            if (questions.length === 0) return alert("Кем дегенде бир суроону толук толтуруңуз!");
 
-            const newQuizRef = database.ref('tests').push();
-            newQuizRef.set({
-                id: newQuizRef.key,
+            // Эгер эски тест болсо ошонун үстүнө жазат, жаңы болсо жаңы ID ачат
+            const quizRef = editQuizId ? database.ref('tests/' + editQuizId) : database.ref('tests').push();
+            const finalId = editQuizId ? editQuizId : quizRef.key;
+
+            finalId
+            quizRef.set({
+                id: finalId,
                 title: title,
                 authorUid: currentUserId,
                 questions: questions,
@@ -163,12 +199,10 @@
                     instantResult: instantResult
                 }
             }).then(() => {
-                alert("Профессионалдык тест жарыяланды!");
+                alert(editQuizId ? "Тест ийгиликтүү өзгөртүлдү!" : "Жаңы тест жарыяланды!");
                 window.location.href = "teacher-dashboard.html";
             });
         }
-
-        addQuestionField();
     </script>
 </body>
 </html>
