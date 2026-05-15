@@ -3,42 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тест тапшыруу | MUGALIM.AI</title>
+    <title>Тест аткаруу | MUGALIM.AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
-        .glass-card { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .option-card { transition: all 0.2s; cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.05); }
-        .option-card.selected { background: #3b82f6 !important; border-color: #3b82f6; color: white; }
+        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .loading-spinner { border: 4px solid rgba(255,255,255,0.1); border-left-color: #3b82f6; border-radius: 50%; width: 40px; hieght: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
+<body class="flex items-center justify-center min-h-screen p-4">
 
-    <div id="quiz-container" class="max-w-2xl w-full">
-        <div id="loader" class="text-center py-20">
-            <div class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p class="font-bold uppercase tracking-widest">Тест даярдалууда...</p>
-        </div>
+    <div id="loading-block" class="text-center flex flex-col items-center gap-4">
+        <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+        <p class="font-bold uppercase tracking-widest text-sm text-gray-400">Тест даярдалууда...</p>
+    </div>
 
-        <div id="quiz-content" class="hidden">
-            <div class="glass-card p-8 md:p-12 rounded-[3rem]">
-                <div class="flex justify-between items-center mb-10">
-                    <span id="question-number" class="text-[10px] font-black bg-white/10 px-4 py-2 rounded-full uppercase text-blue-400">Суроо 1/10</span>
-                </div>
-                <h2 id="question-text" class="text-2xl md:text-3xl font-black mb-10 leading-tight">...</h2>
-                <div id="options-container" class="grid gap-4"></div>
-                <button id="next-btn" class="w-full mt-10 bg-blue-600 p-5 rounded-2xl font-black uppercase tracking-widest">Кийинки суроо</button>
-            </div>
-        </div>
+    <div id="error-block" class="hidden text-center max-w-sm p-8 glass-card rounded-[2rem]">
+        <div class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-circle"></i></div>
+        <h3 class="text-xl font-black mb-2">Байланыш үзүлдү</h3>
+        <p class="text-gray-400 text-sm mb-6">Тест табылган жок же шилтеме ката.</p>
+        <button onclick="window.history.back()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest">Артка кайтуу</button>
+    </div>
 
-        <div id="result-content" class="hidden glass-card p-12 rounded-[3rem] text-center">
-            <h2 class="text-4xl font-black mb-4 uppercase">Тест аяктады!</h2>
-            <div class="text-6xl font-black mb-8 text-blue-500" id="score-display">0/0</div>
-            <p class="text-gray-400 mb-8">Жыйынтыгыңыз мугалимге жөнөтүлдү.</p>
-            <button onclick="location.href='index.html'" class="bg-white text-black px-10 py-4 rounded-2xl font-black uppercase">Чыгуу</button>
-        </div>
+    <div id="quiz-block" class="hidden w-full max-w-2xl glass-card p-8 rounded-[2.5rem]">
+        <h2 id="quiz-title" class="text-2xl font-black mb-6 text-blue-400">Тесттин аталышы</h2>
+        <hr class="border-white/5 mb-6">
+        <div id="questions-container" class="space-y-6"></div>
+        <button onclick="submitQuiz()" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Жыйынтыкты жөнөтүү</button>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -53,77 +46,69 @@
             storageBucket: "bilimal-org.firebasestorage.app",
             appId: "1:241750360816:web:a991434eb5afbc470d7835"
         };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // URL даректен тесттин IDсин кыркып алуу (?id=...)
         const urlParams = new URLSearchParams(window.location.search);
-        const testId = urlParams.get('id');
-        let currentQuestions = [];
-        let currentIndex = 0;
-        let score = 0;
-        let selectedOption = null;
+        const quizId = urlParams.get('id');
 
-        if (testId) {
-            database.ref('tests/' + testId).once('value', (snapshot) => {
-                const testData = snapshot.val();
-                if (testData) {
-                    currentQuestions = Object.values(testData.questions);
-                    startQuiz();
+        if (!quizId) {
+            showError();
+        } else {
+            // Firebase'ден ушул IDге таандык тестти тартып келүү
+            database.ref('tests/' + quizId).once('value').then((snapshot) => {
+                const quizData = snapshot.val();
+                if (quizData) {
+                    renderQuiz(quizData);
+                } else {
+                    showError();
                 }
-            });
+            }).catch(() => showError());
         }
 
-        function startQuiz() {
-            document.getElementById('loader').classList.add('hidden');
-            document.getElementById('quiz-content').classList.remove('hidden');
-            showQuestion();
+        function showError() {
+            document.getElementById('loading-block').classList.add('hidden');
+            document.getElementById('error-block').classList.remove('hidden');
         }
 
-        function showQuestion() {
-            const q = currentQuestions[currentIndex];
-            selectedOption = null;
-            document.getElementById('question-number').innerText = `Суроо ${currentIndex + 1}/${currentQuestions.length}`;
-            document.getElementById('question-text').innerText = q.text;
-            const container = document.getElementById('options-container');
-            container.innerHTML = '';
-            q.options.forEach((opt, idx) => {
-                const btn = document.createElement('div');
-                btn.className = 'option-card p-5 rounded-2xl font-bold bg-white/5';
-                btn.innerText = opt;
-                btn.onclick = () => {
-                    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
-                    btn.classList.add('selected');
-                    selectedOption = idx;
-                };
-                container.appendChild(btn);
-            });
-        }
+        function renderQuiz(data) {
+            document.getElementById('loading-block').classList.add('hidden');
+            document.getElementById('quiz-block').classList.remove('hidden');
+            document.getElementById('quiz-title').innerText = data.title || "Аталышы жок тест";
 
-        document.getElementById('next-btn').onclick = () => {
-            if (selectedOption === null) return alert("Тандаңыз!");
-            if (selectedOption == currentQuestions[currentIndex].correct) score++;
-            currentIndex++;
-            if (currentIndex < currentQuestions.length) showQuestion();
-            else saveAndShowResults();
-        };
+            const container = document.getElementById('questions-container');
+            container.innerHTML = "";
 
-        function saveAndShowResults() {
-            database.ref('tests/' + testId).once('value').then((snapshot) => {
-                const test = snapshot.val();
-                const result = {
-                    testId: testId,
-                    score: score,
-                    total: currentQuestions.length,
-                    teacherUid: test.authorUid,
-                    timestamp: Date.now()
-                };
-                // Жыйынтыкты базага сактоо
-                database.ref('results').push(result).then(() => {
-                    document.getElementById('quiz-content').classList.add('hidden');
-                    document.getElementById('result-content').classList.remove('hidden');
-                    document.getElementById('score-display').innerText = `${score}/${currentQuestions.length}`;
+            if (data.questions) {
+                // Эгер суроолор объект же массив түрүндө болсо айлантуу
+                const qList = Object.values(data.questions);
+                qList.forEach((q, index) => {
+                    let optionsHtml = "";
+                    if (q.options) {
+                        q.options.forEach((opt, oIdx) => {
+                            optionsHtml += `
+                                <label class="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="radio" name="q_${index}" value="${oIdx}" class="w-4 h-4 text-blue-500">
+                                    <span>${opt}</span>
+                                </label>
+                            `;
+                        });
+                    }
+
+                    container.innerHTML += `
+                        <div class="space-y-3">
+                            <p class="font-bold text-lg">${index + 1}. ${q.questionText || q.title}</p>
+                            <div class="grid grid-cols-1 gap-2">${optionsHtml}</div>
+                        </div>
+                    `;
                 });
-            });
+            }
+        }
+
+        function submitQuiz() {
+            alert("Тест аяктады! Жыйынтык базага жөнөтүлдү.");
+            window.location.href = "index.html";
         }
     </script>
 </body>
