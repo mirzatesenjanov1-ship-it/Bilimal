@@ -23,7 +23,7 @@
         </div>
 
         <div class="p-6 bg-white/5 rounded-2xl border border-white/5 mb-6 space-y-4">
-            <h3 class="text-sm font-black uppercase tracking-widest text-blue-400"><i class="fas fa-sliders-h mr-2"></i> Тесттин башкаруу жөндөөлөрү</h3>
+            <h3 class="text-sm font-black uppercase tracking-widest text-blue-400"><i class="fas fa-sliders-h mr-2"></i> Жөндөөлөр жана Баалоо ченемдери</h3>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Таймер (мүнөт)</label>
@@ -35,7 +35,18 @@
                 </div>
                 <div class="flex items-center gap-3 pt-6">
                     <input id="show-results-instantly" type="checkbox" checked class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
-                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="show-results-instantly">Жыйынтыкты дароо көрсөтүү</label>
+                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="show-results-instantly">Жыйынтыкты көрсөтүү</label>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                <div>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase mb-1">"5" деген баа үчүн (мис: 85%)</label>
+                    <input id="grade-5-min" type="number" value="85" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] text-gray-400 font-bold uppercase mb-1">"4" деген баа үчүн (мис: 70%)</label>
+                    <input id="grade-4-min" type="number" value="70" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white focus:outline-none">
                 </div>
             </div>
         </div>
@@ -54,14 +65,19 @@
 
         <div class="space-y-4 mb-6">
             <label class="block text-xs font-bold uppercase text-gray-400">Тесттин аталышы</label>
-            <input id="quiz-title-input" type="text" placeholder="Мисалы: Сүйлөмдүн бир өңчөй мүчөлөрү" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 font-bold">
+            <input id="quiz-title-input" type="text" placeholder="Мисалы: Физика - Механика бөлүмү" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 font-bold">
         </div>
 
         <div id="questions-list" class="space-y-6 mb-6"></div>
 
-        <button onclick="addQuestionField()" class="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all mb-4">
-            <i class="fas fa-plus mr-2 text-blue-500"></i> Жаңы суроо кошуу
-        </button>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <button onclick="addQuestionField('choice')" class="bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all">
+                <i class="fas fa-list-ul mr-2"></i> + Варианттуу суроо
+            </button>
+            <button onclick="addQuestionField('text')" class="bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white border border-purple-500/30 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all">
+                <i class="fas fa-pen-fancy mr-2"></i> + Ачык суроо (Эссе)
+            </button>
+        </div>
 
         <button onclick="saveQuizToFirebase()" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-blue-900/20">
             Тестти сактоо жана жарыялоо
@@ -87,58 +103,63 @@
 
         let currentUserId = null;
         let lastFocusedInput = null;
-        let editQuizId = new URLSearchParams(window.location.search).get('edit'); // Түзөтүлө турган тест ID
+        let editQuizId = new URLSearchParams(window.location.search).get('edit');
         let questionCount = 0;
         
         auth.onAuthStateChanged(user => { 
             if (user) { 
                 currentUserId = user.uid; 
-                if(editQuizId) { loadExistingQuizData(); } else { addQuestionField(); }
-            } else { 
-                window.location.href = 'login.html'; 
-            } 
+                if(editQuizId) { loadExistingQuizData(); } else { addQuestionField('choice'); }
+            } else { window.location.href = 'login.html'; } 
         });
 
-        document.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT') lastFocusedInput = e.target;
-        });
+        document.addEventListener('focusin', (e) => { if (e.target.tagName === 'INPUT') lastFocusedInput = e.target; });
 
         function insertChar(char) {
             if (lastFocusedInput) {
                 const start = lastFocusedInput.selectionStart;
                 const end = lastFocusedInput.selectionEnd;
-                const text = lastFocusedInput.value;
-                lastFocusedInput.value = text.substring(0, start) + char + text.substring(end);
+                lastFocusedInput.value = lastFocusedInput.value.substring(0, start) + char + lastFocusedInput.value.substring(end);
                 lastFocusedInput.focus();
                 lastFocusedInput.setSelectionRange(start + 1, start + 1);
             }
         }
 
-        function addQuestionField(text = "", options = ["", "", "", ""], correct = "") {
+        function addQuestionField(type = 'choice', text = "", options = ["", "", "", ""], correct = "") {
             questionCount++;
             const container = document.getElementById('questions-list');
-            const qHtml = `
-                <div class="p-6 bg-white/5 rounded-2xl border border-white/5 relative question-item">
-                    <div class="flex justify-between items-center mb-3">
-                        <p class="text-sm font-bold text-blue-400">Суроо #${questionCount}</p>
-                        <button onclick="this.parentElement.parentElement.remove()" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-trash"></i> Өчүрүү</button>
-                    </div>
-                    <input type="text" value="${text}" placeholder="Суроону жазыңыз" class="q-text w-full bg-white/10 border border-white/5 rounded-xl p-3 text-white mb-3 focus:outline-none focus:border-blue-500">
+            let typeLabel = type === 'choice' ? '<i class="fas fa-list-ul mr-1"></i> Варианттуу' : '<i class="fas fa-pen-fancy mr-1"></i> Ачык суроо';
+            
+            let contentHtml = "";
+            if (type === 'choice') {
+                contentHtml = `
                     <div class="space-y-2">
-                        <input type="text" value="${options[0] || ''}" placeholder="Вариант А" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" value="${options[1] || ''}" placeholder="Вариант Б" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" value="${options[2] || ''}" placeholder="Вариант В" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
-                        <input type="text" value="${options[3] || ''}" placeholder="Вариант Г" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[0]||''}" placeholder="Вариант А" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[1]||''}" placeholder="Вариант Б" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[2]||''}" placeholder="Вариант В" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
+                        <input type="text" value="${options[3]||''}" placeholder="Вариант Г" class="q-opt w-full bg-white/5 border border-white/5 rounded-xl p-2 text-sm text-white">
                     </div>
                     <input type="number" value="${correct}" placeholder="Туура варианттын индекси (0, 1, 2 же 3)" class="q-correct w-full bg-blue-500/10 border border-blue-500/20 rounded-xl p-2 text-xs text-blue-400 mt-3 focus:outline-none">
+                `;
+            } else {
+                contentHtml = `<p class="text-xs text-gray-500 italic bg-white/5 p-3 rounded-xl border border-white/5"><i class="fas fa-info-circle mr-1"></i> Бул суроого окуучу өзү колдон жооп жазат. Мугалим аны жеке кабинеттен текшерет.</p>`;
+            }
+
+            const qHtml = `
+                <div class="p-6 bg-white/5 rounded-2xl border border-white/5 relative question-item" data-type="${type}">
+                    <div class="flex justify-between items-center mb-3">
+                        <p class="text-xs font-bold text-blue-400 uppercase tracking-wider">Суроо #${questionCount} <span class="text-gray-500 ml-2">(${typeLabel})</span></p>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-xs text-red-400 hover:text-red-300"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <input type="text" value="${text}" placeholder="Суроону жазыңыз..." class="q-text w-full bg-white/10 border border-white/5 rounded-xl p-3 text-white mb-3 focus:outline-none focus:border-blue-500 font-semibold">
+                    ${contentHtml}
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', qHtml);
         }
 
-        // Эски маалыматтарды базадан тартып келип толтуруу
         function loadExistingQuizData() {
-            document.getElementById('page-title').innerText = "Тестти түзөтүү / өзгөртүү";
+            document.getElementById('page-title').innerText = "Тестти түзөтүү";
             database.ref('tests/' + editQuizId).once('value').then(snapshot => {
                 const quiz = snapshot.val();
                 if(quiz && quiz.authorUid === currentUserId) {
@@ -147,15 +168,15 @@
                         document.getElementById('quiz-time').value = quiz.settings.timeLimit || 20;
                         document.getElementById('shuffle-questions').checked = quiz.settings.shuffle || false;
                         document.getElementById('show-results-instantly').checked = quiz.settings.instantResult !== false;
+                        document.getElementById('grade-5-min').value = quiz.settings.grade5 || 85;
+                        document.getElementById('grade-4-min').value = quiz.settings.grade4 || 70;
                     }
                     if(quiz.questions) {
-                        Object.values(quiz.questions).forEach(q => {
-                            addQuestionField(q.questionText, q.options, q.correctAnswer);
+                        document.getElementById('questions-list').innerHTML = "";
+                        quiz.questions.forEach(q => {
+                            addQuestionField(q.type || 'choice', q.questionText, q.options || [], q.correctAnswer !== undefined ? q.correctAnswer : "");
                         });
                     }
-                } else {
-                    alert("Ката! Бул тестти түзөтүүгө сизде уруксат жок же тест табылган жок.");
-                    window.location.href = 'teacher-dashboard.html';
                 }
             });
         }
@@ -164,42 +185,40 @@
             const title = document.getElementById('quiz-title-input').value.trim();
             if (!title) return alert("Тесттин аталышын жазыңыз!");
 
-            const timeLimit = document.getElementById('quiz-time').value || 20;
-            const shuffle = document.getElementById('shuffle-questions').checked;
-            const instantResult = document.getElementById('show-results-instantly').checked;
-
             const qElements = document.querySelectorAll('.question-item');
             const questions = [];
 
             qElements.forEach(el => {
+                const type = el.getAttribute('data-type');
                 const text = el.querySelector('.q-text').value.trim();
-                const opts = Array.from(el.querySelectorAll('.q-opt')).map(i => i.value.trim()).filter(i => i !== "");
-                const correct = parseInt(el.querySelector('.q-correct').value);
-
-                if (text && opts.length > 0 && !isNaN(correct)) {
-                    questions.push({ questionText: text, options: opts, correctAnswer: correct });
+                
+                if(type === 'choice') {
+                    const opts = Array.from(el.querySelectorAll('.q-opt')).map(i => i.value.trim()).filter(i => i !== "");
+                    const correct = parseInt(el.querySelector('.q-correct').value);
+                    if (text && opts.length > 0 && !isNaN(correct)) {
+                        questions.push({ type, questionText: text, options: opts, correctAnswer: correct });
+                    }
+                } else {
+                    if (text) questions.push({ type, questionText: text });
                 }
             });
 
-            if (questions.length === 0) return alert("Кем дегенде бир суроону толук толтуруңуз!");
+            if (questions.length === 0) return alert("Суроолорду толтуруңуз!");
 
-            // Эгер эски тест болсо ошонун үстүнө жазат, жаңы болсо жаңы ID ачат
             const quizRef = editQuizId ? database.ref('tests/' + editQuizId) : database.ref('tests').push();
             const finalId = editQuizId ? editQuizId : quizRef.key;
 
-            finalId
             quizRef.set({
-                id: finalId,
-                title: title,
-                authorUid: currentUserId,
-                questions: questions,
+                id: finalId, title: title, authorUid: currentUserId, questions: questions,
                 settings: {
-                    timeLimit: parseInt(timeLimit),
-                    shuffle: shuffle,
-                    instantResult: instantResult
+                    timeLimit: parseInt(document.getElementById('quiz-time').value),
+                    shuffle: document.getElementById('shuffle-questions').checked,
+                    instantResult: document.getElementById('show-results-instantly').checked,
+                    grade5: parseInt(document.getElementById('grade-5-min').value),
+                    grade4: parseInt(document.getElementById('grade-4-min').value)
                 }
             }).then(() => {
-                alert(editQuizId ? "Тест ийгиликтүү өзгөртүлдү!" : "Жаңы тест жарыяланды!");
+                alert("Ийгиликтүү сакталды!");
                 window.location.href = "teacher-dashboard.html";
             });
         }
