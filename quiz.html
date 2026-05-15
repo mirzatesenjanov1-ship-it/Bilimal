@@ -8,26 +8,35 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; user-select: none; -webkit-user-select: none; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
-    <div id="loading-block" class="text-center flex flex-col items-center gap-4">
+    <div id="auth-block" class="w-full max-w-md glass-card p-8 rounded-[2rem] text-center">
+        <h3 class="text-xl font-black mb-4 text-blue-400">Тестке кирүү</h3>
+        <p class="text-gray-400 text-sm mb-6">Улантуу үчүн өзүңүздүн аты-жөнүңүздү толук жазыңыз.</p>
+        <input id="student-name" type="text" placeholder="Аты-жөнүңүз" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-blue-500 mb-4 text-center font-bold">
+        <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Тестти баштоо</button>
+    </div>
+
+    <div id="loading-block" class="hidden text-center flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-        <p class="font-bold uppercase tracking-widest text-sm text-gray-400">Тест даярдалууда...</p>
+        <p class="font-bold uppercase tracking-widest text-sm text-gray-400">Тест жүктөлүүдө...</p>
     </div>
 
     <div id="error-block" class="hidden text-center max-w-sm p-8 glass-card rounded-[2rem]">
-        <div class="text-red-500 text-5xl mb-4"><i class="fas fa-exclamation-circle"></i></div>
-        <h3 class="text-xl font-black mb-2">Байланыш үзүлдү</h3>
-        <p class="text-gray-400 text-sm mb-6">Тест табылган жок же шилтеме ката.</p>
-        <button onclick="window.history.back()" class="bg-blue-600 px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-widest">Артка кайтуу</button>
+        <div class="text-red-500 text-5xl mb-4"><i class="fas fa-user-slash"></i></div>
+        <h3 id="error-title" class="text-xl font-black mb-2">Кирүүгө тыюу салынды</h3>
+        <p id="error-desc" class="text-gray-400 text-sm mb-6">Сиз башка терезеге өтүү менен эреже буздуңуз! Тест бөгөттөлдү.</p>
     </div>
 
     <div id="quiz-block" class="hidden w-full max-w-2xl glass-card p-8 rounded-[2.5rem]">
-        <h2 id="quiz-title" class="text-2xl font-black mb-6 text-blue-400">Тест</h2>
+        <div class="flex justify-between items-center mb-4">
+            <h2 id="quiz-title" class="text-2xl font-black text-blue-400">Тест</h2>
+            <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Коргоо активдүү</div>
+        </div>
         <hr class="border-white/5 mb-6">
         <div id="questions-container" class="space-y-6"></div>
         <button onclick="submitQuiz()" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Жыйынтыкты жөнөтүү</button>
@@ -51,34 +60,62 @@
         const urlParams = new URLSearchParams(window.location.search);
         const quizId = urlParams.get('id');
 
-        if (!quizId) {
-            showError();
-        } else {
+        let quizData = null;
+        let studentName = "";
+        let cheatCount = 0;
+        let isQuizActive = false;
+
+        // КӨЧҮРҮҮГӨ ЖАНА ОҢ БАСКЫЧКА ТЫЮУ САЛУУ
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('copy', e => e.preventDefault());
+        document.addEventListener('paste', e => e.preventDefault());
+        document.addEventListener('keydown', e => {
+            if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u' || e.key === 'p')) {
+                e.preventDefault();
+            }
+        });
+
+        function startQuiz() {
+            studentName = document.getElementById('student-name').value.trim();
+            if (!studentName) return alert("Сураныч, атыңызды жазыңыз!");
+
+            document.getElementById('auth-block').classList.add('hidden');
+            document.getElementById('loading-block').classList.remove('hidden');
+
+            if (!quizId) {
+                showSystemError("Ката шилтеме", "Тесттин IDси табылган жок.");
+                return;
+            }
+
             database.ref('tests/' + quizId).once('value').then((snapshot) => {
-                const quizData = snapshot.val();
+                quizData = snapshot.val();
                 if (quizData) {
-                    renderQuiz(quizData);
+                    renderQuiz();
                 } else {
-                    showError();
+                    showSystemError("Табылган жок", "Мындай тест базада жок.");
                 }
-            }).catch(() => showError());
+            }).catch(() => showSystemError("Байланыш катасы", "Базадан маалымат алуу үзгүлтүккө учурады."));
         }
 
-        function showError() {
+        function showSystemError(title, desc) {
             document.getElementById('loading-block').classList.add('hidden');
+            document.getElementById('quiz-block').classList.add('hidden');
+            document.getElementById('error-title').innerText = title;
+            document.getElementById('error-desc').innerText = desc;
             document.getElementById('error-block').classList.remove('hidden');
         }
 
-        function renderQuiz(data) {
+        function renderQuiz() {
             document.getElementById('loading-block').classList.add('hidden');
             document.getElementById('quiz-block').classList.remove('hidden');
-            document.getElementById('quiz-title').innerText = data.title || "Аталышы жок тест";
+            document.getElementById('quiz-title').innerText = quizData.title;
+            isQuizActive = true;
 
             const container = document.getElementById('questions-container');
             container.innerHTML = "";
 
-            if (data.questions) {
-                const qList = Object.values(data.questions);
+            if (quizData.questions) {
+                const qList = Object.values(quizData.questions);
                 qList.forEach((q, index) => {
                     let optionsHtml = "";
                     if (q.options) {
@@ -93,17 +130,65 @@
                     }
                     container.innerHTML += `
                         <div class="space-y-3">
-                            <p class="font-bold text-lg">${index + 1}. ${q.questionText || q.title || ""}</p>
+                            <p class="font-bold text-lg">${index + 1}. ${q.questionText}</p>
                             <div class="grid grid-cols-1 gap-2">${optionsHtml}</div>
                         </div>
                     `;
                 });
             }
+
+            // СЫРТКА ЧЫГУУНУ (TAB CHANGE) АҢДУУ СИСТЕМАСЫ
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden' && isQuizActive) {
+                    cheatCount++;
+                    
+                    // Мугалимге реалдуу убакытта билдирүү жөнөтүү
+                    database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).update({
+                        studentName: studentName,
+                        quizTitle: quizData.title,
+                        teacherUid: quizData.authorUid,
+                        tabCheats: cheatCount,
+                        isBlocked: cheatCount >= 3
+                    });
+
+                    if (cheatCount >= 3) {
+                        isQuizActive = false;
+                        showSystemError("Сиз бөгөттөлдүңүз!", "Сиз 3 жолу эреже бузуп башка терезеге өткөнүңүз үчүн тест автоматтык түрдө жабылды!");
+                    } else {
+                        alert(`ЭСКЕРТҮҮ! Тесттен сыртка чыгууга болбойт! Бул сиздин ${cheatCount}-эскертүүңүз. 3-жолудан кийин тест бөгөттөлөт.`);
+                    }
+                }
+            });
         }
 
         function submitQuiz() {
-            alert("Тест аяктады!");
-            window.location.href = "index.html";
+            if (!isQuizActive) return;
+
+            let correctAnswersCount = 0;
+            const qList = Object.values(quizData.questions);
+
+            qList.forEach((q, index) => {
+                const selected = document.querySelector(`input[name="q_${index}"]:checked`);
+                if (selected && parseInt(selected.value) === q.correctAnswer) {
+                    correctAnswersCount++;
+                }
+            });
+
+            isQuizActive = false;
+
+            // Жыйынтыкты сактоо
+            database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
+                studentName: studentName,
+                quizTitle: quizData.title,
+                teacherUid: quizData.authorUid,
+                score: correctAnswersCount,
+                totalQuestions: qList.length,
+                tabCheats: cheatCount,
+                isBlocked: cheatCount >= 3
+            }).then(() => {
+                alert(`Тест аяктады! Сиздин жыйынтык: ${correctAnswersCount}/${qList.length}`);
+                window.location.reload();
+            });
         }
     </script>
 </body>
