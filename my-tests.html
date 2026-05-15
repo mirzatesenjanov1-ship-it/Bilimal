@@ -39,7 +39,6 @@
 <body class="min-h-screen p-6 md:p-12">
 
     <div class="max-w-4xl mx-auto">
-        <!-- Жогорку навигация -->
         <div class="flex justify-between items-center mb-12">
             <a href="teacher-dashboard.html" class="group flex items-center gap-3 text-gray-400 hover:text-white transition-all">
                 <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-600 transition-all">
@@ -58,9 +57,7 @@
             <p class="text-gray-500 font-medium">Түзүлгөн тесттерди башкарыңыз жана окуучуларга жөнөтүңүз</p>
         </div>
 
-        <!-- Тесттердин тизмеси контейнери -->
         <div id="tests-container" class="space-y-4">
-            <!-- Жүктөө анимациясы -->
             <div class="text-center py-24">
                 <i class="fas fa-circle-notch fa-spin text-4xl text-blue-500 mb-4"></i>
                 <p class="text-gray-500 font-bold uppercase tracking-[0.3em] text-xs">Маалыматтар жүктөлүүдө...</p>
@@ -68,7 +65,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -97,7 +93,7 @@
             if (user) {
                 loadUserTests(user.uid);
             } else {
-                window.location.replace("cabinet.html");
+                window.location.replace("login.html");
             }
         });
 
@@ -126,6 +122,9 @@
                     const testId = childSnapshot.key;
                     const questionCount = test.questions ? Object.keys(test.questions).length : 0;
                     
+                    // Сайттын жайгашкан дарегине ылайык жандуу шилтеме жасоо
+                    const dynamicQuizLink = `${window.location.origin}/quiz.html?id=${testId}`;
+                    
                     const testHtml = `
                         <div class="glass-card p-6 rounded-[2rem] test-item flex justify-between items-center cursor-pointer group" onclick="viewTest('${testId}')">
                             <div class="flex items-center gap-6">
@@ -136,16 +135,16 @@
                                     <h3 class="text-xl font-black text-white mb-1 uppercase tracking-tight group-hover:text-blue-400 transition-colors">${test.title || 'Аталышы жок тест'}</h3>
                                     <div class="flex gap-4 text-[10px] font-black text-gray-500 uppercase tracking-[0.2em]">
                                         <span class="flex items-center gap-2"><i class="fas fa-layer-group text-blue-500"></i> ${questionCount} суроо</span>
-                                        <span class="flex items-center gap-2"><i class="fas fa-calendar-alt text-purple-500"></i> 14.05.2026</span>
+                                        <span class="flex items-center gap-2"><i class="fas fa-shield-alt text-green-500"></i> Коргоо активдүү</span>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="flex gap-3" onclick="event.stopPropagation()">
-                                <button onclick="copyLink('${testId}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-blue-600 flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Шилтемени көчүрүү">
+                                <button onclick="copyLink('${dynamicQuizLink}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-blue-600 text-gray-400 hover:text-white flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Шилтемени көчүрүү">
                                     <i class="fas fa-link text-sm group-hover/btn:scale-110 transition-transform"></i>
                                 </button>
-                                <button onclick="deleteTest('${testId}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-red-600 flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Өчүрүүнү">
+                                <button onclick="deleteTest('${testId}')" class="w-12 h-12 rounded-2xl bg-white/5 hover:bg-red-600 text-gray-400 hover:text-white flex items-center justify-center transition-all group/btn shadow-xl shadow-black/20" title="Өчүрүү">
                                     <i class="fas fa-trash-alt text-sm group-hover/btn:scale-110 transition-transform"></i>
                                 </button>
                             </div>
@@ -156,24 +155,25 @@
             });
         }
 
-        // Тесттин ичине кирүү (Окуучулар көрө турган бет)
+        // Тесттин ичине мугалим катары баш багып көрүү
         function viewTest(id) {
             window.location.href = `quiz.html?id=${id}`;
         }
 
-        // Шилтемени көчүрүү
-        function copyLink(id) {
-            const link = `https://bilimal.org/quiz.html?id=${id}`;
-            navigator.clipboard.writeText(link).then(() => {
+        // Шилтемени окуучуларга таратуу үчүн көчүрүү
+        function copyLink(fullLink) {
+            navigator.clipboard.writeText(fullLink).then(() => {
                 const notify = document.createElement('div');
-                notify.className = 'fixed bottom-10 left-1/2 -translate-x-1/2 bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl z-50 animate-bounce';
-                notify.innerText = '✅ ШИЛТЕМЕ КӨЧҮРҮЛДҮ!';
+                notify.className = 'fixed bottom-10 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-black shadow-2xl z-50 text-xs tracking-widest uppercase animate-pulse';
+                notify.innerText = '✅ Тесттин корголгон шилтемеси көчүрүлдү!';
                 document.body.appendChild(notify);
-                setTimeout(() => notify.remove(), 3000);
+                setTimeout(() => notify.remove(), 2500);
+            }).catch(err => {
+                alert("Шилтеме түзүлдү: " + fullLink);
             });
         }
 
-        // Тестти өчүрүү
+        // Тестти базадан биротоло тазалоо
         function deleteTest(id) {
             if (confirm("Бул тестти биротоло өчүрүүнү каалайсызбы? Бул аракетти артка кайтаруу мүмкүн эмес.")) {
                 database.ref('tests/' + id).remove()
