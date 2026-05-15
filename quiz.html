@@ -10,6 +10,15 @@
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; user-select: none; -webkit-user-select: none; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        
+        /* Суроолордун баракталып өтүү анимациясы */
+        .question-page { display: none; }
+        .question-page.active { display: block; animation: fadeIn 0.4s ease-in-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -33,13 +42,36 @@
     </div>
 
     <div id="quiz-block" class="hidden w-full max-w-2xl glass-card p-8 rounded-[2.5rem]">
-        <div class="flex justify-between items-center mb-4">
-            <h2 id="quiz-title" class="text-2xl font-black text-blue-400">Тест</h2>
-            <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Коргоо активдүү</div>
+        
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 id="quiz-title" class="text-xl font-black text-white uppercase tracking-tight">Тест</h2>
+                <p id="progress-text" class="text-xs text-gray-400 font-bold mt-1">Суроо: 1 / 1</p>
+            </div>
+            <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full">
+                <i class="fas fa-shield-alt mr-1"></i> Коргоо активдүү
+            </div>
         </div>
-        <hr class="border-white/5 mb-6">
-        <div id="questions-container" class="space-y-6"></div>
-        <button onclick="submitQuiz()" class="mt-8 w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Жыйынтыкты жөнөтүү</button>
+        
+        <div class="w-full h-1.5 bg-white/5 rounded-full mb-8 overflow-hidden">
+            <div id="progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <div id="questions-container"></div>
+
+        <div class="flex justify-between items-center mt-8 pt-6 border-t border-white/5">
+            <button id="prev-btn" onclick="changeQuestion(-1)" class="opacity-50 pointer-events-none bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all">
+                <i class="fas fa-chevron-left mr-2"></i> Артка
+            </button>
+            
+            <button id="next-btn" onclick="changeQuestion(1)" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all">
+                Кийинки <i class="fas fa-chevron-right ml-2"></i>
+            </button>
+
+            <button id="submit-btn" onclick="submitQuiz()" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all">
+                Тестти аяктоо <i class="fas fa-check-double ml-2"></i>
+            </button>
+        </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -64,8 +96,11 @@
         let studentName = "";
         let cheatCount = 0;
         let isQuizActive = false;
+        
+        let currentQuestionIndex = 0; // Учурдагы суроонун номери
+        let totalQuestionsCount = 0;   // Жалпы суроолордун саны
 
-        // КӨЧҮРҮҮГӨ ЖАНА ОҢ БАСКЫЧКА ТЫЮУ САЛУУ
+        // КООПСУЗДУК: КӨЧҮРҮҮГӨ ЖАНА ОҢ БАСКЫЧКА ТЫЮУ САЛУУ
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('copy', e => e.preventDefault());
         document.addEventListener('paste', e => e.preventDefault());
@@ -116,33 +151,39 @@
 
             if (quizData.questions) {
                 const qList = Object.values(quizData.questions);
+                totalQuestionsCount = qList.length;
+                currentQuestionIndex = 0;
+
                 qList.forEach((q, index) => {
                     let optionsHtml = "";
                     if (q.options) {
                         q.options.forEach((opt, oIdx) => {
                             optionsHtml += `
-                                <label class="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/5 cursor-pointer hover:bg-white/10 transition-all">
-                                    <input type="radio" name="q_${index}" value="${oIdx}" class="w-4 h-4 text-blue-500">
-                                    <span>${opt}</span>
+                                <label class="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 cursor-pointer hover:bg-white/10 transition-all">
+                                    <input type="radio" name="q_${index}" value="${oIdx}" class="w-5 h-5 text-blue-500 focus:ring-0">
+                                    <span class="text-sm md:text-base font-medium text-gray-200">${opt}</span>
                                 </label>
                             `;
                         });
                     }
+                    
+                    // Ар бир суроону 'question-page' классы менен өзүнчө блок кылып түзөбүз
                     container.innerHTML += `
-                        <div class="space-y-3">
-                            <p class="font-bold text-lg">${index + 1}. ${q.questionText}</p>
-                            <div class="grid grid-cols-1 gap-2">${optionsHtml}</div>
+                        <div id="q-page-${index}" class="question-page space-y-5">
+                            <p class="font-bold text-xl md:text-2xl text-white leading-relaxed">${q.questionText}</p>
+                            <div class="grid grid-cols-1 gap-3">${optionsHtml}</div>
                         </div>
                     `;
                 });
+                
+                updatePageVisibility(); // Баштапкы биринчи суроону көрсөтүү
             }
 
-            // СЫРТКА ЧЫГУУНУ (TAB CHANGE) АҢДУУ СИСТЕМАСЫ
+            // КООПСУЗДУК: СЫРТКА ЧЫГУУНУ (TAB CHANGE) АҢДУУ
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'hidden' && isQuizActive) {
                     cheatCount++;
                     
-                    // Мугалимге реалдуу убакытта билдирүү жөнөтүү
                     database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).update({
                         studentName: studentName,
                         quizTitle: quizData.title,
@@ -161,6 +202,50 @@
             });
         }
 
+        // БАРАКТАРДЫ АЛМАШТЫРУУ ЛОГИКАСЫ
+        function updatePageVisibility() {
+            // Бардык суроолорду жабуу
+            document.querySelectorAll('.question-page').forEach(page => page.classList.remove('active'));
+            
+            // Керектүү гана суроону ачуу
+            const activePage = document.getElementById(`q-page-${currentQuestionIndex}`);
+            if (activePage) activePage.classList.add('active');
+
+            // Текстти жана Прогресс-барды жаңыртуу
+            document.getElementById('progress-text').innerText = `Суроо: ${currentQuestionIndex + 1} / ${totalQuestionsCount}`;
+            const percentage = ((currentQuestionIndex + 1) / totalQuestionsCount) * 100;
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+
+            // Баскычтардын көрүнүшүн жөндөө
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+
+            // Артка баскычы биринчи бетте иштебейт
+            if (currentQuestionIndex === 0) {
+                prevBtn.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                prevBtn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+
+            // Акыркы бетке жеткенде "Кийинкини" жаап, "Аяктоону" көрсөтүү
+            if (currentQuestionIndex === totalQuestionsCount - 1) {
+                nextBtn.classList.add('hidden');
+                submitBtn.classList.remove('hidden');
+            } else {
+                nextBtn.classList.remove('hidden');
+                submitBtn.classList.add('hidden');
+            }
+        }
+
+        function changeQuestion(direction) {
+            const newIndex = currentQuestionIndex + direction;
+            if (newIndex >= 0 && newIndex < totalQuestionsCount) {
+                currentQuestionIndex = newIndex;
+                updatePageVisibility();
+            }
+        }
+
         function submitQuiz() {
             if (!isQuizActive) return;
 
@@ -176,7 +261,7 @@
 
             isQuizActive = false;
 
-            // Жыйынтыкты сактоо
+            // Жыйынтыкты Firebase базасына жазуу
             database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
                 studentName: studentName,
                 quizTitle: quizData.title,
