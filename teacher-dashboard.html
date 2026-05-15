@@ -35,7 +35,7 @@
             
             <div class="space-y-4">
                 <h3 class="text-sm font-black uppercase tracking-widest text-blue-400 px-2"><i class="fas fa-folder-open mr-2"></i> Менин тесттерим</h3>
-                <div id="my-quizzes-list" class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                <div id="my-quizzes-list" class="space-y-3 max-h-[550px] overflow-y-auto pr-2">
                     <p class="text-xs text-gray-500 p-4">Тесттер жүктөлүүдө...</p>
                 </div>
             </div>
@@ -70,7 +70,6 @@
             </div>
 
         </div>
-
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -92,7 +91,6 @@
 
         let currentUserId = null;
 
-        // Колдонуучунун киргенин текшерүү
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUserId = user.uid;
@@ -104,7 +102,6 @@
         });
 
         function loadTeacherData() {
-            // 1. Мугалимдин өзүнүн тесттерин гана жүктөө
             database.ref('tests').orderByChild('authorUid').equalTo(currentUserId).on('value', snapshot => {
                 const quizListContainer = document.getElementById('my-quizzes-list');
                 quizListContainer.innerHTML = "";
@@ -112,46 +109,45 @@
                 const data = snapshot.val();
                 if (data) {
                     Object.values(data).forEach(quiz => {
-                        // Түз шилтемени bilimal.org доменине багыттайбыз
                         const quizUrl = `http://bilimal.org/quiz.html?id=${quiz.id}`;
                         
                         quizListContainer.innerHTML += `
                             <div class="glass-card p-4 rounded-2xl border border-white/5 space-y-3">
                                 <p class="font-bold text-sm text-white truncate">${quiz.title}</p>
-                                <div class="flex gap-2">
-                                    <button onclick="copyToClipboard('${quizUrl}')" class="flex-1 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white py-2 rounded-lg text-xs font-bold transition-all border border-blue-500/20">
-                                        <i class="fas fa-copy mr-1"></i> Шилтеме алуу
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button onclick="copyToClipboard('${quizUrl}')" class="bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white py-2 rounded-lg text-[10px] font-bold transition-all border border-blue-500/20" title="Шилтеме көчүрүү">
+                                        <i class="fas fa-copy"></i> Шилтеме
                                     </button>
-                                    <button onclick="deleteQuiz('${quiz.id}')" class="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-3 rounded-lg text-xs transition-all border border-red-500/20">
-                                        <i class="fas fa-trash"></i>
+                                    <a href="create-test.html?edit=${quiz.id}" class="text-center bg-amber-500/10 text-amber-400 hover:bg-amber-500 hover:text-white py-2 rounded-lg text-[10px] font-bold transition-all border border-amber-500/20" title="Түзөтүү киргизүү">
+                                        <i class="fas fa-edit"></i> Түзөтүү
+                                    </a>
+                                    <button onclick="deleteQuiz('${quiz.id}')" class="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white py-2 rounded-lg text-[10px] transition-all border border-red-500/20" title="Өчүрүү">
+                                        <i class="fas fa-trash"></i> Өчүрүү
                                     </button>
                                 </div>
                             </div>
                         `;
                     });
                 } else {
-                    quizListContainer.innerHTML = `<p class="text-xs text-gray-500 p-4 text-center bg-white/5 rounded-2xl border border-white/5">Сиз али тест түзө элексиз.</p>`;
+                    quizListContainer.innerHTML = `<p class="text-xs text-gray-500 p-4 text-center bg-white/5 rounded-2xl border border-white/5">Сизде азырынча тест жок.</p>`;
                 }
             });
 
-            // 2. Окуучулардын жыйынтыктарын жандуу убакытта жүктөө
             database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).on('value', snapshot => {
                 const tableBody = document.getElementById('results-table-body');
                 tableBody.innerHTML = "";
-
                 const data = snapshot.val();
                 if (data) {
                     Object.keys(data).forEach(key => {
                         const res = data[key];
                         const percent = Math.round((res.score / res.totalQuestions) * 100) || 0;
                         
-                        // Анти-чит статусун кооздоо
-                        let cheatStatus = `<span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md border border-emerald-500/20"><i class="fas fa-check-circle mr-1"></i> Таза тапшырды</span>`;
+                        let cheatStatus = `<span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md border border-emerald-500/20"><i class="fas fa-check-circle mr-1"></i> Таза</span>`;
                         if (res.tabCheats > 0) {
-                            cheatStatus = `<span class="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border border-amber-500/20"><i class="fas fa-exclamation-triangle mr-1"></i> Сыртка чыкты: ${res.tabCheats}</span>`;
+                            cheatStatus = `<span class="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border border-amber-500/20"><i class="fas fa-exclamation-triangle mr-1"></i> Чыкты: ${res.tabCheats}</span>`;
                         }
                         if (res.isBlocked) {
-                            cheatStatus = `<span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-md border border-red-500/30 font-bold"><i class="fas fa-ban mr-1"></i> БӨГӨТТӨЛДҮ!</span>`;
+                            cheatStatus = `<span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-md border border-red-500/30 font-bold"><i class="fas fa-ban mr-1"></i> БӨГӨТ!</span>`;
                         }
 
                         tableBody.innerHTML += `
@@ -167,43 +163,29 @@
                         `;
                     });
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-xs text-gray-500">Азырынча эч ким тест тапшыра элек...</td></tr>`;
+                    tableBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-xs text-gray-500">Жыйынтыктар жок...</td></tr>`;
                 }
             });
         }
 
-        // Шилтемени автоматтык түрдө көчүрүү функциясы
         function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Тесттин шилтемеси көчүрүлдү! Окуучуларга жөнөтсөңүз болот.");
-            });
+            navigator.clipboard.writeText(text).then(() => alert("Тесттин шилтемеси көчүрүлдү!"));
         }
 
-        // Тестти өчүрүү
         function deleteQuiz(quizId) {
-            if (confirm("Бул тестти өчүрүүнү каалайсызбы? Бардык суроолор жоголот.")) {
-                database.ref('tests/' + quizId).remove();
-            }
+            if (confirm("Бул тестти өчүрүүнү каалайсызбы?")) { database.ref('tests/' + quizId).remove(); }
         }
 
-        // Бардык жыйынтыктарды тазалоо
         function clearAllResults() {
-            if (confirm("Окуучулардын бардык жыйынтыктарын өчүрүүнү каалайсызбы? Бул аракетти артка кайтарууга болбойт.")) {
+            if (confirm("Бардык жыйынтыктарды өчүрөсүзбү?")) {
                 database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).once('value', snapshot => {
                     const data = snapshot.val();
-                    if (data) {
-                        Object.keys(data).forEach(key => {
-                            database.ref('results/' + key).remove();
-                        });
-                    }
+                    if (data) { Object.keys(data).forEach(key => database.ref('results/' + key).remove()); }
                 });
             }
         }
 
-        // Чыгуу
-        function logout() {
-            auth.signOut().then(() => { window.location.href = 'login.html'; });
-        }
+        function logout() { auth.signOut().then(() => { window.location.href = 'login.html'; }); }
     </script>
 </body>
 </html>
