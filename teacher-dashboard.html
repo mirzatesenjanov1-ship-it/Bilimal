@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мугалимдин кабинети | BILIMAL.ORG</title>
+    <title>Мугалимдин панели | BILIMAL.ORG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -31,7 +31,7 @@
                 <a href="create-test.html" class="text-center bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-xs uppercase tracking-widest px-6 py-3.5 rounded-xl transition-all shadow-lg shadow-blue-900/20">
                     <i class="fas fa-plus mr-2"></i> Жаңы тест түзүү
                 </a>
-                <button onclick="logout()" class="bg-white/5 hover:bg-red-500/20 text-gray-300 hover:text-red-400 p-3.5 rounded-xl transition-all border border-white/5">
+                <button onclick="logout()" title="Кабинеттен чыгуу" class="bg-white/5 hover:bg-red-500/20 text-gray-300 hover:text-red-400 p-3.5 rounded-xl transition-all border border-white/5">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
             </div>
@@ -102,6 +102,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <script>
+        // Firebase конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -116,16 +117,18 @@
 
         let currentUserId = null, quizSettingsMap = {}, rawResultsData = [];
 
+        // Авторизацияны текшерүү
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUserId = user.uid;
                 document.getElementById('teacher-email').innerText = `Мугалим: ${user.email}`;
                 loadTeacherData();
             } else {
-                window.location.href = 'login.html';
+                window.location.href = 'cabinet.html';
             }
         });
 
+        // Мугалимдин тесттерин жүктөө
         function loadTeacherData() {
             database.ref('tests').orderByChild('authorUid').equalTo(currentUserId).on('value', snapshot => {
                 const list = document.getElementById('my-quizzes-list');
@@ -141,17 +144,18 @@
                                 <div class="grid grid-cols-3 gap-2">
                                     <button onclick="navigator.clipboard.writeText('${url}'); alert('Шилтеме көчүрүлдү!');" class="bg-blue-500/10 text-blue-400 py-1.5 rounded-lg text-[10px] font-bold border border-blue-500/20">Шилтеме</button>
                                     <a href="create-test.html?edit=${quiz.id}" class="text-center bg-amber-500/10 text-amber-400 py-1.5 rounded-lg text-[10px] font-bold border border-amber-500/20">Түзөтүү</a>
-                                    <button onclick="if(confirm('Өчүрөсүзбү?')) database.ref('tests/${quiz.id}').remove();" class="bg-red-500/10 text-red-400 py-1.5 rounded-lg text-[10px] border border-red-500/20">Өчүрүү</button>
+                                    <button onclick="if(confirm('Бул тестти өчүрүүнү каалайсызбы?')) database.ref('tests/${quiz.id}').remove();" class="bg-red-500/10 text-red-400 py-1.5 rounded-lg text-[10px] border border-red-500/20">Өчүрүү</button>
                                 </div>
                             </div>`;
                     });
                 } else {
-                    list.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Тесттериңиз жок.</p>`;
+                    list.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Тесттериңиз азырынча жок.</p>`;
                 }
                 loadResults();
             });
         }
 
+        // Окуучулардын жыйынтыктарын жүктөө
         function loadResults() {
             database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).on('value', snapshot => {
                 const tableBody = document.getElementById('results-table-body');
@@ -164,12 +168,16 @@
                         const res = data[key];
                         const quizId = key.split('_')[0];
                         const settings = quizSettingsMap[quizId] || { grade5: 85, grade4: 70 };
-                        const percent = res.percent !== undefined ? res.percent : (Math.round((res.score / res.totalQuestions) * 100) || 0);
+                        
+                        // Нөлгө бөлүнүп калуудан коргоо (NaN катасын алдын алуу)
+                        const totalQs = res.totalQuestions || 0;
+                        const score = res.score || 0;
+                        const percent = res.percent !== undefined ? res.percent : (totalQs > 0 ? Math.round((score / totalQs) * 100) : 0);
                         
                         let grade = "3";
                         if (percent >= settings.grade5) grade = "5";
                         else if (percent >= settings.grade4) grade = "4";
-                        if (res.totalQuestions === 0) grade = "Текшерилет";
+                        if (totalQs === 0) grade = "Текшерилет";
 
                         let cheatStatus = `<span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md border border-emerald-500/20">Таза</span>`;
                         if (res.tabCheats > 0) cheatStatus = `<span class="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border border-amber-500/20">Чыкты: ${res.tabCheats}</span>`;
@@ -180,14 +188,21 @@
                             openAnsBtn = `<button onclick="viewEssay('${key}')" class="ml-2 bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded text-[11px] font-bold border border-purple-500/30">Жооптор</button>`;
                         }
 
-                        rawResultsData.push({ "Окуучу": res.studentName, "Тест": res.quizTitle, "Упай": `${res.score}/${res.totalQuestions}`, "Пайыз": `${percent}%`, "Баа": grade, "Эреже бузуу саны": res.tabCheats });
+                        rawResultsData.push({ 
+                            "Окуучу": res.studentName, 
+                            "Тест": res.quizTitle, 
+                            "Упай": `${score}/${totalQs}`, 
+                            "Пайыз": `${percent}%`, 
+                            "Баа": grade, 
+                            "Эреже бузуу саны": res.tabCheats || 0 
+                        });
 
                         tableBody.innerHTML += `
                             <tr class="hover:bg-white/[0.02] transition-all">
                                 <td class="p-4 pl-6 font-bold text-white">${res.studentName}</td>
                                 <td class="p-4 text-gray-400 truncate max-w-[180px]">${res.quizTitle}</td>
                                 <td class="p-4 text-center">
-                                    <span class="font-black text-white">${res.score}/${res.totalQuestions}</span>
+                                    <span class="font-black text-white">${score}/${totalQs}</span>
                                     <span class="ml-2 px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-bold">${grade}</span>
                                 </td>
                                 <td class="p-4 text-center">${cheatStatus} ${openAnsBtn}</td>
@@ -199,14 +214,16 @@
             });
         }
 
+        // Жыйынтыктарды Excel форматына экспорттоо
         function exportTableToExcel() {
-            if(rawResultsData.length === 0) return alert("Маалымат жок!");
+            if(rawResultsData.length === 0) return alert("Экспорттоо үчүн маалымат табылган жок!");
             const worksheet = XLSX.utils.json_to_sheet(rawResultsData);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Жыйынтыктар");
             XLSX.writeFile(workbook, "BILIMAL_Жыйынтыктар.xlsx");
         }
 
+        // Ачык суроолорду көрүү
         function viewEssay(resultKey) {
             database.ref('results/' + resultKey + '/openAnswers').once('value').then(snapshot => {
                 const answers = snapshot.val();
@@ -226,8 +243,20 @@
         }
 
         function closeModal() { document.getElementById('essay-modal').classList.add('hidden'); }
-        function clearAllResults() { if(confirm('Баарын тазалайсызбы?')) database.ref('results').remove(); }
-        function logout() { auth.signOut().then(() => window.location.href = 'login.html'); }
+        
+        // Маалыматтар базасынан бардык жыйынтыктарды өчүрүү
+        function clearAllResults() { 
+            if(confirm('Көңүл буруңуз! Окуучулардын бардык жыйынтыктары толугу менен өчүрүлөт. Ырастайсызбы?')) {
+                database.ref('results').remove(); 
+            }
+        }
+        
+        // Кабинеттен чыгуу функциясы
+        function logout() { 
+            auth.signOut().then(() => {
+                window.location.href = 'cabinet.html'; 
+            });
+        }
     </script>
 </body>
 </html>
