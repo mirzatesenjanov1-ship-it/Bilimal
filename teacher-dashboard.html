@@ -88,8 +88,73 @@
                     <script> (adsbygoogle = window.adsbygoogle || []).push({}); </script>
                 </div>
             </div>
-
         </div>
+
+        <div class="border-t border-white/5 pt-8">
+            <section class="max-w-5xl mx-auto p-6 md:p-8 glass-card rounded-[2.5rem] border border-amber-500/20 bg-slate-900/40 shadow-xl shadow-amber-950/5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
+                    <div class="flex items-center gap-4">
+                        <div class="text-3xl text-amber-400"><i class="fas fa-horse-head"></i></div>
+                        <div>
+                            <h3 class="text-xl font-black text-white uppercase tracking-wider">Кыз Куумай: Онлайн Оюн Базасы</h3>
+                            <p class="text-xs text-gray-400">Предметти тандап, оюнга катыша турган 20 суроону туура жооптору менен киргизиңиз</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-bold uppercase bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full border border-amber-500/20">Firebase Live</span>
+                    </div>
+                </div>
+
+                <form id="kyzKuumayQuestionForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Предметти тандаңыз</label>
+                            <select id="dashboardSubjectSelect" class="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 outline-none" required>
+                                <option value="" disabled selected>-- Предметти тандаңыз --</option>
+                                <option value="Математика">Математика</option>
+                                <option value="Кыргыз тили">Кыргыз тили</option>
+                                <option value="Кыргыз адабияты">Кыргыз адабияты</option>
+                                <option value="Орус тили">Орус тили</option>
+                                <option value="Орус адабияты">Орус адабияты</option>
+                                <option value="Англис тили">Англис тили</option>
+                                <option value="Физика">Физика</option>
+                                <option value="Химия">Химия</option>
+                                <option value="Биология">Биология</option>
+                                <option value="География">География</option>
+                                <option value="Тарых">Тарых</option>
+                                <option value="Информатика">Информатика</option>
+                                <option value="Астрономия">Астрономия</option>
+                                <option value="Адам жана коом">Адам жана коом</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Теманы тандаңыз</label>
+                            <select id="dashboardTopicSelect" class="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 outline-none" required>
+                                <option value="" disabled selected>-- Алгач предметти тандаңыз --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center px-1">
+                            <h4 class="text-xs font-black text-amber-400 uppercase tracking-widest"><i class="fas fa-list-ol mr-2"></i> Суроолордун топтому (Милдеттүү түрдө 20 суроо)</h4>
+                            <span id="loaded-status" class="text-[10px] font-bold text-gray-500"></span>
+                        </div>
+                        
+                        <div id="kyzKuumayDynamicQuestions" class="space-y-6 max-h-[600px] overflow-y-auto pr-2 border border-white/5 p-4 rounded-2xl bg-black/10">
+                            </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 border-t border-white/5">
+                        <p class="text-xs text-amber-400/70"><i class="fas fa-info-circle mr-1"></i> Вариант А талаасына дайыма ТУУРА жоопту жазыңыз, оюн ичинде варианттар автоматтык түрдө аралашып чыгат.</p>
+                        <button type="submit" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs uppercase tracking-widest px-8 py-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 whitespace-nowrap">
+                            Базага жаңыртуу <i class="fas fa-save ml-2"></i>
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </div>
+
     </div>
 
     <div id="essay-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -125,12 +190,31 @@
         let quizSettingsMap = {};
         let rawResultsData = [];
 
+        // Карта: Предметтердин жана алардын темаларынын тизмеси (Башкы бетке шайкеш келет)
+        const subjectTopicsMap = {
+            "Математика": ["Алгебра: Теңдемелер жана барабарсыздыктар", "Геометрия: Планиметрия негиздери"],
+            "Кыргыз тили": ["Фонетика жана Лексика", "Синтаксис жана Морфология"],
+            "Кыргыз адабияты": ["Манас эпосу жана Кенже эпостор", "XX кылымдагы кыргыз адабияты"],
+            "Орус тили": ["Грамматика и Правописание", "Синтаксис и Пунктуация"],
+            "Орус адабияты": ["Золотой век русской литературы", "Литература XX века"],
+            "Англис тили": ["English Grammar: Tenses", "Vocabulary and Speaking"],
+            "Физика": ["Механика (Динамика жана Кинематика)", "Термодинамика жана Молекулалык физика", "Кванттык физика жана Оптика"],
+            "Химия": ["Неорганикалык химия", "Органикалык химия негиздери"],
+            "Биология": ["Ботаника жана Зоология", "Адамдын анатомиясы жана Генетика"],
+            "География": ["Кыргызстандын физикалык географиясы", "Дүйнөнүн экономикалык географиясы"],
+            "Тарых": ["Кыргызстан тарыхы: Байыркы замандан бүгүнкүгө", "Дүйнөлүк тарых: Жаңы доор"],
+            "Информатика": ["Программалоо негиздери (Python)", "Веб-технологиялар жана Маалымат базалары"],
+            "Астрономия": ["Күн системасы жана Жылдыздар", "Ааламдын түзүлүшү жана Космология"],
+            "Адам жана коом": ["Укук жана Мамлекет негиздери", "Философия жана Этикалык баалуулуктар"]
+        };
+
         // Авторизацияны текшерүү жана колдонуучуну көзөмөлдөө
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUserId = user.uid;
                 document.getElementById('teacher-email').innerText = `Мугалим: ${user.email}`;
                 loadTeacherData();
+                initKyzKuumayDashboard(); // Кыз Куумай тутумун иштетүү
             } else {
                 window.location.href = 'cabinet.html';
             }
@@ -145,7 +229,6 @@
                 
                 if (data) {
                     Object.values(data).forEach(quiz => {
-                        // Баалоо критерийлерин сактоо (дефолт түрүндө 85% жана 70%)
                         quizSettingsMap[quiz.id] = quiz.settings || { grade5: 85, grade4: 70 };
                         const url = `http://bilimal.org/quiz.html?id=${quiz.id}`;
                         
@@ -162,7 +245,6 @@
                 } else {
                     list.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Тесттериңиз азырынча жок.</p>`;
                 }
-                // Тесттер жүктөлгөндөн кийин жыйынтыктарды сурап алуу
                 loadResults();
             });
         }
@@ -176,7 +258,7 @@
             }
         }
 
-        // Мугалимдин өзүнө гана тиешелүү окуучулардын жыйынтыктарын жүктөө
+        // Окуучулардын жыйынтыктарын жүктөө
         function loadResults() {
             database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).on('value', snapshot => {
                 const tableBody = document.getElementById('results-table-body');
@@ -194,24 +276,20 @@
                         const score = res.score || 0;
                         const percent = res.percent !== undefined ? res.percent : (totalQs > 0 ? Math.round((score / totalQs) * 100) : 0);
                         
-                        // Баалоо алгоритми
                         let grade = "3";
                         if (percent >= settings.grade5) grade = "5";
                         else if (percent >= settings.grade4) grade = "4";
                         if (totalQs === 0) grade = "Текшерилет";
 
-                        // Академиялык коопсуздук / Шпаргалкадан коргоо статусу
                         let cheatStatus = `<span class="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded-md border border-emerald-500/20">Таза</span>`;
                         if (res.tabCheats > 0) cheatStatus = `<span class="text-xs bg-amber-500/10 text-amber-400 px-2 py-1 rounded-md border border-amber-500/20">Чыкты: ${res.tabCheats}</span>`;
                         if (res.isBlocked) cheatStatus = `<span class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-md border border-red-500/30 font-bold">Бөгөт!</span>`;
 
-                        // Эссе же ачык суроо болсо баскычты чыгаруу
                         let openAnsBtn = "";
                         if (res.openAnswers) {
                             openAnsBtn = `<button onclick="viewEssay('${key}')" class="ml-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-2 py-1 rounded text-[11px] font-bold border border-purple-500/30 transition-all">Жооптор</button>`;
                         }
 
-                        // Excel үчүн массивке кошуу
                         rawResultsData.push({ 
                             "Окуучу": res.studentName, 
                             "Тест": res.quizTitle, 
@@ -238,7 +316,6 @@
             });
         }
 
-        // Жыйынтыктарды Excel форматына (.xlsx) экспорттоо
         function exportTableToExcel() {
             if (rawResultsData.length === 0) return alert("Экспорттоо үчүн маалымат табылган жок!");
             const worksheet = XLSX.utils.json_to_sheet(rawResultsData);
@@ -247,7 +324,6 @@
             XLSX.writeFile(workbook, "BILIMAL_Жыйынтыктар.xlsx");
         }
 
-        // Ачык суроолордун жоопторун модаль терезеден көрсөтүү
         function viewEssay(resultKey) {
             database.ref('results/' + resultKey + '/openAnswers').once('value').then(snapshot => {
                 const answers = snapshot.val();
@@ -273,16 +349,13 @@
             document.getElementById('essay-modal').classList.add('hidden'); 
         }
         
-        // Мугалим өзүнүн гана окуучуларынын жыйынтыктарын тазалоо (Башканыкына тийбейт)
         function clearMyResults() { 
             if (confirm('Көңүл буруңуз! Сиздин тесттериңизге таандык бардык окуучулардын жыйынтыктары маалымат базасынан биротоло өчүрүлөт. Ырастайсызбы?')) {
                 database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).once('value', snapshot => {
                     const data = snapshot.val();
                     if (data) {
                         const updates = {};
-                        Object.keys(data).forEach(key => {
-                            updates[key] = null; // Өчүрүү үчүн белгилөө
-                        });
+                        Object.keys(data).forEach(key => { updates[key] = null; });
                         database.ref('results').update(updates)
                             .then(() => alert('Бардык жыйынтыктарыңыз ийгиликтүү тазаланды.'))
                             .catch(err => alert('Ката кетти: ' + err.message));
@@ -293,13 +366,142 @@
             }
         }
         
-        // Кабинеттен коопсуз чыгуу
         function logout() { 
             if (confirm('Кабинеттен чыгууну каалайсызбы?')) {
-                auth.signOut().then(() => {
-                    window.location.href = 'cabinet.html'; 
-                });
+                auth.signOut().then(() => { window.location.href = 'cabinet.html'; });
             }
+        }
+
+        // ==========================================
+        // 🐎 КЫЗ КУУМАЙ БАШКАРУУ СИСТЕМАСЫНЫН ЛОГИКАСЫ (JS)
+        // ==========================================
+        function initKyzKuumayDashboard() {
+            const subSelect = document.getElementById('dashboardSubjectSelect');
+            const topSelect = document.getElementById('dashboardTopicSelect');
+            const container = document.getElementById('kyzKuumayDynamicQuestions');
+
+            // 1. Экранга автоматтык түрдө 20 суроо блогун түзүп чыгаруу
+            container.innerHTML = "";
+            for (let i = 1; i <= 20; i++) {
+                container.innerHTML += `
+                    <div class="q-block p-4 bg-white/[0.02] border border-white/5 rounded-2xl space-y-3" data-qno="${i}">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest bg-amber-500/10 px-3 py-1 rounded-md border border-amber-500/20">Суроо №${i}</span>
+                        </div>
+                        <input type="text" placeholder="Суроону ушул жерге жазыңыз..." class="q-title w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-white text-sm focus:border-amber-500 outline-none" required>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[9px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Вариант А (Туура Жооп)</label>
+                                <input type="text" placeholder="Туура жоопту жазыңыз" class="q-ans w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-white text-xs focus:border-emerald-500 outline-none" required>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Вариант Б (Ката Вариант)</label>
+                                <input type="text" placeholder="Ката жоопту жазыңыз" class="q-opt1 w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-white text-xs focus:border-amber-500/50 outline-none" required>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Вариант В (Ката Вариант)</label>
+                                <input type="text" placeholder="Ката жоопту жазыңыз" class="q-opt2 w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-white text-xs focus:border-amber-500/50 outline-none" required>
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1">Вариант Г (Ката Вариант)</label>
+                                <input type="text" placeholder="Ката жоопту жазыңыз" class="q-opt3 w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-2.5 text-white text-xs focus:border-amber-500/50 outline-none" required>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+
+            // 2. Предмет тандалганда анын темаларын селектке жүктөө
+            subSelect.addEventListener('change', function() {
+                const selectedSub = this.value;
+                const topics = subjectTopicsMap[selectedSub] || [];
+                
+                topSelect.innerHTML = `<option value="" disabled selected>-- Теманы тандаңыз --</option>`;
+                topics.forEach(topic => {
+                    topSelect.innerHTML += `<option value="${topic}">${topic}</option>`;
+                });
+                document.getElementById('loaded-status').innerText = "";
+            });
+
+            // 3. Тема тандалганда базада мурун жазылган суроолор болсо автоматтык түрдө формага толтуруу
+            topSelect.addEventListener('change', function() {
+                const subject = subSelect.value;
+                const topic = this.value;
+                const statusSpan = document.getElementById('loaded-status');
+                
+                statusSpan.innerText = "База текшерилүүдө...";
+                statusSpan.className = "text-[10px] font-bold text-amber-400 animate-pulse";
+
+                database.ref('kyzKuumayQuiz/' + subject + '/' + topic + '/questions').once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const existingQuestions = snapshot.val();
+                        const blocks = container.querySelectorAll('.q-block');
+                        
+                        blocks.forEach((block, index) => {
+                            const qData = existingQuestions[index];
+                            if (qData) {
+                                block.querySelector('.q-title').value = qData.question || "";
+                                block.querySelector('.q-ans').value = qData.answer || "";
+                                
+                                // Ката варианттарды кайра бөлүштүрүү
+                                const wrongOpts = qData.options.filter(o => o !== qData.answer);
+                                block.querySelector('.q-opt1').value = wrongOpts[0] || "";
+                                block.querySelector('.q-opt2').value = wrongOpts[1] || "";
+                                block.querySelector('.q-opt3').value = wrongOpts[2] || "";
+                            }
+                        });
+                        statusSpan.innerText = "Мурунку сакталган 20 суроо жүктөлдү 🔄";
+                        statusSpan.className = "text-[10px] font-bold text-emerald-400";
+                    } else {
+                        // Эгер маалымат жок болсо талааларды тазалоо
+                        container.querySelectorAll('input').forEach(input => input.value = "");
+                        statusSpan.innerText = "Бул темага биринчи жолу түзүлүп жатат 🆕";
+                        statusSpan.className = "text-[10px] font-bold text-blue-400";
+                    }
+                });
+            });
+
+            // 4. Форма тастыкталганда (Submit) 20 суроону тең чогултуп Firebase'ге сактоо
+            document.getElementById('kyzKuumayQuestionForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const subject = subSelect.value;
+                const topic = topSelect.value;
+                
+                if (!subject || !topic) {
+                    alert("Сураныч, предметти жана теманы тандаңыз!");
+                    return;
+                }
+
+                let finalQuestionsArray = [];
+                const blocks = container.querySelectorAll('.q-block');
+                
+                blocks.forEach(block => {
+                    const qTitle = block.querySelector('.q-title').value.trim();
+                    const correctAns = block.querySelector('.q-ans').value.trim();
+                    const o1 = block.querySelector('.q-opt1').value.trim();
+                    const o2 = block.querySelector('.q-opt2').value.trim();
+                    const o3 = block.querySelector('.q-opt3').value.trim();
+
+                    // Оюндун ичинде варианттар туура аралашуусу үчүн бардык жооптор массивге жыйналат
+                    finalQuestionsArray.push({
+                        question: qTitle,
+                        options: [correctAns, o1, o2, o3], 
+                        answer: correctAns
+                    });
+                });
+
+                // Firebase'дин Realtime Database базасында 'kyzKuumayQuiz' түйүнүнө жазуу
+                database.ref('kyzKuumayQuiz/' + subject + '/' + topic).set({
+                    questions: finalQuestionsArray,
+                    authorUid: currentUserId,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP
+                }).then(() => {
+                    alert(`🎉 Ийгиликтүү! "${subject} -> ${topic}" үчүн 20 суроо Кыз Куумай оюнунун маалымат базасына сакталды. Мугалимдер жана окуучулар дароо ойной алышат!`);
+                }).catch(error => {
+                    alert("Базага сактоодо ката кетти: " + error.message);
+                });
+            });
         }
     </script>
 </body>
