@@ -52,21 +52,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if(infoTxt) {
         infoTxt.innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Багыт: <span class="text-white">${themeName}</span>`;
     }
-    // Аттардын стилин динамикалык түрдө чоңойтуу жана тунук кылуу
     adjustHorseStyles();
 });
 
+// Аттардын фонун АК кылуу, чоңойтуу жана реалдуу көрсөтүү
 function adjustHorseStyles() {
     const containers = ["jigit-track-container", "kyz-track-container"];
     containers.forEach(id => {
         const el = document.getElementById(id);
         if(el) {
-            el.className = "absolute transition-all duration-700 ease-out bg-transparent p-0";
-            el.style.width = "140px";  // Аттардын көлөмү чоңойтулду
-            el.style.height = "140px";
+            // Фон ТОЛУГУ МЕНЕН АК түскө өзгөрдү, бурчтары тегеректелди
+            el.className = "absolute transition-all duration-700 ease-out bg-white p-2 rounded-2xl shadow-lg border-2 border-amber-400 z-10 animate-fade-in";
+            el.style.width = "140px";  
+            el.style.height = "110px";
             const img = el.querySelector("img");
             if(img) {
-                img.className = "w-full h-full object-contain bg-transparent";
+                img.className = "w-full h-full object-contain bg-white";
             }
         }
     });
@@ -102,7 +103,7 @@ function createRoom() {
             jigitCurrentQuestion: 0,
             kyzCurrentQuestion: 0,
             status: "waiting",
-            turn: "jigit", // Оюнда биринчи кезек Жигитте башталат
+            turn: "jigit", 
             isExtraRound: false,
             questions: fetchedQuestions
         });
@@ -146,7 +147,7 @@ function switchToArena() {
     adjustHorseStyles();
 }
 
-// --- НЕГИЗГИ СИНХРОНДУУ ТУТАШУУ ЛИСТЕНЕРИ ---
+// --- СИНХРОНДУУ ТУТАШУУ ЛИСТЕНЕРИ ---
 function initRoomListener() {
     roomRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -158,7 +159,6 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        // Позицияларды тууралоо (Аттар чоңойгондуктан пайыздык чектер кыскартылды)
         let jigitLeft = 10 + (data.jigitScore * 4);
         let kyzLeft = 40 + (data.kyzScore * 3);
         if(jigitLeft > 85) jigitLeft = 85;
@@ -180,17 +180,16 @@ function initRoomListener() {
             
             let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
             
-            // Алмак-салмак кезекти текшерүү
+            // Алмак-салмак кезекти коопсуз башкаруу
             if (data.turn !== myRole) {
-                // Эгер кезек каршылаш тарапта болсо, күтүү экраны чыгат (Катып калуу болбойт)
-                clearInterval(timerInterval);
+                clearInterval(timerInterval); // Таймерди өчүрөбүз (Ката бербеши үчүн)
+                timerInterval = null;
                 document.getElementById("quiz-box-container").innerHTML = `
-                    <div class="text-center py-8 text-sm font-bold text-amber-400 animate-pulse">
-                        <i class="fas fa-hourglass-half mr-2"></i> Азыр каршылашыңыздын кезеги. Күтө туруңуз...
+                    <div class="text-center py-12 text-sm font-bold text-amber-400 animate-pulse">
+                        <i class="fas fa-hourglass-half fa-spin mr-2 text-lg"></i> Азыр каршылашыңыздын кезеги. Ал жооп бергенде сизге автоматтык түрдө өтөт...
                     </div>`;
                 currentQuestionIdx = myTargetIndex; 
             } else {
-                // Кезек бизге келгенде гана суроону жаңыдан көрсөтөбүз
                 if(myTargetIndex !== currentQuestionIdx || document.getElementById("quiz-box-container").querySelector(".animate-pulse") || !timerInterval) {
                     currentQuestionIdx = myTargetIndex;
                     showQuestion();
@@ -205,23 +204,21 @@ function initRoomListener() {
 
 function showQuestion() {
     if(currentQuestionIdx >= questions.length) {
-        clearInterval(timerInterval);
+        if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         document.getElementById("quiz-box-container").innerHTML = `
-            <div class="text-center py-8 text-sm font-bold text-gray-400">
-                <i class="fas fa-flag-checkered mr-2"></i> Сиз бардык суроолорго жооп бердиңиз! Жыйынтык күтүлүүдө...
+            <div class="text-center py-12 text-sm font-bold text-gray-400">
+                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз бардык суроолорго жооп бердиңиз! Каршылашыңызды күтүүдөсүз...
             </div>`;
         checkGameEndCondition();
         return;
     }
 
     isAnswered = false;
-    clearInterval(timerInterval);
+    if(timerInterval) { clearInterval(timerInterval); }
     timeLeft = 20;
-    document.getElementById("timer-lbl").innerText = `Убакыт: ${timeLeft}с`;
 
     let qData = questions[currentQuestionIdx];
     
-    // Кутучанын ичин кайрадан баскычтар форматына келтирүү
     document.getElementById("quiz-box-container").innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <span id="question-number-lbl" class="text-xs font-bold tracking-widest text-amber-400 uppercase">Суроо №${currentQuestionIdx + 1}</span>
@@ -229,19 +226,21 @@ function showQuestion() {
         </div>
         <h3 id="question-text" class="text-base font-bold text-white leading-relaxed mb-6">${qData.q}</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button id="opt-0" onclick="submitAnswer(0)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[0]}</button>
-            <button id="opt-1" onclick="submitAnswer(1)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[1]}</button>
-            <button id="opt-2" onclick="submitAnswer(2)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[2]}</button>
-            <button id="opt-3" onclick="submitAnswer(3)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[3]}</button>
+            <button id="opt-0" onclick="submitAnswer(0)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[0] || ''}</button>
+            <button id="opt-1" onclick="submitAnswer(1)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[1] || ''}</button>
+            <button id="opt-2" onclick="submitAnswer(2)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[2] || ''}</button>
+            <button id="opt-3" onclick="submitAnswer(3)" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">${qData.options[3] || ''}</button>
         </div>
     `;
 
     timerInterval = setInterval(() => {
         timeLeft--;
         const tLbl = document.getElementById("timer-lbl");
-        if(tLbl) tLbl.innerText = `Убакыт: ${timeLeft}с`;
+        if(tLbl) {
+            tLbl.innerText = `Убакыт: ${timeLeft}с`;
+        }
         if(timeLeft <= 0) {
-            clearInterval(timerInterval);
+            if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
             autoSubmitWrong();
         }
     }, 1000);
@@ -250,7 +249,7 @@ function showQuestion() {
 function submitAnswer(selectedIdx) {
     if(isAnswered) return;
     isAnswered = true;
-    clearInterval(timerInterval);
+    if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 
     let qData = questions[currentQuestionIdx];
     let chosenOption = qData.options[selectedIdx];
@@ -271,7 +270,7 @@ function submitAnswer(selectedIdx) {
     }
 
     setTimeout(() => {
-        let nextTurn = (myRole === "jigit") ? "kyz" : "jigit"; // Кезек кийинки кишиге өтөт
+        let nextTurn = (myRole === "jigit") ? "kyz" : "jigit"; 
         let updates = {};
         
         updates['turn'] = nextTurn;
@@ -320,7 +319,7 @@ function checkGameEndCondition() {
 }
 
 function endGame(data) {
-    clearInterval(timerInterval);
+    if(timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     if(gameMusic) gameMusic.pause();
     
     const modal = document.getElementById("result-modal");
