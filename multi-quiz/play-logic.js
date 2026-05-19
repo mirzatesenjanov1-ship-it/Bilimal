@@ -1,11 +1,10 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (КАЙТАЛАНМА ИНИЦИАЛИЗАЦИЯ ЖАНА РЕГИОН ОҢДОЛДУ) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (АБСОЛЮТТУК РЕГИОНДУК КӨЗӨМӨЛ ОҢДОЛДУ) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
 
 const firebaseConfig = {
     apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
-    // Сиздин анык Сингапур базаңыздын дареги:
     databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.appspot.com",
@@ -13,11 +12,12 @@ const firebaseConfig = {
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
-// Тиркемени бир гана жолу коопсуз ишке киргизүү
+// Инициализацияны текшерүү жана мажбурлап Сингапур базасына туташтыруу
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-const db = firebase.database();
+// Базанын URL дареги түздөн-түз чакырууга бекитилди
+const db = firebase.app().database("https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app");
 
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -36,7 +36,6 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Камдык суроолор (Эгер базадан суроо келбей калса автоматтык иштеген режим)
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
