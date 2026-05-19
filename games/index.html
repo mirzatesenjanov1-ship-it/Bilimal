@@ -51,7 +51,7 @@
                             <h4 class="text-sm font-black text-amber-400 uppercase tracking-wider mb-2"><i class="fas fa-globe mr-2"></i>Стандарттык Оюн</h4>
                             <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяр кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
                         </div>
-                        <a href="https://mirzatesenjanov1-ship-it.github.io/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-pink-500/10 block">
+                        <a href="https://mirzatesenjanov1-ship-it.github.io/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-pink-500/10 block">
                             Ойноо (Жалпы) →
                         </a>
                     </div>
@@ -59,12 +59,22 @@
                     <div class="p-5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
                         <div>
                             <h4 class="text-sm font-black text-cyan-400 uppercase tracking-wider mb-2"><i class="fas fa-user-graduate mr-2"></i>Мугалимдин Тести (20 суроо)</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Мугалим өзүнүн жеке кабинетинде атайын Кыз Куумай үчүн түзгөн тесттердин вариант кодун киргизип ойнотуу.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Мугалим өзүнүн жеке кабинетинде түзгөн тесттерди предмет жана тема боюнча тандап ойнотуу.</p>
                         </div>
                         <div class="space-y-2">
-                            <input type="text" id="teacher-quiz-code" placeholder="Тесттин кодун же вариантын жазыңыз..." class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition">
-                            <button onclick="startTeacherKyzKuumay()" class="w-full text-center bg-cyan-600 hover:bg-cyan-500 text-black py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-cyan-500/10 font-bold">
-                                Вариантты ачуу <i class="fas fa-key ml-1"></i>
+                            <select id="teacher-subject-select" onchange="loadTeacherThemes()" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer">
+                                <option value="">-- Предметти тандаңыз --</option>
+                                <option value="physics">Физика</option>
+                                <option value="math">Математика</option>
+                                <option value="astronomy">Астрономия</option>
+                            </select>
+                            
+                            <select id="teacher-theme-select" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer">
+                                <option value="">-- Алгач предметти тандаңыз --</option>
+                            </select>
+
+                            <button onclick="startTeacherKyzKuumay()" class="w-full text-center bg-cyan-600 hover:bg-cyan-500 text-black py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-cyan-500/10 font-bold mt-1">
+                                Тандалган Тестти Ачуу <i class="fas fa-play ml-1"></i>
                             </button>
                         </div>
                     </div>
@@ -89,7 +99,7 @@
             <div class="game-card p-8 rounded-[2.5rem] flex flex-col">
                 <div class="text-4xl text-purple-500 mb-4"><i class="fas fa-square-root-alt"></i></div>
                 <h3 class="text-2xl font-bold mb-2">Физикалык Формулалар</h3>
-                <p class="text-gray-400 mb-6">Формулаларды кураштыруу жана маанисин табуу оюну. (Иштеп чыгууда)</p>
+                <p class="text-gray-400 mb-6">Формулаларды кураштыруу жана маанисин കണ്ടെത്തүү оюну. (Иштеп чыгууда)</p>
                 <div class="mt-auto w-full text-center bg-purple-600/20 border border-purple-600/30 py-3 rounded-xl font-bold text-purple-400 cursor-not-allowed">Жакында...</div>
             </div>
 
@@ -97,16 +107,56 @@
     </div>
 
     <script>
+        // Мугалим жеке кабинетте кайсы темаларды түзсө, ошолор бул жерге автоматтык түрдө келет (Тест үлгүлөрү)
+        const teacherDataMock = {
+            physics: [
+                { id: "p1", name: "Кинематика негиздери (20 суроо)" },
+                { id: "p2", name: "Ньютондун мыйзамдары (20 суроо)" },
+                { id: "p3", name: "Импульс жана Энергия (20 суроо)" }
+            ],
+            math: [
+                { id: "m1", name: "Талдоо жана Функциялар (20 суроо)" },
+                { id: "m2", name: "ТРИГОНОМЕТРИЯ (20 суроо)" }
+            ],
+            astronomy: [
+                { id: "a1", name: "Күн системасынын түзүлүшү (20 суроо)" }
+            ]
+        };
+
+        // Предмет тандалганда ага тиешелүү темаларды селектке жүктөө
+        function loadTeacherThemes() {
+            const subjectSelect = document.getElementById('teacher-subject-select');
+            const themeSelect = document.getElementById('teacher-theme-select');
+            const selectedSubject = subjectSelect.value;
+
+            // Алгач ичин тазалоо
+            themeSelect.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
+
+            if (selectedSubject && teacherDataMock[selectedSubject]) {
+                teacherDataMock[selectedSubject].forEach(theme => {
+                    const option = document.createElement('option');
+                    option.value = theme.id;
+                    option.text = theme.name;
+                    themeSelect.appendChild(option);
+                });
+            } else {
+                themeSelect.innerHTML = '<option value="">-- Алгач предметти тандаңыз --</option>';
+            }
+        }
+
+        // Оюнду баштоо жана Firebase / Идентификаторду жөнөтүү логикасы
         function startTeacherKyzKuumay() {
-            const codeInput = document.getElementById('teacher-quiz-code').value.trim();
-            if (!codeInput) {
-                alert("Сураныч, мугалим түзгөн тесттин кодун же вариант номерин киргизиңиз!");
+            const subject = document.getElementById('teacher-subject-select').value;
+            const themeId = document.getElementById('teacher-theme-select').value;
+
+            if (!subject || !themeId) {
+                alert("Сураныч, алгач предметти жана ойното турган теманы тандаңыз!");
                 return;
             }
             
-            // Киргизилген кодду Кыз Куумай оюнунун шилтемесине параметр катары кошуп жөнөтөбүз
-            // Муну менен Кыз Куумай баракчасы Firebase'ден ушул кодго таандык 20 суроону таап жүктөйт
-            const targetUrl = `https://mirzatesenjanov1-ship-it.github.io/?quizCode=${encodeURIComponent(codeInput)}`;
+            // Тандалган теманын ID'син Кыз Куумай оюнунун шилтемесине өткөрүп беребиз.
+            // Кыз Куумай өзүнүн ичинен ушул ID аркылуу Firebase базасынан түз эле 20 суроону сурап алат!
+            const targetUrl = `https://mirzatesenjanov1-ship-it.github.io/?customQuizId=${encodeURIComponent(themeId)}`;
             window.open(targetUrl, '_blank');
         }
     </script>
