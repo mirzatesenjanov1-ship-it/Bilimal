@@ -20,7 +20,9 @@ const db = firebase.app().database("https://bilimal-org-default-rtdb.europe-west
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
 const subject = urlParams.get('subject') || 'physics';
-const theme = urlParams.get('theme') || 'kinematika_20';
+// ОҢДОО: Эгер шилтемеде 'kinematika_20' келсе, базадан 'kinematika' деп да издеп көрүү үчүн тазалайбыз
+let theme = urlParams.get('theme') || 'kinematika_20';
+let cleanTheme = theme.replace('_20', ''); 
 
 let myRole = ""; 
 let roomRef = null;
@@ -34,10 +36,28 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Камдык суроолор (базада көйгөй жаралса гана ишке кирет)
+// Чыныгы 20 камдык суроо (Базадан эч нерсе келбей калган учурда гана кепилдик катары иштейт)
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
-    { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
+    { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] },
+    { q: "Ылдамдануунун бирдиги кайсы?", a: "м/с²", options: ["м/с²", "м/с", "м*с", "км/саат"] },
+    { q: "Нерсенин кыймыл Траекториясы деген эмне?", a: "Кыймылда калтырган сызыгы", options: ["Кыймылда калтырган сызыгы", "Басып өткөн жолу", "Ылдамдыктын багыты", "Убакыттын аралыгы"] },
+    { q: "Материалдык чекит деп эмнени айтабыз?", a: "Өлчөмдөрүн эсепке албай койсо боло турган нерсе", options: ["Өлчөмдөрүн эсепке албай койсо боло турган нерсе", "Абдан кичинекей микроб", "Салмагы жок нерсе", "Формасы тегерек нерсе"] },
+    { q: "Бир калыптагы түз сызыктуу кыймылдын формуласы кайсы?", a: "S = V * t", options: ["S = V * t", "A = F * S", "P = m * g", "E = m * v"] },
+    { q: "Күчтүн өлчөө бирдиги кандай?", a: "Ньютон", options: ["Ньютон", "Джоуль", "Ватт", "Паскаль"] },
+    { q: "Нерсенин массасынын өлчөө бирдиги кайсы?", a: "кг", options: ["кг", "грамм", "Ньютон", "метр"] },
+    { q: "Эркин түшүүнүн ылдамдануусу (g) болжол менен канчага барабар?", a: "9.8 м/с²", options: ["9.8 м/с²", "5.5 м/с²", "12 м/с²", "0 м/с²"] },
+    { q: "Ньютондун үчүнчү мыйзамы кандай айтылат?", a: "Аракетке каршы аракет барабар", options: ["Аракетке каршы аракет барабар", "F = ma", "Инерция мыйзамы", "Бүткүл дүйнөлүк тартылуу"] },
+    { q: "Энергиянын өлчөө бирдиги кайсы?", a: "Джоуль", options: ["Джоуль", "Ватт", "Ньютон", "Вольт"] },
+    { q: "Кубаттуулуктун өлчөө бирдиги кандай?", a: "Ватт", options: ["Ватт", "Джоуль", "Ампер", "Ом"] },
+    { q: "Басымдын өлчөө бирдиги кайсы?", a: "Паскаль", options: ["Паскаль", "Ньютон", "Метр", "КГ"] },
+    { q: "Токтун күчүн өлчөөчү курал кандай аталат?", a: "Амперметр", options: ["Амперметр", "Вольтметр", "Спидометр", "Динамометр"] },
+    { q: "Каршылыктын өлчөө бирдиги кандай?", a: "Ом", options: ["Ом", "Вольт", "Ампер", "Ватт"] },
+    { q: "Чыңалуунун өлчөө бирдиги кайсы?", a: "Вольт", options: ["Вольт", "Ом", "Ампер", "Джоуль"] },
+    { q: "Импульстун формуласы кандай?", a: "P = m * v", options: ["P = m * v", "F = m * a", "E = m * g", "V = s / t"] },
+    { q: "Тыгыздыктын формуласы кайсы?", a: "p = m / V", options: ["p = m / V", "F = m * a", "S = v * t", "m = p * V"] },
+    { q: "Жарыктын боштуктагы (вакуумдагы) ылдамдыгы канча?", a: "300 000 км/с", options: ["300 000 км/с", "150 000 км/с", "340 м/с", "1000 км/саат"] },
+    { q: "Сызыктуу ылдамдык менен бурчтук ылдамдыктын байланыш формуласы?", a: "V = w * R", options: ["V = w * R", "W = F * S", "P = m * g", "F = m * a"] }
 ];
 
 const menuMusic = document.getElementById("bg-music-menu");
@@ -57,24 +77,17 @@ document.addEventListener("DOMContentLoaded", () => {
     applyWhiteTrackBackground(); 
 });
 
-// ОҢДОО: Чоң алкактын (рамканын) ичин бүт бойдон таза аппак фон кылуу функциясы
 function applyWhiteTrackBackground() {
-    // Аттар жарышкан чоң негизги контейнерди табабыз
     const trackWrapper = document.querySelector(".border-2.border-amber-500\\/30");
     if (trackWrapper) {
-        trackWrapper.style.backgroundColor = "#ffffff"; // Ичи бүт бойдон ак
-        trackWrapper.style.backgroundImage = "none";    // Башка кошумча караңгы фондорду өчүрүү
-        trackWrapper.style.borderColor = "#fbbf24";     // Алтын түстөгү чек арасы даана көрүнөт
+        trackWrapper.style.backgroundColor = "#ffffff"; 
+        trackWrapper.style.backgroundImage = "none";    
+        trackWrapper.style.borderColor = "#fbbf24";     
     }
-    
-    // Жарыш сызыктары ак фонддо жакшы көрүнүшү үчүн боз түскө тууралайбыз
     const tracks = document.querySelectorAll(".border-b-2.border-dashed");
-    tracks.forEach(track => {
-        track.style.borderColor = "#e2e8f0"; 
-    });
+    tracks.forEach(track => { track.style.borderColor = "#e2e8f0"; });
 }
 
-// Аттардын ак кутучаларын орнотуу
 function adjustHorseStyles() {
     const containers = ["jigit-track-container", "kyz-track-container"];
     containers.forEach(id => {
@@ -84,9 +97,7 @@ function adjustHorseStyles() {
             el.style.width = "140px";  
             el.style.height = "110px";
             const img = el.querySelector("img");
-            if(img) {
-                img.className = "w-full h-full object-contain bg-white";
-            }
+            if(img) img.className = "w-full h-full object-contain bg-white";
         }
     });
 }
@@ -100,12 +111,19 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // КАЛЫБЫНА КЕЛТИРИЛДИ: Базадан тандалган теманын бардык 20 суроосун толук тартат
+    // ОҢДОО: Сиз жеке кабинеттен жөнөткөн суроолорду 'theme' же 'cleanTheme' аталыштары менен коштоп текшерип тартат
     db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
+        let fetchedQuestions = snapshot.val();
+        if(!fetchedQuestions) {
+            return db.ref(`quizzes/${subject}/${cleanTheme}`).once('value');
+        }
+        return snapshot;
+    }).then((snapshot) => {
         let fetchedQuestions = snapshot.val();
         if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
             fetchedQuestions = Object.values(fetchedQuestions);
         }
+        // Эгер жеке кабинеттен жиберген сурооңуз базадан такыр табылбай калса, 20 камдык суроо иштейт
         if(!fetchedQuestions || fetchedQuestions.length === 0) {
             fetchedQuestions = mockQuestions; 
         }
@@ -123,7 +141,6 @@ function createRoom() {
             kyzCurrentQuestion: 0,
             status: "waiting",
             turn: "jigit", 
-            isExtraRound: false,
             questions: fetchedQuestions
         });
     }).then(() => {
@@ -131,7 +148,16 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error(err);
-        alert("Ката кетти, кайра аракет кылыңыз.");
+        questions = mockQuestions;
+        roomRef.set({
+            roomCode: roomCode, subject: subject, theme: theme,
+            jigitName: playerName, kyzName: "", jigitScore: 0, kyzScore: 0,
+            jigitCurrentQuestion: 0, kyzCurrentQuestion: 0, status: "waiting",
+            turn: "jigit", questions: mockQuestions
+        }).then(() => {
+            initRoomListener();
+            switchToArena();
+        });
     });
 }
 
@@ -183,7 +209,6 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        // 20 суроого ылайыкталган кадамдык аралыктар
         let totalQs = questions.length || 20;
         let stepPercent = 70 / totalQs; 
 
@@ -199,7 +224,7 @@ function initRoomListener() {
             document.getElementById("game-status-text").innerText = "Кыздын кошулушун күтүүдө...";
         } 
         else if(data.status === "playing") {
-            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ ЖАРЫШ УЛАНУУДА" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
+            document.getElementById("game-status-text").innerText = "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
             
             if(menuMusic) menuMusic.pause();
             if(gameMusic && gameMusic.paused) { gameMusic.play().catch(()=>{}); }
@@ -225,7 +250,7 @@ function initRoomListener() {
         else if(data.status === "finished") {
             endGame(data);
         }
-        applyWhiteTrackBackground(); // Жаңы маалымат келгенде фондун аппак бойдон сакталышын көзөмөлдөйт
+        applyWhiteTrackBackground(); 
     });
 }
 
@@ -263,9 +288,7 @@ function showQuestion() {
     timerInterval = setInterval(() => {
         timeLeft--;
         const tLbl = document.getElementById("timer-lbl");
-        if(tLbl) {
-            tLbl.innerText = `Убакыт: ${timeLeft}с`;
-        }
+        if(tLbl) tLbl.innerText = `Убакыт: ${timeLeft}с`;
         if(timeLeft <= 0) {
             if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
             autoSubmitWrong();
@@ -315,11 +338,9 @@ function submitAnswer(selectedIdx) {
 function autoSubmitWrong() {
     isAnswered = true;
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    
     let nextTurn = (myRole === "jigit") ? "kyz" : "jigit";
     let updates = {};
     updates['turn'] = nextTurn;
-    
     if(myRole === "jigit") { updates['jigitCurrentQuestion'] = currentQuestionIdx + 1; } 
     else { updates['kyzCurrentQuestion'] = currentQuestionIdx + 1; }
     roomRef.update(updates);
@@ -329,21 +350,8 @@ function checkGameEndCondition() {
     if(!currentRoomData) return;
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
         if(myRole === "jigit") {
-            if(currentRoomData.jigitScore === currentRoomData.kyzScore && !currentRoomData.isExtraRound) {
-                let extraQs = [
-                    { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] }
-                ];
-                roomRef.update({
-                    status: "playing",
-                    isExtraRound: true,
-                    turn: "jigit",
-                    jigitCurrentQuestion: 0, 
-                    kyzCurrentQuestion: 0,   
-                    questions: extraQs       
-                });
-            } else {
-                roomRef.update({ status: "finished" });
-            }
+            // ОҢДОО: Тең чыгуу логикасы толугу менен өчүрүлдү. Түз эле оюнду бүтүрүүгө багытталат.
+            roomRef.update({ status: "finished" });
         }
     }
 }
@@ -359,12 +367,11 @@ function endGame(data) {
         document.getElementById("res-jigit-score").innerText = data.jigitScore;
         document.getElementById("res-kyz-score").innerText = data.kyzScore;
 
+        // ОҢДОО: Жигиттин упайы ашып кетсе гана жеңет. Тең чыкса же Кыздын упайы көп болсо - Кыз качып кеткен болот (Жигит утулат).
         if(data.jigitScore > data.kyzScore) {
             msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
-        } else if(data.kyzScore > data.jigitScore) {
-            msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
         } else {
-            msgLbl.innerHTML = `Жарыш аяктады! Кууган жигит менен качкан кыз тең чыгышты! 🤝`;
+            msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
         }
         modal.classList.remove("hidden");
     }
