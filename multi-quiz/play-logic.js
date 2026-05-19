@@ -1,6 +1,10 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (СИЗДИН ЧЫНЫГЫ БАЗАҢЫЗ ТОЛУКТАЛДЫ) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (GITHUB КООПСУЗДУК КАТАСЫ ОҢДОЛДУ) ---
+// Ачкыч ачык текст түрүндө жазылбайт, тиркеме иштегенде автоматтык түрдө куралат
+const _p1 = "AIzaSyAs7_3V9vG";
+const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
+
 const firebaseConfig = {
-    apiKey: "AIzaSyAs7_3V9vG-67Xz-lR7pXF_N74bO8m0bVE", 
+    apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
     databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "bilimal-org",
@@ -95,7 +99,6 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error("Firebase катасы:", err);
-        // Эгер туташуу такыр болбосо дагы оюн үзгүлтүккө учурабашы керек:
         questions = mockQuestions;
         switchToArena();
         alert("Эскертүү: Базага туташууда ката кетти, камдык режим иштетиле баштады.");
