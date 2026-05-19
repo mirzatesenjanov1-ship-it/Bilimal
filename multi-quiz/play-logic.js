@@ -1,13 +1,12 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ ---
-// Өзүңүздүн Firebase долбоордун маалыматтарын ушул жерге жазыңыз
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (СИЗДИН ЧЫНЫГЫ БАЗАҢЫЗ ТОЛУКТАЛДЫ) ---
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAs7_3V9vG-67Xz-lR7pXF_N74bO8m0bVE", 
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.appspot.com",
+    messagingSenderId: "1039475820194",
+    appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
 // Проектти ишке киргизүү
@@ -16,7 +15,7 @@ if (!firebase.apps.length) {
 }
 const db = firebase.database();
 
-// --- ГЛОВАЛДЫК ӨЗГӨРМӨЛӨР ---
+// --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
 const subject = urlParams.get('subject') || 'physics';
 const theme = urlParams.get('theme') || 'kinematika_20';
@@ -33,6 +32,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
+// Камдык суроолор (Эгер базадан суроо келбей калса автоматтык түрдө ушул ишке кирет)
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -41,7 +41,7 @@ const mockQuestions = [
 const menuMusic = document.getElementById("bg-music-menu");
 const gameMusic = document.getElementById("bg-music-game");
 
-// Музыканы иштетүү
+// Музыканы колдонуучу экранды бир жолу басканда иштетүү
 document.body.addEventListener('click', () => {
     if(menuMusic && menuMusic.paused && !roomRef) { menuMusic.play().catch(()=>{}); }
 }, { once: true });
@@ -60,12 +60,18 @@ function createRoom() {
     if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
     
     myRole = "jigit";
-    roomCode = Math.floor(100 + Math.random() * 900).toString(); // 3 орундуу коопсуз код
+    roomCode = Math.floor(100 + Math.random() * 900).toString(); // 3 орундуу код
     roomRef = db.ref('rooms/' + roomCode);
     
     db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
         let fetchedQuestions = snapshot.val();
-        if(!fetchedQuestions || !Array.isArray(fetchedQuestions)) {
+        
+        // Эгер snapshot массив эмес, объект болуп келсе аны массивге айландырабыз
+        if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
+            fetchedQuestions = Object.values(fetchedQuestions);
+        }
+        
+        if(!fetchedQuestions || !Array.isArray(fetchedQuestions) || fetchedQuestions.length === 0) {
             fetchedQuestions = mockQuestions; 
         }
         questions = fetchedQuestions;
@@ -89,7 +95,10 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error("Firebase катасы:", err);
-        alert("Firebase маалымат базасына туташууда ката кетти. Сураныч Config текшериңиз!");
+        // Эгер туташуу такыр болбосо дагы оюн үзгүлтүккө учурабашы керек:
+        questions = mockQuestions;
+        switchToArena();
+        alert("Эскертүү: Базага туташууда ката кетти, камдык режим иштетиле баштады.");
     });
 }
 
@@ -124,7 +133,7 @@ function joinRoom() {
     }).then(() => {
         initRoomListener();
         switchToArena();
-    }).catch(err => alert("Кошулууда ката кетти!"));
+    }).catch(err => alert("Бөлмөгө кошулууда ката кетти!"));
 }
 
 function switchToArena() {
@@ -133,6 +142,7 @@ function switchToArena() {
     document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
 }
 
+// РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ ЖАНА АТТАРДЫ ЖЫЛДЫРУУ
 function initRoomListener() {
     roomRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -144,8 +154,13 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
+        // Динамикалык кадамдар (Жигиттики чоңураак * 4.2, Кыздыкы * 2.5)
         let jigitLeft = 10 + (data.jigitScore * 4.2);
         let kyzLeft = 45 + (data.kyzScore * 2.5);
+
+        // Экрандан чыгып кетпеши үчүн 90% менен чектөө
+        if(jigitLeft > 90) jigitLeft = 90;
+        if(kyzLeft > 90) kyzLeft = 90;
 
         document.getElementById("jigit-track-container").style.left = `${jigitLeft}%`;
         document.getElementById("kyz-track-container").style.left = `${kyzLeft}%`;
@@ -194,9 +209,11 @@ function showQuestion() {
 
     for(let i=0; i<4; i++) {
         let btn = document.getElementById(`opt-${i}`);
-        btn.innerText = qData.options[i];
-        btn.className = "option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all";
-        btn.disabled = false;
+        if (btn) {
+            btn.innerText = qData.options[i];
+            btn.className = "option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all";
+            btn.disabled = false;
+        }
     }
 
     timerInterval = setInterval(() => {
@@ -219,13 +236,18 @@ function submitAnswer(selectedIdx) {
     let isCorrect = (chosenOption === qData.a);
 
     let btn = document.getElementById(`opt-${selectedIdx}`);
-    if(isCorrect) {
-        btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-emerald-600 text-black";
-    } else {
-        btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-rose-600 text-white";
+    if(btn) {
+        if(isCorrect) {
+            btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-emerald-600 text-black";
+        } else {
+            btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-rose-600 text-white";
+        }
     }
 
-    for(let i=0; i<4; i++) { document.getElementById(`opt-${i}`).disabled = true; }
+    for(let i=0; i<4; i++) { 
+        let b = document.getElementById(`opt-${i}`);
+        if(b) b.disabled = true; 
+    }
 
     setTimeout(() => {
         let updates = {};
@@ -253,8 +275,10 @@ function checkGameEndCondition() {
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
         if(myRole === "jigit") {
             if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
+                // Кошумча раунддун суроолору
                 let extraQs = [
-                    { q: "КОШУМЧА РАУНД: Күчтүн бирдиги эмне?", a: "Ньютон", options: ["Ньютон", "Джоуль", "Паскаль", "Ватт"] }
+                    { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] },
+                    { q: "КОШУМЧА РАУНД: Нурдун чагылуу бурчу түшүү бурчуна кандай болот?", a: "барабар", options: ["барабар", "чоң", "кичине", "каалагандай"] }
                 ];
                 let newQuestionSet = questions.concat(extraQs);
                 roomRef.update({
@@ -276,13 +300,15 @@ function endGame(data) {
     const modal = document.getElementById("result-modal");
     const msgLbl = document.getElementById("result-message-text");
     
-    document.getElementById("res-jigit-score").innerText = data.jigitScore;
-    document.getElementById("res-kyz-score").innerText = data.kyzScore;
+    if(modal && msgLbl) {
+        document.getElementById("res-jigit-score").innerText = data.jigitScore;
+        document.getElementById("res-kyz-score").innerText = data.kyzScore;
 
-    if(data.jigitScore > data.kyzScore) {
-        msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
-    } else {
-        msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
+        if(data.jigitScore > data.kyzScore) {
+            msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
+        } else {
+            msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
+        }
+        modal.classList.remove("hidden");
     }
-    modal.classList.remove("hidden");
 }
