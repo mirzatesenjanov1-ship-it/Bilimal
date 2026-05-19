@@ -34,7 +34,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Базадан суроо жүктөлбөй калса колдонулуучу камдык суроолор
+// Камдык суроолор (базада көйгөй жаралса гана ишке кирет)
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -57,21 +57,24 @@ document.addEventListener("DOMContentLoaded", () => {
     applyWhiteTrackBackground(); 
 });
 
-// Жарыш майданынын фонун таза ак түстө кылуу
+// ОҢДОО: Чоң алкактын (рамканын) ичин бүт бойдон таза аппак фон кылуу функциясы
 function applyWhiteTrackBackground() {
+    // Аттар жарышкан чоң негизги контейнерди табабыз
     const trackWrapper = document.querySelector(".border-2.border-amber-500\\/30");
     if (trackWrapper) {
-        trackWrapper.style.backgroundColor = "#ffffff";
-        trackWrapper.style.borderColor = "#fbbf24"; 
+        trackWrapper.style.backgroundColor = "#ffffff"; // Ичи бүт бойдон ак
+        trackWrapper.style.backgroundImage = "none";    // Башка кошумча караңгы фондорду өчүрүү
+        trackWrapper.style.borderColor = "#fbbf24";     // Алтын түстөгү чек арасы даана көрүнөт
     }
     
+    // Жарыш сызыктары ак фонддо жакшы көрүнүшү үчүн боз түскө тууралайбыз
     const tracks = document.querySelectorAll(".border-b-2.border-dashed");
     tracks.forEach(track => {
-        track.style.borderColor = "#cbd5e1"; 
+        track.style.borderColor = "#e2e8f0"; 
     });
 }
 
-// Аттардын кутучаларын ак кылуу жана чоңойтуу
+// Аттардын ак кутучаларын орнотуу
 function adjustHorseStyles() {
     const containers = ["jigit-track-container", "kyz-track-container"];
     containers.forEach(id => {
@@ -97,7 +100,7 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // КАЛЫБЫНА КЕЛТИРИЛДИ: Базадан тандалган теманын 20 суроосун тең тартат
+    // КАЛЫБЫНА КЕЛТИРИЛДИ: Базадан тандалган теманын бардык 20 суроосун толук тартат
     db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
         let fetchedQuestions = snapshot.val();
         if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
@@ -180,9 +183,9 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        // Кадамдардын аралыгы 20 суроого ылайыкталып кайрадан туураланды
+        // 20 суроого ылайыкталган кадамдык аралыктар
         let totalQs = questions.length || 20;
-        let stepPercent = 70 / totalQs; // Экрандын 70% аянтын колдонуу үчүн
+        let stepPercent = 70 / totalQs; 
 
         let jigitLeft = 10 + (data.jigitScore * stepPercent); 
         let kyzLeft = 40 + (data.kyzScore * stepPercent);
@@ -222,7 +225,7 @@ function initRoomListener() {
         else if(data.status === "finished") {
             endGame(data);
         }
-        applyWhiteTrackBackground(); 
+        applyWhiteTrackBackground(); // Жаңы маалымат келгенде фондун аппак бойдон сакталышын көзөмөлдөйт
     });
 }
 
