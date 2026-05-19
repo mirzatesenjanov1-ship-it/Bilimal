@@ -1,8 +1,6 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (РЕГИОНДУ КАТУУ СЕКЕ САКТОО) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (ЕВРОПА РЕГИОНУ КАТУУ КӨРСӨТҮЛДҮ) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
-
-// Маанилүү: Скриншоттогу катаны жоюу үчүн Европа жана Азия региондорун толугу менен бириктирип, шилтемени түз беребиз
 const DB_URL = "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app";
 
 const firebaseConfig = {
@@ -15,7 +13,6 @@ const firebaseConfig = {
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
-// Инициализацияны так жасоо
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -25,7 +22,10 @@ const db = firebase.app().database(DB_URL);
 const urlParams = new URLSearchParams(window.location.search);
 const subject = urlParams.get('subject') || 'physics';
 let theme = urlParams.get('theme') || 'kinematika_20';
+
+// Аталыштар чаташпашы үчүн мүмкүн болгон бардык варианттарды даярдайбыз
 let cleanTheme = theme.replace('_20', ''); 
+let spaceTheme = theme.replace('_', ' ');
 
 let myRole = ""; 
 let roomRef = null;
@@ -81,7 +81,7 @@ function adjustHorseStyles() {
     });
 }
 
-// Мугалимдин жеке кабинетинен келген маалыматты ийкемдүү массивге айландыруу
+// Базадан келген маалымат узун текст же объект түрүндө болсо да тазалап массивге айландыруучу фильтр
 function parseFirebaseQuestions(rawData) {
     if (!rawData) return [];
     
@@ -90,6 +90,7 @@ function parseFirebaseQuestions(rawData) {
     }
     
     let list = Object.values(rawData);
+    // Эгер ички катмарда дагы объект болсо (мисалы, мугалимдер татаал түзүмдө сактаса)
     if (list.length === 1 && typeof list[0] === 'object' && !list[0].q) {
         list = Object.values(list[0]);
     }
@@ -107,24 +108,45 @@ function parseFirebaseQuestions(rawData) {
 // --- БӨЛМӨ ТҮЗҮҮ (ЖИГИТ) ---
 function createRoom() {
     playerName = document.getElementById("player-name").value.trim();
-    if (!playerName) { alert("Сураныч, алгач атыңыззы жазыңыз!"); return; }
+    if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
     
     myRole = "jigit";
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // Эки жолду тең Европа региону аркылуу текшерүү
-    db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
-        let data = snapshot.val();
-        if (!data) {
-            return db.ref(`quizzes/${subject}/${cleanTheme}`).once('value');
+    // КҮЧӨТҮЛГӨН ИЗДӨӨ: Базадан теманы 4 башка вариантта тең издейт (синхрондошпой калууну толук жоюу үчүн)
+    let paths = [
+        `quizzes/${subject}/${theme}`,
+        `quizzes/${subject}/${cleanTheme}`,
+        `quizzes/${subject}/${spaceTheme}`,
+        `quizzes/${subject}` // Түз эле предметтин ичинен издеп көрүү
+    ];
+
+    let checkPath = (index) => {
+        if (index >= paths.length) {
+            // Эгер эч бир жолдон табылбаса, базадагы жеткиликтүү биринчи теманы алып улантуу (оюн үзүлбөшү үчүн)
+            return db.ref(`quizzes/${subject}`).once('value').then(snap => {
+                let allData = snap.val();
+                if (allData) {
+                    let firstKey = Object.keys(allData)[0];
+                    return parseFirebaseQuestions(allData[firstKey]);
+                }
+                return [];
+            });
         }
-        return snapshot;
-    }).then((snapshot) => {
-        let fetchedQuestions = parseFirebaseQuestions(snapshot.val());
-        
+
+        return db.ref(paths[index]).once('value').then(snapshot => {
+            let parsed = parseFirebaseQuestions(snapshot.val());
+            if (parsed && parsed.length > 0) {
+                return parsed; // Табылды!
+            }
+            return checkPath(index + 1); // Кийинки жолду текшерүү
+        });
+    };
+
+    checkPath(0).then((fetchedQuestions) => {
         if (!fetchedQuestions || fetchedQuestions.length === 0) {
-            alert("Ката: Бул тема боюнча жеке баракчада тест табылган жок! Мугалимдин кабинетинен туура сакталганын текшериңиз.");
+            alert("Ката: Бул предмет боюнча базада эч кандай тест табылган жок. Жеке кабинеттен кайра сактап көрүңүз.");
             return;
         }
         
@@ -147,22 +169,10 @@ function createRoom() {
         });
     }).then(() => {
         initRoomListener();
-        startLiveQuizSync(); 
         switchToArena();
     }).catch(err => {
         console.error(err);
         alert("Бөлмө түзүүдө ката кетти. Кайра аракет кылыңыз.");
-    });
-}
-
-function startLiveQuizSync() {
-    db.ref(`quizzes/${subject}/${theme}`).on('value', (snapshot) => {
-        let list = parseFirebaseQuestions(snapshot.val());
-        if (list.length > 0 && roomRef) { questions = list; roomRef.update({ questions: list }); }
-    });
-    db.ref(`quizzes/${subject}/${cleanTheme}`).on('value', (snapshot) => {
-        let list = parseFirebaseQuestions(snapshot.val());
-        if (list.length > 0 && roomRef) { questions = list; roomRef.update({ questions: list }); }
     });
 }
 
@@ -214,7 +224,6 @@ function initRoomListener() {
             questions = parseFirebaseQuestions(data.questions);
         }
 
-        // КАТАНЫ АЛДЫН АЛУУ: Элементтер бар экенин текшерип анан жазуу (innerText null катасын жоюу)
         const jName = document.getElementById("jigit-name-lbl");
         const kName = document.getElementById("kyz-name-lbl");
         const jScore = document.getElementById("jigit-score");
