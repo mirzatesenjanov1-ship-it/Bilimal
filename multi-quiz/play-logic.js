@@ -34,7 +34,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// ОҢДОО: Негизги оюн үчүн 2 эле тесттик суроо даярдалды
+// Базадан суроо жүктөлбөй калса колдонулуучу камдык суроолор
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -54,26 +54,24 @@ document.addEventListener("DOMContentLoaded", () => {
         infoTxt.innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Багыт: <span class="text-white">${themeName}</span>`;
     }
     adjustHorseStyles();
-    applyWhiteTrackBackground(); // ОҢДОО: Фонду ак кылуу функциясы
+    applyWhiteTrackBackground(); 
 });
 
-// ОҢДОО: Аттар чапкан жалпы оюн талаасынын фонун ак түстө кылуу
+// Жарыш майданынын фонун таза ак түстө кылуу
 function applyWhiteTrackBackground() {
-    // Аттар жайгашкан негизги чоң контейнер (чек арасы бар караңгы блок)
     const trackWrapper = document.querySelector(".border-2.border-amber-500\\/30");
     if (trackWrapper) {
         trackWrapper.style.backgroundColor = "#ffffff";
-        trackWrapper.style.borderColor = "#fbbf24"; // Көмөкчү алтын түстөгү чек ара
+        trackWrapper.style.borderColor = "#fbbf24"; 
     }
     
-    // Жарыш тректеринин өздөрүнүн сызыктарын ак фонддо даана көрүнө тургандай кылуу
     const tracks = document.querySelectorAll(".border-b-2.border-dashed");
     tracks.forEach(track => {
-        track.style.borderColor = "#cbd5e1"; // Боз түстөгү пунктир сызык
+        track.style.borderColor = "#cbd5e1"; 
     });
 }
 
-// Аттардын кутучаларын ак кылуу жана тегиздөө
+// Аттардын кутучаларын ак кылуу жана чоңойтуу
 function adjustHorseStyles() {
     const containers = ["jigit-track-container", "kyz-track-container"];
     containers.forEach(id => {
@@ -99,23 +97,32 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // ОҢДОО: 20 суроонун ордуна түз эле 2 суроодон турган mockQuestions топтомун коёбуз
-    questions = mockQuestions;
+    // КАЛЫБЫНА КЕЛТИРИЛДИ: Базадан тандалган теманын 20 суроосун тең тартат
+    db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
+        let fetchedQuestions = snapshot.val();
+        if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
+            fetchedQuestions = Object.values(fetchedQuestions);
+        }
+        if(!fetchedQuestions || fetchedQuestions.length === 0) {
+            fetchedQuestions = mockQuestions; 
+        }
+        questions = fetchedQuestions;
 
-    roomRef.set({
-        roomCode: roomCode,
-        subject: subject,
-        theme: theme,
-        jigitName: playerName,
-        kyzName: "",
-        jigitScore: 0,
-        kyzScore: 0,
-        jigitCurrentQuestion: 0,
-        kyzCurrentQuestion: 0,
-        status: "waiting",
-        turn: "jigit", 
-        isExtraRound: false,
-        questions: mockQuestions
+        return roomRef.set({
+            roomCode: roomCode,
+            subject: subject,
+            theme: theme,
+            jigitName: playerName,
+            kyzName: "",
+            jigitScore: 0,
+            kyzScore: 0,
+            jigitCurrentQuestion: 0,
+            kyzCurrentQuestion: 0,
+            status: "waiting",
+            turn: "jigit", 
+            isExtraRound: false,
+            questions: fetchedQuestions
+        });
     }).then(() => {
         initRoomListener();
         switchToArena();
@@ -141,7 +148,6 @@ function joinRoom() {
         let data = snapshot.val();
         if(data.kyzName !== "") { return alert("Бул бөлмө толуп калган!"); }
 
-        // ОҢДОО: 2 суроолуу топтомду колдонуу
         questions = data.questions || mockQuestions;
         return roomRef.update({ kyzName: playerName, status: "playing" });
     }).then(() => {
@@ -155,7 +161,7 @@ function switchToArena() {
     document.getElementById("game-arena").classList.remove("hidden");
     document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
     adjustHorseStyles();
-    applyWhiteTrackBackground(); // Өткөндө дагы фондун ак экенин камсыздоо
+    applyWhiteTrackBackground(); 
 }
 
 // --- СИНХРОНДУУ ТУТАШУУ ЛИСТЕНЕРИ ---
@@ -174,8 +180,12 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        let jigitLeft = 10 + (data.jigitScore * 25); // Кадам аралыгы 2 суроого ылайыкталып чоңойтулду
-        let kyzLeft = 40 + (data.kyzScore * 20);
+        // Кадамдардын аралыгы 20 суроого ылайыкталып кайрадан туураланды
+        let totalQs = questions.length || 20;
+        let stepPercent = 70 / totalQs; // Экрандын 70% аянтын колдонуу үчүн
+
+        let jigitLeft = 10 + (data.jigitScore * stepPercent); 
+        let kyzLeft = 40 + (data.kyzScore * stepPercent);
         if(jigitLeft > 85) jigitLeft = 85;
         if(kyzLeft > 85) kyzLeft = 85;
 
@@ -212,7 +222,7 @@ function initRoomListener() {
         else if(data.status === "finished") {
             endGame(data);
         }
-        applyWhiteTrackBackground(); // Маалымат жаңыланган сайын ак фонду сактап туруу
+        applyWhiteTrackBackground(); 
     });
 }
 
@@ -222,7 +232,7 @@ function showQuestion() {
     if(currentQuestionIdx >= questions.length) {
         document.getElementById("quiz-box-container").innerHTML = `
             <div class="text-center py-12 text-sm font-bold text-gray-400">
-                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз ушул раунддагы бардык суроолорго жооп бердиңиз! Оюн жыйынтыгын күтүүдөсүз...
+                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз бардык суроолорго жооп бердиңиз! Оюн жыйынтыгын күтүүдөсүз...
             </div>`;
         checkGameEndCondition();
         return;
