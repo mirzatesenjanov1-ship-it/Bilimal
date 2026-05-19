@@ -35,10 +35,6 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Ар бир мугалимдин өзүнүн суроолорун угуп туруу үчүн Firebase шилтемелери
-let quizRef1 = db.ref(`quizzes/${subject}/${theme}`);
-let quizRef2 = db.ref(`quizzes/${subject}/${cleanTheme}`);
-
 const menuMusic = document.getElementById("bg-music-menu");
 const gameMusic = document.getElementById("bg-music-game");
 
@@ -81,7 +77,35 @@ function adjustHorseStyles() {
     });
 }
 
-// --- БӨЛМӨ ТҮЗҮҮ (ЖИГИТ / МУГАЛИМДИН ТЕСТИ) ---
+// КҮЧӨТҮЛГӨН ОҢДОО: Мугалимдин жеке кабинетинен келген каалаган форматтагы (объект же массив) суроолорду тазалап иретөө функциясы
+function parseFirebaseQuestions(rawData) {
+    if (!rawData) return [];
+    
+    // Эгер түз эле массив болсо
+    if (Array.isArray(rawData)) {
+        return rawData.filter(q => q && (q.q || q.question));
+    }
+    
+    // Эгер объект болсо (мугалимдердин IDлери же кокустук ачкычтар менен сакталса)
+    let list = Object.values(rawData);
+    
+    // Эгер ички катмарда дагы объект болуп кетсе (мисалы: { questions: { ... } })
+    if (list.length === 1 && typeof list[0] === 'object' && !list[0].q) {
+        list = Object.values(list[0]);
+    }
+    
+    // Суроолордун талааларын бирдей стандартка келтирүү (q: суроо, a: жооп, options: варианттар)
+    return list.map(item => {
+        if (!item) return null;
+        return {
+            q: item.q || item.question || "",
+            a: item.a || item.answer || item.correct || "",
+            options: item.options || item.variants || [item.a, item.b, item.c, item.d].filter(Boolean)
+        };
+    }).filter(q => q.q && q.options && q.options.length > 0);
+}
+
+// --- БӨЛМӨ ТҮЗҮҮ (ЖИГИТ) ---
 function createRoom() {
     playerName = document.getElementById("player-name").value.trim();
     if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
@@ -90,21 +114,18 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // ОҢДОО: Жеке кабинеттен жөнөтүлгөн суроолорду реалдуу убакытта синхрондоштуруу
-    quizRef1.once('value').then((snapshot) => {
-        let fetchedQuestions = snapshot.val();
-        if(!fetchedQuestions) {
-            return quizRef2.once('value');
+    // Жеке кабинеттеги эки мүмкүн болгон жолду тең текшерип суроону синхрондуу тартабыз
+    db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
+        let data = snapshot.val();
+        if (!data) {
+            return db.ref(`quizzes/${subject}/${cleanTheme}`).once('value');
         }
         return snapshot;
     }).then((snapshot) => {
-        let fetchedQuestions = snapshot.val();
-        if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
-            fetchedQuestions = Object.values(fetchedQuestions);
-        }
+        let fetchedQuestions = parseFirebaseQuestions(snapshot.val());
         
-        if(!fetchedQuestions || fetchedQuestions.length === 0) {
-            alert("Ката: Бул тема боюнча жеке баракчада тест табылган жок! Сураныч, кабинеттен тестти туура сактаганыңызды текшериңиз.");
+        if (!fetchedQuestions || fetchedQuestions.length === 0) {
+            alert("Ката: Жеке кабинеттен жиберилген тема табылган жок же түзүмү туура эмес! Базаңызды текшериңиз.");
             return;
         }
         
@@ -127,31 +148,24 @@ function createRoom() {
         });
     }).then(() => {
         initRoomListener();
-        startLiveQuizSync(); // Мугалимдердин жаңы суроолорун реалдуу убакытта угуу
+        startLiveQuizSync(); // Мугалимдердин жеке кабинетин түз угуу режимин иштетүү
         switchToArena();
     }).catch(err => {
         console.error(err);
-        alert("Бөлмө түзүүдө ката кетти.");
+        alert("Бөлмө түзүүдө ката кетти. Кайра аракет кылыңыз.");
     });
 }
 
-// ОҢДОО: Мугалим жеке кабинеттен тестти өзгөртсө, оюндан чыкпай түз эле синхрондоштуруу
+// ОҢДОО: Оюндан чыкпай туруп жеке кабинеттеги теманы реалдуу убакытта синхрондоштуруу кайтарым байланышы
 function startLiveQuizSync() {
-    quizRef1.on('value', (snapshot) => {
-        updateRoomQuestions(snapshot.val());
+    db.ref(`quizzes/${subject}/${theme}`).on('value', (snapshot) => {
+        let list = parseFirebaseQuestions(snapshot.val());
+        if (list.length > 0 && roomRef) { questions = list; roomRef.update({ questions: list }); }
     });
-    quizRef2.on('value', (snapshot) => {
-        updateRoomQuestions(snapshot.val());
+    db.ref(`quizzes/${subject}/${cleanTheme}`).on('value', (snapshot) => {
+        let list = parseFirebaseQuestions(snapshot.val());
+        if (list.length > 0 && roomRef) { questions = list; roomRef.update({ questions: list }); }
     });
-}
-
-function updateRoomQuestions(data) {
-    if(!data || !roomRef) return;
-    let list = Array.isArray(data) ? data : Object.values(data);
-    if(list.length > 0) {
-        questions = list;
-        roomRef.update({ questions: list });
-    }
 }
 
 // --- БӨЛМӨГӨ КИРҮҮ (КЫЗ) ---
@@ -170,7 +184,7 @@ function joinRoom() {
         let data = snapshot.val();
         if(data.kyzName !== "") { return alert("Бул бөлмө толуп калган!"); }
 
-        questions = data.questions || [];
+        questions = parseFirebaseQuestions(data.questions);
         return roomRef.update({ kyzName: playerName, status: "playing" });
     }).then(() => {
         initRoomListener();
@@ -194,7 +208,7 @@ function initRoomListener() {
         currentRoomData = data;
 
         if(data.questions) {
-            questions = data.questions;
+            questions = parseFirebaseQuestions(data.questions);
         }
 
         document.getElementById("jigit-name-lbl").innerText = data.jigitName || "...";
@@ -202,6 +216,7 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
+        // ОҢДОО: Мугалимдин жеке кабинетинен канча суроо келсе (мисалы 20), аттардын кадамдары ошого жараша ийкемдүү өзгөрөт
         let totalQs = questions.length || 20;
         let stepPercent = 70 / totalQs; 
 
@@ -217,7 +232,7 @@ function initRoomListener() {
             document.getElementById("game-status-text").innerText = "Кыздын кошулушун күтүүдө...";
         } 
         else if(data.status === "playing") {
-            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ КОШУМЧА СУРООЛОР БЕРИЛҮҮДӨ" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
+            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ ЖАРЫШ УЛАНУУДА" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
             
             if(menuMusic) menuMusic.pause();
             if(gameMusic && gameMusic.paused) { gameMusic.play().catch(()=>{}); }
@@ -253,7 +268,7 @@ function showQuestion() {
     if(currentQuestionIdx >= questions.length) {
         document.getElementById("quiz-box-container").innerHTML = `
             <div class="text-center py-12 text-sm font-bold text-gray-400">
-                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз ушул этаптагы суроолорго жооп бердиңиз. Натыйжа күтүлүүдө...
+                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Жооп берип бүттүңүз. Каршылашыңыздын жыйынтыгын күтүүдөсүз...
             </div>`;
         checkGameEndCondition();
         return;
@@ -339,19 +354,18 @@ function autoSubmitWrong() {
     roomRef.update(updates);
 }
 
-// ОҢДОО: Экөө тең бирдей упай топтоп бүтсө, кошумча тест раунду улана берет
+// ОҢДОО: Экөө тең бирдей туура жооп берген учурда кошумча раунддун (суроолордун) берилишин көзөмөлдөө
 function checkGameEndCondition() {
     if(!currentRoomData) return;
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
         if(myRole === "jigit") {
-            // Упайлары бирдей болсо, кошумча суроолор тизмесин дароо базага кошуп жарышты улантабыз
             if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
+                // Кошумча раунд үчүн жаңы суроолор тизмеси
                 let extraQs = [
                     { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] },
-                    { q: "КОШУМЧА РАУНД: Атмосфералык басымды өлчөөчү курал кандай аталат?", a: "Барометр", options: ["Барометр", "Термометр", "Динамометр", "Манометр"] }
+                    { q: "КОШУМЧА РАУНД: Атмосфералык басымды өлчөөчү курал кандай аталат?", a: "Барометр", options: ["Барометр", "Термометр", "Динамометр", "Манометр"] },
+                    { q: "КОШУМЧА РАУНД: Нерсенин ички энергиясын өзгөртүүнүн канча жолу бар?", a: "2", options: ["2", "1", "3", "4"] }
                 ];
-                
-                // Жаңы кошумча суроолорду кошуп, раундду кайрадан 0дон баштайбыз
                 roomRef.update({
                     status: "playing",
                     isExtraRound: true,
