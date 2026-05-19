@@ -1,11 +1,11 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (РЕГИОНДУК КАТА ЖАНА GITHUB КООПСУЗДУГУ ОҢДОЛДУ) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (КАЙТАЛАНМА ИНИЦИАЛИЗАЦИЯ ЖАНА РЕГИОН ОҢДОЛДУ) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
 
 const firebaseConfig = {
     apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
-    // Сиздин базаңыздын региону так көрсөтүлдү:
+    // Сиздин анык Сингапур базаңыздын дареги:
     databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.appspot.com",
@@ -13,12 +13,11 @@ const firebaseConfig = {
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
-// Проектти туура регион менен ишке киргизүү
+// Тиркемени бир гана жолу коопсуз ишке киргизүү
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-// Базага шилтеме берүүдө URL дарегин ачык көрсөтөбүз (Европага качып кетпеши үчүн)
-const db = firebase.database().app.database("https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app");
+const db = firebase.database();
 
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -37,7 +36,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Камдык суроолор
+// Камдык суроолор (Эгер базадан суроо келбей калса автоматтык иштеген режим)
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -98,7 +97,7 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error("Firebase катасы:", err);
-        alert("Бөлмө түзүүдө ката кетти. Консолду текшериңиз.");
+        alert("Бөлмө түзүүдө ката кетти. Сураныч, кайра аракет кылыңыз.");
     });
 }
 
