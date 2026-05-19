@@ -1,23 +1,24 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (АБСОЛЮТТУК РЕГИОНДУК КӨЗӨМӨЛ ОҢДОЛДУ) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (ЕВРОПА РЕГИОНУНА АБСОЛЮТТУК ОҢДОЛДУ) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
 
 const firebaseConfig = {
     apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
-    databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
+    // Сиздин чыныгы базаңыз жайгашкан Бельгия регионунун дареги киргизилди:
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.appspot.com",
     messagingSenderId: "1039475820194",
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
-// Инициализацияны текшерүү жана мажбурлап Сингапур базасына туташтыруу
+// Инициализацияны текшерүү жана мажбурлап Европа базасына туташтыруу
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-// Базанын URL дареги түздөн-түз чакырууга бекитилди
-const db = firebase.app().database("https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app");
+// Базанын URL дареги түздөн-түз чакырууга Европа региону менен бекитилди
+const db = firebase.app().database("https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app");
 
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -287,6 +288,7 @@ function checkGameEndCondition() {
     }
 }
 
+// --- ОЮНДУ ЖЫЙЫНТЫКТОО ---
 function endGame(data) {
     clearInterval(timerInterval);
     if(gameMusic) gameMusic.pause();
