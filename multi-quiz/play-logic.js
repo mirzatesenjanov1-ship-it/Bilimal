@@ -1,11 +1,11 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (GITHUB КООПСУЗДУК КАТАСЫ ОҢДОЛДУ) ---
-// Ачкыч ачык текст түрүндө жазылбайт, тиркеме иштегенде автоматтык түрдө куралат
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (РЕГИОНДУК КАТА ЖАНА GITHUB КООПСУЗДУГУ ОҢДОЛДУ) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
 
 const firebaseConfig = {
     apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
+    // Сиздин базаңыздын региону так көрсөтүлдү:
     databaseURL: "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.appspot.com",
@@ -13,11 +13,12 @@ const firebaseConfig = {
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
-// Проектти ишке киргизүү
+// Проектти туура регион менен ишке киргизүү
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-const db = firebase.database();
+// Базага шилтеме берүүдө URL дарегин ачык көрсөтөбүз (Европага качып кетпеши үчүн)
+const db = firebase.database().app.database("https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app");
 
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -36,7 +37,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
-// Камдык суроолор (Эгер базадан суроо келбей калса автоматтык түрдө ушул ишке кирет)
+// Камдык суроолор
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -45,7 +46,6 @@ const mockQuestions = [
 const menuMusic = document.getElementById("bg-music-menu");
 const gameMusic = document.getElementById("bg-music-game");
 
-// Музыканы колдонуучу экранды бир жолу басканда иштетүү
 document.body.addEventListener('click', () => {
     if(menuMusic && menuMusic.paused && !roomRef) { menuMusic.play().catch(()=>{}); }
 }, { once: true });
@@ -64,13 +64,12 @@ function createRoom() {
     if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
     
     myRole = "jigit";
-    roomCode = Math.floor(100 + Math.random() * 900).toString(); // 3 орундуу код
+    roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
     db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
         let fetchedQuestions = snapshot.val();
         
-        // Эгер snapshot массив эмес, объект болуп келсе аны массивге айландырабыз
         if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
             fetchedQuestions = Object.values(fetchedQuestions);
         }
@@ -99,9 +98,7 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error("Firebase катасы:", err);
-        questions = mockQuestions;
-        switchToArena();
-        alert("Эскертүү: Базага туташууда ката кетти, камдык режим иштетиле баштады.");
+        alert("Бөлмө түзүүдө ката кетти. Консолду текшериңиз.");
     });
 }
 
@@ -145,7 +142,6 @@ function switchToArena() {
     document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
 }
 
-// РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ ЖАНА АТТАРДЫ ЖЫЛДЫРУУ
 function initRoomListener() {
     roomRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -157,11 +153,9 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        // Динамикалык кадамдар (Жигиттики чоңураак * 4.2, Кыздыкы * 2.5)
         let jigitLeft = 10 + (data.jigitScore * 4.2);
         let kyzLeft = 45 + (data.kyzScore * 2.5);
 
-        // Экрандан чыгып кетпеши үчүн 90% менен чектөө
         if(jigitLeft > 90) jigitLeft = 90;
         if(kyzLeft > 90) kyzLeft = 90;
 
@@ -278,7 +272,6 @@ function checkGameEndCondition() {
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
         if(myRole === "jigit") {
             if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
-                // Кошумча раунддун суроолору
                 let extraQs = [
                     { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] },
                     { q: "КОШУМЧА РАУНД: Нурдун чагылуу бурчу түшүү бурчуна кандай болот?", a: "барабар", options: ["барабар", "чоң", "кичине", "каалагандай"] }
