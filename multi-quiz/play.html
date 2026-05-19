@@ -6,35 +6,49 @@
     <title>Кыз Куумай: Онлайн Тест | Bilimal.org</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; overflow-x: hidden; }
-        .lobby-box {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8);
+        
+        body { 
+            background-color: #050a18; 
+            color: #e2e8f0; 
+            font-family: 'Montserrat', sans-serif; 
+            overflow-x: hidden;
+            /* СҮРӨТТҮ ТОЛУК ЭКРАНГА ЧЫГАРУУ */
+            background-image: linear-gradient(rgba(5, 10, 24, 0.65), rgba(5, 10, 24, 0.75)), url('kyz-jygyt.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
         }
-        /* Ат чабыш жолунун фону */
+
+        /* ПРОЗРАЧНЫЙ ЛОББИ КУТУСУ */
+        .lobby-box {
+            background: rgba(15, 23, 42, 0.35); /* Өтө тунук кылынды */
+            backdrop-filter: blur(14px); /* Арткы сүрөттү кооз көрсөтүүчү эффект */
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+        }
+
         .race-track {
-            background: linear-gradient(to bottom, #111827, #0f172a);
+            background: linear-gradient(to bottom, rgba(17, 24, 39, 0.9), rgba(15, 23, 42, 0.9));
             border-top: 4px solid #f59e0b;
             border-bottom: 4px solid #f59e0b;
             position: relative;
             overflow: hidden;
         }
-        /* Варианттардын баскычтары */
+
         .option-btn {
-            background: rgba(30, 41, 59, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.2s ease;
         }
         .option-btn:hover:not(:disabled) {
-            background: rgba(59, 130, 246, 0.2);
+            background: rgba(59, 130, 246, 0.3);
             border-color: #3b82f6;
-            transform: scale(1.01);
         }
     </style>
 </head>
@@ -43,60 +57,57 @@
     <audio id="bg-music-menu" src="music-menu.mp3" loop></audio>
     <audio id="bg-music-game" src="music.mp3" loop></audio>
 
-    <div id="lobby-container" class="w-full max-w-lg lobby-box rounded-[2.5rem] p-8 md:p-10 relative z-10 transition-all duration-500">
-        <div class="absolute inset-0 rounded-[2.5rem] bg-cover bg-center opacity-15 pointer-events-none" style="background-image: url('kyz-jygyt.png');"></div>
+    <div id="lobby-container" class="w-full max-w-lg lobby-box rounded-[2.5rem] p-8 md:p-10 transition-all duration-500">
         
-        <div class="relative z-10">
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 to-amber-500 text-white text-3xl mb-4 shadow-lg shadow-pink-500/20">
-                    <i class="fas fa-heartbeat animate-pulse"></i>
-                </div>
-                <h1 class="text-2xl md:text-3xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-pink-500">
-                    Кыз Куумай: Онлайн Тест
-                </h1>
-                <p id="quiz-info-text" class="text-xs text-gray-400 mt-2 font-semibold bg-white/5 py-1.5 px-4 rounded-full inline-block">
-                    Тест жүктөлүүдө...
-                </p>
+        <div class="text-center mb-6">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-tr from-pink-500 to-amber-500 text-white text-2xl mb-3 shadow-lg">
+                <i class="fas fa-heartbeat animate-pulse"></i>
+            </div>
+            <h1 class="text-2xl md:text-3xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-pink-500">
+                Кыз Куумай: Онлайн Тест
+            </h1>
+            <p id="quiz-info-text" class="text-xs text-gray-300 mt-2 font-semibold bg-white/10 py-1.5 px-4 rounded-full inline-block">
+                Тест жүктөлүүдө...
+            </p>
+        </div>
+
+        <div class="space-y-5">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-gray-300 mb-2 ml-1">Оюнчунун аты-жөнү:</label>
+                <input type="text" id="player-name" placeholder="Өз атыңызды жазыңыз..." 
+                    class="w-full bg-black/40 border border-white/20 rounded-2xl px-5 py-3.5 text-sm text-white font-medium focus:outline-none focus:border-pink-500 transition-all">
             </div>
 
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Оюнчунун аты-жөнү:</label>
-                    <input type="text" id="player-name" placeholder="Өз атыңызды жазыңыз..." 
-                        class="w-full bg-black/50 border border-white/10 rounded-2xl px-5 py-3.5 text-sm text-white font-medium focus:outline-none focus:border-pink-500 transition-all">
-                </div>
+            <div class="border-t border-white/10 my-2"></div>
 
-                <div class="border-t border-white/5 my-2"></div>
+            <div class="space-y-1">
+                <button onclick="createRoom()" class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg transition-all transform hover:-translate-y-0.5">
+                    Бөлмө түзүү (Жигит 🐎)
+                </button>
+                <p class="text-[10px] text-center text-gray-400">Жаңы оюн бөлмөсүн түзүп, Жигит атын аласыз.</p>
+            </div>
 
-                <div class="space-y-1">
-                    <button onclick="createRoom()" class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-orange-500/20 transition-all transform hover:-translate-y-0.5">
-                        Бөлмө түзүү (Жигит 🐎)
-                    </button>
-                    <p class="text-[10px] text-center text-gray-500">Жаңы оюн бөлмөсүн түзүп, Жигит атын аласыз.</p>
-                </div>
+            <div class="relative flex py-1 items-center">
+                <div class="flex-grow border-t border-white/10"></div>
+                <span class="flex-shrink mx-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">же кошулуу</span>
+                <div class="flex-grow border-t border-white/10"></div>
+            </div>
 
-                <div class="relative flex py-1 items-center">
-                    <div class="flex-grow border-t border-white/5"></div>
-                    <span class="flex-shrink mx-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">же кошулуу</span>
-                    <div class="flex-grow border-t border-white/5"></div>
-                </div>
-
-                <div class="bg-black/30 p-4 rounded-2xl border border-white/5 space-y-3">
-                    <input type="number" id="room-code-input" placeholder="Бөлмө кодун киргизиңиз..." 
-                        class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-center text-xs text-white font-bold focus:outline-none focus:border-emerald-500 tracking-widest">
-                    <button onclick="joinRoom()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/10 transition-all transform hover:-translate-y-0.5">
-                        Бөлмөгө кирүү (Кыз 🐎)
-                    </button>
-                </div>
+            <div class="bg-black/20 p-4 rounded-2xl border border-white/10 space-y-3">
+                <input type="number" id="room-code-input" placeholder="Бөлмө кодун киргизиңиз..." 
+                    class="w-full bg-black/40 border border-white/20 rounded-xl px-4 py-2.5 text-center text-xs text-white font-bold focus:outline-none focus:border-emerald-500 tracking-widest">
+                <button onclick="joinRoom()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-widest shadow-lg transition-all transform hover:-translate-y-0.5">
+                    Бөлмөгө кирүү (Кыз 🐎)
+                </button>
             </div>
         </div>
     </div>
 
-    <div id="game-arena" class="hidden w-full max-w-5xl space-y-6">
+    <div id="game-arena" class="hidden w-full max-w-4xl space-y-6">
         
-        <div class="flex flex-wrap justify-between items-center bg-slate-900/80 p-4 rounded-2xl border border-white/5 gap-4">
+        <div class="flex flex-wrap justify-between items-center bg-slate-900/90 p-4 rounded-2xl border border-white/10 gap-4">
             <div class="flex items-center gap-4">
-                <span id="display-room-code" class="bg-blue-600/20 border border-blue-500/30 text-blue-400 px-4 py-1.5 rounded-xl text-xs font-bold font-mono">БӨЛМӨ: ---</span>
+                <span id="display-room-code" class="bg-blue-600/30 border border-blue-500/40 text-blue-400 px-4 py-1.5 rounded-xl text-xs font-bold font-mono">БӨЛМӨ: ---</span>
                 <span id="game-status-text" class="text-xs font-bold text-amber-400 uppercase tracking-wider animate-pulse">Кыздын кошулушун күтүүдө...</span>
             </div>
             <div class="flex items-center gap-6 text-sm font-bold">
@@ -105,36 +116,32 @@
             </div>
         </div>
 
-        <div class="race-track h-56 rounded-3xl p-4 flex flex-col justify-between">
-            
+        <div class="race-track h-52 rounded-3xl p-4 flex flex-col justify-between">
             <div class="relative w-full h-20 border-b border-white/5 flex items-center">
-                <div id="kyz-track-container" class="absolute left-1/2 bottom-0 transition-all duration-500 transform -translate-x-1/2" style="left: 60%;">
-                    <video id="v-girl" src="girl_run.mp4" autoplay loop muted playsinline class="h-16 object-contain"></video>
-                    <span class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-pink-500 text-[10px] font-bold px-2 py-0.5 rounded-full text-black whitespace-nowrap" id="tag-kyz">Кыз</span>
+                <div id="kyz-track-container" class="absolute transition-all duration-500" style="left: 55%;">
+                    <video id="v-girl" src="girl_run.mp4" autoplay loop muted playsinline class="h-14 object-contain"></video>
+                    <span class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-pink-500 text-[9px] font-bold px-2 py-0.5 rounded-full text-black whitespace-nowrap" id="tag-kyz">Кыз</span>
                 </div>
             </div>
-
             <div class="relative w-full h-20 flex items-center">
-                <div id="jigit-track-container" class="absolute left-0 bottom-0 transition-all duration-500" style="left: 10%;">
-                    <video id="v-boy" src="boy_run.mp4" autoplay loop muted playsinline class="h-16 object-contain"></video>
-                    <span class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full text-black whitespace-nowrap" id="tag-jigit">Жигит</span>
+                <div id="jigit-track-container" class="absolute transition-all duration-500" style="left: 10%;">
+                    <video id="v-boy" src="boy_run.mp4" autoplay loop muted playsinline class="h-14 object-contain"></video>
+                    <span class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full text-black whitespace-nowrap" id="tag-jigit">Жигит</span>
                 </div>
             </div>
         </div>
 
-        <div id="quiz-box-container" class="hidden bg-slate-900/60 p-6 md:p-8 rounded-[2rem] border border-white/5 space-y-6">
+        <div id="quiz-box-container" class="hidden bg-slate-900/80 p-6 md:p-8 rounded-[2rem] border border-white/10 space-y-6">
             <div class="flex justify-between items-center text-xs font-bold text-gray-400">
                 <span id="question-number-lbl" class="uppercase tracking-widest text-blue-400">Суроо №1</span>
                 <span id="timer-lbl" class="bg-rose-500/10 text-rose-400 px-3 py-1 rounded-lg border border-rose-500/20">Убакыт: 20с</span>
             </div>
-            
-            <h2 id="question-text" class="text-lg md:text-xl font-bold leading-relaxed">Физикалык суроо бул жерге жүктөлөт?</h2>
-            
+            <h2 id="question-text" class="text-lg md:text-xl font-bold leading-relaxed">Физикалык суроо жүктөлүүдө...</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button onclick="submitAnswer(0)" id="opt-0" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">Вариант А</button>
-                <button onclick="submitAnswer(1)" id="opt-1" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">Вариант Б</button>
-                <button onclick="submitAnswer(2)" id="opt-2" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">Вариант В</button>
-                <button onclick="submitAnswer(3)" id="opt-3" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200 transition-all">Вариант Г</button>
+                <button onclick="submitAnswer(0)" id="opt-0" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200">Вариант А</button>
+                <button onclick="submitAnswer(1)" id="opt-1" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200">Вариант Б</button>
+                <button onclick="submitAnswer(2)" id="opt-2" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200">Вариант В</button>
+                <button onclick="submitAnswer(3)" id="opt-3" class="option-btn p-5 rounded-2xl text-left text-sm font-semibold text-gray-200">Вариант Г</button>
             </div>
         </div>
     </div>
@@ -143,22 +150,22 @@
         <div class="bg-slate-900 border-2 border-amber-500/30 p-8 rounded-[2.5rem] max-w-md w-full text-center space-y-6 shadow-2xl">
             <div class="text-5xl text-amber-400"><i class="fas fa-trophy animate-bounce"></i></div>
             <h2 class="text-2xl font-black uppercase tracking-wider text-white">Оюн жыйынтыкталды!</h2>
-            <p id="result-message-text" class="text-base font-medium text-gray-300 leading-relaxed bg-white/5 p-4 rounded-2xl border border-white/5">
-                Жыйынтык жазылууда...
+            <p id="result-message-text" class="text-base font-medium text-gray-300 leading-relaxed bg-white/5 p-4 rounded-2xl">
+                Жыйынтык...
             </p>
             <div class="flex justify-center gap-6 text-sm font-bold text-gray-400 py-2">
                 <div>Жигит упайы: <span id="res-jigit-score" class="text-orange-400 text-lg">0</span></div>
                 <div>Кыз упайы: <span id="res-kyz-score" class="text-pink-400 text-lg">0</span></div>
             </div>
             <button onclick="location.reload()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs uppercase tracking-widest transition-all">
-                Башкы бетке кайтуу
+                Кайра ойноо
             </button>
         </div>
     </div>
 
     <script>
-        // --- FIREBASE КОНФИГУРАЦИЯСЫ ---
-        // Сиздин долбоордун чыныгы Firebase маалыматтарын бул жерге алмаштырып коюңуз
+        // --- 1. FIREBASE ИШКЕ КИРГИЗҮҮ ---
+        // Сураныч, өзүңүздүн реалдуу долбоордун API ачкычтарын бул жерге коюңуз!
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -179,7 +186,7 @@
         const subject = urlParams.get('subject') || 'physics';
         const theme = urlParams.get('theme') || 'kinematika_20';
 
-        let myRole = ""; // "jigit" же "kyz"
+        let myRole = ""; 
         let roomRef = null;
         let roomCode = "";
         let currentRoomData = null;
@@ -191,13 +198,11 @@
         let timeLeft = 20;
         let isAnswered = false;
 
-        // Даяр суроолордун топтому (Эгер Firebase бош болсо же иштебей калса камдык катары)
         const mockQuestions = [
             { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
             { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
         ];
 
-        // Музыкаларды башкаруу
         const menuMusic = document.getElementById("bg-music-menu");
         const gameMusic = document.getElementById("bg-music-game");
 
@@ -210,17 +215,16 @@
             document.getElementById("quiz-info-text").innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Багыт: <span class="text-white">${themeName}</span>`;
         });
 
-        // 1. БӨЛМӨ ТҮЗҮҮ (ЖИГИТ)
+        // --- 2. БӨЛМӨ ТҮЗҮҮ (ЖИГИТ БАСКЫЧЫН ТОЛУК ОҢДОО) ---
         function createRoom() {
             playerName = document.getElementById("player-name").value.trim();
-            if (!playerName) { alert("Сураныч, атыңызды жазыңыз!"); return; }
+            if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
             
             myRole = "jigit";
-            roomCode = Math.floor(100 + Math.random() * 900).toString();
-
+            roomCode = Math.floor(100 + Math.random() * 900).toString(); // 3 орундуу коопсуз код
             roomRef = db.ref('rooms/' + roomCode);
             
-            // Базадан суроолорду сурап алуу (Эгер мугалим түзгөн базада жок болсо, mock суроолорду алат)
+            // Базадан суроолорду алуу же mock колдонуу
             db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
                 let fetchedQuestions = snapshot.val();
                 if(!fetchedQuestions || !Array.isArray(fetchedQuestions)) {
@@ -228,6 +232,7 @@
                 }
                 questions = fetchedQuestions;
 
+                // Бөлмөнү базага ийгиликтүү жазуу
                 return roomRef.set({
                     roomCode: roomCode,
                     subject: subject,
@@ -240,39 +245,38 @@
                     kyzCurrentQuestion: 0,
                     status: "waiting",
                     isExtraRound: false,
-                    extraRoundCount: 2, // Кошумча раунд суроолорунун саны
                     questions: fetchedQuestions
                 });
             }).then(() => {
+                // Ийгиликтүү болгондо гана угууну жандырып, интерфейсти алмаштыруу
                 initRoomListener();
                 switchToArena();
             }).catch(err => {
-                // Firebase туташпай калса оффлайн режимде баштоо
-                console.log("Firebase катасы, оффлайн режим иштеди", err);
+                console.error("Firebase катасы, оффлайн режим иштеди:", err);
                 questions = mockQuestions;
                 startOfflineGame();
             });
         }
 
-        // 2. БӨЛМӨГӨ КОШУЛУУ (КЫЗ)
+        // --- 3. БӨЛМӨГӨ КОШУЛУУ (КЫЗ) ---
         function joinRoom() {
             playerName = document.getElementById("player-name").value.trim();
             roomCode = document.getElementById("room-code-input").value.trim();
             
             if (!playerName) { alert("Сураныч, атыңызды жазыңыз!"); return; }
-            if (!roomCode) { alert("Бөлмө кодун жазыңыз!"); return; }
+            if (!roomCode) { alert("Бөлмө кодун киргизиңиз!"); return; }
 
             myRole = "kyz";
             roomRef = db.ref('rooms/' + roomCode);
 
             roomRef.once('value').then((snapshot) => {
                 if(!snapshot.exists()) {
-                    alert("Мындай коддуу бөлмө табылган жок!");
+                    alert("Бул коддуу бөлмө табылган жок!");
                     return;
                 }
                 let data = snapshot.val();
                 if(data.kyzName !== "") {
-                    alert("Бул бөлмөдө Кыз ролу ээленген!");
+                    alert("Бул бөлмө толуп калган!");
                     return;
                 }
 
@@ -285,7 +289,7 @@
             }).then(() => {
                 initRoomListener();
                 switchToArena();
-            });
+            }).catch(err => alert("Кошулууда ката кетти!"));
         }
 
         function switchToArena() {
@@ -294,44 +298,38 @@
             document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
         }
 
-        // БӨЛМӨНҮН БАЗАСЫН РЕАЛДУУ УБАҚЫТТА КӨЗӨМӨЛДӨӨ
+        // РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ
         function initRoomListener() {
             roomRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if(!data) return;
                 currentRoomData = data;
 
-                // Аттарды жаңыртуу
                 document.getElementById("jigit-name-lbl").innerText = data.jigitName || "...";
                 document.getElementById("kyz-name-lbl").innerText = data.kyzName || "...";
                 document.getElementById("jigit-score").innerText = data.jigitScore;
                 document.getElementById("kyz-score").innerText = data.kyzScore;
 
-                // Анимациядагы аттардын ордун жаңыртуу (Динамикалык Left % өзгөрөт)
-                // Жигит артта 10% дан баштайт, кадамдары чоңураак (ар бир туура жоопко +4%)
+                // Динамикалык кадамдар (Жигиттики чоңураак * 4.2, Кыздыкы * 2.5)
                 let jigitLeft = 10 + (data.jigitScore * 4.2);
-                // Кыз алдыда 45% дан баштайт (ар бир туура жоопко +2.5%)
                 let kyzLeft = 45 + (data.kyzScore * 2.5);
 
                 document.getElementById("jigit-track-container").style.left = `${jigitLeft}%`;
                 document.getElementById("kyz-track-container").style.left = `${kyzLeft}%`;
 
-                // Оюн статус логикасы
                 if(data.status === "waiting") {
                     document.getElementById("game-status-text").innerText = "Кыздын кошулушун күтүүдө...";
                 } 
                 else if(data.status === "playing") {
                     document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ" : "ЖАРЫШ БАШТАЛДЫ!";
                     
-                    // Музыканы алмаштыруу
                     menuMusic.pause();
                     if(gameMusic.paused) { gameMusic.play().catch(()=>{}); }
 
                     document.getElementById("quiz-box-container").classList.remove("hidden");
                     
-                    // Өзүнүн суроо кезегин текшерүү
                     let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
-                    if(myTargetIndex !== currentQuestionIdx || currentQuestionIdx === 0 && !timerInterval) {
+                    if(myTargetIndex !== currentQuestionIdx || (currentQuestionIdx === 0 && !timerInterval)) {
                         currentQuestionIdx = myTargetIndex;
                         showQuestion();
                     }
@@ -342,12 +340,10 @@
             });
         }
 
-        // СУРООНУ ЭКРАНГА ЧЫГАРУУ
         function showQuestion() {
             if(currentQuestionIdx >= questions.length) {
-                // Суроолор бүттү, күтүү режими
                 document.getElementById("quiz-box-container").innerHTML = `
-                    <div class="text-center py-8 text-sm font-bold text-gray-400 animate-pulse">
+                    <div class="text-center py-8 text-sm font-bold text-gray-300 animate-pulse">
                         <i class="fas fa-spinner fa-spin mr-2"></i> Каршылашыңыз тестти бүтүрүшүн күтүп жатасыз...
                     </div>`;
                 checkGameEndCondition();
@@ -363,7 +359,6 @@
             document.getElementById("question-number-lbl").innerText = `Суроо №${currentQuestionIdx + 1}`;
             document.getElementById("question-text").innerText = qData.q;
 
-            // Варианттарды баскычтарга жайгаштыруу
             for(let i=0; i<4; i++) {
                 let btn = document.getElementById(`opt-${i}`);
                 btn.innerText = qData.options[i];
@@ -371,7 +366,6 @@
                 btn.disabled = false;
             }
 
-            // Таймерди иштетүү
             timerInterval = setInterval(() => {
                 timeLeft--;
                 document.getElementById("timer-lbl").innerText = `Убакыт: ${timeLeft}с`;
@@ -382,7 +376,6 @@
             }, 1000);
         }
 
-        // ОКУУЧУ ЖООП БЕРГЕНДЕ
         function submitAnswer(selectedIdx) {
             if(isAnswered) return;
             isAnswered = true;
@@ -392,20 +385,15 @@
             let chosenOption = qData.options[selectedIdx];
             let isCorrect = (chosenOption === qData.a);
 
-            // Түз эле визуалдык эффект көрсөтүү
             let btn = document.getElementById(`opt-${selectedIdx}`);
             if(isCorrect) {
-                btn.classList.remove("bg-slate-900/60");
-                btn.classList.add("bg-emerald-600", "text-black", "font-bold");
+                btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-emerald-600 text-black";
             } else {
-                btn.classList.remove("bg-slate-900/60");
-                btn.classList.add("bg-rose-600", "text-white");
+                btn.className = "p-5 rounded-2xl text-left text-sm font-bold bg-rose-600 text-white";
             }
 
-            // Бардык баскычтарды жабуу
             for(let i=0; i<4; i++) { document.getElementById(`opt-${i}`).disabled = true; }
 
-            // Базадагы упайды жана суроо индексин жаңылоо
             setTimeout(() => {
                 let updates = {};
                 if(myRole === "jigit") {
@@ -415,55 +403,40 @@
                     updates['kyzCurrentQuestion'] = currentQuestionIdx + 1;
                     if(isCorrect) updates['kyzScore'] = currentRoomData.kyzScore + 1;
                 }
-                
                 roomRef.update(updates);
             }, 800);
         }
 
-        // Убакыт бүтүп калса автоматтык түрдө ката деп өткөрүү
         function autoSubmitWrong() {
             isAnswered = true;
             let updates = {};
-            if(myRole === "jigit") {
-                updates['jigitCurrentQuestion'] = currentQuestionIdx + 1;
-            } else {
-                updates['kyzCurrentQuestion'] = currentQuestionIdx + 1;
-            }
+            if(myRole === "jigit") { updates['jigitCurrentQuestion'] = currentQuestionIdx + 1; } 
+            else { updates['kyzCurrentQuestion'] = currentQuestionIdx + 1; }
             roomRef.update(updates);
         }
 
-        // ЭКИ ОЮНЧУ ТЕСТТИ ТЕҢ СИЗГЕНБИ ТЕКШЕРҮҮ
         function checkGameEndCondition() {
             if(!currentRoomData) return;
-            
-            // Жигит да, Кыз да акыркы суроого жетиштиби?
             if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
-                // Жигит гана бөлмөнү башкарып, жыйынтык чыгарат (синхрондуу ката болбош үчүн)
                 if(myRole === "jigit") {
-                    // ТЕҢ ЧЫГУУ ШАРТЫ (Кайра раунд)
                     if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
-                        // Жаңы 2 суроолуу кошумча раунд түзүү
                         let extraQs = [
                             { q: "КОШУМЧА РАУНД: Күчтүн бирдиги эмне?", a: "Ньютон", options: ["Ньютон", "Джоуль", "Паскаль", "Ватт"] },
-                            { q: "КОШУМЧА РАУНД: Нурдун чагылуу бурчу түшүү бурчуна...?", a: "барабар", options: ["барабар", "чоң", "кичине", "барабар эмес"] }
+                            { q: "КОШУМЧА РАУНД: Нурдун чагылуу бурчу түшүү бурчуна кандай болот?", a: "барабар", options: ["барабар", "чоң", "кичине", "каалагандай"] }
                         ];
-                        // Мурунку суроолордун аягына кошумчалайбыз
                         let newQuestionSet = questions.concat(extraQs);
-
                         roomRef.update({
                             status: "playing",
                             isExtraRound: true,
                             questions: newQuestionSet
                         });
                     } else {
-                        // Кимдир бирөө ашты, оюнду бүтүрүү
                         roomRef.update({ status: "finished" });
                     }
                 }
             }
         }
 
-        // ОЮНДУН ЖЫЙЫНТЫГЫ
         function endGame(data) {
             clearInterval(timerInterval);
             gameMusic.pause();
@@ -474,31 +447,22 @@
             document.getElementById("res-jigit-score").innerText = data.jigitScore;
             document.getElementById("res-kyz-score").innerText = data.kyzScore;
 
-            let textResult = "";
             if(data.jigitScore > data.kyzScore) {
-                // Жигит кууп жетти
-                textResult = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
+                msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
             } else {
-                // Кыз качып кетти
-                textResult = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
+                msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
             }
-
-            msgLbl.innerHTML = textResult;
             modal.classList.remove("hidden");
         }
 
-        // ОФФЛАЙН КАМДЫК ОЮН (ИНТЕРНЕТ ЖОК БОЛСО ЖАЛГЫЗ ОЙНОО РЕЖИМИ)
         function startOfflineGame() {
-            alert("Серверге туташуу мүмкүн болгон жок. Машыгуу режими ишке кирди!");
             myRole = "jigit";
             switchToArena();
             document.getElementById("jigit-name-lbl").innerText = playerName;
             document.getElementById("kyz-name-lbl").innerText = "Компьютер (Кыз)";
             document.getElementById("game-status-text").innerText = "МАШЫГУУ РЕЖИМИ";
             document.getElementById("quiz-box-container").classList.remove("hidden");
-            
-            // Жөнөкөйлөтүлгөн оффлайн логика
-            currentRoomData = { jigitScore: 0, kyzScore: 2 }; 
+            currentRoomData = { jigitScore: 0, kyzScore: 1 };
             showQuestion();
         }
     </script>
