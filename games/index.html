@@ -131,23 +131,25 @@
 
             themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
 
-            // Коопсуз угуу жана катаны алдын алуу логикасы
+            // Коопсуз угуу функциясы
             db.ref(`quizzes/${selectedSubject}`).on('value', (snapshot) => {
-                const themesData = snapshot.val();
                 themeSelect.innerHTML = '';
+                const themesData = snapshot.val();
 
-                if (themesData && Object.keys(themesData).length > 0) {
+                if (themesData) {
                     const defaultOption = document.createElement('option');
                     defaultOption.value = "";
                     defaultOption.text = "-- Теманы тандаңыз --";
                     themeSelect.appendChild(defaultOption);
 
                     Object.keys(themesData).forEach((themeKey) => {
-                        let readableName = "";
-                        if (themesData[themeKey] && themesData[themeKey].title) {
+                        let readableName = themeKey;
+                        
+                        // Эгерде объекттин ичинде атайын title аты болсо, ошону алат
+                        if (themesData[themeKey] && typeof themesData[themeKey] === 'object' && themesData[themeKey].title) {
                             readableName = themesData[themeKey].title;
                         } else {
-                            readableName = themeKey.replace(/_/g, " ").toUpperCase();
+                            readableName = themeKey.replace(/_/g, " ");
                         }
                         
                         const option = document.createElement('option');
@@ -159,20 +161,23 @@
                     themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
                 }
             }, (error) => {
-                console.error("Ката кетти:", error);
-                themeSelect.innerHTML = '<option value="">-- База жабык же ката бар --</option>';
+                console.error("Firebase катасы:", error);
+                themeSelect.innerHTML = '<option value="">-- Окуу катасы же база жабык --</option>';
             });
         }
 
         function startTeacherKyzKuumay() {
             const subject = document.getElementById('teacher-subject-select').value;
-            const themeId = document.getElementById('teacher-theme-select').value;
+            const themeSelect = document.getElementById('teacher-theme-select');
+            const themeId = themeSelect.value;
 
             if (!subject || !themeId) {
                 alert("Сураныч, алгач предметти жана теманы тандаңыз!");
                 return;
             }
-            window.location.href = `../multi-quiz/play.html?subject=${subject}&theme=${themeId}`;
+            
+            // Даректик сапка коопсуз өткөрүү үчүн encodeURIComponent колдонобуз
+            window.location.href = `../multi-quiz/play.html?subject=${subject}&theme=${encodeURIComponent(themeId)}`;
         }
     </script>
 </body>
