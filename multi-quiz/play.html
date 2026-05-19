@@ -3,92 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кыз Куумай - Динамикалык Оюн талаасы</title>
+    <title>Кыз Куумай: Онлайн Тест | Bilimal.org</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        /* Базалык стилдер */
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0f19; color: white; margin: 0; padding: 20px; text-align: center; }
-        .screen { background: rgba(20, 27, 45, 0.95); border: 2px solid #2c3a58; border-radius: 16px; padding: 30px; max-width: 500px; margin: 40px auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-        h2 { color: #f39c12; margin-bottom: 20px; }
-        input { width: 100%; padding: 14px; margin: 10px 0; box-sizing: border-box; border-radius: 8px; border: 1px solid #34495e; background: #1a2536; color: white; font-size: 16px; text-align: center; }
-        input:focus { border-color: #f39c12; outline: none; }
-        .btn { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
-        .main-btn { background: #f39c12; color: #0b0f19; }
-        .main-btn:hover { background: #e67e22; }
-        .join-btn { background: #2ecc71; color: white; }
-        .join-btn:hover { background: #27ae60; }
-        .divider { margin: 15px 0; color: #7f8c8d; font-size: 14px; }
-        
-        /* Ат чабыш треги */
-        #game-field { display: none; max-width: 800px; margin: 20px auto; background: #141b2d; border-radius: 12px; padding: 20px; border: 1px solid #2c3a58; }
-        .track { position: relative; height: 180px; background: url('track_bg.png') repeat-x; background-size: contain; border-bottom: 4px solid #7f8c8d; margin-bottom: 20px; overflow: hidden; border-radius: 8px; }
-        .rider-box { position: absolute; bottom: 10px; width: 90px; transition: left 0.4s ease; text-align: center; }
-        .rider-box img { width: 100%; height: auto; }
-        .player-label-name { display: block; font-size: 12px; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
-        #boy-container { left: 0%; color: #3498db; }
-        #girl-container { left: 15%; color: #e74c3c; }
-
-        /* Тест суроолорунун блогу */
-        #ui-bottom { display: none; max-width: 800px; margin: auto; }
-        .quiz-container { background: #1a2536; border-radius: 12px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); border: 1px solid #2c3a58; }
-        #q-text { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #ecf0f1; }
-        .opt-btn { background: #2c3a58; color: white; text-align: left; padding: 14px; margin: 8px 0; border: 1px solid #34495e; border-radius: 8px; width: 100%; font-size: 16px; cursor: pointer; transition: 0.2s; }
-        .opt-btn:hover { background: #34495e; border-color: #f39c12; }
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; }
+        .lobby-box {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
-<body>
+<body class="min-h-screen flex items-center justify-center p-4">
 
-    <div id="setup-screen" class="screen">
-        <h2 id="display-level-name">КЫЗ КУУМАЙ: ОНЛАЙН ТЕСТ</h2>
+    <div id="lobby-container" class="w-full max-w-lg lobby-box rounded-[2.5rem] p-8 md:p-10 border-pink-500/20">
         
-        <input type="text" id="player-name" placeholder="Өз атыңызды жазыңыз" maxlength="15">
-        <input type="number" id="teacher-quiz-code" placeholder="Мугалим берген ТЕСТ КОД (мис: 5824)">
-        
-        <hr style="border-color: #2c3a58; margin: 20px 0;">
-        
-        <div id="room-controls">
-            <button class="btn main-btn" onclick="loginAndLoadQuiz('create')">БӨЛМӨ ТҮЗҮҮ (Жигит 🏇)</button>
-            <div class="divider">же даяр бөлмөгө кошулуңуз:</div>
-            <input type="number" id="room-input" placeholder="Бөлмө коду (мис: 732)">
-            <button class="btn join-btn" onclick="loginAndLoadQuiz('join')">БӨЛМӨГӨ КИРҮҮ (Кыз 🐎)</button>
-        </div>
-        <div id="wait-status" style="margin-top: 15px; font-weight: bold; color: #e74c3c;"></div>
-    </div>
-
-    <div id="game-field">
-        <div class="track">
-            <div id="boy-container" class="rider-box">
-                <img src="../games/boy_run.png" onerror="this.src='https://placehold.co/90x90?text=Boy'" alt="Жигит">
-                <span id="label-boy" class="player-label-name">Жигит</span>
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-pink-500 to-amber-500 text-white text-3xl mb-4 shadow-lg shadow-pink-500/20">
+                <i class="fas fa-heartbeat animate-pulse"></i>
             </div>
-            <div id="girl-container" class="rider-box">
-                <img src="../games/girl_run.png" onerror="this.src='https://placehold.co/90x90?text=Girl'" alt="Кыз">
-                <span id="label-girl" class="player-label-name">Кыз</span>
+            <h1 class="text-2xl md:text-3xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-pink-500">
+                Кыз Куумай: Онлайн Тест
+            </h1>
+            <p id="quiz-info-text" class="text-xs text-gray-400 mt-2 font-semibold bg-white/5 py-1.5 px-4 rounded-full inline-block">
+                Тест жүктөлүүдө...
+            </p>
+        </div>
+
+        <div class="space-y-6">
+            
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 ml-1">Оюнчунун аты-жөнү:</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">
+                        <i class="fas fa-user text-sm"></i>
+                    </span>
+                    <input type="text" id="player-name" placeholder="Өз атыңызды жазыңыз..." 
+                        class="w-full bg-black/40 border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-sm text-white font-medium focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all placeholder:text-gray-600">
+                </div>
             </div>
+
+            <div class="border-t border-white/5 my-4"></div>
+
+            <div class="space-y-2">
+                <button onclick="createRoom()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-widest shadow-lg shadow-orange-500/20 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    Бөлмө түзүү (Жигит <span class="text-base">🐎</span>)
+                </button>
+                <p class="text-[10px] text-center text-gray-500">Жаңы оюн бөлмөсүн түзүп, кодду кызга бериңиз.</p>
+            </div>
+
+            <div class="relative flex py-2 items-center">
+                <div class="flex-grow border-t border-white/5"></div>
+                <span class="flex-shrink mx-4 text-[10px] font-bold text-gray-600 uppercase tracking-widest">же даяр бөлмөгө кошулуу</span>
+                <div class="flex-grow border-t border-white/5"></div>
+            </div>
+
+            <div class="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-3">
+                <div>
+                    <input type="number" id="room-code-input" placeholder="Бөлмө кодун киргизиңиз (мис: 732)" 
+                        class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-center text-xs text-white font-bold focus:outline-none focus:border-emerald-500 transition-all placeholder:font-normal placeholder:text-gray-600 tracking-widest">
+                </div>
+                <button onclick="joinRoom()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-black py-3.5 rounded-xl text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/10 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
+                    Бөлмөгө кирүү (Кыз <span class="text-base">🐎</span>)
+                </button>
+            </div>
+
         </div>
     </div>
 
-    <div id="ui-bottom">
-        <div class="quiz-container">
-            <div id="q-text">Суроо жүктөлүүдө...</div>
-            <div id="options"></div>
+    <div id="game-arena" class="hidden w-full max-w-5xl">
         </div>
-    </div>
 
     <script>
-      // ⚠️ БУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН FIREBASE КОНФИГУРАЦИЯҢЫЗДЫ КОЮҢУЗ
-      const firebaseConfig = {
-        apiKey: "СИЗДИН_API_KEY",
-        authDomain: "СИЗДИН_AUTH_DOMAIN",
-        databaseURL: "СИЗДИН_DATABASE_URL",
-        projectId: "СИЗДИН_PROJECT_ID",
-        storageBucket: "СИЗДИН_STORAGE_BUCKET",
-        messagingSenderId: "СИЗДИН_MESSAGING_ID",
-        appId: "СИЗДИН_APP_ID"
-      };
-      if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        // URL'ден предметти жана теманы автоматтык түрдө кармап алуу
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentSubject = urlParams.get('subject');
+        const currentTheme = urlParams.get('theme');
+
+        // Баракча жүктөлгөндө тандалган теманы экранга чыгаруу
+        document.addEventListener("DOMContentLoaded", () => {
+            const infoTextEl = document.getElementById("quiz-info-text");
+            if (currentSubject && currentTheme) {
+                // Идентификаторду окумдуу форматка келтирүү (мисалы: kinematika_20 -> КИНЕМАТИКА)
+                const themeName = currentTheme.replace('_', ' ').toUpperCase();
+                infoTextEl.innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Тандалган багыт: <span class="text-white">${themeName}</span>`;
+            } else {
+                infoTextEl.innerHTML = `<i class="fas fa-exclamation-triangle text-rose-500 mr-1"></i> Тандоо аткарылган жок!`;
+            }
+        });
+
+        // 1. БӨЛМӨ ТҮЗҮҮ (ЖИГИТ)
+        function createRoom() {
+            const playerName = document.getElementById("player-name").value.trim();
+            
+            if (!playerName) {
+                alert("Сураныч, атыңызды киргизиңиз!");
+                return;
+            }
+
+            if (!currentSubject || !currentTheme) {
+                alert("Ката: Оюндун предмети же темасы табылган жок! Артка кайтып кайра тандаңыз.");
+                return;
+            }
+
+            // Бул жерде Firebase аркылуу бөлмө түзүлөт (Random 3 орундуу сан жасалат)
+            const generatedRoomCode = Math.floor(100 + Math.random() * 900);
+            
+            alert(`Ийгиликтүү! Сиз Жигит болуп бөлмө түздүңүз.\nБөлмөнүн коду: ${generatedRoomCode}\nБул кодду Кыз оюнчуга бериңиз.`);
+            
+            // Кийинки кадамда бул жерге Firebase Realtime Database'ге бөлмөнү жана тандалган теманын суроолорун жүктөө кодун жазабыз.
+            switchToArena();
+        }
+
+        // 2. БӨЛМӨГӨ КОШУЛУУ (КЫЗ)
+        function joinRoom() {
+            const playerName = document.getElementById("player-name").value.trim();
+            const roomCode = document.getElementById("room-code-input").value.trim();
+
+            if (!playerName) {
+                alert("Сураныч, атыңызды киргизиңиз!");
+                return;
+            }
+            if (!roomCode) {
+                alert("Сураныч, сизге берилген бөлмөнүн кодун киргизиңиз!");
+                return;
+            }
+
+            alert(`Ийгиликтүү! Кыз болуп ${roomCode}-бөлмөгө кирдиңиз. Оюн башталууда...`);
+            
+            // Кийинки кадамда бул жерде Firebase'ден ушул коддуу бөлмө барбы деп текшерип, ичине кошулабыз.
+            switchToArena();
+        }
+
+        // Лоббиден оюн аянтчасына өтүү функциясы
+        function switchToArena() {
+            document.getElementById("lobby-container").classList.add("hidden");
+            document.getElementById("game-arena").classList.remove("hidden");
+        }
     </script>
-    <script src="play-logic.js"></script>
 </body>
 </html>
