@@ -100,21 +100,14 @@
                 <a href="find-units.html" class="mt-auto w-full text-center bg-blue-600 py-3 rounded-xl font-bold hover:bg-blue-500 transition text-white shadow-lg shadow-blue-600/20">Ойноо →</a>
             </div>
 
-            <div class="game-card p-8 rounded-[2.5rem] flex flex-col">
-                <div class="text-4xl text-purple-500 mb-4"><i class="fas fa-square-root-alt"></i></div>
-                <h3 class="text-2xl font-bold mb-2">Физикалык Формулалар</h3>
-                <p class="text-gray-400 mb-6">Формулаларды кураштыруу жана маанисин табуу оюну. (Иштеп чыгууда)</p>
-                <div class="mt-auto w-full text-center bg-purple-600/20 border border-purple-600/30 py-3 rounded-xl font-bold text-purple-400 cursor-not-allowed">Жакында...</div>
-            </div>
-
         </div>
     </div>
 
     <script>
-        // 1. Firebase База Орнотуулары (Европа региону коопсуз жана так жазылды)
+        // АЗИЯ РЕГИОНУНА ТАКТАЛГАН URL ДАРЕК КИРГИЗИЛДИ
         const _p1 = "AIzaSyAs7_3V9vG";
         const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
-        const DB_URL = "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app";
+        const DB_URL = "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app";
 
         const firebaseConfig = {
             apiKey: _p1 + _p2, 
@@ -129,13 +122,12 @@
         }
         const db = firebase.app().database(DB_URL);
 
-        // 2. ФИРЭБЕЙЗДЕН ТЕМАЛАРДЫ РЕАЛДУУ УБАКЫТТА ТАРТУУ ФУНКЦИЯСЫ
+        // БАЗАДАН ТЕМАЛАРДЫ ДИНАМИКАЛЫК ЖҮКТӨӨ
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
             const selectedSubject = subjectSelect.value;
 
-            // Тизмени убактылуу тазалап туруу
             themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
 
             if (!selectedSubject) {
@@ -143,32 +135,34 @@
                 return;
             }
 
-            // Базадагы quizzes/${selectedSubject} жолун реалдуу убакытта угуу (.on режиминде)
             db.ref(`quizzes/${selectedSubject}`).on('value', (snapshot) => {
                 const themesData = snapshot.val();
-                
                 themeSelect.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
 
                 if (themesData && Object.keys(themesData).length > 0) {
                     Object.keys(themesData).forEach((themeKey) => {
-                        // Көрүнүшү сулуу болушу үчүн астын сызуу белгилерин боштукка алмаштырабыз
-                        let readableName = themeKey.replace(/_/g, " ").toUpperCase();
+                        let readableName = "";
+                        // Эгер мугалим теманын толук атын жазса (title), ошону окуйбуз
+                        if (themesData[themeKey] && themesData[themeKey].title) {
+                            readableName = themesData[themeKey].title;
+                        } else {
+                            readableName = themeKey.replace(/_/g, " ").toUpperCase();
+                        }
                         
                         const option = document.createElement('option');
-                        option.value = themeKey;       // Ички ID аты (мисалы: kinematika_20)
-                        option.text = readableName;    // Сырткы окула турган аты
+                        option.value = themeKey;       
+                        option.text = readableName;    
                         themeSelect.appendChild(option);
                     });
                 } else {
                     themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
                 }
             }, (error) => {
-                console.error("Маалымат алууда ката кетти:", error);
+                console.error("Ката кетти:", error);
                 themeSelect.innerHTML = '<option value="">-- Жүктөөдө ката кетти --</option>';
             });
         }
 
-        // 3. ТАНДАЛГАН ТЕСТКЕ БАГЫТТОО
         function startTeacherKyzKuumay() {
             const subject = document.getElementById('teacher-subject-select').value;
             const themeId = document.getElementById('teacher-theme-select').value;
@@ -178,7 +172,6 @@
                 return;
             }
             
-            // Тандалган параметрлерди шилтеме аркылуу оюн талаасына жиберебиз
             const targetUrl = `../multi-quiz/play.html?subject=${subject}&theme=${themeId}`;
             window.location.href = targetUrl;
         }
