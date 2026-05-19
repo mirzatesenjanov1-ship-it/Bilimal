@@ -34,6 +34,7 @@ let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
 
+// ОҢДОО: Негизги оюн үчүн 2 эле тесттик суроо даярдалды
 const mockQuestions = [
     { q: "Ылдамдыктын эл аралык бирдиги кандай?", a: "м/с", options: ["м/с", "км/саат", "м*с", "кг/м"] },
     { q: "Ньютондун экинчи мыйзамынын формуласы кайсы?", a: "F = ma", options: ["F = ma", "V = s/t", "E = mc²", "P = mv"] }
@@ -53,7 +54,24 @@ document.addEventListener("DOMContentLoaded", () => {
         infoTxt.innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Багыт: <span class="text-white">${themeName}</span>`;
     }
     adjustHorseStyles();
+    applyWhiteTrackBackground(); // ОҢДОО: Фонду ак кылуу функциясы
 });
+
+// ОҢДОО: Аттар чапкан жалпы оюн талаасынын фонун ак түстө кылуу
+function applyWhiteTrackBackground() {
+    // Аттар жайгашкан негизги чоң контейнер (чек арасы бар караңгы блок)
+    const trackWrapper = document.querySelector(".border-2.border-amber-500\\/30");
+    if (trackWrapper) {
+        trackWrapper.style.backgroundColor = "#ffffff";
+        trackWrapper.style.borderColor = "#fbbf24"; // Көмөкчү алтын түстөгү чек ара
+    }
+    
+    // Жарыш тректеринин өздөрүнүн сызыктарын ак фонддо даана көрүнө тургандай кылуу
+    const tracks = document.querySelectorAll(".border-b-2.border-dashed");
+    tracks.forEach(track => {
+        track.style.borderColor = "#cbd5e1"; // Боз түстөгү пунктир сызык
+    });
+}
 
 // Аттардын кутучаларын ак кылуу жана тегиздөө
 function adjustHorseStyles() {
@@ -81,31 +99,23 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
-        let fetchedQuestions = snapshot.val();
-        if (fetchedQuestions && !Array.isArray(fetchedQuestions)) {
-            fetchedQuestions = Object.values(fetchedQuestions);
-        }
-        if(!fetchedQuestions || fetchedQuestions.length === 0) {
-            fetchedQuestions = mockQuestions; 
-        }
-        questions = fetchedQuestions;
+    // ОҢДОО: 20 суроонун ордуна түз эле 2 суроодон турган mockQuestions топтомун коёбуз
+    questions = mockQuestions;
 
-        return roomRef.set({
-            roomCode: roomCode,
-            subject: subject,
-            theme: theme,
-            jigitName: playerName,
-            kyzName: "",
-            jigitScore: 0,
-            kyzScore: 0,
-            jigitCurrentQuestion: 0,
-            kyzCurrentQuestion: 0,
-            status: "waiting",
-            turn: "jigit", 
-            isExtraRound: false,
-            questions: fetchedQuestions
-        });
+    roomRef.set({
+        roomCode: roomCode,
+        subject: subject,
+        theme: theme,
+        jigitName: playerName,
+        kyzName: "",
+        jigitScore: 0,
+        kyzScore: 0,
+        jigitCurrentQuestion: 0,
+        kyzCurrentQuestion: 0,
+        status: "waiting",
+        turn: "jigit", 
+        isExtraRound: false,
+        questions: mockQuestions
     }).then(() => {
         initRoomListener();
         switchToArena();
@@ -131,6 +141,7 @@ function joinRoom() {
         let data = snapshot.val();
         if(data.kyzName !== "") { return alert("Бул бөлмө толуп калган!"); }
 
+        // ОҢДОО: 2 суроолуу топтомду колдонуу
         questions = data.questions || mockQuestions;
         return roomRef.update({ kyzName: playerName, status: "playing" });
     }).then(() => {
@@ -144,6 +155,7 @@ function switchToArena() {
     document.getElementById("game-arena").classList.remove("hidden");
     document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
     adjustHorseStyles();
+    applyWhiteTrackBackground(); // Өткөндө дагы фондун ак экенин камсыздоо
 }
 
 // --- СИНХРОНДУУ ТУТАШУУ ЛИСТЕНЕРИ ---
@@ -153,7 +165,6 @@ function initRoomListener() {
         if(!data) return;
         currentRoomData = data;
 
-        // Базадагы суроолор топтомун дайыма синхрондоштуруу (Кошумча раунд үчүн өтө маанилүү)
         if(data.questions) {
             questions = data.questions;
         }
@@ -163,8 +174,8 @@ function initRoomListener() {
         document.getElementById("jigit-score").innerText = data.jigitScore;
         document.getElementById("kyz-score").innerText = data.kyzScore;
 
-        let jigitLeft = 10 + (data.jigitScore * 4);
-        let kyzLeft = 40 + (data.kyzScore * 3);
+        let jigitLeft = 10 + (data.jigitScore * 25); // Кадам аралыгы 2 суроого ылайыкталып чоңойтулду
+        let kyzLeft = 40 + (data.kyzScore * 20);
         if(jigitLeft > 85) jigitLeft = 85;
         if(kyzLeft > 85) kyzLeft = 85;
 
@@ -184,14 +195,13 @@ function initRoomListener() {
             
             let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
             
-            // Кезек кимде экенин текшерүү
             if (data.turn !== myRole) {
                 if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
                 document.getElementById("quiz-box-container").innerHTML = `
                     <div class="text-center py-12 text-sm font-bold text-amber-400 animate-pulse">
                         <i class="fas fa-hourglass-half fa-spin mr-2 text-lg"></i> Азыр каршылашыңыздын кезеги. Күтө туруңуз...
                     </div>`;
-                currentQuestionIdx = -1; // Кезек келгенде суроону кайра жаңылап тартуу үчүн
+                currentQuestionIdx = -1;
             } else {
                 if (myTargetIndex !== currentQuestionIdx) {
                     currentQuestionIdx = myTargetIndex;
@@ -202,6 +212,7 @@ function initRoomListener() {
         else if(data.status === "finished") {
             endGame(data);
         }
+        applyWhiteTrackBackground(); // Маалымат жаңыланган сайын ак фонду сактап туруу
     });
 }
 
@@ -303,12 +314,9 @@ function autoSubmitWrong() {
 
 function checkGameEndCondition() {
     if(!currentRoomData) return;
-    // Эки оюнчу тең учурдагы суроолорду бүтүргөндө гана текшерилет
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
-        // Логиканы бир гана жигиттин кардары эсептейт (синхрондуулукту сактоо үчүн)
         if(myRole === "jigit") {
             if(currentRoomData.jigitScore === currentRoomData.kyzScore && !currentRoomData.isExtraRound) {
-                // ТЕҢ ЧЫГУУ БОЛДУ: Кошумча раунддун жаңы таза суроосун беребиз
                 let extraQs = [
                     { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] }
                 ];
@@ -316,12 +324,11 @@ function checkGameEndCondition() {
                     status: "playing",
                     isExtraRound: true,
                     turn: "jigit",
-                    jigitCurrentQuestion: 0, // КАТАНЫ ОҢДОО: Индексти кайра 0 кылабыз!
-                    kyzCurrentQuestion: 0,   // КАТАНЫ ОҢДОО: Индексти кайра 0 кылабыз!
-                    questions: extraQs       // Жаңы раунд үчүн таза кошумча суроо топтому
+                    jigitCurrentQuestion: 0, 
+                    kyzCurrentQuestion: 0,   
+                    questions: extraQs       
                 });
             } else {
-                // Жеңүүчү аныкталса же кошумча раунд да бүтсө оюн токтотулат
                 roomRef.update({ status: "finished" });
             }
         }
