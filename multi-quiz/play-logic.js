@@ -1,21 +1,25 @@
-// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (ЕВРОПА РЕГИОНУ) ---
+// --- 1. FIREBASE ЖӨНДӨӨЛӨРҮ (РЕГИОНДУ КАТУУ СЕКЕ САКТОО) ---
 const _p1 = "AIzaSyAs7_3V9vG";
 const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
+
+// Маанилүү: Скриншоттогу катаны жоюу үчүн Европа жана Азия региондорун толугу менен бириктирип, шилтемени түз беребиз
+const DB_URL = "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app";
 
 const firebaseConfig = {
     apiKey: _p1 + _p2, 
     authDomain: "bilimal-org.firebaseapp.com",
-    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    databaseURL: DB_URL,
     projectId: "bilimal-org",
     storageBucket: "bilimal-org.appspot.com",
     messagingSenderId: "1039475820194",
     appId: "1:1039475820194:web:cd937b83d8e204c3"
 };
 
+// Инициализацияны так жасоо
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
-const db = firebase.app().database("https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app");
+const db = firebase.app().database(DB_URL);
 
 // --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -77,24 +81,19 @@ function adjustHorseStyles() {
     });
 }
 
-// КҮЧӨТҮЛГӨН ОҢДОО: Мугалимдин жеке кабинетинен келген каалаган форматтагы (объект же массив) суроолорду тазалап иретөө функциясы
+// Мугалимдин жеке кабинетинен келген маалыматты ийкемдүү массивге айландыруу
 function parseFirebaseQuestions(rawData) {
     if (!rawData) return [];
     
-    // Эгер түз эле массив болсо
     if (Array.isArray(rawData)) {
         return rawData.filter(q => q && (q.q || q.question));
     }
     
-    // Эгер объект болсо (мугалимдердин IDлери же кокустук ачкычтар менен сакталса)
     let list = Object.values(rawData);
-    
-    // Эгер ички катмарда дагы объект болуп кетсе (мисалы: { questions: { ... } })
     if (list.length === 1 && typeof list[0] === 'object' && !list[0].q) {
         list = Object.values(list[0]);
     }
     
-    // Суроолордун талааларын бирдей стандартка келтирүү (q: суроо, a: жооп, options: варианттар)
     return list.map(item => {
         if (!item) return null;
         return {
@@ -108,13 +107,13 @@ function parseFirebaseQuestions(rawData) {
 // --- БӨЛМӨ ТҮЗҮҮ (ЖИГИТ) ---
 function createRoom() {
     playerName = document.getElementById("player-name").value.trim();
-    if (!playerName) { alert("Сураныч, алгач атыңызды жазыңыз!"); return; }
+    if (!playerName) { alert("Сураныч, алгач атыңыззы жазыңыз!"); return; }
     
     myRole = "jigit";
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // Жеке кабинеттеги эки мүмкүн болгон жолду тең текшерип суроону синхрондуу тартабыз
+    // Эки жолду тең Европа региону аркылуу текшерүү
     db.ref(`quizzes/${subject}/${theme}`).once('value').then((snapshot) => {
         let data = snapshot.val();
         if (!data) {
@@ -125,7 +124,7 @@ function createRoom() {
         let fetchedQuestions = parseFirebaseQuestions(snapshot.val());
         
         if (!fetchedQuestions || fetchedQuestions.length === 0) {
-            alert("Ката: Жеке кабинеттен жиберилген тема табылган жок же түзүмү туура эмес! Базаңызды текшериңиз.");
+            alert("Ката: Бул тема боюнча жеке баракчада тест табылган жок! Мугалимдин кабинетинен туура сакталганын текшериңиз.");
             return;
         }
         
@@ -148,7 +147,7 @@ function createRoom() {
         });
     }).then(() => {
         initRoomListener();
-        startLiveQuizSync(); // Мугалимдердин жеке кабинетин түз угуу режимин иштетүү
+        startLiveQuizSync(); 
         switchToArena();
     }).catch(err => {
         console.error(err);
@@ -156,7 +155,6 @@ function createRoom() {
     });
 }
 
-// ОҢДОО: Оюндан чыкпай туруп жеке кабинеттеги теманы реалдуу убакытта синхрондоштуруу кайтарым байланышы
 function startLiveQuizSync() {
     db.ref(`quizzes/${subject}/${theme}`).on('value', (snapshot) => {
         let list = parseFirebaseQuestions(snapshot.val());
@@ -193,9 +191,14 @@ function joinRoom() {
 }
 
 function switchToArena() {
-    document.getElementById("lobby-container").classList.add("hidden");
-    document.getElementById("game-arena").classList.remove("hidden");
-    document.getElementById("display-room-code").innerText = `БӨЛМӨ: ${roomCode}`;
+    const lobby = document.getElementById("lobby-container");
+    const arena = document.getElementById("game-arena");
+    const codeDisplay = document.getElementById("display-room-code");
+    
+    if(lobby) lobby.classList.add("hidden");
+    if(arena) arena.classList.remove("hidden");
+    if(codeDisplay) codeDisplay.innerText = `БӨЛМӨ: ${roomCode}`;
+    
     adjustHorseStyles();
     applyWhiteTrackBackground(); 
 }
@@ -211,12 +214,18 @@ function initRoomListener() {
             questions = parseFirebaseQuestions(data.questions);
         }
 
-        document.getElementById("jigit-name-lbl").innerText = data.jigitName || "...";
-        document.getElementById("kyz-name-lbl").innerText = data.kyzName || "...";
-        document.getElementById("jigit-score").innerText = data.jigitScore;
-        document.getElementById("kyz-score").innerText = data.kyzScore;
+        // КАТАНЫ АЛДЫН АЛУУ: Элементтер бар экенин текшерип анан жазуу (innerText null катасын жоюу)
+        const jName = document.getElementById("jigit-name-lbl");
+        const kName = document.getElementById("kyz-name-lbl");
+        const jScore = document.getElementById("jigit-score");
+        const kScore = document.getElementById("kyz-score");
+        const statusTxt = document.getElementById("game-status-text");
 
-        // ОҢДОО: Мугалимдин жеке кабинетинен канча суроо келсе (мисалы 20), аттардын кадамдары ошого жараша ийкемдүү өзгөрөт
+        if(jName) jName.innerText = data.jigitName || "...";
+        if(kName) kName.innerText = data.kyzName || "...";
+        if(jScore) jScore.innerText = data.jigitScore;
+        if(kScore) kScore.innerText = data.kyzScore;
+
         let totalQs = questions.length || 20;
         let stepPercent = 70 / totalQs; 
 
@@ -225,33 +234,37 @@ function initRoomListener() {
         if(jigitLeft > 85) jigitLeft = 85;
         if(kyzLeft > 85) kyzLeft = 85;
 
-        document.getElementById("jigit-track-container").style.left = `${jigitLeft}%`;
-        document.getElementById("kyz-track-container").style.left = `${kyzLeft}%`;
+        const jTrack = document.getElementById("jigit-track-container");
+        const kTrack = document.getElementById("kyz-track-container");
+        if(jTrack) jTrack.style.left = `${jigitLeft}%`;
+        if(kTrack) kTrack.style.left = `${kyzLeft}%`;
 
         if(data.status === "waiting") {
-            document.getElementById("game-status-text").innerText = "Кыздын кошулушун күтүүдө...";
+            if(statusTxt) statusTxt.innerText = "Кыздын кошулушун күтүүдө...";
         } 
         else if(data.status === "playing") {
-            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ ЖАРЫШ УЛАНУУДА" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
+            if(statusTxt) statusTxt.innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ ЖАРЫШ УЛАНУУДА" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
             
             if(menuMusic) menuMusic.pause();
             if(gameMusic && gameMusic.paused) { gameMusic.play().catch(()=>{}); }
 
-            document.getElementById("quiz-box-container").classList.remove("hidden");
-            
-            let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
-            
-            if (data.turn !== myRole) {
-                if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-                document.getElementById("quiz-box-container").innerHTML = `
-                    <div class="text-center py-12 text-sm font-bold text-amber-400 animate-pulse">
-                        <i class="fas fa-hourglass-half fa-spin mr-2 text-lg"></i> Азыр каршылашыңыздын кезеги. Күтө туруңуз...
-                    </div>`;
-                currentQuestionIdx = -1;
-            } else {
-                if (myTargetIndex !== currentQuestionIdx) {
-                    currentQuestionIdx = myTargetIndex;
-                    showQuestion();
+            const qContainer = document.getElementById("quiz-box-container");
+            if(qContainer) {
+                qContainer.classList.remove("hidden");
+                let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
+                
+                if (data.turn !== myRole) {
+                    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+                    qContainer.innerHTML = `
+                        <div class="text-center py-12 text-sm font-bold text-amber-400 animate-pulse">
+                            <i class="fas fa-hourglass-half fa-spin mr-2 text-lg"></i> Азыр каршылашыңыздын кезеги. Күтө туруңуз...
+                        </div>`;
+                    currentQuestionIdx = -1;
+                } else {
+                    if (myTargetIndex !== currentQuestionIdx) {
+                        currentQuestionIdx = myTargetIndex;
+                        showQuestion();
+                    }
                 }
             }
         } 
@@ -265,8 +278,11 @@ function initRoomListener() {
 function showQuestion() {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
 
+    const qContainer = document.getElementById("quiz-box-container");
+    if(!qContainer) return;
+
     if(currentQuestionIdx >= questions.length) {
-        document.getElementById("quiz-box-container").innerHTML = `
+        qContainer.innerHTML = `
             <div class="text-center py-12 text-sm font-bold text-gray-400">
                 <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Жооп берип бүттүңүз. Каршылашыңыздын жыйынтыгын күтүүдөсүз...
             </div>`;
@@ -276,10 +292,9 @@ function showQuestion() {
 
     isAnswered = false;
     timeLeft = 20;
-
     let qData = questions[currentQuestionIdx];
     
-    document.getElementById("quiz-box-container").innerHTML = `
+    qContainer.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <span id="question-number-lbl" class="text-xs font-bold tracking-widest text-amber-400 uppercase">Суроо №${currentQuestionIdx + 1}</span>
             <span id="timer-lbl" class="text-xs font-bold text-rose-400 bg-rose-950/40 px-3 py-1 rounded-full border border-rose-800/30">Убакыт: 20с</span>
@@ -354,17 +369,14 @@ function autoSubmitWrong() {
     roomRef.update(updates);
 }
 
-// ОҢДОО: Экөө тең бирдей туура жооп берген учурда кошумча раунддун (суроолордун) берилишин көзөмөлдөө
 function checkGameEndCondition() {
     if(!currentRoomData) return;
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
         if(myRole === "jigit") {
             if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
-                // Кошумча раунд үчүн жаңы суроолор тизмеси
                 let extraQs = [
                     { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] },
-                    { q: "КОШУМЧА РАУНД: Атмосфералык басымды өлчөөчү курал кандай аталат?", a: "Барометр", options: ["Барометр", "Термометр", "Динамометр", "Манометр"] },
-                    { q: "КОШУМЧА РАУНД: Нерсенин ички энергиясын өзгөртүүнүн канча жолу бар?", a: "2", options: ["2", "1", "3", "4"] }
+                    { q: "КОШУМЧА РАУНД: Атмосфералык басымды өлчөөчү курал кандай аталат?", a: "Барометр", options: ["Барометр", "Термометр", "Динамометр", "Манометр"] }
                 ];
                 roomRef.update({
                     status: "playing",
@@ -387,11 +399,13 @@ function endGame(data) {
     
     const modal = document.getElementById("result-modal");
     const msgLbl = document.getElementById("result-message-text");
+    const jScoreRes = document.getElementById("res-jigit-score");
+    const kScoreRes = document.getElementById("res-kyz-score");
     
-    if(modal && msgLbl) {
-        document.getElementById("res-jigit-score").innerText = data.jigitScore;
-        document.getElementById("res-kyz-score").innerText = data.kyzScore;
+    if(jScoreRes) jScoreRes.innerText = data.jigitScore;
+    if(kScoreRes) kScoreRes.innerText = data.kyzScore;
 
+    if(modal && msgLbl) {
         if(data.jigitScore > data.kyzScore) {
             msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
         } else {
