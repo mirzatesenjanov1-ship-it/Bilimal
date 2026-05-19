@@ -29,7 +29,7 @@ let currentRoomData = null;
 let playerName = "";
 
 let questions = [];
-let currentQuestionIdx = -1; // Баштапкы абалы терс сан менен текшерилет
+let currentQuestionIdx = -1; 
 let timerInterval = null;
 let timeLeft = 20;
 let isAnswered = false;
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
     adjustHorseStyles();
 });
 
-// Аттардын фонун аппак жана чоң кылуу
+// Аттардын кутучаларын ак кылуу жана тегиздөө
 function adjustHorseStyles() {
     const containers = ["jigit-track-container", "kyz-track-container"];
     containers.forEach(id => {
@@ -153,6 +153,11 @@ function initRoomListener() {
         if(!data) return;
         currentRoomData = data;
 
+        // Базадагы суроолор топтомун дайыма синхрондоштуруу (Кошумча раунд үчүн өтө маанилүү)
+        if(data.questions) {
+            questions = data.questions;
+        }
+
         document.getElementById("jigit-name-lbl").innerText = data.jigitName || "...";
         document.getElementById("kyz-name-lbl").innerText = data.kyzName || "...";
         document.getElementById("jigit-score").innerText = data.jigitScore;
@@ -170,7 +175,7 @@ function initRoomListener() {
             document.getElementById("game-status-text").innerText = "Кыздын кошулушун күтүүдө...";
         } 
         else if(data.status === "playing") {
-            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД!" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
+            document.getElementById("game-status-text").innerText = data.isExtraRound ? "КОШУМЧА РАУНД! ТЕҢ ЧЫГУУ СЕБЕПТҮҮ ЖАРЫШ УЛАНУУДА" : "ЖАРЫШ АЛМАК-САЛМАК ЖҮРҮҮДӨ";
             
             if(menuMusic) menuMusic.pause();
             if(gameMusic && gameMusic.paused) { gameMusic.play().catch(()=>{}); }
@@ -179,17 +184,15 @@ function initRoomListener() {
             
             let myTargetIndex = (myRole === "jigit") ? data.jigitCurrentQuestion : data.kyzCurrentQuestion;
             
-            // Кезекти текшерүү
+            // Кезек кимде экенин текшерүү
             if (data.turn !== myRole) {
-                // Каршылашынын кезеги болсо таймер толугу менен өчүрүлөт
                 if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
                 document.getElementById("quiz-box-container").innerHTML = `
                     <div class="text-center py-12 text-sm font-bold text-amber-400 animate-pulse">
                         <i class="fas fa-hourglass-half fa-spin mr-2 text-lg"></i> Азыр каршылашыңыздын кезеги. Күтө туруңуз...
                     </div>`;
-                currentQuestionIdx = -1; // Кезек кайра келгенде суроону жаңыдан түзүү үчүн индекс баштапкы абалга келет
+                currentQuestionIdx = -1; // Кезек келгенде суроону кайра жаңылап тартуу үчүн
             } else {
-                // Кезек бизге келгенде жана суроо алмашканда гана жаңы суроону көрсөтөбүз
                 if (myTargetIndex !== currentQuestionIdx) {
                     currentQuestionIdx = myTargetIndex;
                     showQuestion();
@@ -208,7 +211,7 @@ function showQuestion() {
     if(currentQuestionIdx >= questions.length) {
         document.getElementById("quiz-box-container").innerHTML = `
             <div class="text-center py-12 text-sm font-bold text-gray-400">
-                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз бардык суроолорго жооп бердиңиз! Оюн аякташын күтүүдөсүз...
+                <i class="fas fa-flag-checkered mr-2 text-lg text-emerald-400"></i> Сиз ушул раунддагы бардык суроолорго жооп бердиңиз! Оюн жыйынтыгын күтүүдөсүз...
             </div>`;
         checkGameEndCondition();
         return;
@@ -300,20 +303,25 @@ function autoSubmitWrong() {
 
 function checkGameEndCondition() {
     if(!currentRoomData) return;
+    // Эки оюнчу тең учурдагы суроолорду бүтүргөндө гана текшерилет
     if(currentRoomData.jigitCurrentQuestion >= questions.length && currentRoomData.kyzCurrentQuestion >= questions.length) {
+        // Логиканы бир гана жигиттин кардары эсептейт (синхрондуулукту сактоо үчүн)
         if(myRole === "jigit") {
-            if(currentRoomData.jigitScore === currentRoomData.kyzScore) {
+            if(currentRoomData.jigitScore === currentRoomData.kyzScore && !currentRoomData.isExtraRound) {
+                // ТЕҢ ЧЫГУУ БОЛДУ: Кошумча раунддун жаңы таза суроосун беребиз
                 let extraQs = [
                     { q: "КОШУМЧА РАУНД: Төмөнкүлөрдүн ичинен кайсынысы скалярдык чоңдук?", a: "Убакыт", options: ["Убакыт", "Күч", "Ылдамдык", "Ылдамдануу"] }
                 ];
-                let newQuestionSet = questions.concat(extraQs);
                 roomRef.update({
                     status: "playing",
                     isExtraRound: true,
                     turn: "jigit",
-                    questions: newQuestionSet
+                    jigitCurrentQuestion: 0, // КАТАНЫ ОҢДОО: Индексти кайра 0 кылабыз!
+                    kyzCurrentQuestion: 0,   // КАТАНЫ ОҢДОО: Индексти кайра 0 кылабыз!
+                    questions: extraQs       // Жаңы раунд үчүн таза кошумча суроо топтому
                 });
             } else {
+                // Жеңүүчү аныкталса же кошумча раунд да бүтсө оюн токтотулат
                 roomRef.update({ status: "finished" });
             }
         }
@@ -333,8 +341,10 @@ function endGame(data) {
 
         if(data.jigitScore > data.kyzScore) {
             msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигит <b class="text-pink-400">${data.kyzName}</b> деген кызга жетти! 🎉`;
-        } else {
+        } else if(data.kyzScore > data.jigitScore) {
             msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
+        } else {
+            msgLbl.innerHTML = `Жарыш аяктады! Кууган жигит менен качкан кыз тең чыгышты! 🤝`;
         }
         modal.classList.remove("hidden");
     }
