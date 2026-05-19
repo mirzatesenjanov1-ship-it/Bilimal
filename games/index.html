@@ -104,7 +104,6 @@
     </div>
 
     <script>
-        // АЗИЯ РЕГИОНУНА ТАКТАЛГАН URL ДАРЕК КИРГИЗИЛДИ
         const _p1 = "AIzaSyAs7_3V9vG";
         const _p2 = "-67Xz-lR7pXF_N74bO8m0bVE";
         const DB_URL = "https://bilimal-org-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -117,32 +116,34 @@
             storageBucket: "bilimal-org.appspot.com"
         };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.app().database(DB_URL);
 
-        // БАЗАДАН ТЕМАЛАРДЫ ДИНАМИКАЛЫК ЖҮКТӨӨ
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
             const selectedSubject = subjectSelect.value;
-
-            themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
 
             if (!selectedSubject) {
                 themeSelect.innerHTML = '<option value="">-- Алгач предметти тандаңыз --</option>';
                 return;
             }
 
+            themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
+
+            // Коопсуз угуу жана катаны алдын алуу логикасы
             db.ref(`quizzes/${selectedSubject}`).on('value', (snapshot) => {
                 const themesData = snapshot.val();
-                themeSelect.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
+                themeSelect.innerHTML = '';
 
                 if (themesData && Object.keys(themesData).length > 0) {
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = "";
+                    defaultOption.text = "-- Теманы тандаңыз --";
+                    themeSelect.appendChild(defaultOption);
+
                     Object.keys(themesData).forEach((themeKey) => {
                         let readableName = "";
-                        // Эгер мугалим теманын толук атын жазса (title), ошону окуйбуз
                         if (themesData[themeKey] && themesData[themeKey].title) {
                             readableName = themesData[themeKey].title;
                         } else {
@@ -159,7 +160,7 @@
                 }
             }, (error) => {
                 console.error("Ката кетти:", error);
-                themeSelect.innerHTML = '<option value="">-- Жүктөөдө ката кетти --</option>';
+                themeSelect.innerHTML = '<option value="">-- База жабык же ката бар --</option>';
             });
         }
 
@@ -168,12 +169,10 @@
             const themeId = document.getElementById('teacher-theme-select').value;
 
             if (!subject || !themeId) {
-                alert("Сураныч, алгач предметти жана ойното турган теманы тандаңыз!");
+                alert("Сураныч, алгач предметти жана теманы тандаңыз!");
                 return;
             }
-            
-            const targetUrl = `../multi-quiz/play.html?subject=${subject}&theme=${themeId}`;
-            window.location.href = targetUrl;
+            window.location.href = `../multi-quiz/play.html?subject=${subject}&theme=${themeId}`;
         }
     </script>
 </body>
