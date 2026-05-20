@@ -10,8 +10,9 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap');
-        body { font-family: 'Montserrat', sans-serif; background-color: #0b0f19; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #0b0f19; color: #e2e8f0; }
         .blur-box { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .video-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
@@ -39,7 +40,7 @@
             </div>
 
             <div class="flex gap-2">
-                <input type="number" id="room-id-input" placeholder="Кодду жазыңыз..." class="w-2/3 bg-slate-950/80 border border-white/10 rounded-xl px-4 py-3 text-center text-amber-400 font-bold tracking-widest outline-none focus:border-emerald-500 text-sm">
+                <input type="number" id="room-id-input" placeholder="Код..." class="w-2/3 bg-slate-950/80 border border-white/10 rounded-xl px-4 py-3 text-center text-amber-400 font-bold tracking-widest outline-none focus:border-emerald-500 text-sm">
                 <button onclick="joinRoomProcess()" class="w-1/3 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-emerald-950/20">
                     Кирүү (Кыз 🐎)
                 </button>
@@ -53,24 +54,24 @@
             <div class="bg-blue-600 px-3 py-1.5 rounded-lg font-bold text-sm flex items-center gap-1.5">
                 <i class="fas fa-door-open"></i> Бөлмө: <span id="room-id-display" class="text-amber-300">0000</span>
             </div>
-            <div class="font-black tracking-widest text-xs uppercase text-amber-400 animate-pulse">Жарыш башталды! 🏁</div>
+            <div id="game-status-center" class="font-black tracking-widest text-xs uppercase text-amber-400 animate-pulse">КҮТҮҮДӨ... 🕒</div>
             <div class="flex gap-6 text-sm font-bold">
                 <span class="text-orange-400 flex items-center gap-1.5"><span id="display-jigit-name">Жигит</span>: <span id="score-jigit" class="bg-orange-500/20 px-2 py-0.5 rounded text-white">0</span></span>
                 <span class="text-pink-400 flex items-center gap-1.5"><span id="display-kyz-name">Кыз</span>: <span id="score-kyz" class="bg-pink-500/20 px-2 py-0.5 rounded text-white">0</span></span>
             </div>
         </div>
 
-        <div class="h-44 bg-slate-950/80 border border-slate-900 rounded-2xl relative overflow-hidden p-4 shadow-inner">
-            <div class="absolute inset-x-0 bottom-4 border-b-2 border-dashed border-slate-800"></div>
+        <div class="h-48 bg-slate-950/80 border border-slate-900 rounded-2xl relative overflow-hidden p-4 shadow-inner">
+            <div class="absolute inset-x-0 bottom-6 border-b-2 border-dashed border-slate-800"></div>
             
             <div id="player-jigit" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 5%; bottom: 16px;">
-                <span class="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full mb-1">ЖИГИТ</span>
-                <div class="text-4xl filter drop-shadow-[0_4px_6px_rgba(249,115,22,0.3)]">🏇</div>
+                <span class="bg-orange-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full mb-1 z-10">ЖИГИТ</span>
+                <video src="boy_run.mp4" class="video-avatar border-orange-500 bg-slate-900" autoplay loop muted playsinline></video>
             </div>
 
             <div id="player-kyz" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 15%; bottom: 16px;">
-                <span class="bg-pink-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full mb-1">КЫЗ</span>
-                <div class="text-4xl filter drop-shadow-[0_4px_6px_rgba(236,72,153,0.3)]">🐎</div>
+                <span class="bg-pink-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full mb-1 z-10">КЫЗ</span>
+                <video src="girl_run.mp4" class="video-avatar border-pink-500 bg-slate-900" autoplay loop muted playsinline></video>
             </div>
         </div>
 
@@ -80,16 +81,20 @@
             </div>
             
             <h2 id="question-text" class="text-white text-xl md:text-2xl font-bold text-center max-w-3xl leading-relaxed">
-                Каршылашты күтүүдө же суроо жүктөлүүдө...
+                Экинчи оюнчу кошулганда оюн автоматтык түрдө башталат...
             </h2>
             
+            <div id="waiting-overlay-msg" class="hidden text-amber-400 font-medium text-sm animate-pulse bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-xl">
+                <i class="fas fa-hourglass-half mr-2"></i> Сиз жооп бердиңиз. Каршылашыңыздын жооп беришин күтүп жатасыз...
+            </div>
+
             <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl mt-4"></div>
         </div>
 
     </div>
 
     <script>
-        // --- 1. FIREBASE ИШКЕ КИРГИЗҮҮ ---
+        // --- FIREBASE ЖӨНДӨӨЛӨРҮ ---
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -102,7 +107,6 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // URL даректен маалыматтарды таануу
         const urlParams = new URLSearchParams(window.location.search);
         const currentSubject = urlParams.get('subject') || "Физика";
         const currentTheme = urlParams.get('theme') || "Механика (Динамика жана Кинематика)";
@@ -110,55 +114,51 @@
         document.getElementById('theme-badge').innerText = `${currentSubject} ➔ ${currentTheme}`;
 
         let myRoomId = null;
-        let myRole = null; // 'jigit' же 'kyz'
+        let myRole = null; 
         let myPlayerName = "";
-        let globalQuestionsList = [];
+        let hasIAnswered = false; 
 
-        // --- 2. БӨЛМӨ ТҮЗҮҮ (ЖИГИТ) ПУЛЬТУ ---
+        // --- БӨЛМӨ ТҮЗҮҮ (ЖИГИТ) ---
         function createRoomProcess() {
             const nameInput = document.getElementById('player-name-input').value.trim();
-            if (!nameInput) { alert("Атыңызды жазыңыз же тесттин жүктөлүшүн күтүңүз!"); return; }
+            if (!nameInput) { alert("Атыңызды жазыңыз!"); return; }
             
             myPlayerName = nameInput;
             myRole = 'jigit';
-            
-            // Кокусунан 4 орундуу бөлмө ID түзүү
             myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
 
-            // Базадан тандалган теманын суроолорун текшерип, көчүрүп келүү
             database.ref(`teacherQuizzes/${currentSubject}/${currentTheme}/questions`).once('value').then(snapshot => {
                 if (!snapshot.exists()) {
-                    alert("Бул темага байланыштуу мугалимдин суроолору табылган жок! Панелден текшериңиз.");
+                    alert("Мугалимдин панелинде бул темага суроо табылган жок!");
                     return;
                 }
-                
                 const questionsFromTeacher = snapshot.val();
                 
-                // Жаңы оюн бөлмөсүн ачуу жана суроолорду бөлмөнүн ичине көчүрүү
                 database.ref(`rooms/${myRoomId}`).set({
                     roomId: myRoomId,
                     subject: currentSubject,
                     theme: currentTheme,
                     jigitName: myPlayerName,
                     jigitScore: 0,
+                    jigitAnswered: false, // Жаңы синхрондоштуруу талаасы
                     kyzName: "Күтүлүүдө...",
                     kyzScore: 0,
+                    kyzAnswered: false,   // Жаңы синхрондоштуруу талаасы
                     currentQuestionIndex: 0,
                     status: "waiting",
-                    roomQuestions: questionsFromTeacher // Суроолор бөлмөгө байланды!
+                    roomQuestions: questionsFromTeacher
                 }).then(() => {
                     startGameSession();
                 });
             });
         }
 
-        // --- 3. БӨЛМӨГӨ КИРҮҮ (КЫЗ) ПУЛЬТУ ---
+        // --- БӨЛМӨГӨ КИРҮҮ (КЫЗ) ---
         function joinRoomProcess() {
             const nameInput = document.getElementById('player-name-input').value.trim();
             const idInput = document.getElementById('room-id-input').value.trim();
             
-            if (!nameInput) { alert("Атыңызды киргизиңиз!"); return; }
-            if (!idInput) { alert("Бөлмөнүн кодун жазыңыз!"); return; }
+            if (!nameInput || !idInput) { alert("Атыңызды жана бөлмө кодду жазыңыз!"); return; }
 
             myPlayerName = nameInput;
             myRole = 'kyz';
@@ -166,11 +166,9 @@
 
             database.ref(`rooms/${myRoomId}`).once('value').then(snapshot => {
                 if (!snapshot.exists()) {
-                    alert("Мындай коддуу бөлмө табылган жок! Кайра текшериңиз.");
+                    alert("Бөлмө табылган жок!");
                     return;
                 }
-
-                // Бөлмөгө Кыз катары катталуу
                 database.ref(`rooms/${myRoomId}`).update({
                     kyzName: myPlayerName,
                     status: "playing"
@@ -180,45 +178,79 @@
             });
         }
 
-        // --- 4. ОЮН СЕССИЯСЫН БАШТОО ЖАНА LIVE REFRESH ---
+        // --- ОЮНДУ РЕАЛДУУ УБАҚЫТТА БАШКАРУУ ---
         function startGameSession() {
             document.getElementById('setup-container').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
             document.getElementById('room-id-display').textContent = myRoomId;
 
-            // Бөлмөдөгү өзгөрүүлөрдү реалдуу убакытта көзөмөлдөө
             database.ref(`rooms/${myRoomId}`).on('value', snapshot => {
                 const room = snapshot.val();
                 if (!room) return;
 
-                // Аттарды жана упайларды жаңыртуу
-                document.getElementById('display-jigit-name').textContent = room.jigitName || "Жигит";
-                document.getElementById('display-kyz-name').textContent = room.kyzName || "Кыз";
-                document.getElementById('score-jigit').textContent = room.jigitScore || 0;
-                document.getElementById('score-kyz').textContent = room.kyzScore || 0;
+                // Баарын экранга жаңыртып чыгаруу
+                document.getElementById('display-jigit-name').textContent = room.jigitName;
+                document.getElementById('display-kyz-name').textContent = room.kyzName;
+                document.getElementById('score-jigit').textContent = room.jigitScore;
+                document.getElementById('score-kyz').textContent = room.kyzScore;
 
-                // Атчандардын графикалык ордун упайга жараша жылдыруу (Анимация)
-                const jigitLeft = 5 + (room.jigitScore * 4); // Ар бир туура жооп 4% алдыга жылдырат
-                const kyzLeft = 15 + (room.kyzScore * 4);
+                // Видео аватарлардын ордун жылдыруу
+                const jigitLeft = 5 + (room.jigitScore * 3.5);
+                const kyzLeft = 15 + (room.kyzScore * 3.5);
                 document.getElementById('player-jigit').style.left = `${jigitLeft > 85 ? 85 : jigitLeft}%`;
                 document.getElementById('player-kyz').style.left = `${kyzLeft > 85 ? 85 : kyzLeft}%`;
 
-                // Учурдагы активдүү суроонун индекси
+                // Эгер экинчи киши келе элек болсо күтүү
+                if (room.status === "waiting") {
+                    document.getElementById('game-status-center').textContent = "КҮТҮҮДӨ... 🕒";
+                    return;
+                }
+                document.getElementById('game-status-center').textContent = "ЖАРЫШ БАШТАЛДЫ! 🏁";
+
                 const qIndex = room.currentQuestionIndex || 0;
                 document.getElementById('current-question-num').textContent = qIndex + 1;
 
+                // ЭКИ ОЮНЧУ ТЕҢ ЖООП БЕРГЕН УЧУРДУ ТЕКШЕРҮҮ (СИНХРОНИЗАЦИЯ)
+                if (room.jigitAnswered === true && room.kyzAnswered === true) {
+                    // Эки тарап тең басты, Жигит бөлмөнү кийинки суроого жылдырат жана триггерлерди тазалайт
+                    if (myRole === 'jigit') {
+                        setTimeout(() => {
+                            database.ref(`rooms/${myRoomId}`).update({
+                                currentQuestionIndex: qIndex + 1,
+                                jigitAnswered: false,
+                                kyzAnswered: false
+                            });
+                        }, 1000); // Көрүп алышы үчүн 1 секунддук тыныгуу
+                    }
+                    hasIAnswered = false; 
+                    return;
+                }
+
+                // Эгер өзү жооп берип, бирок экинчиси бере элек болсо, баскычтарды жаап, күтүү тексти чыгат
+                if ((myRole === 'jigit' && room.jigitAnswered) || (myRole === 'kyz' && room.kyzAnswered)) {
+                    document.getElementById('waiting-overlay-msg').classList.remove('hidden');
+                    document.getElementById('options-container').classList.add('pointer-events-none', 'opacity-40');
+                    return;
+                } else {
+                    document.getElementById('waiting-overlay-msg').classList.add('hidden');
+                    document.getElementById('options-container').classList.remove('pointer-events-none', 'opacity-40');
+                }
+
+                // Суроону чыгаруу
                 if (room.roomQuestions && room.roomQuestions[qIndex]) {
-                    globalQuestionsList = room.roomQuestions;
-                    renderQuestionWithOptions(room.roomQuestions[qIndex]);
-                } else if (qIndex >= 20 || (room.roomQuestions && qIndex >= room.roomQuestions.length)) {
-                    // Оюн аяктаганда жыйынтык чыгаруу
-                    document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-amber-400">Жигит: ${room.jigitScore} упай</span> | <span class="text-pink-400">Кыз: ${room.kyzScore} упай</span>`;
+                    // Эгер жаңы суроого өтсөк гана жана локалдык түрдө жооп бере элек болсок варианттарды түзөбүз
+                    if (!hasIAnswered) {
+                        renderQuestionWithOptions(room.roomQuestions[qIndex]);
+                    }
+                } else if (room.roomQuestions && qIndex >= room.roomQuestions.length) {
+                    document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-amber-400">${room.jigitName}: ${room.jigitScore} упай</span> | <span class="text-pink-400">${room.kyzName}: ${room.kyzScore} упай</span>`;
                     document.getElementById('options-container').innerHTML = "";
+                    document.getElementById('waiting-overlay-msg').classList.add('hidden');
                 }
             });
         }
 
-        // --- 5. ВАРИАНТТАРДЫ РАНДОМНО (АР АЛАШТЫРЫП) ЭКРАНГА ЧЫГАРУУ ---
+        // --- ВАРИАНТТАРДЫ РАНДОМНО ЧЫГАРУУ ---
         function renderQuestionWithOptions(questionObj) {
             const questionTextElement = document.getElementById("question-text"); 
             const optionsContainer = document.getElementById("options-container"); 
@@ -226,45 +258,34 @@
             optionsContainer.innerHTML = "";
             questionTextElement.textContent = questionObj.text || questionObj.question || "Суроо тексти бош";
 
-            // Мугалимдин базасынан келген маалыматты толук таануу
-            const vA = questionObj.variantA || "";
-            const vB = questionObj.variantB || "";
-            const vC = questionObj.variantC || "";
-            const vD = questionObj.variantD || "";
-
-            // Варианттарды массивге чогултуу
             let rawOptions = [
-                { isCorrect: true, text: vA },
-                { isCorrect: false, text: vB },
-                { isCorrect: false, text: vC },
-                { isCorrect: false, text: vD }
-            ].filter(o => o.text !== ""); // Бош эместерин гана калтырабыз
+                { isCorrect: true, text: questionObj.variantA || "" },
+                { isCorrect: false, text: questionObj.variantB || "" },
+                { isCorrect: false, text: questionObj.variantC || "" },
+                { isCorrect: false, text: questionObj.variantD || "" }
+            ].filter(o => o.text !== "");
 
-            // КАТАДАН КОРГОО
             if (rawOptions.length === 0) {
-                optionsContainer.innerHTML = `<p class="text-red-400 col-span-full text-center text-sm font-bold">⚠️ Бул суроонун варианттары табылган жок! Панелден текшериңиз.</p>`;
+                optionsContainer.innerHTML = `<p class="text-red-400 col-span-full text-center text-sm font-bold">⚠️ Бул суроонун варианттары табылган жок!</p>`;
                 return;
             }
 
-            // Массивдин ичиндеги варианттардын орундарын аралаштыруу (Fisher-Yates алгоритми)
+            // Fisher-Yates аралаштыруу
             for (let i = rawOptions.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [rawOptions[i], rawOptions[j]] = [rawOptions[j], rawOptions[i]];
             }
 
-            // Тамгаларды ыйгаруу (А, Б, В, Г)
             const letters = ["A", "B", "C", "D"];
 
-            // Экранга баскычтарды куруу
             rawOptions.forEach((option, index) => {
                 const button = document.createElement("button");
                 button.className = "w-full text-left bg-slate-800/80 hover:bg-amber-500 hover:text-slate-950 text-slate-200 font-semibold p-4 rounded-xl transition-all duration-200 border border-slate-700/50 shadow-md flex items-center gap-2 text-base group";
-                
                 button.innerHTML = `<span class="text-amber-400 font-bold group-hover:text-slate-950">${letters[index]})</span> ${option.text}`;
                 
-                // Басылгандагы логика
                 button.onclick = function() {
-                    // Бардык баскычтарды убактылуу жабуу (бир эле жолу басуу үчүн)
+                    hasIAnswered = true;
+                    // Бардык баскычтарды убактылуу жабуу
                     const allButtons = optionsContainer.querySelectorAll('button');
                     allButtons.forEach(btn => btn.disabled = true);
 
@@ -275,13 +296,14 @@
             });
         }
 
-        // --- 6. ЖООПТУ ИШТӨӨ ЖАНА БӨЛМӨНҮ АЛДЫГА ЖЫЛДЫРУУ ---
+        // --- ЖООПТУ ФИРЕБАСЕГЕ ЖАЗУУ ЖАНА КЕЗЕКТИ КҮТҮҮ ---
         function processUserAnswer(isCorrect, selectedButton) {
+            // Тандалган баскычтын түсүн өзгөртүү (визуалдык жооп)
             if (isCorrect) {
                 selectedButton.classList.remove('bg-slate-800/80');
                 selectedButton.classList.add('bg-emerald-600', 'text-white');
                 
-                // Рольго жараша упайды 10го жогорулатуу
+                // Упай кошуу
                 const scoreField = myRole === 'jigit' ? 'jigitScore' : 'kyzScore';
                 database.ref(`rooms/${myRoomId}/${scoreField}`).set(firebase.database.ServerValue.increment(10));
             } else {
@@ -289,20 +311,9 @@
                 selectedButton.classList.add('bg-rose-600', 'text-white');
             }
 
-            // Болжол менен 1.5 секунддан кийин автоматтык түрдө кийинки суроого өтүү (Жигит гана башкарат)
-            setTimeout(() => {
-                if (myRole === 'jigit') {
-                    database.ref(`rooms/${myRoomId}/currentQuestionIndex`).set(firebase.database.ServerValue.increment(15? firebase.database.ServerValue.increment(1) : 1));
-                    
-                    // Же жөнөкөй өстүрүү:
-                    database.ref(`rooms/${myRoomId}/currentQuestionIndex`).once('value').then(snap => {
-                        let currIdx = snap.val() || 0;
-                        database.ref(`rooms/${myRoomId}`).update({
-                            currentQuestionIndex: currIdx + 1
-                        });
-                    });
-                }
-            }, 1200);
+            // Жооп бергенин Firebase'ге билдирүү (Ушул жер синхрондоштурууну башкарат)
+            const answeredField = myRole === 'jigit' ? 'jigitAnswered' : 'kyzAnswered';
+            database.ref(`rooms/${myRoomId}/${answeredField}`).set(true);
         }
     </script>
 </body>
