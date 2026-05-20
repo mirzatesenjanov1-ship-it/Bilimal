@@ -114,12 +114,11 @@
     </div>
 
     <script>
-        // URL даректен кыргызча тамгаларды туура окуу (decodeURIComponent)
+        // URL даректен кыргызча тамгаларды туура окуу
         const urlParams = new URLSearchParams(window.location.search);
         const currentSubject = urlParams.get('subject') ? decodeURIComponent(urlParams.get('subject')) : null;
         const currentTheme = urlParams.get('theme') ? decodeURIComponent(urlParams.get('theme')) : null;
 
-        // Жаңы Европа базасынын дареги
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -136,22 +135,28 @@
         let myRoomCode = null;
         let myRole = null; 
         let currentQuestionIndex = 0;
+        let isListening = false;
 
-        // Баракча ачылганда суроолорду базадан алдын ала жүктөө
+        // Баракча ачылганда суроолорду алдын ала жүктөө
         window.addEventListener('DOMContentLoaded', () => {
             const displayTag = document.getElementById('target-theme-display');
             if (!currentSubject || !currentTheme) {
-                if(displayTag) displayTag.textContent = "Ката: Предмет же тема тандалган жок!";
+                if(displayTag) displayTag.textContent = "Түз бөлмө коду аркылуу кирүү режими";
                 return;
             }
             
             if(displayTag) displayTag.textContent = `Тема: ${currentTheme.toUpperCase()}`;
 
-            // Коопсуздук үчүн алгач 'teacherQuizzes' папкасынан издейбиз
-            db.ref(`teacherQuizzes/${currentSubject}/${currentTheme}`).once('value').then((snapshot) => {
+            // 1-кезекте 'kyzKuumayQuiz' папкасын текшеребиз (сиздин чыныгы базадагыдай)
+            db.ref(`kyzKuumayQuiz/${currentSubject}/${currentTheme}`).once('value').then((snapshot) => {
                 let quizData = snapshot.val();
-                
-                // Эгер ал жерде жок болсо, эски жалпы папканы текшерет
+                if (!quizData) {
+                    // Эгер ал жерде жок болсо, башка папкаларды карап көрөт
+                    return db.ref(`teacherQuizzes/${currentSubject}/${currentTheme}`).once('value');
+                }
+                return snapshot;
+            }).then((snapshot) => {
+                let quizData = snapshot.val();
                 if (!quizData) {
                     return db.ref(`quizzes/${currentSubject}/${currentTheme}`).once('value');
                 }
@@ -159,7 +164,14 @@
             }).then((snapshot) => {
                 const quizData = snapshot.val();
                 if (quizData) {
-                    activeQuizQuestions = quizData.questions || (Array.isArray(quizData) ? quizData : Object.values(quizData));
+                    // Суроолор тизмесин массивге айландыруу логикасы
+                    if (quizData.questions) {
+                        activeQuizQuestions = quizData.questions;
+                    } else if (Array.isArray(quizData)) {
+                        activeQuizQuestions = quizData;
+                    } else {
+                        activeQuizQuestions = Object.values(quizData);
+                    }
                     console.log("Суроолор даяр:", activeQuizQuestions);
                     if(displayTag) displayTag.textContent = `Тема: ${currentTheme.toUpperCase()} (Жүктөлдү)`;
                 } else {
@@ -171,7 +183,7 @@
             });
         });
 
-        // БӨЛМӨ ТҮЗҮҮ (ЖИГИТ)
+        // БӨЛМӨ ТҮЗҮҮ (ЖИГИТ - PLAYER 1)
         function createNewRoom() {
             const playerName = document.getElementById('player-name-input').value.trim();
             
@@ -189,8 +201,8 @@
 
             const roomData = {
                 roomCode: myRoomCode,
-                subject: currentSubject,
-                theme: currentTheme,
+                subject: currentSubject || "Жалпы",
+                theme: currentTheme || "Тест",
                 status: "waiting",
                 questions: activeQuizQuestions,
                 player1: { name: playerName, score: 0, position: 20 },
@@ -203,7 +215,7 @@
             }).catch(err => alert("Бөлмө түзүүдө ката кетти: " + err.message));
         }
 
-        // БӨЛМӨГӨ КОШУЛУУ (КЫЗ)
+        // БӨЛМӨГӨ КОШУЛУУ (КЫЗ - PLAYER 2)
         function joinExistingRoom() {
             const playerName = document.getElementById('player-name-input').value.trim();
             const roomCode = document.getElementById('room-code-input').value.trim();
@@ -215,15 +227,22 @@
             db.ref(`rooms/${roomCode}`).once('value').then((snapshot) => {
                 const room = snapshot.val();
                 if (!room) { alert("Мындай коддуу бөлмө табылган жок!"); return; }
+                if (room.status === "playing" && room.player2 && room.player2.name !== "Күтүүдө...") {
+                    alert("Бул бөлмө толо! Башка бөлмөгө баш багыңыз.");
+                    return;
+                }
 
+                // Экинчи оюнчу бөлмөдө сакталган даяр суроолорду өзүнө алат
                 activeQuizQuestions = room.questions || [];
 
-                db.ref(`rooms/${roomCode}/player2`).set({ name: playerName, score: 0, position: 120 })
+                // Бөлмөдөгү экинчи оюнчунун маалыматын жаңылоо жана оюнду баштоо
+                return db.ref(`rooms/${roomCode}/player2`).set({ name: playerName, score: 0, position: 120 })
                     .then(() => {
-                        db.ref(`rooms/${roomCode}`).update({ status: "playing" });
-                        initGameUI();
-                        listenToRoomChanges();
+                        return db.ref(`rooms/${roomCode}`).update({ status: "playing" });
                     });
+            }).then(() => {
+                initGameUI();
+                listenToRoomChanges();
             }).catch(err => alert("Кошулууда ката кетти: " + err.message));
         }
 
@@ -235,21 +254,41 @@
             }
         }
 
-        // РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ ЖАНА ЖАҢЫЛОО
+        // РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ ЖАНА ЭКРАНДЫ ЖАҢЫЛОО
         function listenToRoomChanges() {
+            if (isListening) return; // Бир эле жолу угуучу функцияны иштетебиз
+            isListening = true;
+
             db.ref(`rooms/${myRoomCode}`).on('value', (snapshot) => {
                 const room = snapshot.val();
                 if (!room) return;
 
-                if(document.getElementById('p1-score-display') && room.player1) document.getElementById('p1-score-display').innerText = room.player1.score;
-                if(document.getElementById('p2-score-display') && room.player2) document.getElementById('p2-score-display').innerText = room.player2.score;
+                // Упайларды экранга чыгаруу
+                if(document.getElementById('p1-score-display') && room.player1) {
+                    document.getElementById('p1-score-display').innerText = room.player1.score;
+                }
+                if(document.getElementById('p2-score-display') && room.player2) {
+                    document.getElementById('p2-score-display').innerText = room.player2.score;
+                }
 
-                if(room.player1 && document.getElementById('horse-p1')) document.getElementById('horse-p1').style.transform = `translateX(${room.player1.position}px)`;
-                if(room.player2 && document.getElementById('horse-p2')) document.getElementById('horse-p2').style.transform = `translateX(${room.player2.position}px)`;
+                // Аттардын ордун жылдыруу
+                if(room.player1 && document.getElementById('horse-p1')) {
+                    document.getElementById('horse-p1').style.transform = `translateX(${room.player1.position}px)`;
+                }
+                if(room.player2 && document.getElementById('horse-p2')) {
+                    document.getElementById('horse-p2').style.transform = `translateX(${room.player2.position}px)`;
+                }
 
+                // Эгер экинчи оюнчу кирсе, оюнду активдештирүү
                 if (room.status === "playing") {
-                    if(document.getElementById('game-status-text')) document.getElementById('game-status-text').innerText = "Жарыш башталды! 🏁";
-                    if (document.getElementById('options-grid').children.length === 0) {
+                    if(document.getElementById('game-status-text')) {
+                        document.getElementById('game-status-text').innerText = `Жарыш башталды! 🏁 (${room.player1.name} VS ${room.player2.name})`;
+                    }
+                    // Эгер суроолор тизмеси бош болсо, бөлмөдөгү суроолорду кайрадан толтурабыз
+                    if(activeQuizQuestions.length === 0 && room.questions) {
+                        activeQuizQuestions = room.questions;
+                    }
+                    if (document.getElementById('options-grid').children.length === 0 && activeQuizQuestions.length > 0) {
                         renderQuestion();
                     }
                 }
@@ -258,6 +297,11 @@
 
         // СУРООНУ ЭКРАНГА ЧЫГАРУУ
         function renderQuestion() {
+            if (activeQuizQuestions.length === 0) {
+                document.getElementById('question-text').innerText = "Суроолор жүктөлүүдө, бир аз күтө туруңуз...";
+                return;
+            }
+
             if (currentQuestionIndex >= activeQuizQuestions.length) {
                 showFinalResults();
                 return;
@@ -265,20 +309,20 @@
 
             const currentQuestion = activeQuizQuestions[currentQuestionIndex];
             document.getElementById('question-counter').innerText = `Суроо №${currentQuestionIndex + 1} / ${activeQuizQuestions.length}`;
-            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо матыны жок";
+            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо тексти жок";
 
             const optionsGrid = document.getElementById('options-grid');
             optionsGrid.innerHTML = '';
 
-            // Варианттарды түзүү
+            // Варианттарды коопсуз чогултуу
             const answers = [
                 { text: currentQuestion.answerA, isCorrect: true },
                 { text: currentQuestion.answerB, isCorrect: false },
                 { text: currentQuestion.answerC, isCorrect: false },
                 { text: currentQuestion.answerD, isCorrect: false }
-            ].filter(a => a.text); // Бош эмес варианттарды гана алат
+            ].filter(a => a.text !== undefined && a.text !== null && a.text !== ''); 
 
-            // Варианттардын ордун аралаштыруу
+            // Варианттарды туш келди аралаштыруу
             answers.sort(() => Math.random() - 0.5);
 
             answers.forEach(ans => {
@@ -299,9 +343,9 @@
                 btn.classList.remove('bg-white/5');
                 btn.classList.add('bg-emerald-500/30', 'border-emerald-500', 'text-emerald-400');
                 
-                // Туура жооп үчүн упайды жана аттын координатасын 60px алдыга жылдыруу
+                // Туура жооп үчүн упайды жана атты 60px алдыга жылдыруу
                 db.ref(`rooms/${myRoomCode}/${myRole}`).once('value').then(snapshot => {
-                    const data = snapshot.val() || { score: 0, position: 0 };
+                    const data = snapshot.val() || { score: 0, position: myRole === 'player1' ? 20 : 120 };
                     db.ref(`rooms/${myRoomCode}/${myRole}`).update({
                         score: data.score + 1,
                         position: data.position + 60 
@@ -312,7 +356,7 @@
                 btn.classList.add('bg-rose-500/30', 'border-rose-500', 'text-rose-400');
             }
 
-            // 1.5 секунддан кийин кийинки суроого өтүү
+            // Кийинки суроого 1.5 секунддан кийин өтүү
             setTimeout(() => {
                 currentQuestionIndex++;
                 renderQuestion();
