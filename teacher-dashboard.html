@@ -96,8 +96,8 @@
                     <div class="flex items-center gap-4">
                         <div class="text-3xl text-amber-400"><i class="fas fa-horse-head"></i></div>
                         <div>
-                            <h3 class="text-xl font-black text-white uppercase tracking-wider">Кыз Куумай: Онлайн Оюн Базасы</h3>
-                            <p class="text-xs text-gray-400">Предметти тандап, oyunга катыша турган 20 суроону туура жооптору менен киргизиңиз</p>
+                            <h3 class="text-xl font-black text-white uppercase tracking-wider">Кыз Куумай: Онлайн Оюн Базасы (Жаңы)</h3>
+                            <p class="text-xs text-gray-400">Предметти тандап, оюнга катыша турган 20 суроону туура жооптору менен киргизиңиз</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -232,7 +232,6 @@
                         quizSettingsMap[quiz.id] = quiz.settings || { grade5: 85, grade4: 70 };
                         const url = `http://bilimal.org/quiz.html?id=${quiz.id}`;
                         
-                        // Базада статус жок болсо, автоматтык түрдө "open" (ачык) деп алабыз
                         const quizStatus = quiz.status || "open";
                         const isChecked = quizStatus === "open" ? "checked" : "";
                         const statusLabel = quizStatus === "open" ? "Ачык" : "Жабык";
@@ -263,11 +262,9 @@
             });
         }
 
-        // Тесттин жеткиликтүүлүгүн (Доступ) өзгөртүүчү жаңы функция
         function toggleQuizAccess(quizId) {
             const toggleInput = document.getElementById(`status-toggle-${quizId}`);
             const statusText = document.getElementById(`status-text-${quizId}`);
-            
             const newStatus = toggleInput.checked ? "open" : "closed";
             
             database.ref(`tests/${quizId}`).update({
@@ -282,12 +279,11 @@
                 }
             }).catch(err => {
                 console.error("Статусту жаңыртууда ката кетти:", err);
-                toggleInput.checked = !toggleInput.checked; // Ката болсо баскычты артка кайтарат
+                toggleInput.checked = !toggleInput.checked;
                 alert("Ката келип чыкты! База менен байланышты текшериңиз.");
             });
         }
 
-        // Тестти толугу менен өчүрүү функциясы
         function deleteQuiz(quizId) {
             if (confirm('Бул тестти биротоло өчүрүүнү каалайсызбы? Окуучулардын бул тестке тиешелүү жыйынтыктары да көрүнбөй калат.')) {
                 database.ref(`tests/${quizId}`).remove()
@@ -296,7 +292,6 @@
             }
         }
 
-        // Окуучулардын жыйынтыктарын жүктөө
         function loadResults() {
             database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).on('value', snapshot => {
                 const tableBody = document.getElementById('results-table-body');
@@ -362,6 +357,7 @@
             XLSX.writeFile(workbook, "BILIMAL_Жыйынтыктар.xlsx");
         }
 
+        // Ачык жоопторду көрүү
         function viewEssay(resultKey) {
             database.ref('results/' + resultKey + '/openAnswers').once('value').then(snapshot => {
                 const answers = snapshot.val();
@@ -411,7 +407,7 @@
         }
 
         // ==========================================
-        // 🐎 КЫЗ КУУМАЙ БАШКАРУУ СИСТЕМАСЫНЫН ЛОГИКАСЫ (JS)
+        // 🐎 КЫЗ КУУМАЙ БАШКАРУУ СИСТЕМАСЫНЫН ЛОГИКАСЫ (ЖАҢЫ ТАЗА ПАПКА)
         // ==========================================
         function initKyzKuumayDashboard() {
             const subSelect = document.getElementById('dashboardSubjectSelect');
@@ -461,7 +457,7 @@
                 document.getElementById('loaded-status').innerText = "";
             });
 
-            // 3. Тема тандалганда базада мурун жазылган суроолор болсо автоматтык түрдө формага толтуруу
+            // 3. Тема тандалганда ЖАҢЫ папкада мурун жазылган суроолор болсо жүктөө
             topSelect.addEventListener('change', function() {
                 const subject = subSelect.value;
                 const topic = this.value;
@@ -470,7 +466,8 @@
                 statusSpan.innerText = "База текшерилүүдө...";
                 statusSpan.className = "text-[10px] font-bold text-amber-400 animate-pulse";
 
-                database.ref('kyzKuumayQuiz/' + subject + '/' + topic + '/questions').once('value').then(snapshot => {
+                // ЖАҢЫ ӨЗҮНЧӨ ДАРЕККЕ БАГЫТТАЛДЫ: teacherQuizzes
+                database.ref('teacherQuizzes/' + subject + '/' + topic + '/questions').once('value').then(snapshot => {
                     if (snapshot.exists()) {
                         const existingQuestions = snapshot.val();
                         const blocks = container.querySelectorAll('.q-block');
@@ -481,25 +478,23 @@
                                 block.querySelector('.q-title').value = qData.question || "";
                                 block.querySelector('.q-ans').value = qData.answer || "";
                                 
-                                // Ката варианттарды кайра бөлүштүрүү
                                 const wrongOpts = qData.options.filter(o => o !== qData.answer);
                                 block.querySelector('.q-opt1').value = wrongOpts[0] || "";
                                 block.querySelector('.q-opt2').value = wrongOpts[1] || "";
                                 block.querySelector('.q-opt3').value = wrongOpts[2] || "";
                             }
                         });
-                        statusSpan.innerText = "Мурунку сакталган 20 суроо жүктөлдү 🔄";
+                        statusSpan.innerText = "Жаңы папкадан мурунку сакталган 20 суроо жүктөлдү 🔄";
                         statusSpan.className = "text-[10px] font-bold text-emerald-400";
                     } else {
-                        // Эгер маалымат жок болсо талааларды тазалоо
                         container.querySelectorAll('input').forEach(input => input.value = "");
-                        statusSpan.innerText = "Бул темага биринчи жолу түзүлүп жатат 🆕";
+                        statusSpan.innerText = "Бул темага жаңы папкада биринчи жолу түзүлүп жатат 🆕";
                         statusSpan.className = "text-[10px] font-bold text-blue-400";
                     }
                 });
             });
 
-            // 4. Форма тастыкталганда (Submit) 20 суроону тең чогултуп Firebase'ге сактоо
+            // 4. Форма тастыкталганда 20 суроону жаңы папкага (teacherQuizzes) гана жазуу
             document.getElementById('kyzKuumayQuestionForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -528,12 +523,13 @@
                     });
                 });
 
-                database.ref('kyzKuumayQuiz/' + subject + '/' + topic).set({
+                // ЖАҢЫ ТАЗА ДАРЕККЕ САКТОО: teacherQuizzes
+                database.ref('teacherQuizzes/' + subject + '/' + topic).set({
                     questions: finalQuestionsArray,
                     authorUid: currentUserId,
                     updatedAt: firebase.database.ServerValue.TIMESTAMP
                 }).then(() => {
-                    alert(`🎉 Ийгиликтүү! "${subject} -> ${topic}" үчүн 20 суроо Кыз Куумай оюнунун маалымат базасына сакталды. Мугалимдер жана окуучулар дароо ойной алышат!`);
+                    alert(`🎉 Керемет! "${subject} -> ${topic}" үчүн 20 суроо өзүнчө жаңы коопсуз базага (teacherQuizzes) ийгиликтүү сакталды. Эски оюнга такыр зыяны тийген жок!`);
                 }).catch(error => {
                     alert("Базага сактоодо ката кетти: " + error.message);
                 });
