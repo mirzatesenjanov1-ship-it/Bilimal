@@ -137,25 +137,25 @@
         let isListening = false;
         let p1Name = "Жигит", p2Name = "Кыз";
 
-        // Музыкаларды башкаруу
         const menuMusic = document.getElementById('bg-menu-music');
         const gameMusic = document.getElementById('bg-game-music');
         const vidP1 = document.getElementById('video-p1');
         const vidP2 = document.getElementById('video-p2');
 
         window.addEventListener('DOMContentLoaded', () => {
-            // Меню музыкасын баштоо
+            // Экранды басканда музыканын башталышы
             document.body.addEventListener('click', () => {
                 if(menuMusic.paused && !myRoomCode) menuMusic.play().catch(()=>{});
             }, { once: true });
 
             const displayTag = document.getElementById('target-theme-display');
             if (!currentSubject || !currentTheme) {
-                if(displayTag) displayTag.textContent = "Түз бөлмө режими";
+                if(displayTag) displayTag.textContent = "Түз бөлмө коду аркылуу кирүү режими";
                 return;
             }
             if(displayTag) displayTag.textContent = `Тема: ${currentTheme.toUpperCase()}`;
 
+            // Сиздин чыныгы базадагы папканы угуу
             db.ref(`kyzKuumayQuiz/${currentSubject}/${currentTheme}`).once('value').then((snapshot) => {
                 let quizData = snapshot.val();
                 if (!quizData) return db.ref(`quizzes/${currentSubject}/${currentTheme}`).once('value');
@@ -228,7 +228,6 @@
             menuMusic.pause();
             gameMusic.play().catch(()=>{});
 
-            // Аттарды алгач күтүү абалына коюу (пауза)
             vidP1.pause();
             vidP2.pause();
         }
@@ -260,15 +259,13 @@
                 if (room.status === "playing") {
                     document.getElementById('game-status-text').innerText = "Жарыш башталды! 🏁";
                     
-                    // Эки оюнчу тең жооп берип бүткөнүн текшерүү
                     if (room.player1.answered && room.player2.answered) {
-                        // Экөө тең жооп берди -> Аттар чуркайт (Видео ойнойт)
+                        // Экөө тең жооп берди -> Видео иштейт
                         vidP1.play().catch(()=>{});
                         vidP2.play().catch(()=>{});
 
-                        // 2.5 секунддан кийин кийинки суроого автоматтык түрдө өтүү
                         setTimeout(() => {
-                            if (myRole === 'player1') { // Маалымат кайталанбаш үчүн бирөөсү гана жаңылайт
+                            if (myRole === 'player1') { 
                                 db.ref(`rooms/${myRoomCode}`).update({
                                     currentQuestion: currentQuestionIndex + 1,
                                     "player1/answered": false,
@@ -277,11 +274,10 @@
                             }
                         }, 2500);
                     } else {
-                        // Эгер кимдир бирөө жооп бере элек болсо, аттар токтойт
+                        // Кимдир бирөө жооп бере элек болсо видеолор токтойт
                         vidP1.pause();
                         vidP2.pause();
 
-                        // Менин ролум жооп бердиби? Текшерүү
                         if (room[myRole].answered) {
                             document.getElementById('options-grid').innerHTML = '';
                             document.getElementById('waiting-turn-msg').classList.remove('hidden');
@@ -304,26 +300,24 @@
 
             const currentQuestion = activeQuizQuestions[currentQuestionIndex];
             document.getElementById('question-counter').innerText = `Суроо №${currentQuestionIndex + 1} / ${activeQuizQuestions.length}`;
-            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо";
+            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо тексти";
 
             const optionsGrid = document.getElementById('options-grid');
             optionsGrid.innerHTML = '';
 
-            // Коопсуз варианттарды чогултуу (ар кандай аттар менен келсе дагы)
+            // Сиздин базадагы өзгөрмөлөрдү окуу (variantA, variantB, variantC, variantD жана answerA)
             const rawAnswers = [
-                { text: currentQuestion.answerA || currentQuestion.variantA || currentQuestion.a, isCorrect: true },
-                { text: currentQuestion.answerB || currentQuestion.variantB || currentQuestion.b, isCorrect: false },
-                { text: currentQuestion.answerC || currentQuestion.variantC || currentQuestion.c, isCorrect: false },
-                { text: currentQuestion.answerD || currentQuestion.variantD || currentQuestion.d, isCorrect: false }
+                { text: currentQuestion.variantA || currentQuestion.answerA || currentQuestion.a, isCorrect: true },
+                { text: currentQuestion.variantB || currentQuestion.answerB || currentQuestion.b, isCorrect: false },
+                { text: currentQuestion.variantC || currentQuestion.answerC || currentQuestion.c, isCorrect: false },
+                { text: currentQuestion.variantD || currentQuestion.answerD || currentQuestion.d, isCorrect: false }
             ].filter(a => a.text);
 
-            // Эгерде базада атайын вариант жок болсо, тест туура түзүлгөн эмес
             if (rawAnswers.length === 0) {
-                optionsGrid.innerHTML = `<p class="col-span-2 text-rose-400 font-bold">Бул суроонун варианттары табылган жок! Администраторго кайрылыңыз.</p>`;
+                optionsGrid.innerHTML = `<p class="col-span-2 text-rose-400 font-bold">Бул суроонун варианттары табылган жок! Панелден текшериңиз.</p>`;
                 return;
             }
 
-            // Биринчи кирген суроону аралаштырбай, бир ирет гана көрсөтүү үчүн
             if(!optionsGrid.dataset.index || optionsGrid.dataset.index != currentQuestionIndex) {
                 rawAnswers.sort(() => Math.random() - 0.5);
                 optionsGrid.dataset.index = currentQuestionIndex;
@@ -349,7 +343,6 @@
                 btn.classList.add('bg-rose-500/30', 'border-rose-500', 'text-rose-400');
             }
 
-            // Упайды жана абалды базага жөнөтүү
             db.ref(`rooms/${myRoomCode}/${myRole}`).once('value').then(snapshot => {
                 const data = snapshot.val();
                 const newScore = isCorrect ? data.score + 1 : data.score;
@@ -377,10 +370,8 @@
                 
                 let resultText = "";
                 if (s1 > s2) {
-                    // Жигит утту
                     resultText = `<span class="text-orange-400 font-black text-2xl block mb-4">🏆 Жигит Утту!</span> "${p1Name}" деген жигит "${p2Name}" деген кызды кууп жетти! 🐎`;
                 } else {
-                    // Кыз утту же Тең чыгуу (кыз качып кетти)
                     resultText = `<span class="text-pink-400 font-black text-2xl block mb-4">🏆 Кыз Утту!</span> "${p1Name}" деген жигиттен "${p2Name}" деген кыз качып кетти! 🏹`;
                 }
 
