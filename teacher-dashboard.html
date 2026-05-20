@@ -193,7 +193,7 @@
         // Карта: Предметтердин жана алардын темаларынын тизмеси
         const subjectTopicsMap = {
             "Математика": ["Алгебра: Теңдемелер жана барабарсыздыктар", "Геометрия: Планиметрия негиздери"],
-            "Кыргыз тили": ["Фонетика жана Лексика", "Синтаксис жана Морфология"],
+            "Кыргыз тили": ["Фोनेтика жана Лексика", "Синтаксис жана Морфология"],
             "Кыргыз адабияты": ["Манас эпосу жана Кенже эпостор", "XX кылымдагы кыргыз адабияты"],
             "Орус тили": ["Грамматика и Правописание", "Синтаксис и Пунктуация"],
             "Орус адабияты": ["Золотой век русской литературы", "Литература XX века"],
@@ -357,7 +357,6 @@
             XLSX.writeFile(workbook, "BILIMAL_Жыйынтыктар.xlsx");
         }
 
-        // Ачык жоопторду көрүү
         function viewEssay(resultKey) {
             database.ref('results/' + resultKey + '/openAnswers').once('value').then(snapshot => {
                 const answers = snapshot.val();
@@ -457,7 +456,7 @@
                 document.getElementById('loaded-status').innerText = "";
             });
 
-            // 3. Тема тандалганда ЖАҢЫ папкада мурун жазылган суроолор болсо жүктөө
+            // 3. Тема тандалганда базадан мурун жазылган суроолорду ТУУРА форматта жүктөө
             topSelect.addEventListener('change', function() {
                 const subject = subSelect.value;
                 const topic = this.value;
@@ -466,7 +465,6 @@
                 statusSpan.innerText = "База текшерилүүдө...";
                 statusSpan.className = "text-[10px] font-bold text-amber-400 animate-pulse";
 
-                // ЖАҢЫ ӨЗҮНЧӨ ДАРЕККЕ БАГЫТТАЛДЫ: teacherQuizzes
                 database.ref('teacherQuizzes/' + subject + '/' + topic + '/questions').once('value').then(snapshot => {
                     if (snapshot.exists()) {
                         const existingQuestions = snapshot.val();
@@ -475,13 +473,12 @@
                         blocks.forEach((block, index) => {
                             const qData = existingQuestions[index];
                             if (qData) {
-                                block.querySelector('.q-title').value = qData.question || "";
-                                block.querySelector('.q-ans').value = qData.answer || "";
-                                
-                                const wrongOpts = qData.options.filter(o => o !== qData.answer);
-                                block.querySelector('.q-opt1').value = wrongOpts[0] || "";
-                                block.querySelector('.q-opt2').value = wrongOpts[1] || "";
-                                block.querySelector('.q-opt3').value = wrongOpts[2] || "";
+                                // Жаңы структура боюнча жүктөйбүз (title, variantA, variantB...)
+                                block.querySelector('.q-title').value = qData.title || qData.question || "";
+                                block.querySelector('.q-ans').value = qData.variantA || qData.answer || "";
+                                block.querySelector('.q-opt1').value = qData.variantB || (qData.options ? qData.options[1] : "");
+                                block.querySelector('.q-opt2').value = qData.variantC || (qData.options ? qData.options[2] : "");
+                                block.querySelector('.q-opt3').value = qData.variantD || (qData.options ? qData.options[3] : "");
                             }
                         });
                         statusSpan.innerText = "Жаңы папкадан мурунку сакталган 20 суроо жүктөлдү 🔄";
@@ -494,7 +491,7 @@
                 });
             });
 
-            // 4. Форма тастыкталганда 20 суроону жаңы папкага (teacherQuizzes) гана жазуу
+            // 4. Форма тастыкталганда 20 суроону play.html окуй турган ТАК форматта сактоо
             document.getElementById('kyzKuumayQuestionForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 
@@ -511,25 +508,28 @@
                 
                 blocks.forEach(block => {
                     const qTitle = block.querySelector('.q-title').value.trim();
-                    const correctAns = block.querySelector('.q-ans').value.trim();
-                    const o1 = block.querySelector('.q-opt1').value.trim();
-                    const o2 = block.querySelector('.q-opt2').value.trim();
-                    const o3 = block.querySelector('.q-opt3').value.trim();
+                    const variantA = block.querySelector('.q-ans').value.trim();
+                    const variantB = block.querySelector('.q-opt1').value.trim();
+                    const variantC = block.querySelector('.q-opt2').value.trim();
+                    const variantD = block.querySelector('.q-opt3').value.trim();
 
+                    // play.html коду түз издей турган структура
                     finalQuestionsArray.push({
-                        question: qTitle,
-                        options: [correctAns, o1, o2, o3], 
-                        answer: correctAns
+                        title: qTitle,
+                        variantA: variantA,  // Дайыма туура жооп
+                        variantB: variantB,
+                        variantC: variantC,
+                        variantD: variantD
                     });
                 });
 
-                // ЖАҢЫ ТАЗА ДАРЕККЕ САКТОО: teacherQuizzes
+                // Базага жазуу (teacherQuizzes папкасы)
                 database.ref('teacherQuizzes/' + subject + '/' + topic).set({
                     questions: finalQuestionsArray,
                     authorUid: currentUserId,
                     updatedAt: firebase.database.ServerValue.TIMESTAMP
                 }).then(() => {
-                    alert(`🎉 Керемет! "${subject} -> ${topic}" үчүн 20 суроо өзүнчө жаңы коопсуз базага (teacherQuizzes) ийгиликтүү сакталды. Эски оюнга такыр зыяны тийген жок!`);
+                    alert(`🎉 Керемет! "${subject} -> ${topic}" үчүн 20 суроо оюнга даяр форматта (teacherQuizzes) ийгиликтүү сакталды. Эми оюн бөлмөсүн ачып ойносоңуз болот!`);
                 }).catch(error => {
                     alert("Базага сактоодо ката кетти: " + error.message);
                 });
