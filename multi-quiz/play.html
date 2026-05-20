@@ -13,31 +13,30 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
         body {
-            background: #0b0f19 url('../assets/game-bg.jpg') no-repeat center center fixed;
+            background: #0b0f19 url('../assets/kyz-jygyt.png') no-repeat center center fixed;
             background-size: cover;
             color: #ffffff;
             font-family: 'Montserrat', sans-serif;
+            transition: background 1s ease;
         }
         .blur-box {
             background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .horse-card {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-        .horse-img {
-            mix-blend-mode: lighten;
-            background: transparent !important;
-        }
         .horse-wrapper {
-            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        video {
+            object-fit: cover;
+            background: transparent;
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <audio id="bg-menu-music" src="../assets/music-menu.mp3" loop></audio>
+    <audio id="bg-game-music" src="../assets/music.mp3" loop></audio>
 
     <div id="setup-container" class="w-full max-w-md blur-box rounded-[2rem] p-8 shadow-2xl text-center">
         <h2 class="text-3xl font-black text-amber-400 uppercase tracking-wider mb-2">Кыз Куумай</h2>
@@ -80,41 +79,41 @@
                 Оюнчу күтүлүүдө...
             </div>
             <div class="flex gap-4">
-                <span class="text-orange-400">Жигит: <span id="p1-score-display">0</span></span>
-                <span class="text-pink-400">Кыз: <span id="p2-score-display">0</span></span>
+                <span class="text-orange-400"><span id="p1-name-tag">Жигит</span>: <span id="p1-score-display">0</span></span>
+                <span class="text-pink-400"><span id="p2-name-tag">Кыз</span>: <span id="p2-score-display">0</span></span>
             </div>
         </div>
 
-        <div class="w-full bg-black/50 border border-white/10 rounded-[2rem] p-4 h-48 relative overflow-hidden flex flex-col justify-center gap-4">
+        <div class="w-full bg-black/60 border border-white/10 rounded-[2rem] p-4 h-52 relative overflow-hidden flex flex-col justify-center gap-2">
             
             <div id="horse-p1" class="horse-wrapper absolute left-0 flex flex-col items-center" style="transform: translateX(20px);">
-                <span class="bg-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase mb-1">Жигит</span>
-                <div class="horse-card p-0 m-0">
-                    <img src="../assets/horse-boy.gif" alt="Жигит" class="horse-img h-24 w-auto bg-transparent">
-                </div>
+                <span id="label-p1" class="bg-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase mb-1">Жигит</span>
+                <video id="video-p1" src="../assets/boy_run.mp4" class="h-20 w-auto rounded-lg" autoplay loop muted playsinline></video>
             </div>
 
-            <div id="horse-p2" class="horse-wrapper absolute left-0 flex flex-col items-center" style="transform: translateX(120px);">
-                <span class="bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase mb-1">Кыз</span>
-                <div class="horse-card p-0 m-0">
-                    <img src="../assets/horse-girl.gif" alt="Кыз" class="horse-img h-24 w-auto bg-transparent">
-                </div>
+            <div id="horse-p2" class="horse-wrapper absolute left-0 flex flex-col items-center" style="transform: translateX(140px);">
+                <span id="label-p2" class="bg-pink-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase mb-1">Кыз</span>
+                <video id="video-p2" src="../assets/girl_run.mp4" class="h-20 w-auto rounded-lg" autoplay loop muted playsinline></video>
             </div>
         </div>
 
-        <div id="quiz-box" class="w-full blur-box rounded-[2.5rem] p-8 flex flex-col items-center text-center min-h-[220px] justify-between">
+        <div id="quiz-box" class="w-full blur-box rounded-[2.5rem] p-8 flex flex-col items-center text-center min-h-[260px] justify-between">
             <div class="w-full">
                 <span id="question-counter" class="text-xs font-bold uppercase tracking-widest text-gray-400 block mb-2">Жарыш</span>
                 <h3 id="question-text" class="text-xl md:text-2xl font-bold max-w-3xl mx-auto leading-relaxed">
-                    Эки оюнчу тең киргенде суроолор ушул жерге чыгат...
+                    Эки оюнчу тең киргенде жарыш башталат...
                 </h3>
             </div>
+            
+            <div id="waiting-turn-msg" class="hidden text-amber-400 font-bold animate-pulse text-lg my-4">
+                <i class="fas fa-hourglass-half mr-2"></i> Жообуңуз кабыл алынды. Атаандашыңыздын жообун күтүп жатасыз...
+            </div>
+
             <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mt-6"></div>
         </div>
     </div>
 
     <script>
-        // URL даректен кыргызча тамгаларды туура окуу
         const urlParams = new URLSearchParams(window.location.search);
         const currentSubject = urlParams.get('subject') ? decodeURIComponent(urlParams.get('subject')) : null;
         const currentTheme = urlParams.get('theme') ? decodeURIComponent(urlParams.get('theme')) : null;
@@ -136,171 +135,167 @@
         let myRole = null; 
         let currentQuestionIndex = 0;
         let isListening = false;
+        let p1Name = "Жигит", p2Name = "Кыз";
 
-        // Баракча ачылганда суроолорду алдын ала жүктөө
+        // Музыкаларды башкаруу
+        const menuMusic = document.getElementById('bg-menu-music');
+        const gameMusic = document.getElementById('bg-game-music');
+        const vidP1 = document.getElementById('video-p1');
+        const vidP2 = document.getElementById('video-p2');
+
         window.addEventListener('DOMContentLoaded', () => {
+            // Меню музыкасын баштоо
+            document.body.addEventListener('click', () => {
+                if(menuMusic.paused && !myRoomCode) menuMusic.play().catch(()=>{});
+            }, { once: true });
+
             const displayTag = document.getElementById('target-theme-display');
             if (!currentSubject || !currentTheme) {
-                if(displayTag) displayTag.textContent = "Түз бөлмө коду аркылуу кирүү режими";
+                if(displayTag) displayTag.textContent = "Түз бөлмө режими";
                 return;
             }
-            
             if(displayTag) displayTag.textContent = `Тема: ${currentTheme.toUpperCase()}`;
 
-            // 1-кезекте 'kyzKuumayQuiz' папкасын текшеребиз (сиздин чыныгы базадагыдай)
             db.ref(`kyzKuumayQuiz/${currentSubject}/${currentTheme}`).once('value').then((snapshot) => {
                 let quizData = snapshot.val();
-                if (!quizData) {
-                    // Эгер ал жерде жок болсо, башка папкаларды карап көрөт
-                    return db.ref(`teacherQuizzes/${currentSubject}/${currentTheme}`).once('value');
-                }
-                return snapshot;
-            }).then((snapshot) => {
-                let quizData = snapshot.val();
-                if (!quizData) {
-                    return db.ref(`quizzes/${currentSubject}/${currentTheme}`).once('value');
-                }
+                if (!quizData) return db.ref(`quizzes/${currentSubject}/${currentTheme}`).once('value');
                 return snapshot;
             }).then((snapshot) => {
                 const quizData = snapshot.val();
                 if (quizData) {
-                    // Суроолор тизмесин массивге айландыруу логикасы
-                    if (quizData.questions) {
-                        activeQuizQuestions = quizData.questions;
-                    } else if (Array.isArray(quizData)) {
-                        activeQuizQuestions = quizData;
-                    } else {
-                        activeQuizQuestions = Object.values(quizData);
-                    }
-                    console.log("Суроолор даяр:", activeQuizQuestions);
+                    activeQuizQuestions = quizData.questions || (Array.isArray(quizData) ? quizData : Object.values(quizData));
                     if(displayTag) displayTag.textContent = `Тема: ${currentTheme.toUpperCase()} (Жүктөлдү)`;
                 } else {
-                    if(displayTag) displayTag.textContent = "Тест табылган жок же база бош!";
+                    if(displayTag) displayTag.textContent = "Тест табылган жок!";
                 }
-            }).catch(err => {
-                console.error("Жүктөө катасы:", err);
-                if(displayTag) displayTag.textContent = "Ката: Маалымат окулбады!";
             });
         });
 
-        // БӨЛМӨ ТҮЗҮҮ (ЖИГИТ - PLAYER 1)
         function createNewRoom() {
             const playerName = document.getElementById('player-name-input').value.trim();
-            
-            if (!playerName) { 
-                alert("Сураныч, алгач атыңызды жазыңыз!"); 
-                return; 
-            }
-            if (activeQuizQuestions.length === 0) { 
-                alert("Суроолор базадан жүктөлүп бүтө элек же бул темада суроо жок. Бир аз күтө туруңуз!"); 
-                return; 
-            }
+            if (!playerName) { alert("Атыңызды жазыңыз!"); return; }
+            if (activeQuizQuestions.length === 0) { alert("Тест толук жүктөлө элек, күтө туруңуз!"); return; }
 
             myRoomCode = Math.floor(1000 + Math.random() * 9000).toString();
             myRole = 'player1';
+            p1Name = playerName;
 
             const roomData = {
                 roomCode: myRoomCode,
-                subject: currentSubject || "Жалпы",
-                theme: currentTheme || "Тест",
                 status: "waiting",
+                currentQuestion: 0,
                 questions: activeQuizQuestions,
-                player1: { name: playerName, score: 0, position: 20 },
-                player2: { name: "Күтүүдө...", score: 0, position: 120 }
+                player1: { name: playerName, score: 0, position: 20, answered: false },
+                player2: { name: "Күтүүдө...", score: 0, position: 140, answered: false }
             };
 
             db.ref(`rooms/${myRoomCode}`).set(roomData).then(() => {
                 initGameUI();
                 listenToRoomChanges();
-            }).catch(err => alert("Бөлмө түзүүдө ката кетти: " + err.message));
+            });
         }
 
-        // БӨЛМӨГӨ КОШУЛУУ (КЫЗ - PLAYER 2)
         function joinExistingRoom() {
             const playerName = document.getElementById('player-name-input').value.trim();
             const roomCode = document.getElementById('room-code-input').value.trim();
+            if (!playerName || !roomCode) { alert("Маалыматты толук киргизиңиз!"); return; }
 
-            if (!playerName || !roomCode) { alert("Атыңызды жана бөлмөнүн кодун толук киргизиңиз!"); return; }
             myRoomCode = roomCode;
             myRole = 'player2';
+            p2Name = playerName;
 
             db.ref(`rooms/${roomCode}`).once('value').then((snapshot) => {
                 const room = snapshot.val();
-                if (!room) { alert("Мындай коддуу бөлмө табылган жок!"); return; }
-                if (room.status === "playing" && room.player2 && room.player2.name !== "Күтүүдө...") {
-                    alert("Бул бөлмө толо! Башка бөлмөгө баш багыңыз.");
-                    return;
-                }
+                if (!room) { alert("Бөлмө табылган жок!"); return; }
 
-                // Экинчи оюнчу бөлмөдө сакталган даяр суроолорду өзүнө алат
                 activeQuizQuestions = room.questions || [];
-
-                // Бөлмөдөгү экинчи оюнчунун маалыматын жаңылоо жана оюнду баштоо
-                return db.ref(`rooms/${roomCode}/player2`).set({ name: playerName, score: 0, position: 120 })
+                db.ref(`rooms/${roomCode}/player2`).set({ name: playerName, score: 0, position: 140, answered: false })
                     .then(() => {
-                        return db.ref(`rooms/${roomCode}`).update({ status: "playing" });
+                        db.ref(`rooms/${roomCode}`).update({ status: "playing" });
+                        initGameUI();
+                        listenToRoomChanges();
                     });
-            }).then(() => {
-                initGameUI();
-                listenToRoomChanges();
-            }).catch(err => alert("Кошулууда ката кетти: " + err.message));
+            });
         }
 
         function initGameUI() {
             document.getElementById('setup-container').classList.add('hidden');
             document.getElementById('game-container').classList.remove('hidden');
-            if(document.getElementById('display-room-code')) {
-                document.getElementById('display-room-code').innerText = myRoomCode;
-            }
+            document.body.style.background = "#0b0f19 url('../assets/game-bg.jpg') no-repeat center center fixed";
+            document.body.style.backgroundSize = "cover";
+            document.getElementById('display-room-code').innerText = myRoomCode;
+
+            menuMusic.pause();
+            gameMusic.play().catch(()=>{});
+
+            // Аттарды алгач күтүү абалына коюу (пауза)
+            vidP1.pause();
+            vidP2.pause();
         }
 
-        // РЕАЛДУУ УБАҚЫТТА БАЗАНЫ УГУУ ЖАНА ЭКРАНДЫ ЖАҢЫЛОО
         function listenToRoomChanges() {
-            if (isListening) return; // Бир эле жолу угуучу функцияны иштетебиз
+            if (isListening) return;
             isListening = true;
 
             db.ref(`rooms/${myRoomCode}`).on('value', (snapshot) => {
                 const room = snapshot.val();
                 if (!room) return;
 
-                // Упайларды экранга чыгаруу
-                if(document.getElementById('p1-score-display') && room.player1) {
-                    document.getElementById('p1-score-display').innerText = room.player1.score;
-                }
-                if(document.getElementById('p2-score-display') && room.player2) {
-                    document.getElementById('p2-score-display').innerText = room.player2.score;
-                }
+                p1Name = room.player1 ? room.player1.name : "Жигит";
+                p2Name = room.player2 ? room.player2.name : "Кыз";
 
-                // Аттардын ордун жылдыруу
-                if(room.player1 && document.getElementById('horse-p1')) {
-                    document.getElementById('horse-p1').style.transform = `translateX(${room.player1.position}px)`;
-                }
-                if(room.player2 && document.getElementById('horse-p2')) {
-                    document.getElementById('horse-p2').style.transform = `translateX(${room.player2.position}px)`;
-                }
+                document.getElementById('p1-name-tag').innerText = p1Name;
+                document.getElementById('p2-name-tag').innerText = p2Name;
+                document.getElementById('label-p1').innerText = p1Name;
+                document.getElementById('label-p2').innerText = p2Name;
 
-                // Эгер экинчи оюнчу кирсе, оюнду активдештирүү
+                document.getElementById('p1-score-display').innerText = room.player1.score;
+                document.getElementById('p2-score-display').innerText = room.player2.score;
+
+                document.getElementById('horse-p1').style.transform = `translateX(${room.player1.position}px)`;
+                document.getElementById('horse-p2').style.transform = `translateX(${room.player2.position}px)`;
+
+                currentQuestionIndex = room.currentQuestion;
+
                 if (room.status === "playing") {
-                    if(document.getElementById('game-status-text')) {
-                        document.getElementById('game-status-text').innerText = `Жарыш башталды! 🏁 (${room.player1.name} VS ${room.player2.name})`;
-                    }
-                    // Эгер суроолор тизмеси бош болсо, бөлмөдөгү суроолорду кайрадан толтурабыз
-                    if(activeQuizQuestions.length === 0 && room.questions) {
-                        activeQuizQuestions = room.questions;
-                    }
-                    if (document.getElementById('options-grid').children.length === 0 && activeQuizQuestions.length > 0) {
-                        renderQuestion();
+                    document.getElementById('game-status-text').innerText = "Жарыш башталды! 🏁";
+                    
+                    // Эки оюнчу тең жооп берип бүткөнүн текшерүү
+                    if (room.player1.answered && room.player2.answered) {
+                        // Экөө тең жооп берди -> Аттар чуркайт (Видео ойнойт)
+                        vidP1.play().catch(()=>{});
+                        vidP2.play().catch(()=>{});
+
+                        // 2.5 секунддан кийин кийинки суроого автоматтык түрдө өтүү
+                        setTimeout(() => {
+                            if (myRole === 'player1') { // Маалымат кайталанбаш үчүн бирөөсү гана жаңылайт
+                                db.ref(`rooms/${myRoomCode}`).update({
+                                    currentQuestion: currentQuestionIndex + 1,
+                                    "player1/answered": false,
+                                    "player2/answered": false
+                                });
+                            }
+                        }, 2500);
+                    } else {
+                        // Эгер кимдир бирөө жооп бере элек болсо, аттар токтойт
+                        vidP1.pause();
+                        vidP2.pause();
+
+                        // Менин ролум жооп бердиби? Текшерүү
+                        if (room[myRole].answered) {
+                            document.getElementById('options-grid').innerHTML = '';
+                            document.getElementById('waiting-turn-msg').classList.remove('hidden');
+                        } else {
+                            document.getElementById('waiting-turn-msg').classList.add('hidden');
+                            renderQuestion();
+                        }
                     }
                 }
             });
         }
 
-        // СУРООНУ ЭКРАНГА ЧЫГАРУУ
         function renderQuestion() {
-            if (activeQuizQuestions.length === 0) {
-                document.getElementById('question-text').innerText = "Суроолор жүктөлүүдө, бир аз күтө туруңуз...";
-                return;
-            }
+            if (activeQuizQuestions.length === 0) return;
 
             if (currentQuestionIndex >= activeQuizQuestions.length) {
                 showFinalResults();
@@ -309,69 +304,98 @@
 
             const currentQuestion = activeQuizQuestions[currentQuestionIndex];
             document.getElementById('question-counter').innerText = `Суроо №${currentQuestionIndex + 1} / ${activeQuizQuestions.length}`;
-            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо тексти жок";
+            document.getElementById('question-text').innerText = currentQuestion.title || currentQuestion.question || "Суроо";
 
             const optionsGrid = document.getElementById('options-grid');
             optionsGrid.innerHTML = '';
 
-            // Варианттарды коопсуз чогултуу
-            const answers = [
-                { text: currentQuestion.answerA, isCorrect: true },
-                { text: currentQuestion.answerB, isCorrect: false },
-                { text: currentQuestion.answerC, isCorrect: false },
-                { text: currentQuestion.answerD, isCorrect: false }
-            ].filter(a => a.text !== undefined && a.text !== null && a.text !== ''); 
+            // Коопсуз варианттарды чогултуу (ар кандай аттар менен келсе дагы)
+            const rawAnswers = [
+                { text: currentQuestion.answerA || currentQuestion.variantA || currentQuestion.a, isCorrect: true },
+                { text: currentQuestion.answerB || currentQuestion.variantB || currentQuestion.b, isCorrect: false },
+                { text: currentQuestion.answerC || currentQuestion.variantC || currentQuestion.c, isCorrect: false },
+                { text: currentQuestion.answerD || currentQuestion.variantD || currentQuestion.d, isCorrect: false }
+            ].filter(a => a.text);
 
-            // Варианттарды туш келди аралаштыруу
-            answers.sort(() => Math.random() - 0.5);
+            // Эгерде базада атайын вариант жок болсо, тест туура түзүлгөн эмес
+            if (rawAnswers.length === 0) {
+                optionsGrid.innerHTML = `<p class="col-span-2 text-rose-400 font-bold">Бул суроонун варианттары табылган жок! Администраторго кайрылыңыз.</p>`;
+                return;
+            }
 
-            answers.forEach(ans => {
+            // Биринчи кирген суроону аралаштырбай, бир ирет гана көрсөтүү үчүн
+            if(!optionsGrid.dataset.index || optionsGrid.dataset.index != currentQuestionIndex) {
+                rawAnswers.sort(() => Math.random() - 0.5);
+                optionsGrid.dataset.index = currentQuestionIndex;
+                window.currentShuffledAnswers = rawAnswers;
+            }
+
+            window.currentShuffledAnswers.forEach(ans => {
                 const btn = document.createElement('button');
-                btn.className = "w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-sm text-left active:scale-[0.98] transition text-white";
+                btn.className = "w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl p-4 text-sm text-left active:scale-[0.98] transition text-white font-medium";
                 btn.innerText = ans.text;
                 btn.onclick = () => handleAnswerSelection(ans.isCorrect, btn);
                 optionsGrid.appendChild(btn);
             });
         }
 
-        // ЖООПТУ ТЕКШЕРҮҮ ЖАНА АТТЫ СЫЛЖЫТУУ
         function handleAnswerSelection(isCorrect, btn) {
             const buttons = document.getElementById('options-grid').getElementsByTagName('button');
             for(let b of buttons) b.disabled = true;
 
             if (isCorrect) {
-                btn.classList.remove('bg-white/5');
                 btn.classList.add('bg-emerald-500/30', 'border-emerald-500', 'text-emerald-400');
-                
-                // Туура жооп үчүн упайды жана атты 60px алдыга жылдыруу
-                db.ref(`rooms/${myRoomCode}/${myRole}`).once('value').then(snapshot => {
-                    const data = snapshot.val() || { score: 0, position: myRole === 'player1' ? 20 : 120 };
-                    db.ref(`rooms/${myRoomCode}/${myRole}`).update({
-                        score: data.score + 1,
-                        position: data.position + 60 
-                    });
-                });
             } else {
-                btn.classList.remove('bg-white/5');
                 btn.classList.add('bg-rose-500/30', 'border-rose-500', 'text-rose-400');
             }
 
-            // Кийинки суроого 1.5 секунддан кийин өтүү
-            setTimeout(() => {
-                currentQuestionIndex++;
-                renderQuestion();
-            }, 1500);
+            // Упайды жана абалды базага жөнөтүү
+            db.ref(`rooms/${myRoomCode}/${myRole}`).once('value').then(snapshot => {
+                const data = snapshot.val();
+                const newScore = isCorrect ? data.score + 1 : data.score;
+                const newPosition = isCorrect ? data.position + 60 : data.position;
+
+                db.ref(`rooms/${myRoomCode}/${myRole}`).update({
+                    score: newScore,
+                    position: newPosition,
+                    answered: true
+                });
+            });
         }
 
-        // ОЮНДУН ЖЫЙЫНТЫГЫ
         function showFinalResults() {
-            document.getElementById('question-counter').innerText = "Финиш!";
-            document.getElementById('question-text').innerText = "Жарыш аяктады! Сиз бардык суроолорго жооп бердиңиз.";
-            document.getElementById('options-grid').innerHTML = `
-                <a href="../games/index.html" class="w-full text-center bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest col-span-2 shadow-lg transition">
-                    Оюндар бөлүмүнө кайтуу
-                </a>
-            `;
+            gameMusic.pause();
+            vidP1.pause();
+            vidP2.pause();
+
+            document.getElementById('question-counter').innerText = "Финиш! Жыйынтык";
+            
+            db.ref(`rooms/${myRoomCode}`).once('value').then(snapshot => {
+                const room = snapshot.val();
+                const s1 = room.player1.score;
+                const s2 = room.player2.score;
+                
+                let resultText = "";
+                if (s1 > s2) {
+                    // Жигит утту
+                    resultText = `<span class="text-orange-400 font-black text-2xl block mb-4">🏆 Жигит Утту!</span> "${p1Name}" деген жигит "${p2Name}" деген кызды кууп жетти! 🐎`;
+                } else {
+                    // Кыз утту же Тең чыгуу (кыз качып кетти)
+                    resultText = `<span class="text-pink-400 font-black text-2xl block mb-4">🏆 Кыз Утту!</span> "${p1Name}" деген жигиттен "${p2Name}" деген кыз качып кетти! 🏹`;
+                }
+
+                document.getElementById('question-text').innerHTML = resultText;
+                document.getElementById('options-grid').innerHTML = `
+                    <div class="col-span-2 text-center bg-white/5 p-4 rounded-xl border border-white/10 mb-4">
+                        <p class="text-sm text-gray-300">Жалпы упайлар:</p>
+                        <p class="text-lg font-bold mt-2 text-orange-400">${p1Name} (Жигит): ${s1}</p>
+                        <p class="text-lg font-bold text-pink-400">${p2Name} (Кыз): ${s2}</p>
+                    </div>
+                    <a href="../games/index.html" class="w-full text-center bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest col-span-2 shadow-lg transition">
+                        Оюндар бөлүмүнө кайтуу
+                    </a>
+                `;
+            });
         }
     </script>
 </body>
