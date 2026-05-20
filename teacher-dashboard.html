@@ -97,7 +97,7 @@
                         <div class="text-3xl text-amber-400"><i class="fas fa-horse-head"></i></div>
                         <div>
                             <h3 class="text-xl font-black text-white uppercase tracking-wider">Кыз Куумай: Онлайн Оюн Базасы</h3>
-                            <p class="text-xs text-gray-400">Предметти тандап, оюнга катыша турган 20 суроону туура жооптору менен киргизиңиз</p>
+                            <p class="text-xs text-gray-400">Предметти тандап, oyunга катыша турган 20 суроону туура жооптору менен киргизиңиз</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -142,7 +142,7 @@
                         </div>
                         
                         <div id="kyzKuumayDynamicQuestions" class="space-y-6 max-h-[600px] overflow-y-auto pr-2 border border-white/5 p-4 rounded-2xl bg-black/10">
-                            </div>
+                        </div>
                     </div>
 
                     <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 pt-4 border-t border-white/5">
@@ -190,7 +190,7 @@
         let quizSettingsMap = {};
         let rawResultsData = [];
 
-        // Карта: Предметтердин жана алардын темаларынын тизмеси (Башкы бетке шайкеш келет)
+        // Карта: Предметтердин жана алардын темаларынын тизмеси
         const subjectTopicsMap = {
             "Математика": ["Алгебра: Теңдемелер жана барабарсыздыктар", "Геометрия: Планиметрия негиздери"],
             "Кыргыз тили": ["Фонетика жана Лексика", "Синтаксис жана Морфология"],
@@ -214,7 +214,7 @@
                 currentUserId = user.uid;
                 document.getElementById('teacher-email').innerText = `Мугалим: ${user.email}`;
                 loadTeacherData();
-                initKyzKuumayDashboard(); // Кыз Куумай тутумун иштетүү
+                initKyzKuumayDashboard();
             } else {
                 window.location.href = 'cabinet.html';
             }
@@ -232,9 +232,23 @@
                         quizSettingsMap[quiz.id] = quiz.settings || { grade5: 85, grade4: 70 };
                         const url = `http://bilimal.org/quiz.html?id=${quiz.id}`;
                         
+                        // Базада статус жок болсо, автоматтык түрдө "open" (ачык) деп алабыз
+                        const quizStatus = quiz.status || "open";
+                        const isChecked = quizStatus === "open" ? "checked" : "";
+                        const statusLabel = quizStatus === "open" ? "Ачык" : "Жабык";
+                        const statusColor = quizStatus === "open" ? "text-emerald-400" : "text-rose-400";
+                        
                         list.innerHTML += `
                             <div class="glass-card p-4 rounded-2xl border border-white/5 space-y-3 shadow-sm">
-                                <p class="font-bold text-sm text-white truncate" title="${quiz.title}">${quiz.title}</p>
+                                <div class="flex justify-between items-center gap-2">
+                                    <p class="font-bold text-sm text-white truncate flex-1" title="${quiz.title}">${quiz.title}</p>
+                                    
+                                    <label class="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                                        <input type="checkbox" id="status-toggle-${quiz.id}" ${isChecked} onchange="toggleQuizAccess('${quiz.id}')" class="sr-only peer">
+                                        <div class="w-8 h-4 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-emerald-500"></div>
+                                        <span id="status-text-${quiz.id}" class="ml-1.5 text-[9px] font-black uppercase tracking-wider ${statusColor}">${statusLabel}</span>
+                                    </label>
+                                </div>
                                 <div class="grid grid-cols-3 gap-2">
                                     <button onclick="navigator.clipboard.writeText('${url}'); alert('Шилтеме ийгиликтүү көчүрүлдү!');" class="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 py-1.5 rounded-lg text-[10px] font-bold border border-blue-500/20 transition-all">Шилтеме</button>
                                     <a href="create-test.html?edit=${quiz.id}" class="text-center bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 py-1.5 rounded-lg text-[10px] font-bold border border-amber-500/20 transition-all">Түзөтүү</a>
@@ -246,6 +260,30 @@
                     list.innerHTML = `<p class="text-xs text-gray-500 text-center py-4">Тесттериңиз азырынча жок.</p>`;
                 }
                 loadResults();
+            });
+        }
+
+        // Тесттин жеткиликтүүлүгүн (Доступ) өзгөртүүчү жаңы функция
+        function toggleQuizAccess(quizId) {
+            const toggleInput = document.getElementById(`status-toggle-${quizId}`);
+            const statusText = document.getElementById(`status-text-${quizId}`);
+            
+            const newStatus = toggleInput.checked ? "open" : "closed";
+            
+            database.ref(`tests/${quizId}`).update({
+                status: newStatus
+            }).then(() => {
+                if (newStatus === "open") {
+                    statusText.textContent = "Ачык";
+                    statusText.className = "ml-1.5 text-[9px] font-black uppercase tracking-wider text-emerald-400";
+                } else {
+                    statusText.textContent = "Жабык";
+                    statusText.className = "ml-1.5 text-[9px] font-black uppercase tracking-wider text-rose-400";
+                }
+            }).catch(err => {
+                console.error("Статусту жаңыртууда ката кетти:", err);
+                toggleInput.checked = !toggleInput.checked; // Ката болсо баскычты артка кайтарат
+                alert("Ката келип чыкты! База менен байланышты текшериңиз.");
             });
         }
 
@@ -265,7 +303,7 @@
                 tableBody.innerHTML = "";
                 rawResultsData = [];
                 const data = snapshot.val();
-
+                
                 if (data) {
                     Object.keys(data).forEach(key => {
                         const res = data[key];
@@ -483,7 +521,6 @@
                     const o2 = block.querySelector('.q-opt2').value.trim();
                     const o3 = block.querySelector('.q-opt3').value.trim();
 
-                    // Оюндун ичинде варианттар туура аралашуусу үчүн бардык жооптор массивге жыйналат
                     finalQuestionsArray.push({
                         question: qTitle,
                         options: [correctAns, o1, o2, o3], 
@@ -491,7 +528,6 @@
                     });
                 });
 
-                // Firebase'дин Realtime Database базасында 'kyzKuumayQuiz' түйүнүнө жазуу
                 database.ref('kyzKuumayQuiz/' + subject + '/' + topic).set({
                     questions: finalQuestionsArray,
                     authorUid: currentUserId,
