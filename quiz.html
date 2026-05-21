@@ -8,12 +8,27 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; user-select: none; }
+        /* Стилистикалык бөгөттөө: Текстти белгилөөгө, көчүрүүгө жана тийүүгө толук тыюу салуу */
+        body { 
+            background-color: #050a18; 
+            color: #e2e8f0; 
+            font-family: 'Montserrat', sans-serif; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            -ms-user-select: none;
+            -webkit-touch-callout: none;
+        }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .question-page { display: none; }
         .question-page.active { display: block; animation: slideIn 0.3s ease-in-out; }
         @keyframes slideIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .circle-progress { transform: rotate(-90deg); transition: stroke-dashoffset 1s ease-in-out; }
+        
+        /* Скриншотко каршы кошумча коргонуу: Басып чыгаруу режиминде баарын жашыруу */
+        @media print {
+            body { display: none !important; }
+        }
     </style>
     
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
@@ -46,7 +61,7 @@
         <div class="md:col-span-3 w-full flex flex-col justify-center">
             
             <div id="auth-block" class="w-full glass-card p-8 rounded-[2rem] text-center">
-                <h3 class="text-xl font-black mb-4 text-blue-400 uppercase">BILIMAL.ORG | Тест системасы</h3>
+                <h3 class="text-xl font-black mb-4 text-blue-400 uppercase">BILIMAL.ORG | ТЕСТ СИСТЕМАСЫ</h3>
                 <input id="student-name" type="text" placeholder="Аты-жөнүңүз (Мисалы: Асанов Темир)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white text-center font-bold text-lg mb-4 focus:outline-none focus:border-blue-500">
                 <button onclick="checkAndStartQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Тестти баштоо</button>
             </div>
@@ -91,7 +106,7 @@
                             <span class="text-amber-400"><i class="fas fa-clock mr-1"></i> <span id="timer-display">00:00</span></span>
                         </div>
                     </div>
-                    <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Anti-Cheat</div>
+                    <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Anti-Cheat v2.0</div>
                 </div>
                 
                 <div class="w-full h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
@@ -140,11 +155,8 @@
         
         let quizData = null, studentName = "", cheatCount = 0, isQuizActive = false;
         let currentQuestionIndex = 0, totalQuestionsCount = 0, timeLeft = 0, timerInterval = null, qList = [];
-        
-        // Экрандын алгачкы бийиктигин жана туурасын сактоо үчүн өзгөрмөлөр (эки экранды аныктоого керек)
         let initialHeight = 0, initialWidth = 0;
 
-        // 1. ТЕСТТИ БАШТООДО СТАТУСТУ ЖАНА ТАПШЫРУУ САНЫН ТЕКШЕРҮҮ
         function checkAndStartQuiz() {
             studentName = document.getElementById('student-name').value.trim();
             if (!studentName) return alert("Атыңызды жазыңыз!");
@@ -152,34 +164,25 @@
 
             database.ref('tests/' + quizId).once('value').then((snapshot) => {
                 quizData = snapshot.val();
-                
-                if (!quizData) {
-                    showSystemError("Ката", "Мындай ID менен тест базадан табылган жок.");
-                    return;
-                }
-
-                // ТЕСТ ЖАБЫК БОЛСО БӨГӨТТӨӨ
+                if (!quizData) return showSystemError("Ката", "Мындай ID менен тест базадан табылган жок.");
                 if (quizData.status === "closed") {
-                    showSystemError("Тест жабык!", "Кечиреиз, бул тест мугалим тарабынан жабылган. Кирүүгө мүмкүн эмес.");
+                    showSystemError("Тест жабык!", "Кечиреиз, бул тест мугалим тарабынан жабылган.");
                     document.getElementById('error-icon').innerHTML = `<i class="fas fa-lock text-amber-500"></i>`;
                     return;
                 }
 
-                // ТАПШЫРУУ САНЫН ТЕКШЕРҮҮ
                 let localAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
                 let maxAttempts = (quizData.settings && quizData.settings.maxAttempts) ? quizData.settings.maxAttempts : "1";
 
                 if (maxAttempts !== "unlimited" && localAttempts >= parseInt(maxAttempts)) {
-                    showSystemError("Мүмкүнчүлүк бүттү!", `Сиз бул тестти буга чейин ${localAttempts} жолу тапшыргансыз. Мугалим бул тестти ${maxAttempts} жолу гана тапшырууга уруксат берген.`);
+                    showSystemError("Мүмкүнчүлүк бүттү!", `Сиз бул тестти буга чейин ${localAttempts} жолу тапшыргансыз. Мугалим максималдуу ${maxAttempts} жолу тапшырууга уруксат берген.`);
                     document.getElementById('error-icon').innerHTML = `<i class="fas fa-exclamation-triangle text-red-500"></i>`;
                     return;
                 }
 
                 document.getElementById('auth-block').classList.add('hidden');
                 renderQuiz();
-            }).catch(err => {
-                showSystemError("Ката кети", "Маалыматтарды жүктөөдө ката пайда болду: " + err.message);
-            });
+            }).catch(err => { showSystemError("Ката кети", "Ката пайда болду: " + err.message); });
         }
 
         function showSystemError(title, desc) {
@@ -190,13 +193,11 @@
             document.getElementById('error-block').classList.remove('hidden');
         }
 
-        // 2. ТЕСТТИ ЭКРАНГА ЧЫГАРУУ
         function renderQuiz() {
             document.getElementById('quiz-block').classList.remove('hidden');
             document.getElementById('quiz-title').innerText = quizData.title;
             isQuizActive = true;
 
-            // Тест башталганда экрандын чыныгы өлчөмүн эстеп калабыз
             initialHeight = window.innerHeight;
             initialWidth = window.innerWidth;
 
@@ -213,7 +214,8 @@
             qList.forEach((q, index) => {
                 let innerHtml = "";
                 if(q.type === 'text') {
-                    innerHtml = `<textarea id="open_ans_${index}" placeholder="Жообуңузду кенен жазыңыз..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white min-h-[120px] focus:outline-none focus:border-purple-500 text-sm"></textarea>`;
+                    // Ачык суроодо көчүрүп келип чаптоого (paste) тыюу салынды
+                    innerHtml = `<textarea id="open_ans_${index}" onpaste="return false;" placeholder="Жообуңузду кенен жазыңыз (Көчүрүп келип чаптоого тыюу салынат)..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white min-h-[120px] focus:outline-none focus:border-purple-500 text-sm"></textarea>`;
                 } else {
                     let optionsHtml = "";
                     q.options.forEach((opt, oIdx) => {
@@ -235,58 +237,81 @@
 
             updatePageVisibility();
             
-            // Көзөмөлдөөчүлөр: Вкладка алмаштыруу жана Экран өлчөмүнүн өзгөрүшү (Эки экран режими)
-            document.addEventListener('visibilitychange', handleCheating);
-            window.addEventListener('resize', handleResizeCheating);
+            // АНТИ-ЧИТ ИШТЕН ТҮШҮҮЧҮЛӨРДҮ ИШКЕ КИРГИЗҮҮ
+            activateSuperAntiCheat();
         }
 
         function startTimer() {
             timerInterval = setInterval(() => {
-                if (timeLeft <= 0) { 
-                    clearInterval(timerInterval); 
-                    submitQuiz(); 
-                } else { 
-                    timeLeft--; 
-                    document.getElementById('timer-display').innerText = Math.floor(timeLeft/60).toString().padStart(2,'0') + ":" + (timeLeft%60).toString().padStart(2,'0'); 
-                }
+                if (timeLeft <= 0) { clearInterval(timerInterval); submitQuiz(); } 
+                else { timeLeft--; document.getElementById('timer-display').innerText = Math.floor(timeLeft/60).toString().padStart(2,'0') + ":" + (timeLeft%60).toString().padStart(2,'0'); }
             }, 1000);
         }
 
-        // ЭКИ ЭКРАН ЖАНА ТЕРЕЗЕНИ КИЧИРЕЙТҮҮНҮ ТЕКШЕРҮҮ (ЖАНЫ ФУНКЦИЯ)
+        // ==========================================
+        // 🔥 АБСОЛЮТТУК АНТИ-ЧИТ СИСТЕМА v2.0
+        // ==========================================
+        function activateSuperAntiCheat() {
+            // 1. Экранды бөлүүгө каршы көзөмөл (Терезе өлчөмү)
+            window.addEventListener('resize', handleResizeCheating);
+
+            // 2. Вкладка алмаштыруу же телефонду жаап коюуну көзөмөлдөө
+            document.addEventListener('visibilitychange', handleVisibilityCheating);
+
+            // 3. Чычкандын оң баскычын бөгөттөө (Контексттик меню ачылбайт)
+            document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // 4. Клавиатурадагы шпиондук ысык баскычтарды толук бөгөттөө (F12, Ctrl+C, Ctrl+U ж.б.)
+            document.addEventListener('keydown', (e) => {
+                // F12 баскычын жабуу
+                if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
+                
+                // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (Кодду текшерүү терезелери)
+                if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) { e.preventDefault(); return false; }
+                
+                // Ctrl+U (Сайттын кодун көрүү)
+                if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }
+                
+                // Ctrl+C (Көчүрүү) жана Ctrl+S (Сайтты сактоо)
+                if (e.ctrlKey && (e.keyCode === 67 || e.keyCode === 83)) { e.preventDefault(); return false; }
+                
+                // Ctrl+P (Экранды басып чыгаруу же Скриншотко даярдоо)
+                if (e.ctrlKey && e.keyCode === 80) { e.preventDefault(); triggerBlock("Шпиондук аракет!", "Тест баракчасын басып чыгарууга же сактоого тыюу салынат!"); }
+            });
+
+            // 5. Мобилдик телефондордо басып турганда Текстти тандап алуу менюсу чыкпашы үчүн
+            document.addEventListener('selectstart', (e) => e.preventDefault());
+        }
+
+        // Экран өлчөмү өзгөргөндө (Эки экран режими же калкыма терезе)
         function handleResizeCheating() {
             if (!isQuizActive) return;
-
-            // Экрандын бийиктиги же туурасы баштапкы өлчөмдөн 25% дан көпкө кыскарса (бул эки экран ачылганын билдирет)
-            // (Эскертүү: Клавиатура чыкканда бийиктик өзгөрүшү мүмкүн, ошондуктан туурасын да, бийиктигин тең катуу көзөмөлдөйбүз)
             let heightDiff = Math.abs(window.innerHeight - initialHeight);
             let widthDiff = Math.abs(window.innerWidth - initialWidth);
 
-            // Телефонду жөн эле горизонталдык (альбомдук) режимге бурса бөгөттөбөш үчүн туурасын да текшеребиз
-            if (widthDiff > (initialWidth * 0.2) || heightDiff > (initialHeight * 0.4)) {
-                triggerBlock("Шпиондук режим аныкталды!", "Телефондо экранды экиге бөлүүгө же кошумча терезе ачууга тыюу салынат!");
+            // Горизонталдык режимди эске алып, 25%дан көп бийиктик же тууралык кыскарса бөгөттөйт
+            if (widthDiff > (initialWidth * 0.25) || heightDiff > (initialHeight * 0.45)) {
+                triggerBlock("Шпиондук режим аныкталды!", "Телефондо кошумча терезе ачууга же экранды бөлүүгө тыюу салынат!");
             }
         }
 
-        // ВКЛАДКА АЛМАШТЫРУУНУ ТЕКШЕРҮҮ
-        function handleCheating() {
+        // Вкладка алмаштырганда (Эскертүү берилет, 3-жолунда автоматтык түрдө куулат)
+        function handleVisibilityCheating() {
             if (document.visibilityState === 'hidden' && isQuizActive) {
                 cheatCount++;
                 if (cheatCount >= 3) {
-                    triggerBlock("Бөгөттөлдүңүз!", "Башка өтмөккө көп өткөнүңүз үчүн тест автоматтык түрдө жабылды.");
+                    triggerBlock("Автоматтык бөгөттөө!", "Башка тиркемеге же өтмөккө көп өткөнүңүз үчүн тест жабылды.");
                 } else {
-                    alert(`Эскертүү: ${cheatCount}/3. Башка өтмөккө өтүүгө же экранды бөлүүгө тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
+                    alert(`Эскертүү: ${cheatCount}/3. Башка жакка өтүүгө тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
                 }
             }
         }
 
-        // АВТОМАТТЫК БӨГӨТТӨӨ ЖАНА БАЗАГА ЖАЗУУ ЛОГИКАСЫ
+        // ТЕСТТИ БҮТҮРҮҮ ЖАНА ОКУУЧУНУ БАЗАГА "ШПИОН" ДЕП ЖАЗУУ
         function triggerBlock(title, message) {
             clearInterval(timerInterval); 
             isQuizActive = false;
-            window.removeEventListener('resize', handleResizeCheating);
-            document.removeEventListener('visibilitychange', handleCheating);
-
-            // Тапшыруу санын жаап салабыз
+            
             let currentAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
             localStorage.setItem('attempts_' + quizId, currentAttempts + 1);
 
@@ -296,13 +321,11 @@
                 teacherUid: quizData.authorUid,
                 score: 0, 
                 totalQuestions: totalQuestionsCount, 
-                tabCheats: 3, // Максималдуу чит деп белгилейбиз
-                isBlocked: true, 
+                tabCheats: 3, 
+                isBlocked: true, // Мугалимдин панелинде "БӨГӨТТӨЛДҮ" деп кызыл болуп чыгат
                 percent: 0,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                showSystemError(title, message);
-            });
+            }).then(() => { showSystemError(title, message); });
         }
 
         function updatePageVisibility() {
@@ -321,17 +344,11 @@
             }
         }
 
-        function changeQuestion(dir) { 
-            currentQuestionIndex += dir; 
-            updatePageVisibility(); 
-        }
+        function changeQuestion(dir) { currentQuestionIndex += dir; updatePageVisibility(); }
 
-        // ЖЫЙЫНТЫКТАРДЫ БАЗАГА ЖӨНӨТҮҮ
         function submitQuiz() {
             clearInterval(timerInterval); 
             isQuizActive = false;
-            window.removeEventListener('resize', handleResizeCheating);
-            document.removeEventListener('visibilitychange', handleCheating);
 
             let correctAnswersCount = 0, choiceTotal = 0, openAnswers = [];
 
@@ -376,9 +393,7 @@
                     document.getElementById('result-percent').innerText = `${percent}%`;
                     document.getElementById('animated-circle').style.strokeDashoffset = 477.5 - (percent / 100) * 477.5;
                 }
-            }).catch(err => {
-                alert("Жыйынтыкты сактоодо ката кетти: " + err.message);
-            });
+            }).catch(err => { alert("Ката кетти: " + err.message); });
         }
     </script>
 </body>
