@@ -15,6 +15,7 @@
             font-family: 'Montserrat', sans-serif; 
             background-color: #0b0f19; 
             color: #e2e8f0; 
+            overflow-x: hidden;
         }
         
         .blur-box { 
@@ -23,7 +24,7 @@
             border: 1px solid rgba(255, 255, 255, 0.05); 
         }
 
-        /* 🎬 ОЮН ТАЛААСЫ: КЕМЧИЛИКСИЗ ТАЗА АК ФОН */
+        /* ТАЗА АК ФОНДУУ ЗОНА */
         .game-track-zone {
             background: #ffffff !important;
             background-color: #ffffff !important;
@@ -32,12 +33,42 @@
             position: relative;
         }
 
-        /* Каармандардын видеолору (Рамкасыз жана тунук) */
         .video-avatar-clean { 
             width: 130px; 
             height: auto; 
             object-fit: contain;
             background: transparent !important;
+        }
+
+        /* Эмоциялардын калкып чыгуу анимациясы */
+        .emoji-bubble {
+            position: absolute;
+            top: -50px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            font-size: 24px;
+            animation: bounceUp 0.4s ease-out forwards;
+            color: black;
+            border: 2px solid #f3f4f6;
+            z-index: 50;
+        }
+
+        @keyframes bounceUp {
+            0% { transform: translateY(20px) scale(0.5); opacity: 0; }
+            70% { transform: translateY(-5px) scale(1.1); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        /* Финалдык чоң кооз терезе үчүн анимация */
+        .finish-card {
+            animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes scaleIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
@@ -91,18 +122,29 @@
             <div class="absolute inset-x-0 bottom-12 border-b border-dashed border-slate-200"></div>
 
             <div id="player-jigit" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 5%; bottom: 20px;">
+                <div id="emoji-jigit" class="emoji-bubble hidden">😂</div>
+                <div class="bg-orange-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full mb-1 shadow-md">Жигит</div>
                 <video src="boy_run.mp4" class="video-avatar-clean" autoplay loop muted playsinline></video>
             </div>
 
             <div id="player-kyz" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 17%; bottom: 20px;">
+                <div id="emoji-kyz" class="emoji-bubble hidden">😂</div>
+                <div class="bg-pink-500 text-white font-bold text-[10px] px-2 py-0.5 rounded-full mb-1 shadow-md">Кыз</div>
                 <video src="girl_run.mp4" class="video-avatar-clean" autoplay loop muted playsinline></video>
             </div>
         </div>
 
-        <div class="blur-box border border-slate-800 rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl">
-            <div class="flex gap-2 text-xl mb-1">😂 🚀 🔥 😎 😱</div>
+        <div id="interactive-panel" class="blur-box border border-slate-800 rounded-3xl p-8 flex flex-col items-center gap-4 shadow-2xl relative">
             
-            <div class="text-gray-500 text-[10px] font-black tracking-widest uppercase bg-slate-950/60 px-4 py-1.5 rounded-full border border-white/5 mb-2">
+            <div class="flex gap-4 text-2xl mb-1 bg-slate-950/50 px-6 py-2.5 rounded-full border border-white/5 shadow-inner">
+                <button onclick="sendEmoji('😂')" class="hover:scale-130 transition-transform active:scale-95">😂</button>
+                <button onclick="sendEmoji('🚀')" class="hover:scale-130 transition-transform active:scale-95">🚀</button>
+                <button onclick="sendEmoji('🔥')" class="hover:scale-130 transition-transform active:scale-95">🔥</button>
+                <button onclick="sendEmoji('😎')" class="hover:scale-130 transition-transform active:scale-95">😎</button>
+                <button onclick="sendEmoji('😱')" class="hover:scale-130 transition-transform active:scale-95">😱</button>
+            </div>
+            
+            <div id="question-meta" class="text-gray-500 text-[10px] font-black tracking-widest uppercase bg-slate-950/60 px-4 py-1.5 rounded-full border border-white/5 mb-2">
                 Суроо № <span id="current-question-num" class="text-amber-400">1</span> / 20
             </div>
             
@@ -110,8 +152,8 @@
                 Экинчи оюнчу кошулганда оюн автоматтык түрдө башталат...
             </h2>
             
-            <div id="waiting-overlay-msg" class="hidden text-amber-400 font-medium text-sm animate-pulse bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-xl">
-                <i class="fas fa-hourglass-half mr-2"></i> Сиз жооп бердиңиз. Каршылашыңыздын жооп беришин күтүп жатасыз...
+            <div id="waiting-overlay-msg" class="hidden text-amber-400 font-medium text-sm animate-pulse bg-amber-500/10 border border-amber-500/20 px-5 py-3 rounded-xl flex items-center gap-2">
+                <i class="fas fa-spinner fa-spin"></i> Сиз жооп бердиңиз. Каршылашыңыздын жооп беришин күтүп жатасыз...
             </div>
 
             <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-5xl mt-2"></div>
@@ -120,11 +162,9 @@
     </div>
 
     <script>
-        // --- АУДИО ЖӨНДӨӨСҮ ---
         const gameMusic = new Audio('music.mp3');
         gameMusic.loop = true;
 
-        // --- FIREBASE ЖӨНДӨӨЛӨРҮ ---
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -151,59 +191,54 @@
         function createRoomProcess() {
             const nameInput = document.getElementById('player-name-input').value.trim();
             if (!nameInput) { alert("Атыңызды жазыңыз!"); return; }
-            
-            myPlayerName = nameInput;
-            myRole = 'jigit';
+            myPlayerName = nameInput; myRole = 'jigit';
             myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
 
             database.ref(`teacherQuizzes/${currentSubject}/${currentTheme}/questions`).once('value').then(snapshot => {
-                if (!snapshot.exists()) {
-                    alert("Мугалимдин панелинде бул темага суроо табылган жок!");
-                    return;
-                }
+                if (!snapshot.exists()) { alert("Суроолор табылган жок!"); return; }
                 const questionsFromTeacher = snapshot.val();
                 
                 database.ref(`rooms/${myRoomId}`).set({
-                    roomId: myRoomId,
-                    subject: currentSubject,
-                    theme: currentTheme,
-                    jigitName: myPlayerName,
-                    jigitScore: 0,
-                    jigitAnswered: false,
-                    kyzName: "Күтүлүүдө...",
-                    kyzScore: 0,
-                    kyzAnswered: false,   
-                    currentQuestionIndex: 0,
-                    status: "waiting",
-                    roomQuestions: questionsFromTeacher
-                }).then(() => {
-                    startGameSession();
-                });
+                    roomId: myRoomId, subject: currentSubject, theme: currentTheme,
+                    jigitName: myPlayerName, jigitScore: 0, jigitAnswered: false,
+                    kyzName: "Күтүлүүдө...", kyzScore: 0, kyzAnswered: false,   
+                    currentQuestionIndex: 0, status: "waiting", roomQuestions: questionsFromTeacher,
+                    lastEmojiJigit: "", lastEmojiKyz: "", emojiTrigger: 0
+                }).then(() => { startGameSession(); });
             });
         }
 
         function joinRoomProcess() {
             const nameInput = document.getElementById('player-name-input').value.trim();
             const idInput = document.getElementById('room-id-input').value.trim();
-            
-            if (!nameInput || !idInput) { alert("Атыңызды жана бөлмө кодду жазыңыз!"); return; }
-
-            myPlayerName = nameInput;
-            myRole = 'kyz';
-            myRoomId = idInput;
+            if (!nameInput || !idInput) { alert("Маалыматтарды толук жазыңыз!"); return; }
+            myPlayerName = nameInput; myRole = 'kyz'; myRoomId = idInput;
 
             database.ref(`rooms/${myRoomId}`).once('value').then(snapshot => {
-                if (!snapshot.exists()) {
-                    alert("Бөлмө табылган жок!");
-                    return;
-                }
-                database.ref(`rooms/${myRoomId}`).update({
-                    kyzName: myPlayerName,
-                    status: "playing"
-                }).then(() => {
-                    startGameSession();
-                });
+                if (!snapshot.exists()) { alert("Бөлмө табылган жок!"); return; }
+                database.ref(`rooms/${myRoomId}`).update({ kyzName: myPlayerName, status: "playing" })
+                .then(() => { startGameSession(); });
             });
+        }
+
+        // РЕАЛДУУ УБАКИРДА ЭМОДЗИ ЖӨНӨТҮҮ
+        function sendEmoji(emoji) {
+            if (!myRoomId) return;
+            const field = myRole === 'jigit' ? 'lastEmojiJigit' : 'lastEmojiKyz';
+            database.ref(`rooms/${myRoomId}`).update({
+                [field]: emoji,
+                emojiTrigger: Math.random() // Өзгөрүүнү угуу үчүн триггер
+            });
+        }
+
+        function showEmojiBubble(role, emoji) {
+            const element = document.getElementById(`emoji-${role}`);
+            if (!element || !emoji) return;
+            element.textContent = emoji;
+            element.classList.remove('hidden');
+            
+            // 2 секунддан кийин кооз жоголсун
+            setTimeout(() => { element.classList.add('hidden'); }, 2000);
         }
 
         function startGameSession() {
@@ -211,7 +246,7 @@
             document.getElementById('game-container').classList.remove('hidden');
             document.getElementById('room-id-display').textContent = myRoomId;
 
-            gameMusic.play().catch(error => { console.log("Музыка башталды"); });
+            gameMusic.play().catch(() => {});
 
             database.ref(`rooms/${myRoomId}`).on('value', snapshot => {
                 const room = snapshot.val();
@@ -222,8 +257,11 @@
                 document.getElementById('score-jigit').textContent = room.jigitScore;
                 document.getElementById('score-kyz').textContent = room.kyzScore;
 
-                // 20 СУРООГО ЫЛАЙЫКТАЛГАН КАДАМДАР (Максимум 70% жыла алышат)
-                // Жигит башында 5%те, Кыз 2 кадам алдыда (17%те) турат.
+                // Эмоцияларды экранга чыгаруу
+                if (room.lastEmojiJigit) showEmojiBubble('jigit', room.lastEmojiJigit);
+                if (room.lastEmojiKyz) showEmojiBubble('kyz', room.lastEmojiKyz);
+
+                // Координаттарды эсептөө (2 кадам айырма сакталат)
                 const jigitLeft = 5 + ((room.jigitScore / 10) * 3.5);
                 const kyzLeft = 17 + ((room.kyzScore / 10) * 3.5);
                 
@@ -235,25 +273,19 @@
                     return;
                 }
 
-                const qIndex = room.currentQuestionIndex || 0;
-                document.getElementById('current-question-num').textContent = qIndex > 20 ? 20 : qIndex + 1;
-
-                // 🚨 ТАКТАЛГАН КАГЫЛЫШУУ ЛОГИКАСЫ: Жигиттин башы кыздын куйругуна тийгенде (Аралык 11% дан аз калганда)
+                // 🚨 ЖИГИТ КЫЗГА ЖЕТКЕНДЕ (Утуш кооз финалдык терезе менен ортодо чыгат)
                 if (kyzLeft - jigitLeft <= 11 && room.jigitScore > 0 && room.status !== "finished") {
-                    document.getElementById('game-status-center').textContent = "ЖАРЫШ АЯКТАДЫ! 🏁";
-                    document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-orange-400 font-black text-2xl">${room.jigitName} деген жигит ${room.kyzName} деген кызга жетти! 🏇🎉</span>`;
-                    document.getElementById('options-container').innerHTML = "";
-                    document.getElementById('waiting-overlay-msg').classList.add('hidden');
-                    gameMusic.pause();
-                    
-                    if (myRole === 'jigit') {
-                        database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
-                    }
+                    showFinalResult(`🎉 ОЮН АЯКТАДЫ! 🎉`, `<span class="text-amber-400 font-extrabold">${room.jigitName}</span> деген жигит <span class="text-pink-400 font-extrabold">${room.kyzName}</span> деген кызга жетти! 🏇✨`, room.jigitScore, room.kyzScore);
+                    if (myRole === 'jigit') database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
                     return;
                 }
 
                 if (room.status === "finished") return;
 
+                const qIndex = room.currentQuestionIndex || 0;
+                document.getElementById('current-question-num').textContent = qIndex + 1;
+
+                // 🚨 СИНХРОНДУУ КҮТҮҮ ЛОГИКАСЫ (Эки оюнчу тең жооп бергенде гана кийинки суроого өтөт)
                 if (room.jigitAnswered === true && room.kyzAnswered === true) {
                     if (myRole === 'jigit') {
                         setTimeout(() => {
@@ -262,32 +294,26 @@
                                 jigitAnswered: false,
                                 kyzAnswered: false
                             });
-                        }, 1000);
+                        }, 1200); // 1.2 секунддук эффект убактысы
                     }
                     hasIAnswered = false; 
                     return;
                 }
 
+                // Кезекти блоктоо (Бир жолу гана жооп берүү мүмкүнчүлүгү)
                 if ((myRole === 'jigit' && room.jigitAnswered) || (myRole === 'kyz' && room.kyzAnswered)) {
                     document.getElementById('waiting-overlay-msg').classList.remove('hidden');
-                    document.getElementById('options-container').classList.add('pointer-events-none', 'opacity-40');
+                    document.getElementById('options-container').classList.add('pointer-events-none', 'opacity-30');
                     return;
                 } else {
                     document.getElementById('waiting-overlay-msg').classList.add('hidden');
                     document.getElementById('options-container').classList.remove('pointer-events-none', 'opacity-40');
                 }
 
-                // 🚨 20 СУРОО ТОЛУК БҮТКӨНДӨ КЫЗ ЖЕТКИРБЕЙ КАЧЫП КЕТСЕ (Кыз утту)
+                // 🚨 20 СУРОО БҮТҮП, КЫЗ КАЧЫП КЕТКЕНДЕ
                 if (room.roomQuestions && qIndex >= room.roomQuestions.length) {
-                    document.getElementById('game-status-center').textContent = "ЖАРЫШ АЯКТАДЫ! 🏁";
-                    document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-pink-400 font-black text-2xl">${room.jigitName} деген жигиттен ${room.kyzName} деген кыз качып кетти! 🐎💨</span>`;
-                    document.getElementById('options-container').innerHTML = "";
-                    document.getElementById('waiting-overlay-msg').classList.add('hidden');
-                    gameMusic.pause();
-                    
-                    if (myRole === 'jigit') {
-                        database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
-                    }
+                    showFinalResult(`🏁 ЖАРЫШ АЯКТАДЫ! 🏁`, `<span class="text-amber-400 font-extrabold">${room.jigitName}</span> деген жигиттен <span class="text-pink-400 font-extrabold">${room.kyzName}</span> деген кыз качып кетти! 🐎💨`, room.jigitScore, room.kyzScore);
+                    if (myRole === 'jigit') database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
                     return;
                 }
 
@@ -299,12 +325,34 @@
             });
         }
 
+        // ОЮНДУН ЖЕҢИШ ПАНЕЛИН ОРТОГО КООЗ ЧЫГАРУУ
+        function showFinalResult(title, message, scoreJ, scoreK) {
+            document.getElementById('game-status-center').textContent = "АЯКТАДЫ 🏁";
+            gameMusic.pause();
+
+            const interactivePanel = document.getElementById('interactive-panel');
+            interactivePanel.innerHTML = `
+                <div class="finish-card text-center py-8 px-4 flex flex-col items-center justify-center w-full max-w-2xl mx-auto">
+                    <div class="text-6xl mb-4 animate-bounce">🏆</div>
+                    <h1 class="text-3xl font-black text-amber-400 uppercase tracking-widest mb-4">${title}</h1>
+                    <p class="text-white text-xl font-medium text-center leading-relaxed mb-6 bg-slate-900/60 p-6 rounded-2xl border border-white/5 shadow-inner">
+                        ${message}
+                    </p>
+                    <div class="flex gap-8 text-sm font-bold bg-slate-950/80 px-6 py-3 rounded-full border border-white/10">
+                        <span class="text-orange-400">Жигит упай: <span class="text-white bg-orange-500/30 px-2 py-0.5 rounded ml-1">${scoreJ}</span></span>
+                        <div class="border-l border-white/10 h-5"></div>
+                        <span class="text-pink-400">Кыз упай: <span class="text-white bg-pink-500/30 px-2 py-0.5 rounded ml-1">${scoreK}</span></span>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderQuestionWithOptions(questionObj) {
             const questionTextElement = document.getElementById("question-text"); 
             const optionsContainer = document.getElementById("options-container"); 
 
             optionsContainer.innerHTML = "";
-            questionTextElement.textContent = questionObj.text || questionObj.question || "Суроо тексти бош";
+            questionTextElement.textContent = questionObj.text || questionObj.question || "Суроо тексти жүктөлүүдө...";
 
             let rawOptions = [
                 { isCorrect: true, text: questionObj.variantA || "" },
@@ -323,7 +371,7 @@
                 [rawOptions[i], rawOptions[j]] = [rawOptions[j], rawOptions[i]];
             }
 
-            rawOptions.forEach((option, index) => {
+            rawOptions.forEach((option) => {
                 const button = document.createElement("button");
                 button.className = "w-full text-center bg-sky-500 hover:bg-sky-400 text-white font-bold p-4 rounded-xl transition-all duration-200 shadow-lg border border-sky-600/30 text-base text-ellipsis overflow-hidden";
                 button.textContent = option.text;
@@ -341,14 +389,11 @@
 
         function processUserAnswer(isCorrect, selectedButton) {
             if (isCorrect) {
-                selectedButton.classList.remove('bg-sky-500');
-                selectedButton.classList.add('bg-emerald-600');
-                
+                selectedButton.className = "w-full text-center bg-emerald-600 text-white font-bold p-4 rounded-xl shadow-lg border border-emerald-700 text-base scale-98 transition-all";
                 const scoreField = myRole === 'jigit' ? 'jigitScore' : 'kyzScore';
                 database.ref(`rooms/${myRoomId}/${scoreField}`).set(firebase.database.ServerValue.increment(10));
             } else {
-                selectedButton.classList.remove('bg-sky-500');
-                selectedButton.classList.add('bg-rose-600');
+                selectedButton.className = "w-full text-center bg-rose-600 text-white font-bold p-4 rounded-xl shadow-lg border border-rose-700 text-base scale-98 transition-all";
             }
 
             const answeredField = myRole === 'jigit' ? 'jigitAnswered' : 'kyzAnswered';
