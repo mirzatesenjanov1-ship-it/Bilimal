@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght=400;700;900&display=swap');
         body { background-color: #050a18; color: #e2e8f0; font-family: 'Montserrat', sans-serif; user-select: none; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
         .question-page { display: none; }
@@ -47,20 +47,23 @@
             
             <div id="auth-block" class="w-full glass-card p-8 rounded-[2rem] text-center">
                 <h3 class="text-xl font-black mb-4 text-blue-400 uppercase">BILIMAL.ORG | Тест системасы</h3>
-                <input id="student-name" type="text" placeholder="Аты-жөнүңүз (Мисалы: Асанов Темир)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white text-center font-bold text-lg mb-4 focus:outline-none">
-                <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Тестти баштоо</button>
+                <input id="student-name" type="text" placeholder="Аты-жөнүңүз (Мисалы: Асанов Темир)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white text-center font-bold text-lg mb-4 focus:outline-none focus:border-blue-500">
+                <button onclick="checkAndStartQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 py-4 rounded-xl font-black uppercase text-xs tracking-widest transition-all">Тестти баштоо</button>
             </div>
 
             <div id="error-block" class="hidden text-center p-8 glass-card rounded-[2rem]">
-                <div class="text-red-500 text-5xl mb-4"><i class="fas fa-user-slash"></i></div>
-                <h3 id="error-title" class="text-xl font-black mb-2"></h3>
-                <p id="error-desc" class="text-gray-400 text-sm"></p>
+                <div id="error-icon" class="text-red-500 text-5xl mb-4"><i class="fas fa-user-slash"></i></div>
+                <h3 id="error-title" class="text-xl font-black mb-2 text-white"></h3>
+                <p id="error-desc" class="text-gray-400 text-sm leading-relaxed"></p>
             </div>
 
             <div id="result-block" class="hidden w-full glass-card p-8 rounded-[2.5rem] text-center flex flex-col items-center">
                 <h2 class="text-2xl font-black text-emerald-400 mb-6 uppercase">Тест аяктады</h2>
                 <div class="relative w-44 h-44 mb-6">
-                    <svg class="w-full h-full"><circle cx="88" cy="88" r="76" stroke="rgba(255,255,255,0.05)" stroke-width="12" fill="transparent"/><circle id="animated-circle" cx="88" cy="88" r="76" stroke="#10b981" stroke-width="12" fill="transparent" class="circle-progress" stroke-dasharray="477.5" stroke-dashoffset="477.5"/></svg>
+                    <svg class="w-full h-full">
+                        <circle cx="88" cy="88" r="76" stroke="rgba(255,255,255,0.05)" stroke-width="12" fill="transparent"/>
+                        <circle id="animated-circle" cx="88" cy="88" r="76" stroke="#10b981" stroke-width="12" fill="transparent" class="circle-progress" stroke-dasharray="477.5" stroke-dashoffset="477.5"/>
+                    </svg>
                     <div class="absolute inset-0 flex flex-col items-center justify-center">
                         <span id="result-percent" class="text-4xl font-black text-white">0%</span>
                         <span id="result-score-text" class="text-xs text-gray-400 font-bold uppercase mt-1">0/0 Балл</span>
@@ -82,7 +85,7 @@
             <div id="quiz-block" class="hidden w-full glass-card p-8 rounded-[2.5rem]">
                 <div class="flex justify-between items-center mb-4">
                     <div>
-                        <h2 id="quiz-title" class="text-lg font-black text-white uppercase">BILIMAL</h2>
+                        <h2 id="quiz-title" class="text-lg font-black text-white uppercase truncate max-w-[250px]">BILIMAL</h2>
                         <div class="flex gap-4 text-xs font-bold text-gray-400 mt-1">
                             <span id="progress-text">Суроо: 1 / 1</span>
                             <span class="text-amber-400"><i class="fas fa-clock mr-1"></i> <span id="timer-display">00:00</span></span>
@@ -132,27 +135,51 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        const urlParams = new URLSearchParams(window.location.search), quizId = urlParams.get('id');
-        let quizData = null, studentName = "", cheatCount = 0, isQuizActive = false, currentQuestionIndex = 0, totalQuestionsCount = 0, timeLeft = 0, timerInterval = null, qList = [];
+        const urlParams = new URLSearchParams(window.location.search);
+        const quizId = urlParams.get('id');
+        
+        let quizData = null, studentName = "", cheatCount = 0, isQuizActive = false;
+        let currentQuestionIndex = 0, totalQuestionsCount = 0, timeLeft = 0, timerInterval = null, qList = [];
 
-        function startQuiz() {
+        // 1. ТЕСТТИ БАШТООДО СТАТУСТУ ЖАНА КИРҮҮЛӨРДҮ ТЕКШЕРҮҮ
+        function checkAndStartQuiz() {
             studentName = document.getElementById('student-name').value.trim();
             if (!studentName) return alert("Атыңызды жазыңыз!");
-            document.getElementById('auth-block').classList.add('hidden');
+            if (!quizId) return alert("Ката шилтеме! Тесттин ID мааниси табылган жок.");
 
+            // Мугалим каалаган учурда жаап койсо киргизбей турган негизги коопсуздук логикасы
             database.ref('tests/' + quizId).once('value').then((snapshot) => {
                 quizData = snapshot.val();
-                if (quizData) renderQuiz(); else showSystemError("Ката", "Тест табылган жок.");
+                
+                if (!quizData) {
+                    showSystemError("Ката", "Мындай ID менен тест базадан табылган жок.");
+                    return;
+                }
+
+                // 🛑 МУГАЛИМ ПАНЕЛДЕН ТЕСТТИ ЖАПКАН БОЛСО БӨГӨТТӨӨ
+                if (quizData.status === "closed") {
+                    showSystemError("Тест жабык!", "Кечиреиз, бул тест мугалим тарабынан жабылган. Кирүүгө мүмкүн эмес.");
+                    document.getElementById('error-icon').innerHTML = `<i class="fas fa-lock text-amber-500"></i>`;
+                    return;
+                }
+
+                // Эгер баары жайында болсо, тестти жүктөөгө жиберебиз
+                document.getElementById('auth-block').classList.add('hidden');
+                renderQuiz();
+            }).catch(err => {
+                showSystemError("Ката кети", "Маалыматтарды жүктөөдө ката пайда болду: " + err.message);
             });
         }
 
         function showSystemError(title, desc) {
+            document.getElementById('auth-block').classList.add('hidden');
             document.getElementById('quiz-block').classList.add('hidden');
             document.getElementById('error-title').innerText = title;
             document.getElementById('error-desc').innerText = desc;
             document.getElementById('error-block').classList.remove('hidden');
         }
 
+        // 2. ТЕСТТИ ЭКРАНГА ЧЫГАРУУ КАРТИНАСЫ
         function renderQuiz() {
             document.getElementById('quiz-block').classList.remove('hidden');
             document.getElementById('quiz-title').innerText = quizData.title;
@@ -175,7 +202,11 @@
                 } else {
                     let optionsHtml = "";
                     q.options.forEach((opt, oIdx) => {
-                        optionsHtml += `<label class="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all"><input type="radio" name="q_${index}" value="${oIdx}" class="w-4 h-4"><span class="text-sm text-gray-200">${opt}</span></label>`;
+                        optionsHtml += `
+                            <label class="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all">
+                                <input type="radio" name="q_${index}" value="${oIdx}" class="w-4 h-4 accent-blue-500">
+                                <span class="text-sm text-gray-200">${opt}</span>
+                            </label>`;
                     });
                     innerHtml = `<div class="grid grid-cols-1 gap-2">${optionsHtml}</div>`;
                 }
@@ -193,18 +224,41 @@
 
         function startTimer() {
             timerInterval = setInterval(() => {
-                if (timeLeft <= 0) { clearInterval(timerInterval); submitQuiz(); }
-                else { timeLeft--; document.getElementById('timer-display').innerText = Math.floor(timeLeft/60).toString().padStart(2,'0') + ":" + (timeLeft%60).toString().padStart(2,'0'); }
+                if (timeLeft <= 0) { 
+                    clearInterval(timerInterval); 
+                    submitQuiz(); 
+                } else { 
+                    timeLeft--; 
+                    document.getElementById('timer-display').innerText = Math.floor(timeLeft/60).toString().padStart(2,'0') + ":" + (timeLeft%60).toString().padStart(2,'0'); 
+                }
             }, 1000);
         }
 
+        // 3. АНТИ-ЧИТ СИСТЕМАСЫ ОҢДОЛДУ (ДАРОО БАЗАГА БӨГӨТ ДЕП ЖАЗАТ)
         function handleCheating() {
             if (document.visibilityState === 'hidden' && isQuizActive) {
                 cheatCount++;
                 if (cheatCount >= 3) {
-                    clearInterval(timerInterval); isQuizActive = false;
-                    showSystemError("Бөгөттөлдүңүз!", "Эреже бузуулардан улам бөгөттөлдүңүз.");
-                } else alert(`Эскертүү: ${cheatCount}/3. Башка өтмөккө өтүүгө тыюу салынат!`);
+                    clearInterval(timerInterval); 
+                    isQuizActive = false;
+                    
+                    // Бөгөттөлгөндө мугалимдин панелинен "Бөгөт!" деп көрүнүп туруусу үчүн базага дароо жазабыз
+                    database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
+                        studentName: studentName, 
+                        quizTitle: quizData.title, 
+                        teacherUid: quizData.authorUid,
+                        score: 0, 
+                        totalQuestions: totalQuestionsCount, 
+                        tabCheats: cheatCount,
+                        isBlocked: true, // Бул мугалимге кызыл маркер берет
+                        percent: 0,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    }).then(() => {
+                        showSystemError("Бөгөттөлдүңүз!", "Башка өтмөккө көп өткөнүңүз үчүн тест автоматтык түрдө жабылды жана жыйынтыгыңыз жокко чыгарылды.");
+                    });
+                } else {
+                    alert(`Эскертүү: ${cheatCount}/3. Башка өтмөккө өтүүгө тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
+                }
             }
         }
 
@@ -224,15 +278,23 @@
             }
         }
 
-        function changeQuestion(dir) { currentQuestionIndex += dir; updatePageVisibility(); }
+        function changeQuestion(dir) { 
+            currentQuestionIndex += dir; 
+            updatePageVisibility(); 
+        }
 
+        // 4. ЖЫЙЫНТЫКТАРДЫ БАЗАГА ЖӨНӨТҮҮ
         function submitQuiz() {
-            clearInterval(timerInterval); isQuizActive = false;
+            clearInterval(timerInterval); 
+            isQuizActive = false;
+            document.removeEventListener('visibilitychange', handleCheating); // Анти-читти өчүрөбүз
+
             let correctAnswersCount = 0, choiceTotal = 0, openAnswers = [];
 
             qList.forEach((q, index) => {
                 if(q.type === 'text') {
-                    const textVal = document.getElementById(`open_ans_${index}`).value.trim();
+                    const textElement = document.getElementById(`open_ans_${index}`);
+                    const textVal = textElement ? textElement.value.trim() : "";
                     openAnswers.push({ questionText: q.questionText, studentResponse: textVal });
                 } else {
                     choiceTotal++;
@@ -244,20 +306,31 @@
             const percent = choiceTotal > 0 ? Math.round((correctAnswersCount / choiceTotal) * 100) : 100;
 
             database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
-                studentName: studentName, quizTitle: quizData.title, teacherUid: quizData.authorUid,
-                score: correctAnswersCount, totalQuestions: choiceTotal, tabCheats: cheatCount,
-                openAnswers: openAnswers.length > 0 ? openAnswers : null, percent: percent
+                studentName: studentName, 
+                quizTitle: quizData.title, 
+                teacherUid: quizData.authorUid,
+                score: correctAnswersCount, 
+                totalQuestions: choiceTotal, 
+                tabCheats: cheatCount,
+                isBlocked: false,
+                openAnswers: openAnswers.length > 0 ? openAnswers : null, 
+                percent: percent,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             }).then(() => {
                 document.getElementById('quiz-block').classList.add('hidden');
                 document.getElementById('result-block').classList.remove('hidden');
                 
                 if(quizData.settings && quizData.settings.instantResult === false) {
                     document.getElementById('result-notice').innerText = "Ачык суроолор камтылган. Мугалим текшерген соң жыйынтыгын билдирет.";
+                    document.getElementById('result-score-text').innerText = "Текшерилет";
+                    document.getElementById('result-percent').innerText = "...";
                 } else {
                     document.getElementById('result-score-text').innerText = `${correctAnswersCount} / ${choiceTotal} Балл`;
                     document.getElementById('result-percent').innerText = `${percent}%`;
                     document.getElementById('animated-circle').style.strokeDashoffset = 477.5 - (percent / 100) * 477.5;
                 }
+            }).catch(err => {
+                alert("Жыйынтыкты сактоодо ката кетти: " + err.message);
             });
         }
     </script>
