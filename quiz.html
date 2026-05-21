@@ -140,6 +140,9 @@
         
         let quizData = null, studentName = "", cheatCount = 0, isQuizActive = false;
         let currentQuestionIndex = 0, totalQuestionsCount = 0, timeLeft = 0, timerInterval = null, qList = [];
+        
+        // Экрандын алгачкы бийиктигин жана туурасын сактоо үчүн өзгөрмөлөр (эки экранды аныктоого керек)
+        let initialHeight = 0, initialWidth = 0;
 
         // 1. ТЕСТТИ БАШТООДО СТАТУСТУ ЖАНА ТАПШЫРУУ САНЫН ТЕКШЕРҮҮ
         function checkAndStartQuiz() {
@@ -155,18 +158,15 @@
                     return;
                 }
 
-                // 🛑 А) ТЕСТ ЖАБЫК БОЛСО БӨГӨТТӨӨ
+                // ТЕСТ ЖАБЫК БОЛСО БӨГӨТТӨӨ
                 if (quizData.status === "closed") {
                     showSystemError("Тест жабык!", "Кечиреиз, бул тест мугалим тарабынан жабылган. Кирүүгө мүмкүн эмес.");
                     document.getElementById('error-icon').innerHTML = `<i class="fas fa-lock text-amber-500"></i>`;
                     return;
                 }
 
-                // 🛑 Б) ТАПШЫРУУ САНЫН ТЕКШЕРҮҮ (localStorage аркылуу)
-                // Браузерден ушул тест канча жолу тапшырылганын окуйбуз
+                // ТАПШЫРУУ САНЫН ТЕКШЕРҮҮ
                 let localAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
-                
-                // Мугалим койгон максималдуу сан (эгер жөндөлбөсө, автоматтык түрдө 1 жолу деп алынат)
                 let maxAttempts = (quizData.settings && quizData.settings.maxAttempts) ? quizData.settings.maxAttempts : "1";
 
                 if (maxAttempts !== "unlimited" && localAttempts >= parseInt(maxAttempts)) {
@@ -175,7 +175,6 @@
                     return;
                 }
 
-                // Эгер баары жайында болсо, тестти жүктөөгө жиберебиз
                 document.getElementById('auth-block').classList.add('hidden');
                 renderQuiz();
             }).catch(err => {
@@ -191,11 +190,15 @@
             document.getElementById('error-block').classList.remove('hidden');
         }
 
-        // 2. ТЕСТТИ ЭКРАНГА ЧЫГАРУУ КАРТИНАСЫ
+        // 2. ТЕСТТИ ЭКРАНГА ЧЫГАРУУ
         function renderQuiz() {
             document.getElementById('quiz-block').classList.remove('hidden');
             document.getElementById('quiz-title').innerText = quizData.title;
             isQuizActive = true;
+
+            // Тест башталганда экрандын чыныгы өлчөмүн эстеп калабыз
+            initialHeight = window.innerHeight;
+            initialWidth = window.innerWidth;
 
             qList = Object.values(quizData.questions);
             if (quizData.settings && quizData.settings.shuffle) qList = qList.sort(() => Math.random() - 0.5);
@@ -231,7 +234,10 @@
             });
 
             updatePageVisibility();
+            
+            // Көзөмөлдөөчүлөр: Вкладка алмаштыруу жана Экран өлчөмүнүн өзгөрүшү (Эки экран режими)
             document.addEventListener('visibilitychange', handleCheating);
+            window.addEventListener('resize', handleResizeCheating);
         }
 
         function startTimer() {
@@ -246,34 +252,57 @@
             }, 1000);
         }
 
+        // ЭКИ ЭКРАН ЖАНА ТЕРЕЗЕНИ КИЧИРЕЙТҮҮНҮ ТЕКШЕРҮҮ (ЖАНЫ ФУНКЦИЯ)
+        function handleResizeCheating() {
+            if (!isQuizActive) return;
+
+            // Экрандын бийиктиги же туурасы баштапкы өлчөмдөн 25% дан көпкө кыскарса (бул эки экран ачылганын билдирет)
+            // (Эскертүү: Клавиатура чыкканда бийиктик өзгөрүшү мүмкүн, ошондуктан туурасын да, бийиктигин тең катуу көзөмөлдөйбүз)
+            let heightDiff = Math.abs(window.innerHeight - initialHeight);
+            let widthDiff = Math.abs(window.innerWidth - initialWidth);
+
+            // Телефонду жөн эле горизонталдык (альбомдук) режимге бурса бөгөттөбөш үчүн туурасын да текшеребиз
+            if (widthDiff > (initialWidth * 0.2) || heightDiff > (initialHeight * 0.4)) {
+                triggerBlock("Шпиондук режим аныкталды!", "Телефондо экранды экиге бөлүүгө же кошумча терезе ачууга тыюу салынат!");
+            }
+        }
+
+        // ВКЛАДКА АЛМАШТЫРУУНУ ТЕКШЕРҮҮ
         function handleCheating() {
             if (document.visibilityState === 'hidden' && isQuizActive) {
                 cheatCount++;
                 if (cheatCount >= 3) {
-                    clearInterval(timerInterval); 
-                    isQuizActive = false;
-                    
-                    // Бөгөттөлгөндө да тапшыруу санын 1ге көбөйтөбүз, кайра кире албашы үчүн
-                    let currentAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
-                    localStorage.setItem('attempts_' + quizId, currentAttempts + 1);
-
-                    database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
-                        studentName: studentName, 
-                        quizTitle: quizData.title, 
-                        teacherUid: quizData.authorUid,
-                        score: 0, 
-                        totalQuestions: totalQuestionsCount, 
-                        tabCheats: cheatCount,
-                        isBlocked: true, 
-                        percent: 0,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
-                    }).then(() => {
-                        showSystemError("Бөгөттөлдүңүз!", "Башка өтмөккө көп өткөнүңүз үчүн тест автоматтык түрдө жабылды жана жыйынтыгыңыз жокко чыгарылды.");
-                    });
+                    triggerBlock("Бөгөттөлдүңүз!", "Башка өтмөккө көп өткөнүңүз үчүн тест автоматтык түрдө жабылды.");
                 } else {
-                    alert(`Эскертүү: ${cheatCount}/3. Башка өтмөккө өтүүгө тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
+                    alert(`Эскертүү: ${cheatCount}/3. Башка өтмөккө өтүүгө же экранды бөлүүгө тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
                 }
             }
+        }
+
+        // АВТОМАТТЫК БӨГӨТТӨӨ ЖАНА БАЗАГА ЖАЗУУ ЛОГИКАСЫ
+        function triggerBlock(title, message) {
+            clearInterval(timerInterval); 
+            isQuizActive = false;
+            window.removeEventListener('resize', handleResizeCheating);
+            document.removeEventListener('visibilitychange', handleCheating);
+
+            // Тапшыруу санын жаап салабыз
+            let currentAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
+            localStorage.setItem('attempts_' + quizId, currentAttempts + 1);
+
+            database.ref('results/' + quizId + '_' + studentName.replace(/\s+/g, '_')).set({
+                studentName: studentName, 
+                quizTitle: quizData.title, 
+                teacherUid: quizData.authorUid,
+                score: 0, 
+                totalQuestions: totalQuestionsCount, 
+                tabCheats: 3, // Максималдуу чит деп белгилейбиз
+                isBlocked: true, 
+                percent: 0,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                showSystemError(title, message);
+            });
         }
 
         function updatePageVisibility() {
@@ -297,10 +326,11 @@
             updatePageVisibility(); 
         }
 
-        // 3. ЖЫЙЫНТЫКТАРДЫ БАЗАГА ЖӨНӨТҮҮ ЖАНА ТАПШЫРУУ САНЫН ЭСТЕП КАЛУУ
+        // ЖЫЙЫНТЫКТАРДЫ БАЗАГА ЖӨНӨТҮҮ
         function submitQuiz() {
             clearInterval(timerInterval); 
             isQuizActive = false;
+            window.removeEventListener('resize', handleResizeCheating);
             document.removeEventListener('visibilitychange', handleCheating);
 
             let correctAnswersCount = 0, choiceTotal = 0, openAnswers = [];
@@ -319,7 +349,6 @@
 
             const percent = choiceTotal > 0 ? Math.round((correctAnswersCount / choiceTotal) * 100) : 100;
 
-            // 🛑 ТЕСТ ИЙГИЛИКТҮҮ АЯКТАГАНДА БРАУЗЕРГЕ ТАПШЫРУУ САНЫН ЖАЗАБЫЗ
             let currentAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
             localStorage.setItem('attempts_' + quizId, currentAttempts + 1);
 
