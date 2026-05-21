@@ -25,21 +25,36 @@
 
         <div class="p-6 bg-white/5 rounded-2xl border border-white/5 mb-6 space-y-4">
             <h3 class="text-sm font-black uppercase tracking-widest text-blue-400"><i class="fas fa-sliders-h mr-2"></i> Жөндөөлөр жана Баалоо ченемдери</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                 <div>
                     <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Таймер (мүнөт)</label>
                     <input id="quiz-time" type="number" value="20" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none">
                 </div>
-                <div class="flex items-center gap-3 pt-6">
-                    <input id="shuffle-questions" type="checkbox" class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
-                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="shuffle-questions">Аралаштыруу</label>
+                
+                <div>
+                    <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Тапшыруу саны</label>
+                    <select id="quiz-max-attempts" class="w-full bg-[#0d1527] border border-white/10 rounded-xl p-3 text-sm text-gray-200 font-bold outline-none focus:border-blue-500 transition-all cursor-pointer">
+                        <option value="1" selected>1 жолу гана</option>
+                        <option value="2">2 жолу тапшыра алат</option>
+                        <option value="3">3 жолу тапшыра алат</option>
+                        <option value="unlimited">Чектөөсүз</option>
+                    </select>
                 </div>
-                <div class="flex items-center gap-3 pt-6">
-                    <input id="show-results-instantly" type="checkbox" checked class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
-                    <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="show-results-instantly">Жыйынтыкты көрсөтүү</label>
+
+                <div class="flex flex-col gap-3 justify-center pb-2 md:pl-4">
+                    <div class="flex items-center gap-3">
+                        <input id="shuffle-questions" type="checkbox" class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
+                        <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="shuffle-questions">Аралаштыруу</label>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <input id="show-results-instantly" type="checkbox" checked class="w-5 h-5 text-blue-600 bg-white/5 border-white/10 rounded">
+                        <label class="text-xs text-gray-300 font-bold uppercase cursor-pointer" for="show-results-instantly">Жыйынтыкты көрсөтүү</label>
+                    </div>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+
+            <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                 <div>
                     <label class="block text-[10px] text-gray-400 font-bold uppercase mb-1">"5" деген баа үчүн (%)</label>
                     <input id="grade-5-min" type="number" value="85" class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white focus:outline-none">
@@ -120,7 +135,7 @@
             }
         }
 
-        // Суроо талаасын кошуу (Аралаштыруу баскычы кошулду)
+        // Суроо талаасын кошуу
         function addQuestionField(type = 'choice', text = "", options = ["", "", "", ""], correct = "") {
             questionCount++;
             const container = document.getElementById('questions-list');
@@ -135,7 +150,6 @@
                 <input type="number" value="${correct}" placeholder="Туура варианттын индекси (0, 1, 2 же 3)" class="q-correct w-full bg-blue-500/10 border border-blue-500/20 rounded-xl p-2 text-xs text-blue-400 mt-3 focus:outline-none">` 
             : `<p class="text-xs text-gray-500 italic bg-white/5 p-3 rounded-xl border border-white/5">Окуучу өзү колдон жооп жазат.</p>`;
 
-            // Жоопторду аралаштыруучу баскыч Trash себеттин сол тарабына жайгаштырылды
             let shuffleBtnHtml = type === 'choice' ? `
                 <button type="button" onclick="shuffleQuestionOptions(this)" class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 border border-amber-500/20 bg-amber-500/5 px-2.5 py-1 rounded-lg transition-all mr-2">
                     <i class="fas fa-random"></i> Аралаштыруу
@@ -155,60 +169,49 @@
                 </div>`);
         }
 
-        // ЖОПТОРДУ АРАЛАШТЫРУУЧУ ЖАҢЫ ЛОГИКАЛЫК ФУНКЦИЯ
         function shuffleQuestionOptions(buttonElement) {
-            // Баскыч жайгашкан суроонун негизги блогун табабыз
             const questionItem = buttonElement.closest('.question-item');
             if (!questionItem) return;
 
-            // Учурдагы 4 варианттын киргизүү талааларын (input) алабыз
             const optionInputs = questionItem.querySelectorAll('.q-opt');
             const correctInput = questionItem.querySelector('.q-correct');
             
-            // Варианттардын тексттерин массивге чогултуу
             let currentOptions = Array.from(optionInputs).map(input => input.value);
             let correctIndex = parseInt(correctInput.value);
 
-            // Эгер эч нерсе жазыла элек болсо, аралаштыруунун кажети жок
             if (currentOptions.every(opt => opt.trim() === "")) {
                 alert("Аралаштыруу үчүн адегенде варианттарды толтуруңуз!");
                 return;
             }
 
-            // Учурдагы туура деп белгиленген жооптун ТЕКСТИН эстеп калабыз
             let correctText = (correctIndex >= 0 && correctIndex < currentOptions.length) ? currentOptions[correctIndex] : null;
 
-            // Fisher-Yates алгоритми менен кокустук тартипте орун алмаштыруу
             for (let i = currentOptions.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [currentOptions[i], currentOptions[j]] = [currentOptions[j], currentOptions[i]];
             }
 
-            // Аралашкан жаңы тексттерди кайрадан input'торго жазып чыгабыз
-            optionInputs.forEach((input, index) => {
-                input.value = currentOptions[index];
-            });
+            optionInputs.forEach((input, index) => { input.value = currentOptions[index]; });
 
-            // Эгер мурун туура жооп тандалган болсо, анын жаңы ИНДЕКСИН таап ордуна коёбуз
             if (correctText !== null && correctText.trim() !== "") {
                 let newCorrectIndex = currentOptions.indexOf(correctText);
                 correctInput.value = newCorrectIndex !== -1 ? newCorrectIndex : "";
             } else {
-                correctInput.value = ""; // Эгер туура жооп жок болсо же бош болсо тазалайт
+                correctInput.value = "";
             }
         }
 
-        // Суроо өчүрүлгөндө катар номерлерин (#1, #2) автоматтык түрдө кайра иретке келтирүү
         function reindexQuestions() {
             const items = document.querySelectorAll('.question-item');
             questionCount = 0;
             items.forEach(item => {
                 questionCount++;
-                const p = item.querySelector('.flex justify-between items-center p');
+                const p = item.querySelector('.text-blue-400');
                 if (p) p.innerText = `Суроо #${questionCount}`;
             });
         }
 
+        // БАЗАДАН ТЕСТТИ ЖҮКТӨӨ (ТАПШЫРУУ САНЫ КОШУЛДУ)
         function loadExistingQuizData() {
             database.ref('tests/' + editQuizId).once('value').then(snapshot => {
                 const quiz = snapshot.val();
@@ -220,16 +223,19 @@
                         document.getElementById('show-results-instantly').checked = quiz.settings.instantResult !== false;
                         document.getElementById('grade-5-min').value = quiz.settings.grade5 || 85;
                         document.getElementById('grade-4-min').value = quiz.settings.grade4 || 70;
+                        // Базадан кайра жүктөө логикасы:
+                        document.getElementById('quiz-max-attempts').value = quiz.settings.maxAttempts || "1";
                     }
                     if(quiz.questions) {
                         document.getElementById('questions-list').innerHTML = "";
-                        questionCount = 0; // Ирек номурду нөлдөп туруп кайра жүктөйбүз
+                        questionCount = 0;
                         quiz.questions.forEach(q => addQuestionField(q.type || 'choice', q.questionText, q.options || [], q.correctAnswer !== undefined ? q.correctAnswer : ""));
                     }
                 }
             });
         }
 
+        // FIREBASE'ГЕ САКТОО (ТАПШЫРУУ САНЫ КОШУЛДУ)
         function saveQuizToFirebase() {
             const title = document.getElementById('quiz-title-input').value.trim();
             if (!title) return alert("Аталышын жазыңыз!");
@@ -250,16 +256,36 @@
             });
 
             const quizRef = editQuizId ? database.ref('tests/' + editQuizId) : database.ref('tests').push();
-            quizRef.set({
-                id: editQuizId ? editQuizId : quizRef.key, title: title, authorUid: currentUserId, questions: questions,
+            
+            // Жаңы түзүлгөн тесттер автоматтык түрдө "active" статусунда сакталат
+            const quizStatus = editQuizId ? undefined : "active"; 
+
+            const quizDataToSave = {
+                id: editQuizId ? editQuizId : quizRef.key, 
+                title: title, 
+                authorUid: currentUserId, 
+                questions: questions,
                 settings: {
                     timeLimit: parseInt(document.getElementById('quiz-time').value),
+                    maxAttempts: document.getElementById('quiz-max-attempts').value, // Базага сактоо логикасы
                     shuffle: document.getElementById('shuffle-questions').checked,
                     instantResult: document.getElementById('show-results-instantly').checked,
                     grade5: parseInt(document.getElementById('grade-5-min').value),
                     grade4: parseInt(document.getElementById('grade-4-min').value)
                 }
-            }).then(() => { alert("Сакталды!"); window.location.href = "teacher-dashboard.html"; });
+            };
+
+            if (quizStatus) quizDataToSave.status = quizStatus;
+
+            // Firebase'де мурунку маалыматтарды бузбай жаңыртуу үчүн update же set колдонобуз
+            const savePromise = editQuizId ? quizRef.update(quizDataToSave) : quizRef.set(quizDataToSave);
+
+            savePromise.then(() => { 
+                alert("Сакталды!"); 
+                window.location.href = "teacher-dashboard.html"; 
+            }).catch(err => {
+                alert("Ката кетти: " + err.message);
+            });
         }
     </script>
 </body>
