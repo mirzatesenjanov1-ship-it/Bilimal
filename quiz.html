@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
-        /* Стилистикалык бөгөттөө: Текстти белгилөөгө, көчүрүүгө жана тийүүгө толук тыюу салуу */
+        
         body { 
             background-color: #050a18; 
             color: #e2e8f0; 
@@ -25,7 +25,44 @@
         @keyframes slideIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .circle-progress { transform: rotate(-90deg); transition: stroke-dashoffset 1s ease-in-out; }
         
-        /* Скриншотко каршы кошумча коргонуу: Басып чыгаруу режиминде баарын жашыруу */
+        /* 🔥 МАКСИМАЛДУУ ИИГЕ (GOOGLE LENS) КАРШЫ СТИЛДЕР */
+        .anti-lens-text {
+            position: relative;
+            /* Көзгө көрүнбөгөн өтө кичинекей кокустук көлөкөлөр Google Lens'ти адаштырат */
+            text-shadow: 0.1px 0.1px 0px rgba(255,255,255,0.05), -0.1px -0.1px 0px rgba(0,0,0,0.1);
+            letter-spacing: -0.01em;
+        }
+
+        /* Тексттин артына жыш водяной знак таштоо (ИИ текстти тааный албай калат) */
+        .watermark-bg {
+            position: relative;
+            overflow: hidden;
+        }
+        .watermark-bg::before {
+            content: "BILIMAL.ORG ANTI CHEAT PROTECTION BILIMAL.ORG";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.03; /* Окуучуга такыр тоскоол болбойт, бирок ИИ сканерлерин чаташтырат */
+            font-size: 10px;
+            line-height: 12px;
+            word-wrap: break-word;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Экрандан чыкканда баарын капкара кылып жабуучу көлөкө */
+        #secure-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #050a18;
+            z-index: 99999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            text-align: center;
+        }
+
         @media print {
             body { display: none !important; }
         }
@@ -34,6 +71,13 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div id="secure-overlay">
+        <div class="text-red-500 text-6xl mb-4"><i class="fas fa-eye-slash"></i></div>
+        <h1 class="text-2xl font-black uppercase text-white tracking-wide">Коопсуздук режими бузулду!</h1>
+        <p class="text-gray-400 mt-2 px-6 max-w-md text-sm leading-relaxed">Экранды сканерлөөгө, издөөгө же башка тиркемелерди активдештирүүгө тыюу салынат.</p>
+        <button onclick="restoreQuizFocus()" class="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all">Тестти улантуу</button>
+    </div>
 
     <div class="w-full max-w-5xl text-center mb-4 opacity-80" style="min-height: 90px;">
         <ins class="adsbygoogle"
@@ -97,7 +141,7 @@
                 </div>
             </div>
 
-            <div id="quiz-block" class="hidden w-full glass-card p-8 rounded-[2.5rem]">
+            <div id="quiz-block" class="hidden w-full glass-card p-8 rounded-[2.5rem] watermark-bg">
                 <div class="flex justify-between items-center mb-4">
                     <div>
                         <h2 id="quiz-title" class="text-lg font-black text-white uppercase truncate max-w-[250px]">BILIMAL</h2>
@@ -106,7 +150,7 @@
                             <span class="text-amber-400"><i class="fas fa-clock mr-1"></i> <span id="timer-display">00:00</span></span>
                         </div>
                     </div>
-                    <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Anti-Cheat v2.0</div>
+                    <div class="text-xs bg-red-500/20 text-red-400 font-bold px-3 py-1 rounded-full"><i class="fas fa-shield-alt mr-1"></i> Anti-Cheat v3.0</div>
                 </div>
                 
                 <div class="w-full h-1 bg-white/5 rounded-full mb-6 overflow-hidden">
@@ -193,6 +237,13 @@
             document.getElementById('error-block').classList.remove('hidden');
         }
 
+        // Текстти ИИ окуй албай тургандай кылып DOM элементтерине коргоо менен чачуу
+        function obfuscateText(text) {
+            return text.split(' ').map(word => {
+                return `<span class="anti-lens-text inline-block">${word}</span>`;
+            }).join(' ');
+        }
+
         function renderQuiz() {
             document.getElementById('quiz-block').classList.remove('hidden');
             document.getElementById('quiz-title').innerText = quizData.title;
@@ -214,7 +265,6 @@
             qList.forEach((q, index) => {
                 let innerHtml = "";
                 if(q.type === 'text') {
-                    // Ачык суроодо көчүрүп келип чаптоого (paste) тыюу салынды
                     innerHtml = `<textarea id="open_ans_${index}" onpaste="return false;" placeholder="Жообуңузду кенен жазыңыз (Көчүрүп келип чаптоого тыюу салынат)..." class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white min-h-[120px] focus:outline-none focus:border-purple-500 text-sm"></textarea>`;
                 } else {
                     let optionsHtml = "";
@@ -222,7 +272,7 @@
                         optionsHtml += `
                             <label class="flex items-center gap-3 p-4 bg-white/5 border border-white/5 rounded-xl cursor-pointer hover:bg-white/10 transition-all">
                                 <input type="radio" name="q_${index}" value="${oIdx}" class="w-4 h-4 accent-blue-500">
-                                <span class="text-sm text-gray-200">${opt}</span>
+                                <span class="text-sm text-gray-200 anti-lens-text">${obfuscateText(opt)}</span>
                             </label>`;
                     });
                     innerHtml = `<div class="grid grid-cols-1 gap-2">${optionsHtml}</div>`;
@@ -230,14 +280,12 @@
 
                 container.innerHTML += `
                     <div id="q-page-${index}" class="question-page space-y-4">
-                        <p class="font-bold text-lg text-white leading-relaxed">${index + 1}. ${q.questionText}</p>
+                        <p class="font-bold text-lg text-white leading-relaxed select-none">${index + 1}. ${obfuscateText(q.questionText)}</p>
                         ${innerHtml}
                     </div>`;
             });
 
             updatePageVisibility();
-            
-            // АНТИ-ЧИТ ИШТЕН ТҮШҮҮЧҮЛӨРДҮ ИШКЕ КИРГИЗҮҮ
             activateSuperAntiCheat();
         }
 
@@ -249,53 +297,59 @@
         }
 
         // ==========================================
-        // 🔥 АБСОЛЮТТУК АНТИ-ЧИТ СИСТЕМА v2.0
+        // 🔥 АБСОЛЮТТУК АНТИ-ЧИТ СИСТЕМА v3.0 (LENS-BLUR КОРГОО)
         // ==========================================
         function activateSuperAntiCheat() {
-            // 1. Экранды бөлүүгө каршы көзөмөл (Терезе өлчөмү)
             window.addEventListener('resize', handleResizeCheating);
-
-            // 2. Вкладка алмаштыруу же телефонду жаап коюуну көзөмөлдөө
             document.addEventListener('visibilitychange', handleVisibilityCheating);
-
-            // 3. Чычкандын оң баскычын бөгөттөө (Контексттик меню ачылбайт)
             document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // 4. Клавиатурадагы шпиондук ысык баскычтарды толук бөгөттөө (F12, Ctrl+C, Ctrl+U ж.б.)
+            // ⚡ GOOGLE LENS / ПОИСК ПО ЭКРАНУ КАРМОО: фокусту жоготкондо экранды дароо жабабыз
+            window.addEventListener('blur', () => {
+                if (isQuizActive) {
+                    document.getElementById('secure-overlay').style.display = 'flex';
+                }
+            });
+
+            // Кайра терезеге кайтса, эскертүү санын көбөйтөбүз
+            window.addEventListener('focus', () => {
+                // Коопсуздук катмары жабык болсо гана эскертүү беребиз
+            });
+
             document.addEventListener('keydown', (e) => {
-                // F12 баскычын жабуу
                 if (e.key === "F12" || e.keyCode === 123) { e.preventDefault(); return false; }
-                
-                // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (Кодду текшерүү терезелери)
                 if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) { e.preventDefault(); return false; }
-                
-                // Ctrl+U (Сайттын кодун көрүү)
                 if (e.ctrlKey && e.keyCode === 85) { e.preventDefault(); return false; }
-                
-                // Ctrl+C (Көчүрүү) жана Ctrl+S (Сайтты сактоо)
                 if (e.ctrlKey && (e.keyCode === 67 || e.keyCode === 83)) { e.preventDefault(); return false; }
-                
-                // Ctrl+P (Экранды басып чыгаруу же Скриншотко даярдоо)
                 if (e.ctrlKey && e.keyCode === 80) { e.preventDefault(); triggerBlock("Шпиондук аракет!", "Тест баракчасын басып чыгарууга же сактоого тыюу салынат!"); }
             });
 
-            // 5. Мобилдик телефондордо басып турганда Текстти тандап алуу менюсу чыкпашы үчүн
             document.addEventListener('selectstart', (e) => e.preventDefault());
         }
 
-        // Экран өлчөмү өзгөргөндө (Эки экран режими же калкыма терезе)
+        // Коопсуздук калканчын жаап, тестке кайтуу (жана уурдануу упайын кошуу)
+        function restoreQuizFocus() {
+            if (!isQuizActive) return;
+            document.getElementById('secure-overlay').style.display = 'none';
+            cheatCount++;
+            
+            if (cheatCount >= 3) {
+                triggerBlock("Автоматтык бөгөттөө!", "Google Lens же башка тиркемени иштетүүгө аракет кылганыңыз үчүн тест жабылды.");
+            } else {
+                alert(`Эскертүү: ${cheatCount}/3. Экранды издөөгө салууга же бөтөн аракеттерге тыюу салынат! Кийинкисинде бөгөттөлөсүз.`);
+            }
+        }
+
         function handleResizeCheating() {
             if (!isQuizActive) return;
             let heightDiff = Math.abs(window.innerHeight - initialHeight);
             let widthDiff = Math.abs(window.innerWidth - initialWidth);
 
-            // Горизонталдык режимди эске алып, 25%дан көп бийиктик же тууралык кыскарса бөгөттөйт
             if (widthDiff > (initialWidth * 0.25) || heightDiff > (initialHeight * 0.45)) {
                 triggerBlock("Шпиондук режим аныкталды!", "Телефондо кошумча терезе ачууга же экранды бөлүүгө тыюу салынат!");
             }
         }
 
-        // Вкладка алмаштырганда (Эскертүү берилет, 3-жолунда автоматтык түрдө куулат)
         function handleVisibilityCheating() {
             if (document.visibilityState === 'hidden' && isQuizActive) {
                 cheatCount++;
@@ -307,10 +361,10 @@
             }
         }
 
-        // ТЕСТТИ БҮТҮРҮҮ ЖАНА ОКУУЧУНУ БАЗАГА "ШПИОН" ДЕП ЖАЗУУ
         function triggerBlock(title, message) {
             clearInterval(timerInterval); 
             isQuizActive = false;
+            document.getElementById('secure-overlay').style.display = 'none';
             
             let currentAttempts = parseInt(localStorage.getItem('attempts_' + quizId)) || 0;
             localStorage.setItem('attempts_' + quizId, currentAttempts + 1);
@@ -322,7 +376,7 @@
                 score: 0, 
                 totalQuestions: totalQuestionsCount, 
                 tabCheats: 3, 
-                isBlocked: true, // Мугалимдин панелинде "БӨГӨТТӨЛДҮ" деп кызыл болуп чыгат
+                isBlocked: true, 
                 percent: 0,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             }).then(() => { showSystemError(title, message); });
@@ -349,6 +403,7 @@
         function submitQuiz() {
             clearInterval(timerInterval); 
             isQuizActive = false;
+            document.getElementById('secure-overlay').style.display = 'none';
 
             let correctAnswersCount = 0, choiceTotal = 0, openAnswers = [];
 
