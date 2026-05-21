@@ -23,15 +23,16 @@
             border: 1px solid rgba(255, 255, 255, 0.05); 
         }
 
-        /* ОЮН ТАЛААСЫ: ТАЗА АК ФОН, ЖУМШАК РАМКА МЕНЕН */
+        /* 🎬 ОЮН ТАЛААСЫ: КЕМЧИЛИКСИЗ ТАЗА АК ФОН */
         .game-track-zone {
+            background: #ffffff !important;
             background-color: #ffffff !important;
             border: none !important;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             position: relative;
         }
 
-        /* Видеолор рамкасыз, тунук фон менен */
+        /* Каармандардын видеолору (Рамкасыз жана тунук) */
         .video-avatar-clean { 
             width: 130px; 
             height: auto; 
@@ -86,13 +87,14 @@
             </div>
         </div>
 
-        <div class="h-80 game-track-zone rounded-3xl overflow-hidden p-6 shadow-2xl flex items-end">
-            
-            <div id="player-jigit" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 5%; bottom: 30px;">
+        <div class="h-80 game-track-zone rounded-3xl overflow-hidden p-6 flex items-end">
+            <div class="absolute inset-x-0 bottom-12 border-b border-dashed border-slate-200"></div>
+
+            <div id="player-jigit" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 5%; bottom: 20px;">
                 <video src="boy_run.mp4" class="video-avatar-clean" autoplay loop muted playsinline></video>
             </div>
 
-            <div id="player-kyz" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 15%; bottom: 30px;">
+            <div id="player-kyz" class="absolute transition-all duration-700 flex flex-col items-center" style="left: 17%; bottom: 20px;">
                 <video src="girl_run.mp4" class="video-avatar-clean" autoplay loop muted playsinline></video>
             </div>
         </div>
@@ -220,10 +222,10 @@
                 document.getElementById('score-jigit').textContent = room.jigitScore;
                 document.getElementById('score-kyz').textContent = room.kyzScore;
 
-                // 20 СУРООГО ЫЛАЙЫКТАЛГАН КАДАМДАР (Ар бир туура жоопко 4% алдыга)
-                // Жигит башында 5%те, Кыз 2 кадам алдыда (15%те) турат.
-                const jigitLeft = 5 + ((room.jigitScore / 10) * 4);
-                const kyzLeft = 15 + ((room.kyzScore / 10) * 4);
+                // 20 СУРООГО ЫЛАЙЫКТАЛГАН КАДАМДАР (Максимум 70% жыла алышат)
+                // Жигит башында 5%те, Кыз 2 кадам алдыда (17%те) турат.
+                const jigitLeft = 5 + ((room.jigitScore / 10) * 3.5);
+                const kyzLeft = 17 + ((room.kyzScore / 10) * 3.5);
                 
                 document.getElementById('player-jigit').style.left = `${jigitLeft > 85 ? 85 : jigitLeft}%`;
                 document.getElementById('player-kyz').style.left = `${kyzLeft > 85 ? 85 : kyzLeft}%`;
@@ -234,24 +236,22 @@
                 }
 
                 const qIndex = room.currentQuestionIndex || 0;
-                document.getElementById('current-question-num').textContent = qIndex + 1;
+                document.getElementById('current-question-num').textContent = qIndex > 20 ? 20 : qIndex + 1;
 
-                // 🚨 ЖИГИТ КЫЗГА ЖЕТКЕН УЧУРДУ ТЕКШЕРҮҮ (Жигит утту)
-                if (jigitLeft >= kyzLeft && room.jigitScore > 0) {
+                // 🚨 ТАКТАЛГАН КАГЫЛЫШУУ ЛОГИКАСЫ: Жигиттин башы кыздын куйругуна тийгенде (Аралык 11% дан аз калганда)
+                if (kyzLeft - jigitLeft <= 11 && room.jigitScore > 0 && room.status !== "finished") {
                     document.getElementById('game-status-center').textContent = "ЖАРЫШ АЯКТАДЫ! 🏁";
                     document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-orange-400 font-black text-2xl">${room.jigitName} деген жигит ${room.kyzName} деген кызга жетти! 🏇🎉</span>`;
                     document.getElementById('options-container').innerHTML = "";
                     document.getElementById('waiting-overlay-msg').classList.add('hidden');
                     gameMusic.pause();
                     
-                    // Бөлмөнүн статусун Firebase'де жаап коюу
-                    if (myRole === 'jigit' && room.status !== "finished") {
+                    if (myRole === 'jigit') {
                         database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
                     }
                     return;
                 }
 
-                // Эгер оюн бүткөн болсо токтотуу
                 if (room.status === "finished") return;
 
                 if (room.jigitAnswered === true && room.kyzAnswered === true) {
@@ -277,13 +277,17 @@
                     document.getElementById('options-container').classList.remove('pointer-events-none', 'opacity-40');
                 }
 
-                // 🚨 20 СУРОО БҮТКӨНДӨ КЫЗ ЖЕТКИРБЕЙ КЕТСЕ (Кыз утту)
+                // 🚨 20 СУРОО ТОЛУК БҮТКӨНДӨ КЫЗ ЖЕТКИРБЕЙ КАЧЫП КЕТСЕ (Кыз утту)
                 if (room.roomQuestions && qIndex >= room.roomQuestions.length) {
                     document.getElementById('game-status-center').textContent = "ЖАРЫШ АЯКТАДЫ! 🏁";
                     document.getElementById('question-text').innerHTML = `🏁 Жарыш аяктады! <br><span class="text-pink-400 font-black text-2xl">${room.jigitName} деген жигиттен ${room.kyzName} деген кыз качып кетти! 🐎💨</span>`;
                     document.getElementById('options-container').innerHTML = "";
                     document.getElementById('waiting-overlay-msg').classList.add('hidden');
                     gameMusic.pause();
+                    
+                    if (myRole === 'jigit') {
+                        database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
+                    }
                     return;
                 }
 
