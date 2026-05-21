@@ -61,7 +61,6 @@
             100% { transform: translateY(0) scale(1); opacity: 1; }
         }
 
-        /* Финалдык чоң кооз терезе үчүн анимация */
         .finish-card {
             animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
@@ -72,15 +71,21 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body class="min-h-screen flex flex-col items-center justify-center p-4" onclick="startMenuMusic()">
 
-    <div id="setup-container" class="w-full max-w-md blur-box rounded-[2rem] p-8 text-center space-y-6 shadow-2xl">
+    <div id="setup-container" class="w-full max-w-md blur-box rounded-[2rem] p-6 text-center space-y-5 shadow-2xl transition-all duration-300">
+        
+        <div class="w-full overflow-hidden rounded-2xl shadow-lg border border-white/10">
+            <img src="kyz-jygyt.png" alt="Кыз Куумай" class="w-full h-44 object-cover">
+        </div>
+
         <h2 class="text-3xl font-black text-amber-400 uppercase tracking-wider">Кыз Куумай</h2>
+        
         <div id="theme-badge" class="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1.5 rounded-full text-xs font-bold inline-block">
             Тема жүктөлүүдө...
         </div>
 
-        <div class="space-y-4 pt-2">
+        <div class="space-y-4 pt-1">
             <div class="text-left">
                 <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Атыңызды жазыңыз:</label>
                 <input type="text" id="player-name-input" placeholder="Мисалы: Илим" class="w-full bg-slate-950/80 border border-white/10 rounded-xl px-4 py-3 text-white text-sm focus:border-amber-500 outline-none transition-all">
@@ -90,7 +95,7 @@
                 Бөлмө Түзүү (Жигит 🏇)
             </button>
 
-            <div class="relative flex py-2 items-center">
+            <div class="relative flex py-1 items-center">
                 <div class="flex-grow border-t border-white/5"></div>
                 <span class="flex-shrink mx-4 text-gray-500 text-[10px] font-bold uppercase tracking-wider">же кошулуу</span>
                 <div class="flex-grow border-t border-white/5"></div>
@@ -162,9 +167,25 @@
     </div>
 
     <script>
+        // --- АУДИОЛОРДУ ЖӨНДӨӨ ---
+        const menuMusic = new Audio('music-menu.mp3');
+        menuMusic.loop = true;
+        
         const gameMusic = new Audio('music.mp3');
         gameMusic.loop = true;
 
+        let isMenuMusicPlaying = false;
+
+        // Меню музыкасын баштоо функциясы
+        function startMenuMusic() {
+            if (!isMenuMusicPlaying && document.getElementById('game-container').classList.contains('hidden')) {
+                menuMusic.play().then(() => {
+                    isMenuMusicPlaying = true;
+                }).catch(err => console.log("Музыканы баштоо үчүн экранды басыңыз"));
+            }
+        }
+
+        // --- FIREBASE ЖӨНДӨӨЛӨРҮ ---
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -221,13 +242,12 @@
             });
         }
 
-        // РЕАЛДУУ УБАКИРДА ЭМОДЗИ ЖӨНӨТҮҮ
         function sendEmoji(emoji) {
             if (!myRoomId) return;
             const field = myRole === 'jigit' ? 'lastEmojiJigit' : 'lastEmojiKyz';
             database.ref(`rooms/${myRoomId}`).update({
                 [field]: emoji,
-                emojiTrigger: Math.random() // Өзгөрүүнү угуу үчүн триггер
+                emojiTrigger: Math.random()
             });
         }
 
@@ -236,8 +256,6 @@
             if (!element || !emoji) return;
             element.textContent = emoji;
             element.classList.remove('hidden');
-            
-            // 2 секунддан кийин кооз жоголсун
             setTimeout(() => { element.classList.add('hidden'); }, 2000);
         }
 
@@ -246,22 +264,24 @@
             document.getElementById('game-container').classList.remove('hidden');
             document.getElementById('room-id-display').textContent = myRoomId;
 
-            gameMusic.play().catch(() => {});
-
             database.ref(`rooms/${myRoomId}`).on('value', snapshot => {
                 const room = snapshot.val();
                 if (!room) return;
+
+                // ОЮН БАШТАЛГАНДА МУЗЫКАНЫ АЛМАШТЫРУУ
+                if (room.status === "playing") {
+                    menuMusic.pause();
+                    gameMusic.play().catch(() => {});
+                }
 
                 document.getElementById('display-jigit-name').textContent = room.jigitName;
                 document.getElementById('display-kyz-name').textContent = room.kyzName;
                 document.getElementById('score-jigit').textContent = room.jigitScore;
                 document.getElementById('score-kyz').textContent = room.kyzScore;
 
-                // Эмоцияларды экранга чыгаруу
                 if (room.lastEmojiJigit) showEmojiBubble('jigit', room.lastEmojiJigit);
                 if (room.lastEmojiKyz) showEmojiBubble('kyz', room.lastEmojiKyz);
 
-                // Координаттарды эсептөө (2 кадам айырма сакталат)
                 const jigitLeft = 5 + ((room.jigitScore / 10) * 3.5);
                 const kyzLeft = 17 + ((room.kyzScore / 10) * 3.5);
                 
@@ -273,7 +293,6 @@
                     return;
                 }
 
-                // 🚨 ЖИГИТ КЫЗГА ЖЕТКЕНДЕ (Утуш кооз финалдык терезе менен ортодо чыгат)
                 if (kyzLeft - jigitLeft <= 11 && room.jigitScore > 0 && room.status !== "finished") {
                     showFinalResult(`🎉 ОЮН АЯКТАДЫ! 🎉`, `<span class="text-amber-400 font-extrabold">${room.jigitName}</span> деген жигит <span class="text-pink-400 font-extrabold">${room.kyzName}</span> деген кызга жетти! 🏇✨`, room.jigitScore, room.kyzScore);
                     if (myRole === 'jigit') database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
@@ -285,7 +304,6 @@
                 const qIndex = room.currentQuestionIndex || 0;
                 document.getElementById('current-question-num').textContent = qIndex + 1;
 
-                // 🚨 СИНХРОНДУУ КҮТҮҮ ЛОГИКАСЫ (Эки оюнчу тең жооп бергенде гана кийинки суроого өтөт)
                 if (room.jigitAnswered === true && room.kyzAnswered === true) {
                     if (myRole === 'jigit') {
                         setTimeout(() => {
@@ -294,13 +312,12 @@
                                 jigitAnswered: false,
                                 kyzAnswered: false
                             });
-                        }, 1200); // 1.2 секунддук эффект убактысы
+                        }, 1200);
                     }
                     hasIAnswered = false; 
                     return;
                 }
 
-                // Кезекти блоктоо (Бир жолу гана жооп берүү мүмкүнчүлүгү)
                 if ((myRole === 'jigit' && room.jigitAnswered) || (myRole === 'kyz' && room.kyzAnswered)) {
                     document.getElementById('waiting-overlay-msg').classList.remove('hidden');
                     document.getElementById('options-container').classList.add('pointer-events-none', 'opacity-30');
@@ -310,7 +327,6 @@
                     document.getElementById('options-container').classList.remove('pointer-events-none', 'opacity-40');
                 }
 
-                // 🚨 20 СУРОО БҮТҮП, КЫЗ КАЧЫП КЕТКЕНДЕ
                 if (room.roomQuestions && qIndex >= room.roomQuestions.length) {
                     showFinalResult(`🏁 ЖАРЫШ АЯКТАДЫ! 🏁`, `<span class="text-amber-400 font-extrabold">${room.jigitName}</span> деген жигиттен <span class="text-pink-400 font-extrabold">${room.kyzName}</span> деген кыз качып кетти! 🐎💨`, room.jigitScore, room.kyzScore);
                     if (myRole === 'jigit') database.ref(`rooms/${myRoomId}`).update({ status: "finished" });
@@ -325,7 +341,6 @@
             });
         }
 
-        // ОЮНДУН ЖЕҢИШ ПАНЕЛИН ОРТОГО КООЗ ЧЫГАРУУ
         function showFinalResult(title, message, scoreJ, scoreK) {
             document.getElementById('game-status-center').textContent = "АЯКТАДЫ 🏁";
             gameMusic.pause();
