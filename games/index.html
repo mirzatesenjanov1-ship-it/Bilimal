@@ -61,7 +61,7 @@
                     <div class="text-4xl text-pink-500"><i class="fas fa-heart"></i></div>
                     <h3 class="text-2xl font-black text-white uppercase tracking-tight">Кыз Куумай</h3>
                 </div>
-                <p class="text-gray-400 text-sm mb-6 max-w-3xl">Кыргыздын улуттук Кыз Куумай оюну эми толугу менен санарип форматта! Төмөндөн оюндун режимин тандап, билим жарышын баштаңыз.</p>
+                <p class="text-gray-400 text-sm mb-6 max-w-3xl">Кыргыздын улуттук Кыз Kuuмай оюну эми толугу менен санарип форматта! Төмөндөн оюндун режимин тандап, билим жарышын баштаңыз.</p>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                     
@@ -120,6 +120,7 @@
     </div>
 
     <script>
+        // Сиздин баштапкы Firebase Конфигурацияңыз
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -165,7 +166,7 @@
             return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
         }
 
-        // БУЛ ЖЕРГЕ КЫРГЫЗЧА ИЗДӨӨ КҮЧӨТҮЛДҮ (Сиздин баштапкы иштеген структураңыз толук сакталды)
+        // БАШТАПКЫ ТУУРА ИШТЕГЕН ФУНКЦИЯ КАЛЫБЫНА КЕЛТИРИЛДИ
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
@@ -193,8 +194,7 @@
 
                 if (allTeachersData) {
                     Object.keys(allTeachersData).forEach((uId) => {
-                        // КРЫРГЫЗЧА САКТАЛГАН ПАПКА ЖАНА ЛАТИНЧА ПАПКА ЭКӨӨ ТЕҢ БИРДЕЙ ТЕКШЕРИЛЕТ!
-                        const teacherSubjectData = allTeachersData[uId][safeSub] || allTeachersData[uId][selectedSubject];
+                        const teacherSubjectData = allTeachersData[uId][safeSub];
                         
                         if (teacherSubjectData) {
                             Object.keys(teacherSubjectData).forEach((quizId) => {
@@ -202,8 +202,6 @@
                                 const quiz = teacherSubjectData[quizId];
                                 
                                 quiz.authorUid = uId;
-                                // Кайсынысынан маалымат табылса, play.html баракчасына ошол папканын атын так жөнөтөбүз!
-                                quiz.actualSubjectKey = allTeachersData[uId][safeSub] ? safeSub : selectedSubject;
                                 loadedQuizzes[quizId] = quiz;
 
                                 let themeTitle = quiz.theme_title || quiz.topic || quiz.title || "Аталышсыз тема";
@@ -226,11 +224,13 @@
             });
         }
 
+        // БАШТАПКЫ РЕЗУЛЬТАТТАРДЫ ЖАНА ТЕСТТЕРДИ САКТАГАН ТУУРА ФУНКЦИЯ
         function checkAccessAndPlay() {
+            const subject = document.getElementById('teacher-subject-select').value;
             const quizId = document.getElementById('teacher-theme-select').value;
 
-            if (!quizId) {
-                alert("Сураныч, теманы тандаңыз!");
+            if (!subject || !quizId) {
+                alert("Сураныч, предметти жана теманы тандаңыз!");
                 return;
             }
 
@@ -241,13 +241,11 @@
             }
 
             const targetUid = selectedQuiz.authorUid;
-            // Калыбына келтирилген так папканын аталышы (мисалы: "Физика" же "fizika" - натыйжа жоголбойт)
-            const correctSub = selectedQuiz.actualSubjectKey;
+            const safeSub = safeFirebasePath(subject);
 
-            const targetUrl = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(correctSub)}&quizId=${quizId}`;
-
+            // Мурунку толук курулган багыттоо логикасы (результаттар жоголбойт)
             if (currentUser && currentUser.uid === targetUid) {
-                window.location.href = targetUrl;
+                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                 return;
             }
 
@@ -256,15 +254,15 @@
                 db.ref(`allowed_emails/${safeEmailKey}`).once('value').then((snapshot) => {
                     const hasAccess = snapshot.val();
                     if (hasAccess === true || hasAccess === "active") {
-                        window.location.href = targetUrl;
+                        window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                     } else {
                         document.getElementById('access-modal').classList.add('active');
                     }
                 }).catch(() => {
-                    window.location.href = targetUrl;
+                    window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                 });
             } else {
-                window.location.href = targetUrl;
+                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
             }
         }
 
