@@ -21,6 +21,35 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 
 /**
+ * АВТОРИЗАЦИЯ АБАЛЫН КӨЗӨМӨЛДӨӨ (ЖАҢЫ ТОЛУКТОО)
+ * Бул функция мугалим Кыз Куумай оюнуна киргенде же баракчаларды алмаштырганда
+ * анын сессиясын сактап, PERMISSION_DENIED катасынын алдын алат.
+ */
+firebase.auth().onAuthStateChanged((user) => {
+    const currentPage = window.location.pathname;
+
+    if (user) {
+        console.log("Колдонуучу активдүү:", user.email);
+        // Мугалимдин UID'ин локалдык сактагычка жазуу (оюн тараптан окуу үчүн)
+        localStorage.setItem("teacherUid", user.uid);
+        
+        // Эгер мугалим кирүү баракчасында турса, автоматтык түрдө жеке кабинетке өткөрүү
+        if (currentPage.includes("index.html") && !currentPage.includes("games") && !currentPage.includes("multi-quiz")) {
+            window.location.href = "teacher-dashboard.html";
+        }
+    } else {
+        console.log("Колдонуучу системага кирген эмес же чыгып кетти.");
+        localStorage.removeItem("teacherUid");
+        
+        // Корголгон жеке кабинет баракчасын коноктордон коргоо
+        if (currentPage.includes("teacher-dashboard.html") || currentPage.includes("cabinet.html")) {
+            alert("Сураныч, алгач системага кириңиз!");
+            window.location.href = "index.html"; 
+        }
+    }
+});
+
+/**
  * КИРҮҮ ФУНКЦИЯСЫ
  * Катталган колдонуучулар үчүн
  */
@@ -40,6 +69,9 @@ function login() {
         })
         .then((userCredential) => {
             console.log("Кирди:", userCredential.user.email);
+            // Мугалим киргенде UID'ди дароо сактоо
+            localStorage.setItem("teacherUid", userCredential.user.uid);
+            
             showStatus("Кош келиңиз! Башкаруу панелине өтүп жатасыз...", "success");
             
             setTimeout(() => {
@@ -78,6 +110,7 @@ function register() {
         .then((userCredential) => {
             // Катталгандан кийин дароо киргизбөө үчүн (логин аркылуу кирүүсүн талап кылуу)
             auth.signOut(); 
+            localStorage.removeItem("teacherUid");
             showStatus("Каттоо ийгиликтүү өттү! Эми сактаган почтаңыз менен кире аласыз.", "success");
         })
         .catch((error) => {
@@ -86,6 +119,20 @@ function register() {
             
             showStatus(errorMessage, "error");
         });
+}
+
+/**
+ * СИСТЕМАТАН ЧЫГУУ ФУНКЦИЯСЫ (ЖАҢЫ ТОЛУКТОО)
+ * Жеке кабинеттеги "Чыгуу" баскычына туташтыруу үчүн
+ */
+function logout() {
+    auth.signOut().then(() => {
+        localStorage.removeItem("teacherUid");
+        console.log("Колдонуучу ийгиликтүү чыкты.");
+        window.location.href = "index.html";
+    }).catch((error) => {
+        console.error("Чыгууда ката кетти:", error);
+    });
 }
 
 function showStatus(message, type) {
