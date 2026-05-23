@@ -31,7 +31,7 @@
     <div id="auth-container" class="fixed inset-0 bg-[#050a18] flex items-center justify-center z-50">
         <div class="dashboard-card p-8 rounded-[2rem] w-full max-w-md border border-white/10 shadow-2xl">
             <h2 class="text-2xl font-black text-center text-amber-400 uppercase tracking-wide mb-2">BILIMAL.ORG ПОРТАЛЫ</h2>
-            <p class="text-xs text-gray-400 text-center mb-6">Мугалимдер үчүн интерактивдүү Кыз Куумай оюну жана тесттик база.</p>
+            <p class="text-xs text-gray-400 text-center mb-6">Мугалимдердин жеке кабинети жана Кыз Куумай башкаруу борбору.</p>
             
             <div class="space-y-4">
                 <div>
@@ -39,7 +39,7 @@
                     <input type="email" id="auth-email" placeholder="example@gmail.com" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Пароль жазыңыз:</label>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Пароль:</label>
                     <input type="password" id="auth-password" placeholder="••••••••" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition">
                 </div>
                 <button onclick="loginTeacher()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-black text-xs uppercase tracking-widest py-4 rounded-xl transition shadow-lg mt-2">
@@ -50,10 +50,10 @@
     </div>
 
     <div id="main-dashboard" class="max-w-6xl mx-auto hidden">
-        <header class="flex flex-col md:flex-between md:flex-row items-center justify-between gap-4 mb-8 border-b border-white/10 pb-6">
+        <header class="flex flex-col md:flex-row items-center justify-between gap-4 mb-8 border-b border-white/10 pb-6">
             <div>
                 <h1 class="text-3xl font-black hero-text uppercase tracking-tight">Мугалимдин Башкаруу Панели</h1>
-                <p class="text-xs text-gray-400 mt-1">Колдонуучу: <span id="teacher-email-display" class="text-cyan-400 font-bold"></span></p>
+                <p class="text-xs text-gray-400 mt-1">Иштеп жаткан мугалим: <span id="teacher-email-display" class="text-cyan-400 font-bold"></span></p>
             </div>
             <div class="flex gap-3">
                 <a href="games/index.html" class="bg-blue-600/20 text-blue-400 border border-blue-500/30 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-blue-600 hover:text-white transition"><i class="fas fa-gamepad mr-1"></i> Оюндар менюсу</a>
@@ -64,7 +64,7 @@
         <div class="dashboard-card p-6 rounded-3xl mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2"><i class="fas fa-book-open text-cyan-400 mr-1"></i> 1. Предметти тандаңыз:</label>
-                <select id="quiz-subject" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer">
+                <select id="quiz-subject" onchange="checkAndLoadExistingQuiz()" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer">
                     <option value="Физика">Физика</option>
                     <option value="Математика">Математика</option>
                     <option value="Кыргыз тили">Кыргыз тили</option>
@@ -76,23 +76,24 @@
                 </select>
             </div>
             <div>
-                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2"><i class="fas fa-tags text-pink-400 mr-1"></i> 2. Теманын аталышы (Жаңы же Түзөтүү):</label>
-                <input type="text" id="quiz-theme" placeholder="Мисалы: Механика же Динамика" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2"><i class="fas fa-tags text-pink-400 mr-1"></i> 2. Теманын аталышы (Киргизип Enter басыңыз):</label>
+                <input type="text" id="quiz-theme" oninput="checkAndLoadExistingQuiz()" placeholder="Мисалы: Механика" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition">
+                <span id="load-status" class="text-[11px] text-amber-400 block mt-1 font-semibold"></span>
             </div>
         </div>
 
         <div id="questions-wrapper" class="space-y-6 mb-8"></div>
 
         <div class="flex flex-col md:flex-row items-center justify-between p-6 dashboard-card rounded-3xl gap-4">
-            <p class="text-xs text-gray-400 max-w-xl"><i class="fas fa-info-circle text-amber-400 mr-1"></i> <strong>Вариант А</strong> талаасына дайыма <strong>ТУУРА ЖООПТУ</strong> жазыңыз. Оюн иштегенде варианттарды окуучуларга автоматтык түрдө аралаштырып (Рандом) чачып берет.</p>
+            <p class="text-xs text-gray-400 max-w-xl"><i class="fas fa-info-circle text-emerald-400 mr-1"></i> <strong>Вариант А</strong> талаасына дайыма <strong>ТУУРА ЖООПТУ</strong> жазыңыз. Код аны оюн учурунда окуучуларга автоматтык түрдө аралаштырып берип турат.</p>
             <button onclick="saveFullQuizToFirebase()" class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-black px-8 py-4 rounded-xl font-black text-sm uppercase tracking-widest transition shadow-lg flex items-center justify-center gap-2">
-                <i class="fas fa-save"></i> ОЮН БАЗАСЫН ЖАҢЫРТУУ
+                <i class="fas fa-save"></i> ОЮН БАЗАСЫН ЖАҢЫРТУУ 💾
             </button>
         </div>
     </div>
 
     <script>
-        // Коопсуз Firebase Конфигурациясы
+        // Firebase Конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -106,50 +107,43 @@
         const auth = firebase.auth();
         const db = firebase.database();
 
-        // 1. Авторизация абалын текшерүү
+        // Авторизацияны көзөмөлдөө
         auth.onAuthStateChanged((user) => {
             if (user) {
                 document.getElementById('auth-container').classList.add('hidden');
                 document.getElementById('main-dashboard').classList.remove('hidden');
                 document.getElementById('teacher-email-display').innerText = user.email;
-                generateQuestionFields(); // Экранга 20 суроону куруу
+                generateQuestionFields(); 
             } else {
                 document.getElementById('auth-container').classList.remove('hidden');
                 document.getElementById('main-dashboard').classList.add('hidden');
             }
         });
 
-        // Кирүү функциясы
         function loginTeacher() {
             const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
-            if(!email || !password) return alert("Почта жана паролду жазыңыз!");
-
-            auth.signInWithEmailAndPassword(email, password)
-                .catch(err => alert("Кирүүдө ката кетти: " + err.message));
+            if(!email || !password) return alert("Толук толтуруңуз!");
+            auth.signInWithEmailAndPassword(email, password).catch(err => alert("Ката: " + err.message));
         }
 
-        // Чыгуу функциясы
-        function logoutTeacher() {
-            auth.signOut();
-        }
+        function logoutTeacher() { auth.signOut(); }
 
-        // 2. Экранга 20 даана суроонун блогун чыгаруу
+        // 20 суроо үчүн бош талааларды түзүү
         function generateQuestionFields() {
             const container = document.getElementById('questions-wrapper');
             container.innerHTML = "";
-
             for (let i = 1; i <= 20; i++) {
                 const block = document.createElement('div');
-                block.className = "dashboard-card p-6 rounded-[2rem] border-white/5 bg-white/5";
+                block.className = "dashboard-card p-6 rounded-[2rem] bg-white/5";
                 block.innerHTML = `
                     <div class="mb-4">
-                        <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Суроо №${i}</span>
-                        <input type="text" id="q-${i}-text" placeholder="Бул жерге суроону жазыңыз..." class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition mt-2">
+                        <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider">Суроо №${i}</span>
+                        <input type="text" id="q-${i}-text" placeholder="Суроону жазыңыз..." class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition mt-2">
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">Вариант А (Туура Жооп):</label>
+                            <label class="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">Вариант А (ТУУРА ЖООП):</label>
                             <input type="text" id="q-${i}-a" placeholder="Туура жооп" class="w-full bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500 transition">
                         </div>
                         <div>
@@ -161,7 +155,7 @@
                             <input type="text" id="q-${i}-c" placeholder="Ката жооп 2" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition">
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-1">Вариант Г (Ката variant):</label>
+                            <label class="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-1">Вариант Г (Ката вариант):</label>
                             <input type="text" id="q-${i}-d" placeholder="Ката жооп 3" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition">
                         </div>
                     </div>
@@ -170,16 +164,11 @@
             }
         }
 
-        // Кирилди коопсуз латын форматына өткөрүү
+        // Латынча коопсуз папка атына өткөрүү
         function safeFirebasePath(text) {
             if (!text) return 'default';
             let converted = text.toLowerCase().trim();
-            const dict = {
-                'а':'a', 'б':'b', 'в':'v', 'г':'g', 'д':'d', 'е':'e', 'ё':'yo', 'ж':'zh', 'з':'z',
-                'и':'i', 'й':'y', 'к':'k', 'л':'l', 'м':'m', 'н':'n', 'ң':'ng', 'о':'o', 'ө':'o',
-                'п':'p', 'р':'r', 'с':'s', 'т':'t', 'у':'u', 'ү':'u', 'ф':'f', 'х':'h', 'ц':'ts',
-                'ч':'ch', 'ш':'sh', 'щ':'shch', 'ы':'y', 'э':'e', 'ю':'yu', 'я':'ya'
-            };
+            const dict = {'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','ң':'ng','о':'o','ө':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ү':'u','ф':'f','х':'h','ц':'ts','ч':'ch','ш':'sh','щ':'shch','ы':'y','э':'e','ю':'yu','я':'ya'};
             let result = '';
             for (let char of converted) {
                 if (dict[char] !== undefined) result += dict[char];
@@ -189,22 +178,61 @@
             return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
         }
 
-        // 3. Маалыматты Firebase'ге сактоо (Анти-чит жана СУРООЛОР)
+        // БАЗАДА БАР ТЕСТ БОЛСО АВТОМАТТЫК ТҮРДӨ ТАРТЫП КЕЛҮҮ (ИЧИНДЕГИ МААЛЫМАТТАРДЫ КӨРСӨТҮҮ)
+        let delayTimer;
+        function checkAndLoadExistingQuiz() {
+            clearTimeout(delayTimer);
+            const rawSubject = document.getElementById('quiz-subject').value;
+            const rawTheme = document.getElementById('quiz-theme').value.trim();
+            const statusSpan = document.getElementById('load-status');
+
+            if (!rawTheme) {
+                statusSpan.innerText = "";
+                return;
+            }
+
+            statusSpan.innerText = "База текшерилүүдө...";
+
+            delayTimer = setTimeout(() => {
+                const safeSub = safeFirebasePath(rawSubject);
+                const safeThm = safeFirebasePath(rawTheme);
+
+                db.ref(`quizzes/${safeSub}/${safeThm}`).once('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.questions) {
+                        statusSpan.innerText = "Тез жардам: Бул тема боюнча эски маалыматтар табылды жана жүктөлдү! 🔎";
+                        statusSpan.className = "text-[11px] text-emerald-400 block mt-1 font-semibold";
+                        
+                        // Талааларга эски маалыматтарды толтуруу
+                        for (let i = 1; i <= 20; i++) {
+                            const qData = data.questions[`q${i}`];
+                            if (qData) {
+                                document.getElementById(`q-${i}-text`).value = qData.question || "";
+                                document.getElementById(`q-${i}-a`).value = qData.a || "";
+                                document.getElementById(`q-${i}-b`).value = qData.b || "";
+                                document.getElementById(`q-${i}-c`).value = qData.c || "";
+                                document.getElementById(`q-${i}-d`).value = qData.d || "";
+                            }
+                        }
+                    } else {
+                        statusSpan.innerText = "Жаңы тема аныкталды. Бош талааларды толтуруңуз.";
+                        statusSpan.className = "text-[11px] text-amber-400 block mt-1 font-semibold";
+                    }
+                });
+            }, 800); // Мугалим жазып бүткөндөн кийин 0.8 секунд күтүп анан базаны текшерет
+        }
+
+        // БАЗАГА САКТОО ФУНКЦИЯСЫ
         function saveFullQuizToFirebase() {
             const rawSubject = document.getElementById('quiz-subject').value;
             const rawTheme = document.getElementById('quiz-theme').value.trim();
 
-            if (!rawTheme) {
-                alert("Сураныч, адегенде Теманын аталышын жазыңыз!");
-                return;
-            }
+            if (!rawTheme) return alert("Адегенде Теманын аталышын жазыңыз!");
 
             const safeSub = safeFirebasePath(rawSubject);
             const safeThm = safeFirebasePath(rawTheme);
-
             const quizQuestions = {};
             
-            // 20 суроону тең текшерип жыйноо
             for (let i = 1; i <= 20; i++) {
                 const txt = document.getElementById(`q-${i}-text`).value.trim();
                 const ansA = document.getElementById(`q-${i}-a`).value.trim();
@@ -213,20 +241,19 @@
                 const ansD = document.getElementById(`q-${i}-d`).value.trim();
 
                 if (!txt || !ansA || !ansB || !ansC || !ansD) {
-                    alert(`Ката! Сиз №${i} суроону же анын варианттарын бош калтырдыңыз!`);
-                    return;
+                    return alert(`Ката! Сиз №${i} суроону же анын варианттарын бош калтырдыңыз!`);
                 }
 
                 quizQuestions[`q${i}`] = {
                     question: txt,
-                    a: ansA, // Дайыма Туура Жооп
+                    a: ansA, // Туура жооп
                     b: ansB,
                     c: ansC,
                     d: ansD
                 };
             }
 
-            // Бардыгы жайында болсо quizzes папкасына жазуу (PERMISSION_DENIED катасы жоюлат)
+            // Түз эле 'quizzes/предмет/тема' дарегине жазабыз
             db.ref(`quizzes/${safeSub}/${safeThm}`).set({
                 title: rawTheme,
                 questions: quizQuestions,
@@ -234,10 +261,11 @@
                 updatedAt: firebase.database.ServerValue.TIMESTAMP
             })
             .then(() => {
-                alert("Ийгиликтүү! Тест базасы жаңыртылды. Окуучулар 'Интерактивдүү Оюндар' барагынан ойносо болот!");
+                alert("Ура! Оюн базасы ийгиликтүү жаңыртылды. Эски маалыматтар сакталып, жаңы суроолор кошулду!");
+                checkAndLoadExistingQuiz();
             })
             .catch((err) => {
-                alert("Ката чыкты: " + err.message + "\nFirebase Rules текшериңиз.");
+                alert("Сактоодо ката чыкты: " + err.message);
             });
         }
     </script>
