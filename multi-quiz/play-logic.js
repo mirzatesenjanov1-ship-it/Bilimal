@@ -172,7 +172,7 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error(err);
-        alert("Бөлмө түзүүдө ката кетти. Кайра аракет кылыңыз.");
+        alert("Бөлмө түзүүдө ката кетти. Firebase Rules (Коопсуздук эрежелерин) ачык экенин текшериңиз.");
     });
 }
 
@@ -182,7 +182,7 @@ function joinRoom() {
     roomCode = document.getElementById("room-code-input").value.trim();
     
     if (!playerName) { alert("Сураныч, атыңызды жазыңыз!"); return; }
-    if (!roomCode) { alert("Бөлмө кодун киргизиңиз!"); return; }
+    if (!roomCode) { alert("Бөлмө коону киргизиңиз!"); return; }
 
     myRole = "kyz";
     roomRef = db.ref('rooms/' + roomCode);
