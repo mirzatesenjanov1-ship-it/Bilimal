@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Тесттик Оюндар | Mugalim.AI</title>
+    <title>Интерактивдүү Оюндар | Bilimal.org</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -59,7 +59,7 @@
                     <div class="p-5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
                         <div>
                             <h4 class="text-sm font-black text-amber-400 uppercase tracking-wider mb-2"><i class="fas fa-globe mr-2"></i>Стандарттык Оюн</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяр кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяв кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
                         </div>
                         <a href="https://mirzatesenjanov1-ship-it.github.io/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg block">
                             Ойноо (Жалпы) →
@@ -156,7 +156,7 @@
                 </div>
             </div>
 
-            <a href="https://wa.me/996XXXXXXXXX" id="whatsapp-link" target="_blank" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg shadow-green-600/10">
+            <a href="https://wa.me/996700000000" id="whatsapp-link" target="_blank" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg">
                 <i class="fab fa-whatsapp text-base"></i> Чекти Ватсапка Жөнөтүү →
             </a>
         </div>
@@ -183,14 +183,18 @@
             if (user) {
                 userEmail = user.email;
                 document.getElementById('current-user-email').innerText = userEmail;
-                
-                // Ватсапка жазганда мугалимдин почтасы даяр текст катары барышы үчүн шилтемени автоматташтыруу
-                const textMsg = encodeURIComponent(`Саламатсызбы! Мен Кыз Куумай оюнуна кирүү үчүн төлөм кылдым. Менин почтам: ${userEmail}. Чекти тиркедим.`);
-                document.getElementById('whatsapp-link').href = `https://wa.me/996XXXXXXXXX?text=${textMsg}`; // 996XXXXXXXXX дегендин ордуна өз номериңизди жазыңыз
+                updateWhatsAppLink();
             } else {
                 document.getElementById('current-user-email').innerText = "Кире элексиз";
             }
         });
+
+        function updateWhatsAppLink() {
+            if (!userEmail) return;
+            const textMsg = encodeURIComponent(`Саламатсызбы! Мен Кыз Куумай оюнуна кирүү үчүн төлөм кылдым. Менин почтам: ${userEmail}. Чекти тиркедим.`);
+            // Баштапкы номерди өзүңүздүн Ватсап номериңизге алмаштырып алыңыз
+            document.getElementById('whatsapp-link').href = `https://wa.me/996707325514?text=${textMsg}`;
+        }
 
         function safeFirebasePath(text) {
             if (!text) return 'default';
@@ -237,13 +241,16 @@
                     let hasTheme = false;
                     Object.keys(testsData).forEach((key) => {
                         const quiz = testsData[key];
-                        if (quiz.settings && quiz.settings.subject === selectedSubject) {
+                        // Сиздин базадагы түзүлүштү эске алуу менен текшерүү:
+                        if (quiz && ((quiz.settings && quiz.settings.subject === selectedSubject) || quiz.subject === selectedSubject)) {
                             hasTheme = true;
+                            // Базадагы чыныгы ID'ни сактап калабыз
+                            quiz.firebaseKey = key; 
                             allQuizzes.push(quiz); 
 
                             const option = document.createElement('option');
-                            option.value = quiz.id;       
-                            option.text = quiz.title.toUpperCase(); 
+                            option.value = key; // Мааниси катары түздөн-түз Firebase ачкычын коёбуз      
+                            option.text = (quiz.title || quiz.theme || "Аталышсыз тест").toUpperCase(); 
                             themeSelect.appendChild(option);
                         }
                     });
@@ -276,19 +283,22 @@
 
             const safeEmailKey = userEmail.replace(/\./g, '_').replace(/@/g, '_');
 
-            // Firebase'ден уруксатты текшерүү
+            // Төлөм уруксатын текшерүү
             db.ref(`allowed_emails/${safeEmailKey}`).once('value').then((snapshot) => {
                 const hasAccess = snapshot.val();
 
                 if (hasAccess === true || hasAccess === "active") {
-                    const selectedQuiz = allQuizzes.find(q => q.id === quizId);
+                    const selectedQuiz = allQuizzes.find(q => q.firebaseKey === quizId);
                     if (selectedQuiz) {
                         const safeSub = safeFirebasePath(subject);
-                        const safeThm = safeFirebasePath(selectedQuiz.title);
+                        const safeThm = safeFirebasePath(selectedQuiz.title || selectedQuiz.theme);
+                        // Оюн башталганда базадагы уникалдуу ID өткөрүлөт
                         window.location.href = `../multi-quiz/play.html?subject=${encodeURIComponent(safeSub)}&theme=${encodeURIComponent(safeThm)}&quizId=${quizId}`;
+                    } else {
+                        alert("Тандалган тесттин маалыматтары табылган жок!");
                     }
                 } else {
-                    // Эгер доступ жок болсо, Төлөм жана QR код терезесин көрсөтөбүз
+                    // Уруксат жок болсо модалдык терезе ачылат
                     document.getElementById('access-modal').classList.add('active');
                 }
             }).catch(err => {
