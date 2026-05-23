@@ -71,7 +71,7 @@
                                     <th class="p-4 text-center">Коопсуздук / Ачык суроо</th>
                                     <th class="p-4 text-center w-16">Өчүрүү</th>
                                 </tr>
-                            </thead>
+                             Clyde</thead>
                             <tbody id="results-table-body" class="text-sm divide-y divide-white/5">
                                 <tr>
                                     <td colspan="6" class="p-8 text-center text-xs text-gray-500">Азырынча жыйынтыктар жок...</td>
@@ -188,7 +188,7 @@
 
         const subjectTopicsMap = {
             "Математика": ["Алгебра: Теңдемелер жана барабарсыздыктар", "Геометрия: Планиметрия негиздери"],
-            "Кыргыз тили": ["Фोनेтика жана Лексика", "Синтаксис жана Морфология"],
+            "Кыргыз тили": ["Фонетика жана Лексика", "Синтаксис жана Морфология"],
             "Кыргыз адабияты": ["Манас эпосу жана Кенже эпостор", "XX кылымдагы кыргыз адабияты"],
             "Орус тили": ["Грамматика и Правописание", "Синтаксис и Пунктуация"],
             "Орус адабияты": ["Золотой век русской литературы", "Литература XX века"],
@@ -278,7 +278,6 @@
         // 📊 ЖЫЙЫНТЫКТАРДЫ КАТАРЫ МЕНЕН ОКУУ ЖАНА ОҢДОО
         // ==========================================
         function loadResults() {
-            // Маалыматты алфавит эмес, базага кирген "order" (катар) же купуя ачкыч боюнча иреттеп окуйбуз
             database.ref('results').orderByChild('teacherUid').equalTo(currentUserId).on('value', snapshot => {
                 const tableBody = document.getElementById('results-table-body');
                 tableBody.innerHTML = "";
@@ -289,8 +288,7 @@
                     resultsArray.push({ key: child.key, ...child.val() });
                 });
 
-                // Эгер колдонуучу кол менен орун которуштурса (custom position болсо), ошол боюнча сорттойбуз,
-                // жок болсо базага түшкөн баштапкы табигый хронологиялык катарды сактайбыз.
+                // Позиция боюнча иреттөө
                 resultsArray.sort((a, b) => (a.position || 0) - (b.position || 0));
 
                 if (resultsArray.length > 0) {
@@ -317,8 +315,7 @@
                             openAnsBtn = `<button onclick="viewEssay('${key}')" class="ml-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-2 py-1 rounded text-[11px] font-bold border border-purple-500/30 transition-all">Жооптор</button>`;
                         }
 
-                        // Чымчыкчанын абалы (базада сакталган checked маанисине карап)
-                        const isChecked = res.checked !== false; // дефолт боюнча белгиленип турат
+                        const isChecked = res.checked !== false;
                         const checkedAttr = isChecked ? "checked" : "";
                         const textStyle = isChecked ? "text-white" : "text-gray-500 line-through opacity-50";
 
@@ -348,29 +345,24 @@
                                 </td>
                             </tr>`;
                     });
-                    initDragAndDrop(); // Тизме жүктөлгөндөн кийин жылдырууну иштетүү
+                    initDragAndDrop();
                 } else {
                     tableBody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500 text-xs">Жыйынтыктар табылган жок.</td></tr>`;
                 }
             });
         }
 
-        // 1. ФУНКЦИЯ: ОКУУЧУНУ ӨЗҮНЧӨ БЕЛГИЛӨӨ (ЧЫМЧЫКЧА)
         function toggleStudentCheck(resultKey, isChecked) {
-            database.ref(`results/${resultKey}`).update({
-                checked: isChecked
-            });
+            database.ref(`results/${resultKey}`).update({ checked: isChecked });
         }
 
-        // 2. ФУНКЦИЯ: ОКУУЧУНУН ЖЫЙЫНТЫГЫН ӨЗҮНЧӨ ӨЧҮРҮҮ
         function deleteSingleResult(resultKey) {
-            if (confirm('Бул окуучунун жыйынтыгын тизмеден өчүрүүнү каалайсызбы?')) {
-                database.ref(`results/${resultKey}`).remove()
-                .catch(err => alert("Ката кетти: " + err.message));
+            if (confirm('Бул okuuчунун жыйынтыгын тизмеден өчүрүүнү каалайсызбы?')) {
+                database.ref(`results/${resultKey}`).remove().catch(err => alert("Ката кетти: " + err.message));
             }
         }
 
-        // 3. ФУНКЦИЯ: ЖЫЛДЫРУУ (DRAG AND DROP) ИНТЕРФЕЙСИ ЖАНА БАЗАГА САКТОО
+        // Drag and Drop Функциялары
         function initDragAndDrop() {
             const tbody = document.getElementById('results-table-body');
             const rows = tbody.querySelectorAll('.draggable-row');
@@ -379,7 +371,7 @@
                 row.addEventListener('dragstart', () => row.classList.add('dragging'));
                 row.addEventListener('dragend', () => {
                     row.classList.remove('dragging');
-                    saveNewPositions(); // Тизме токтогондо жаңы катарларды Firebase'ге сактоо
+                    saveNewPositions();
                 });
             });
 
@@ -413,7 +405,7 @@
             const updates = {};
             rows.forEach((row, index) => {
                 const key = row.getAttribute('data-key');
-                updates[`results/${key}/position`] = index; // Жаңы индекс позициясын жазуу
+                updates[`results/${key}/position`] = index;
             });
             database.ref().update(updates);
         }
