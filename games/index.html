@@ -78,7 +78,7 @@
                     <div class="p-5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
                         <div>
                             <h4 class="text-sm font-black text-cyan-400 uppercase tracking-wider mb-2"><i class="fas fa-user-graduate mr-2"></i>Мугалимдин Тести (Синхрондуу)</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Мугалимдер өзүнүн жеке кабинетинде түзгөн атайын тесттердин тизмеси ушул жерден тандалып ойнолот.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Мугалим өзүнүн жеке кабинетинде түзүп сактаган 20 суроодон турган тесттер ушул жерден тандалып ойнолот.</p>
                         </div>
                         <div class="space-y-2">
                             <select id="teacher-subject-select" onchange="loadTeacherThemesFromFirebase()" class="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer">
@@ -120,7 +120,6 @@
     </div>
 
     <script>
-        // Коопсуз Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -137,7 +136,6 @@
         let currentUser = null;
         let loadedQuizzes = {};
 
-        // Колдонуучунун статусун көзөмөлдөө
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -148,7 +146,6 @@
             }
         });
 
-        // Firebase жолдорун латиницага коопсуз форматтоо функциясы
         function safeFirebasePath(text) {
             if (!text) return 'default';
             let converted = text.toLowerCase().trim();
@@ -168,7 +165,6 @@
             return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
         }
 
-        // БАЗАДАН МУГАЛИМДЕРДИН ТЕСТТЕРИН АЛУУ (ТУУРАЛАНГАН КООПСУЗ ВЕРИСИЯ)
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
@@ -184,7 +180,6 @@
 
             const safeSub = safeFirebasePath(selectedSubject);
 
-            // Бүткүл `teacher_quizzes` тармагын коопсуз окуу
             db.ref(`teacher_quizzes`).once('value').then((snapshot) => {
                 themeSelect.innerHTML = '';
                 const allTeachersData = snapshot.val();
@@ -197,18 +192,19 @@
 
                 if (allTeachersData) {
                     Object.keys(allTeachersData).forEach((uId) => {
-                        const teacherSubjectData = allTeachersData[uId][safeSub];
+                        // Эки вариантты тең текшеребиз: латиница (safeSub) же кыргызча таза аты (selectedSubject)
+                        const teacherSubjectData = allTeachersData[uId][safeSub] || allTeachersData[uId][selectedSubject];
                         
                         if (teacherSubjectData) {
                             Object.keys(teacherSubjectData).forEach((quizId) => {
                                 hasData = true;
                                 const quiz = teacherSubjectData[quizId];
                                 
-                                // Автордун IDсин шилтеме үчүн кошо сактайбыз
                                 quiz.authorUid = uId;
+                                // Эгер предметтин аты кыргызча курулган болсо, аны да коопсуз багыттоо үчүн сактайбыз
+                                quiz.savedSubjectFolder = allTeachersData[uId][safeSub] ? safeSub : selectedSubject;
                                 loadedQuizzes[quizId] = quiz;
 
-                                // Базадагы аталыштардын түрүн текшерүү
                                 let themeTitle = quiz.theme_title || quiz.topic || quiz.title || "Аталышсыз тема";
 
                                 const option = document.createElement('option');
@@ -225,17 +221,15 @@
                 }
             }).catch((error) => {
                 console.error("Firebase жүктөө катасы:", error);
-                themeSelect.innerHTML = '<option value="">-- Тизме бош же байланыш үзүлдү --</option>';
+                themeSelect.innerHTML = '<option value="">-- Ката кетти же байланыш начар --</option>';
             });
         }
 
-        // Тестти ачуу жана текшерүү логикасы
         function checkAccessAndPlay() {
-            const subject = document.getElementById('teacher-subject-select').value;
             const quizId = document.getElementById('teacher-theme-select').value;
 
-            if (!subject || !quizId) {
-                alert("Сураныч, предметти жана теманы тандаңыз!");
+            if (!quizId) {
+                alert("Сураныч, теманы тандаңыз!");
                 return;
             }
 
@@ -246,31 +240,30 @@
             }
 
             const targetUid = selectedQuiz.authorUid;
-            const safeSub = safeFirebasePath(subject);
+            const finalSubject = selectedQuiz.savedSubjectFolder;
 
-            // Мугалим өзүнүн тестин ачса – түз өткөрүү
+            // Оюн баракчасына туура багыттоо
+            const targetUrl = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(finalSubject)}&quizId=${quizId}`;
+
             if (currentUser && currentUser.uid === targetUid) {
-                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
+                window.location.href = targetUrl;
                 return;
             }
 
-            // Кадимки колдонуучу же окуучу үчүн текшерүү
             if (currentUser) {
                 const safeEmailKey = currentUser.email.replace(/\./g, '_').replace(/@/g, '_');
                 db.ref(`allowed_emails/${safeEmailKey}`).once('value').then((snapshot) => {
                     const hasAccess = snapshot.val();
                     if (hasAccess === true || hasAccess === "active") {
-                        window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
+                        window.location.href = targetUrl;
                     } else {
                         document.getElementById('access-modal').classList.add('active');
                     }
                 }).catch(() => {
-                    // Ката кетсе ачык режимде киргизүү
-                    window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
+                    window.location.href = targetUrl;
                 });
             } else {
-                // Системага кирбеген окуучулар үчүн түз кирүү мүмкүнчүлүгү
-                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
+                window.location.href = targetUrl;
             }
         }
 
