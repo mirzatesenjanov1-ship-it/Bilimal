@@ -120,7 +120,6 @@
     </div>
 
     <script>
-        // Бельгия серверинин шилтемеси такталды
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -181,8 +180,7 @@
 
             const safeSub = safeFirebasePath(selectedSubject);
 
-            // Бул жерде "teacherQuizzes" папкасынын аты базадагыдай так жазылды
-            db.ref(`teacherQuizzes`).once('value').then((snapshot) => {
+            db.ref(`teacher_quizzes`).once('value').then((snapshot) => {
                 themeSelect.innerHTML = '';
                 const allTeachersData = snapshot.val();
                 let hasData = false;
@@ -194,8 +192,7 @@
 
                 if (allTeachersData) {
                     Object.keys(allTeachersData).forEach((uId) => {
-                        // Эки башка жазылуу стилин тең текшерет (кирилл жана латын)
-                        const teacherSubjectData = allTeachersData[uId][safeSub] || allTeachersData[uId][selectedSubject];
+                        const teacherSubjectData = allTeachersData[uId][safeSub];
                         
                         if (teacherSubjectData) {
                             Object.keys(teacherSubjectData).forEach((quizId) => {
@@ -203,7 +200,6 @@
                                 const quiz = teacherSubjectData[quizId];
                                 
                                 quiz.authorUid = uId;
-                                quiz.actualSubjectKey = allTeachersData[uId][safeSub] ? safeSub : selectedSubject;
                                 loadedQuizzes[quizId] = quiz;
 
                                 let themeTitle = quiz.theme_title || quiz.topic || quiz.title || "Аталышсыз тема";
@@ -218,19 +214,20 @@
                 }
 
                 if (!hasData) {
-                    themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча ачык тесттер жок --</option>';
+                    themeSelect.innerHTML = '<option value="">-- Ката кетти же база жабык --</option>';
                 }
             }).catch((error) => {
                 console.error("Firebase жүктөө катасы:", error);
-                themeSelect.innerHTML = '<option value="">-- Байланыш түзүүдө ката кетти --</option>';
+                themeSelect.innerHTML = '<option value="">-- Ката кетти же база жабык --</option>';
             });
         }
 
         function checkAccessAndPlay() {
+            const subject = document.getElementById('teacher-subject-select').value;
             const quizId = document.getElementById('teacher-theme-select').value;
 
-            if (!quizId) {
-                alert("Сураныч, теманы тандаңыз!");
+            if (!subject || !quizId) {
+                alert("Сураныч, предметти жана теманы тандаңыз!");
                 return;
             }
 
@@ -241,12 +238,10 @@
             }
 
             const targetUid = selectedQuiz.authorUid;
-            const correctSub = selectedQuiz.actualSubjectKey;
-
-            const targetUrl = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(correctSub)}&quizId=${quizId}`;
+            const safeSub = safeFirebasePath(subject);
 
             if (currentUser && currentUser.uid === targetUid) {
-                window.location.href = targetUrl;
+                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                 return;
             }
 
@@ -255,19 +250,21 @@
                 db.ref(`allowed_emails/${safeEmailKey}`).once('value').then((snapshot) => {
                     const hasAccess = snapshot.val();
                     if (hasAccess === true || hasAccess === "active") {
-                        window.location.href = targetUrl;
+                        window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                     } else {
                         document.getElementById('access-modal').classList.add('active');
                     }
                 }).catch(() => {
-                    window.location.href = targetUrl;
+                    window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
                 });
             } else {
-                window.location.href = targetUrl;
+                window.location.href = `../multi-quiz/play.html?teacherUid=${targetUid}&subject=${encodeURIComponent(safeSub)}&quizId=${quizId}`;
             }
         }
 
-        define(playStandardGame, () => { window.location.href = "kyz-kuumay.html"; });
+        function playStandardGame() {
+            window.location.href = "kyz-kuumay.html";
+        }
 
         function closeModal() {
             document.getElementById('access-modal').classList.remove('active');
