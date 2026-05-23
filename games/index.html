@@ -59,9 +59,9 @@
                     <div class="p-5 rounded-2xl bg-black/30 border border-white/5 flex flex-col justify-between">
                         <div>
                             <h4 class="text-sm font-black text-amber-400 uppercase tracking-wider mb-2"><i class="fas fa-globe mr-2"></i>Стандарттык Оюн</h4>
-                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяв кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
+                            <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяр кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
                         </div>
-                        <a href="https://mirzatesenjanov1-ship-it.github.io/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg block">
+                        <a href="https://mirzatesenjanov1-ship-it.github.io/kyz-kuumay-physics/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg block">
                             Ойноо (Жалпы) →
                         </a>
                     </div>
@@ -156,7 +156,7 @@
                 </div>
             </div>
 
-            <a href="https://wa.me/996700000000" id="whatsapp-link" target="_blank" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg">
+            <a href="https://wa.me/996707325514" id="whatsapp-link" target="_blank" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg">
                 <i class="fab fa-whatsapp text-base"></i> Чекти Ватсапка Жөнөтүү →
             </a>
         </div>
@@ -177,7 +177,7 @@
         const auth = firebase.auth();
 
         let userEmail = null;
-        let allQuizzes = []; 
+        let selectedQuizData = null;
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -192,7 +192,6 @@
         function updateWhatsAppLink() {
             if (!userEmail) return;
             const textMsg = encodeURIComponent(`Саламатсызбы! Мен Кыз Куумай оюнуна кирүү үчүн төлөм кылдым. Менин почтам: ${userEmail}. Чекти тиркедим.`);
-            // Баштапкы номерди өзүңүздүн Ватсап номериңизге алмаштырып алыңыз
             document.getElementById('whatsapp-link').href = `https://wa.me/996707325514?text=${textMsg}`;
         }
 
@@ -215,6 +214,7 @@
             return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
         }
 
+        // Эң коопсуз жана ката чыгарбай турган универсалдуу издөө функциясы
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
@@ -227,43 +227,54 @@
 
             themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
             
-            db.ref('tests').once('value').then((snapshot) => {
+            // Биринчи кезекте 'quizzes' папкасын коопсуз жол менен текшеребиз
+            const safeSubPath = safeFirebasePath(selectedSubject);
+            
+            db.ref(`quizzes/${safeSubPath}`).once('value').then((snapshot) => {
                 themeSelect.innerHTML = '';
-                const testsData = snapshot.val();
-                allQuizzes = []; 
+                const quizzesData = snapshot.val();
+                let hasData = false;
 
-                if (testsData) {
-                    const defaultOption = document.createElement('option');
-                    defaultOption.value = "";
-                    defaultOption.text = "-- Теманы тандаңыз --";
-                    themeSelect.appendChild(defaultOption);
+                const defaultOption = document.createElement('option');
+                defaultOption.value = "";
+                defaultOption.text = "-- Теманы тандаңыз --";
+                themeSelect.appendChild(defaultOption);
 
-                    let hasTheme = false;
-                    Object.keys(testsData).forEach((key) => {
-                        const quiz = testsData[key];
-                        // Сиздин базадагы түзүлүштү эске алуу менен текшерүү:
-                        if (quiz && ((quiz.settings && quiz.settings.subject === selectedSubject) || quiz.subject === selectedSubject)) {
-                            hasTheme = true;
-                            // Базадагы чыныгы ID'ни сактап калабыз
-                            quiz.firebaseKey = key; 
-                            allQuizzes.push(quiz); 
+                if (quizzesData) {
+                    Object.keys(quizzesData).forEach((key) => {
+                        hasData = true;
+                        const option = document.createElement('option');
+                        option.value = key;       
+                        option.text = key.replace(/_/g, ' ').toUpperCase(); 
+                        themeSelect.appendChild(option);
+                    });
+                }
 
-                            const option = document.createElement('option');
-                            option.value = key; // Мааниси катары түздөн-түз Firebase ачкычын коёбуз      
-                            option.text = (quiz.title || quiz.theme || "Аталышсыз тест").toUpperCase(); 
-                            themeSelect.appendChild(option);
+                // Эгер 'quizzes' папкасы бош болсо, анда резервдик 'tests' папкасынан издейбиз
+                if (!hasData) {
+                    db.ref('tests').once('value').then((testSnapshot) => {
+                        const testsData = testSnapshot.val();
+                        if (testsData) {
+                            Object.keys(testsData).forEach((key) => {
+                                const quiz = testsData[key];
+                                if (quiz && (quiz.subject === selectedSubject || (quiz.settings && quiz.settings.subject === selectedSubject))) {
+                                    hasData = true;
+                                    const option = document.createElement('option');
+                                    option.value = key;       
+                                    option.text = (quiz.title || quiz.theme || key).toUpperCase(); 
+                                    themeSelect.appendChild(option);
+                                        }
+                                    });
+                                }
+                        
+                        if (!hasData) {
+                            themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
                         }
                     });
-
-                    if (!hasTheme) {
-                        themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест түзүлө элек --</option>';
-                    }
-                } else {
-                    themeSelect.innerHTML = '<option value="">-- Базада эч кандай тест табылган жок --</option>';
                 }
             }).catch((error) => {
-                console.error("Ката кетти:", error);
-                themeSelect.innerHTML = '<option value="">-- Ката кетти же база жабык --</option>';
+                console.error("Firebase катасы:", error);
+                themeSelect.innerHTML = '<option value="">-- Текстти жүктөөдө ката кетти --</option>';
             });
         }
 
@@ -288,17 +299,13 @@
                 const hasAccess = snapshot.val();
 
                 if (hasAccess === true || hasAccess === "active") {
-                    const selectedQuiz = allQuizzes.find(q => q.firebaseKey === quizId);
-                    if (selectedQuiz) {
-                        const safeSub = safeFirebasePath(subject);
-                        const safeThm = safeFirebasePath(selectedQuiz.title || selectedQuiz.theme);
-                        // Оюн башталганда базадагы уникалдуу ID өткөрүлөт
-                        window.location.href = `../multi-quiz/play.html?subject=${encodeURIComponent(safeSub)}&theme=${encodeURIComponent(safeThm)}&quizId=${quizId}`;
-                    } else {
-                        alert("Тандалган тесттин маалыматтары табылган жок!");
-                    }
+                    const safeSub = safeFirebasePath(subject);
+                    const safeThm = safeFirebasePath(quizId);
+                    
+                    // Бардык шарттарга туура келүүчү шилтеме аркылуу оюнга жиберүү
+                    window.location.href = `../multi-quiz/play.html?subject=${encodeURIComponent(safeSub)}&theme=${encodeURIComponent(safeThm)}&quizId=${quizId}`;
                 } else {
-                    // Уруксат жок болсо модалдык терезе ачылат
+                    // Уруксаты жок болсо төлөм терезесин ачуу
                     document.getElementById('access-modal').classList.add('active');
                 }
             }).catch(err => {
