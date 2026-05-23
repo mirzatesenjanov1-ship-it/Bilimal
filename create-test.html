@@ -54,6 +54,11 @@
                 </div>
             </div>
 
+            <div class="pt-4 border-t border-white/5">
+                <label class="block text-xs text-gray-400 font-bold uppercase mb-2">Бөлүмдү / Теманы жазыңыз</label>
+                <input id="quiz-subject-input" type="text" placeholder="Мисалы: Кванттык физика же Механика" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-blue-500 font-semibold">
+            </div>
+
             <div class="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
                 <div>
                     <label class="block text-[10px] text-gray-400 font-bold uppercase mb-1">"5" деген баа үчүн (%)</label>
@@ -135,7 +140,6 @@
             }
         }
 
-        // Суроо талаасын кошуу
         function addQuestionField(type = 'choice', text = "", options = ["", "", "", ""], correct = "") {
             questionCount++;
             const container = document.getElementById('questions-list');
@@ -211,7 +215,6 @@
             });
         }
 
-        // БАЗАДАН ТЕСТТИ ЖҮКТӨӨ (ТАПШЫРУУ САНЫ КОШУЛДУ)
         function loadExistingQuizData() {
             database.ref('tests/' + editQuizId).once('value').then(snapshot => {
                 const quiz = snapshot.val();
@@ -223,8 +226,9 @@
                         document.getElementById('show-results-instantly').checked = quiz.settings.instantResult !== false;
                         document.getElementById('grade-5-min').value = quiz.settings.grade5 || 85;
                         document.getElementById('grade-4-min').value = quiz.settings.grade4 || 70;
-                        // Базадан кайра жүктөө логикасы:
                         document.getElementById('quiz-max-attempts').value = quiz.settings.maxAttempts || "1";
+                        // Эски маалымат бар болсо теманы кайра толтуруу
+                        document.getElementById('quiz-subject-input').value = quiz.settings.subject || "";
                     }
                     if(quiz.questions) {
                         document.getElementById('questions-list').innerHTML = "";
@@ -235,10 +239,11 @@
             });
         }
 
-        // FIREBASE'ГЕ САКТОО (ТАПШЫРУУ САНЫ КОШУЛДУ)
         function saveQuizToFirebase() {
             const title = document.getElementById('quiz-title-input').value.trim();
+            const subject = document.getElementById('quiz-subject-input').value.trim();
             if (!title) return alert("Аталышын жазыңыз!");
+            if (!subject) return alert("Бөлүмдү / Теманы жазыңыз!");
 
             const qElements = document.querySelectorAll('.question-item');
             const questions = [];
@@ -256,8 +261,6 @@
             });
 
             const quizRef = editQuizId ? database.ref('tests/' + editQuizId) : database.ref('tests').push();
-            
-            // Жаңы түзүлгөн тесттер автоматтык түрдө "active" статусунда сакталат
             const quizStatus = editQuizId ? undefined : "active"; 
 
             const quizDataToSave = {
@@ -267,17 +270,17 @@
                 questions: questions,
                 settings: {
                     timeLimit: parseInt(document.getElementById('quiz-time').value),
-                    maxAttempts: document.getElementById('quiz-max-attempts').value, // Базага сактоо логикасы
+                    maxAttempts: document.getElementById('quiz-max-attempts').value,
                     shuffle: document.getElementById('shuffle-questions').checked,
                     instantResult: document.getElementById('show-results-instantly').checked,
                     grade5: parseInt(document.getElementById('grade-5-min').value),
-                    grade4: parseInt(document.getElementById('grade-4-min').value)
+                    grade4: parseInt(document.getElementById('grade-4-min').value),
+                    subject: subject // Жаңы өзгөрмө катары базага теманы кошуу
                 }
             };
 
             if (quizStatus) quizDataToSave.status = quizStatus;
 
-            // Firebase'де мурунку маалыматтарды бузбай жаңыртуу үчүн update же set колдонобуз
             const savePromise = editQuizId ? quizRef.update(quizDataToSave) : quizRef.set(quizDataToSave);
 
             savePromise.then(() => { 
