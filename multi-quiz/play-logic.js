@@ -19,6 +19,17 @@ if (!firebase.apps.length) {
 // Европа региону үчүн эң ишенимдүү туташуу форматы
 const db = firebase.app().database(DB_URL);
 
+// --- АВТОРИЗАЦИЯНЫ КӨЗӨМӨЛДӨӨ (ЖАҢЫ ТОЛУКТОО) ---
+// Мугалим өз кабинетинен Кыз Куумайга киргенде анын сессиясын таануу үчүн
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        console.log("Мугалим сессиясы аныкталды:", user.uid);
+        localStorage.setItem("teacherUid", user.uid);
+    } else {
+        console.log("Учурдагы колдонуучу: Окуучу режими");
+    }
+});
+
 // --- 2. ШИЛТЕМЕДЕГИ КЫРГЫЗЧА СӨЗДӨРДҮ ДАТАБАЗАГА ЫЛАЙЫКТАП КОТОРУУ (УНИВЕРСАЛДУУ ФИЛЬТР) ---
 const urlParams = new URLSearchParams(window.location.search);
 const rawSubject = urlParams.get('subject') || 'physics';
@@ -152,7 +163,7 @@ function createRoom() {
         `quizzes/${subject}/${cleanTheme}`,
         `quizzes/${subject}/${spaceTheme}`,
         `quizzes/${subject}`,
-        `quizzes/physics/kinematika_20` // Эгер таптакыр табылбай калса, резервдик демейки тема
+        `quizzes/physics/kinematika_20` // Резервдик демейки тема
     ];
 
     let checkPath = (index) => {
@@ -214,7 +225,7 @@ function joinRoom() {
     roomCode = document.getElementById("room-code-input").value.trim();
     
     if (!playerName) { alert("Сураныч, атыңызды жазыңыз!"); return; }
-    if (!roomCode) { alert("Бөлмө кодун киргизиңиз!"); return; }
+    if (!roomCode) { alert("Бөлмө кодут киргизиңиз!"); return; }
 
     myRole = "kyz";
     roomRef = db.ref('rooms/' + roomCode);
@@ -435,6 +446,32 @@ function checkGameEndCondition() {
     }
 }
 
+// --- ЖЫЙЫНТЫКТЫ МУГАЛИМДИН КАБИНЕТИНЕ ЖӨНӨТҮҮ (ЖАҢЫ ТОЛУКТОО) ---
+function saveGameResultToDashboard(data) {
+    const teacherUid = localStorage.getItem("teacherUid");
+    if (!teacherUid) {
+        console.log("Жыйынтык мугалимдин кабинетине сакталган жок (бул конок оюну).");
+        return;
+    }
+
+    // Жигиттин жана кыздын упайын мугалимдин жеке папкасына жазуу
+    const dashboardResultsRef = db.ref(`users/${teacherUid}/results`);
+    
+    // Жаңы уникалдуу ID менен натыйжаларды кошуу
+    dashboardResultsRef.push({
+        className: "Онлайн Оюн (Кыз Куумай)",
+        name: `${data.jigitName} (Жигит) vs ${data.kyzName} (Кыз)`,
+        score: `Жигит: ${data.jigitScore} | Кыз: ${data.kyzScore}`,
+        status: data.jigitScore > data.kyzScore ? "Жигит жетти" : "Кыз качып кетти",
+        cheatCount: 0,
+        timestamp: firebase.database.ServerValue.TIMESTAMP
+    }).then(() => {
+        console.log("Оюндун натыйжалары мугалимдин жеке кабинетине ийгиликтүү жөнөтүлдү!");
+    }).catch(err => {
+        console.error("Мугалимдин кабинетине жазууда ката кетти:", err);
+    });
+}
+
 function endGame(data) {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     if(gameMusic) gameMusic.pause();
@@ -454,5 +491,10 @@ function endGame(data) {
             msgLbl.innerHTML = `<b class="text-orange-400">${data.jigitName}</b> деген жигиттен <b class="text-pink-400">${data.kyzName}</b> деген кыз качып кетти! 🐎💨`;
         }
         modal.classList.remove("hidden");
+    }
+
+    // Оюн бүткөндө жыйынтыкты мугалимдин кабинетине сактоо функциясын бир гана Жигит (бөлмө ээси) чакырат
+    if (myRole === "jigit") {
+        saveGameResultToDashboard(data);
     }
 }
