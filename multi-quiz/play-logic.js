@@ -16,17 +16,49 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
+// Европа региону үчүн эң ишенимдүү туташуу форматы
 const db = firebase.app().database(DB_URL);
 
-// --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
+// --- 2. ШИЛТЕМЕДЕГИ КЫРГЫЗЧА СӨЗДӨРДҮ ДАТАБАЗАГА ЫЛАЙЫКТАП КОТОРУУ (УНИВЕРСАЛДУУ ФИЛЬТР) ---
 const urlParams = new URLSearchParams(window.location.search);
-const subject = urlParams.get('subject') || 'physics';
-let theme = urlParams.get('theme') || 'kinematika_20';
+const rawSubject = urlParams.get('subject') || 'physics';
+const rawTheme = urlParams.get('theme') || 'kinematika_20';
 
-// Аталыштар чаташпашы үчүн мүмкүн болгон бардык варианттарды даярдайбыз
+// Firebase папкаларынын аттарында кириллица жана пробел ката бербеши үчүн латынчага транслитерациялоо
+function safeFirebasePath(text) {
+    if (!text) return 'default';
+    let converted = text.toLowerCase().trim();
+    
+    const dict = {
+        'а':'a', 'б':'b', 'в':'v', 'г':'g', 'д':'d', 'е':'e', 'ё':'yo', 'ж':'zh', 
+        'з':'z', 'и':'i', 'й':'y', 'к':'k', 'л':'l', 'м':'m', 'н':'n', 'ң':'ng', 
+        'о':'o', 'ө':'o', 'п':'p', 'р':'r', 'с':'s', 'т':'t', 'у':'u', 'ү':'u', 
+        'ф':'f', 'х':'h', 'ц':'ts', 'ч':'ch', 'ш':'sh', 'щ':'shch', 'ы':'y', 
+        'э':'e', 'ю':'yu', 'я':'ya'
+    };
+    
+    let result = '';
+    for (let char of converted) {
+        if (dict[char] !== undefined) {
+            result += dict[char];
+        } else if (/[a-z0-9_]/.test(char)) {
+            result += char;
+        } else if (char === ' ' || char === '-' || char === '_') {
+            result += '_';
+        }
+        // Кашаалар () жана башка белгилер автоматтык түрдө тазаланат
+    }
+    return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+// Тазаланган коопсуз папка аттары
+const subject = safeFirebasePath(rawSubject);
+const theme = safeFirebasePath(rawTheme);
+
 let cleanTheme = theme.replace('_20', ''); 
-let spaceTheme = theme.replace('_', ' ');
+let spaceTheme = theme.replace(/_/g, ' ');
 
+// --- ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ---
 let myRole = ""; 
 let roomRef = null;
 let roomCode = "";
@@ -47,7 +79,8 @@ document.body.addEventListener('click', () => {
 }, { once: true });
 
 document.addEventListener("DOMContentLoaded", () => {
-    const themeName = theme.replace('_', ' ').toUpperCase();
+    // Экранга теманын атын кооз кылып чыгаруу (Шилтемеден келген оригиналдуу текстти колдонобуз)
+    const themeName = rawTheme.toUpperCase();
     const infoTxt = document.getElementById("quiz-info-text");
     if(infoTxt) {
         infoTxt.innerHTML = `<i class="fas fa-book-open text-amber-400 mr-1"></i> Багыт: <span class="text-white">${themeName}</span>`;
@@ -90,7 +123,6 @@ function parseFirebaseQuestions(rawData) {
     }
     
     let list = Object.values(rawData);
-    // Эгер ички катмарда дагы объект болсо (мисалы, мугалимдер татаал түзүмдө сактаса)
     if (list.length === 1 && typeof list[0] === 'object' && !list[0].q) {
         list = Object.values(list[0]);
     }
@@ -114,17 +146,17 @@ function createRoom() {
     roomCode = Math.floor(100 + Math.random() * 900).toString(); 
     roomRef = db.ref('rooms/' + roomCode);
     
-    // КҮЧӨТҮЛГӨН ИЗДӨӨ: Базадан теманы 4 башка вариантта тең издейт (синхрондошпой калууну толук жоюу үчүн)
+    // КҮЧӨТҮЛГӨН ИЗДӨӨ: Базадан теманы коопсуз транслитерация болгон форматтарда издейт
     let paths = [
         `quizzes/${subject}/${theme}`,
         `quizzes/${subject}/${cleanTheme}`,
         `quizzes/${subject}/${spaceTheme}`,
-        `quizzes/${subject}` // Түз эле предметтин ичинен издеп көрүү
+        `quizzes/${subject}`,
+        `quizzes/physics/kinematika_20` // Эгер таптакыр табылбай калса, резервдик демейки тема
     ];
 
     let checkPath = (index) => {
         if (index >= paths.length) {
-            // Эгер эч бир жолдон табылбаса, базадагы жеткиликтүү биринчи теманы алып улантуу (оюн үзүлбөшү үчүн)
             return db.ref(`quizzes/${subject}`).once('value').then(snap => {
                 let allData = snap.val();
                 if (allData) {
@@ -138,9 +170,9 @@ function createRoom() {
         return db.ref(paths[index]).once('value').then(snapshot => {
             let parsed = parseFirebaseQuestions(snapshot.val());
             if (parsed && parsed.length > 0) {
-                return parsed; // Табылды!
+                return parsed; 
             }
-            return checkPath(index + 1); // Кийинки жолду текшерүү
+            return checkPath(index + 1); 
         });
     };
 
@@ -172,7 +204,7 @@ function createRoom() {
         switchToArena();
     }).catch(err => {
         console.error(err);
-        alert("Бөлмө түзүүдө ката кетти. Firebase Rules (Коопсуздук эрежелерин) ачык экенин текшериңиз.");
+        alert("Бөлмө түзүүдө ката кетти. Сураныч, Firebase коопсуздук эрежелерин (Rules) ачык экенин текшериңиз.");
     });
 }
 
@@ -182,7 +214,7 @@ function joinRoom() {
     roomCode = document.getElementById("room-code-input").value.trim();
     
     if (!playerName) { alert("Сураныч, атыңызды жазыңыз!"); return; }
-    if (!roomCode) { alert("Бөлмө коону киргизиңиз!"); return; }
+    if (!roomCode) { alert("Бөлмө кодун киргизиңиз!"); return; }
 
     myRole = "kyz";
     roomRef = db.ref('rooms/' + roomCode);
@@ -367,6 +399,7 @@ function submitAnswer(selectedIdx) {
     }, 800);
 }
 
+// Убакыт бүткөндө автоматтык түрдө ката катары өткөрүү
 function autoSubmitWrong() {
     isAnswered = true;
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
