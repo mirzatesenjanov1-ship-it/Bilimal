@@ -61,7 +61,7 @@
                             <h4 class="text-sm font-black text-amber-400 uppercase tracking-wider mb-2"><i class="fas fa-globe mr-2"></i>Стандарттык Оюн</h4>
                             <p class="text-xs text-gray-400 leading-relaxed mb-4">Жалпы базадагы даяр кызыктуу суроолор менен убакытка каршы Кыз Куумай жарышына кошулуңуз.</p>
                         </div>
-                        <a href="https://mirzatesenjanov1-ship-it.github.io/kyz-kuumay-physics/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg block">
+                        <a href="https://mirzatesenjanov1-ship-it.github.io/" target="_blank" class="w-full text-center bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-lg block">
                             Ойноо (Жалпы) →
                         </a>
                     </div>
@@ -123,7 +123,6 @@
     <div id="access-modal" class="modal">
         <div class="bg-[#0f172a] border border-blue-500/30 p-6 md:p-8 rounded-[2.5rem] max-w-lg w-full mx-auto text-center relative my-auto">
             <button onclick="closeModal()" class="absolute top-5 right-5 text-gray-500 hover:text-white text-xl transition"><i class="fas fa-times"></i></button>
-            
             <div class="text-4xl text-cyan-400 mb-3"><i class="fas fa-shield-alt"></i></div>
             <h3 class="text-xl font-black text-white uppercase tracking-tight mb-1">Кыз Куумай оюнуна кирүү</h3>
             <p class="text-amber-400 font-bold text-base bg-amber-400/10 border border-amber-400/20 py-1.5 px-4 rounded-xl inline-block mb-4">Тариф: 3 айга — 100 сом</p>
@@ -136,7 +135,6 @@
                         <span class="hidden text-xs text-gray-500 p-2 text-center">Төлөм QR коду бул жерде пайда болот</span>
                     </div>
                 </div>
-
                 <div class="bg-black/40 p-3 rounded-2xl border border-white/5 flex flex-col items-center">
                     <p class="text-[11px] text-green-400 font-bold uppercase mb-2"><i class="fab fa-whatsapp mr-1"></i> 2. Бизнес Ватсап QR</p>
                     <div class="w-full aspect-square bg-white/5 rounded-xl flex items-center justify-center overflow-hidden border border-white/10">
@@ -177,7 +175,7 @@
         const auth = firebase.auth();
 
         let userEmail = null;
-        let selectedQuizData = null;
+        let loadedQuizzes = {}; // Тандалган тесттин толук объектин сактоо үчүн
 
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -200,7 +198,7 @@
             let converted = text.toLowerCase().trim();
             const dict = {
                 'а':'a', 'б':'b', 'в':'v', 'г':'g', 'д':'d', 'е':'e', 'ё':'yo', 'ж':'zh', 
-                'з':'z', 'и':'i', 'й':'y', 'к':'k', 'л':'l', 'м':'m', 'н':'n', 'ң':'ng', 
+                'з':'z', 'и':'i', 'й':'y', 'к लिखें':'k', 'к':'k', 'л':'l', 'м':'m', 'н':'n', 'ң':'ng', 
                 'о':'o', 'ө':'o', 'п':'p', 'р':'r', 'с':'s', 'т':'t', 'у':'u', 'ү':'u', 
                 'ф':'f', 'х':'h', 'ц':'ts', 'ч':'ch', 'ш':'sh', 'щ':'shch', 'ы':'y', 
                 'э':'e', 'ю':'yu', 'я':'ya'
@@ -214,7 +212,7 @@
             return result.replace(/__+/g, '_').replace(/^_+|_+$/g, '');
         }
 
-        // Эң коопсуз жана ката чыгарбай турган универсалдуу издөө функциясы
+        // Мугалим жеке баракчасынан кошкон тесттерди базадан алып чыгуу функциясы
         function loadTeacherThemesFromFirebase() {
             const subjectSelect = document.getElementById('teacher-subject-select');
             const themeSelect = document.getElementById('teacher-theme-select');
@@ -225,14 +223,13 @@
                 return;
             }
 
-            themeSelect.innerHTML = '<option value="">-- Жүктөлүүдө... --</option>';
-            
-            // Биринчи кезекте 'quizzes' папкасын коопсуз жол менен текшеребиз
-            const safeSubPath = safeFirebasePath(selectedSubject);
-            
-            db.ref(`quizzes/${safeSubPath}`).once('value').then((snapshot) => {
+            themeSelect.innerHTML = '<option value="">-- Тизме жүктөлүүдө... --</option>';
+            loadedQuizzes = {}; // Эски жүктөлгөндөрдү тазалайбыз
+
+            // Базанын 'tests' папкасын толугу менен текшеребиз
+            db.ref('tests').once('value').then((snapshot) => {
                 themeSelect.innerHTML = '';
-                const quizzesData = snapshot.val();
+                const testsData = snapshot.val();
                 let hasData = false;
 
                 const defaultOption = document.createElement('option');
@@ -240,41 +237,29 @@
                 defaultOption.text = "-- Теманы тандаңыз --";
                 themeSelect.appendChild(defaultOption);
 
-                if (quizzesData) {
-                    Object.keys(quizzesData).forEach((key) => {
-                        hasData = true;
-                        const option = document.createElement('option');
-                        option.value = key;       
-                        option.text = key.replace(/_/g, ' ').toUpperCase(); 
-                        themeSelect.appendChild(option);
-                    });
-                }
-
-                // Эгер 'quizzes' папкасы бош болсо, анда резервдик 'tests' папкасынан издейбиз
-                if (!hasData) {
-                    db.ref('tests').once('value').then((testSnapshot) => {
-                        const testsData = testSnapshot.val();
-                        if (testsData) {
-                            Object.keys(testsData).forEach((key) => {
-                                const quiz = testsData[key];
-                                if (quiz && (quiz.subject === selectedSubject || (quiz.settings && quiz.settings.subject === selectedSubject))) {
-                                    hasData = true;
-                                    const option = document.createElement('option');
-                                    option.value = key;       
-                                    option.text = (quiz.title || quiz.theme || key).toUpperCase(); 
-                                    themeSelect.appendChild(option);
-                                        }
-                                    });
-                                }
+                if (testsData) {
+                    Object.keys(testsData).forEach((key) => {
+                        const quiz = testsData[key];
                         
-                        if (!hasData) {
-                            themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
+                        // Мугалим тандаган предмет базадагы предметке дал келерин текшерүү
+                        if (quiz && (quiz.subject === selectedSubject || (quiz.settings && quiz.settings.subject === selectedSubject))) {
+                            hasData = true;
+                            loadedQuizzes[key] = quiz; // Тесттин маалыматын сактайбыз
+
+                            const option = document.createElement('option');
+                            option.value = key; // Селекттин маанисине Firebase уникалдуу ID'син байлайбыз      
+                            option.text = (quiz.theme || quiz.title || "Аталышсыз тест").toUpperCase(); 
+                            themeSelect.appendChild(option);
                         }
                     });
                 }
+
+                if (!hasData) {
+                    themeSelect.innerHTML = '<option value="">-- Бул предметте азырынча тест түзүлө элек --</option>';
+                }
             }).catch((error) => {
-                console.error("Firebase катасы:", error);
-                themeSelect.innerHTML = '<option value="">-- Текстти жүктөөдө ката кетти --</option>';
+                console.error("Ката кетти:", error);
+                themeSelect.innerHTML = '<option value="">-- Ката кетти же база жабык --</option>';
             });
         }
 
@@ -299,13 +284,16 @@
                 const hasAccess = snapshot.val();
 
                 if (hasAccess === true || hasAccess === "active") {
-                    const safeSub = safeFirebasePath(subject);
-                    const safeThm = safeFirebasePath(quizId);
-                    
-                    // Бардык шарттарга туура келүүчү шилтеме аркылуу оюнга жиберүү
-                    window.location.href = `../multi-quiz/play.html?subject=${encodeURIComponent(safeSub)}&theme=${encodeURIComponent(safeThm)}&quizId=${quizId}`;
+                    const selectedQuiz = loadedQuizzes[quizId];
+                    if (selectedQuiz) {
+                        const safeSub = safeFirebasePath(subject);
+                        const safeThm = safeFirebasePath(selectedQuiz.theme || selectedQuiz.title);
+                        // Оюн башталганда базадан келген чыныгы ID аркылуу багытталат
+                        window.location.href = `../multi-quiz/play.html?subject=${encodeURIComponent(safeSub)}&theme=${encodeURIComponent(safeThm)}&quizId=${quizId}`;
+                    } else {
+                        alert("Тандалган тесттин ички суроолору табылбай жатат!");
+                    }
                 } else {
-                    // Уруксаты жок болсо төлөм терезесин ачуу
                     document.getElementById('access-modal').classList.add('active');
                 }
             }).catch(err => {
