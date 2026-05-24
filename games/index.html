@@ -96,32 +96,57 @@
         let loadedQuizzes = {};
 
         function safeFirebasePath(text) {
-            return text.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            return text.replace(/[^a-z0-9а-яөүң]/gi, '_').toLowerCase();
         }
 
         function loadTeacherThemesFromFirebase() {
             const sub = document.getElementById('teacher-subject-select').value;
             const themeSel = document.getElementById('teacher-theme-select');
-            if (!sub) return;
+            if (!sub) {
+                themeSel.innerHTML = '<option value="">-- Алгач предметти тандаңыз --</option>';
+                return;
+            }
             
             themeSel.innerHTML = '<option>Жүктөлүүдө...</option>';
-            // Эскертүү: Базадагы түзүлүшкө жараша teacher_quizzes же teacherQuizzes деп өзгөртүңүз
-            db.ref('teacher_quizzes').once('value').then(snapshot => {
-                themeSel.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
+            loadedQuizzes = {}; // Тазалоо
+            
+            // Сүрөттөгүдөй 'teacherQuizzes' деп оңдолду
+            db.ref('teacherQuizzes').once('value').then(snapshot => {
                 const data = snapshot.val();
+                let hasData = false;
+                themeSel.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
+
                 if(data) {
                     Object.keys(data).forEach(teacherId => {
-                        if(data[teacherId][sub]) {
-                            Object.keys(data[teacherId][sub]).forEach(quizId => {
-                                loadedQuizzes[quizId] = { ...data[teacherId][sub][quizId], authorUid: teacherId };
+                        const teacherData = data[teacherId];
+                        // Предметтин атын универсалдуу издөө (чоң/кичине тамгасына карабай)
+                        const subjectKey = Object.keys(teacherData).find(k => 
+                            k === sub || k.toLowerCase() === sub.toLowerCase() || k === safeFirebasePath(sub)
+                        );
+
+                        if(subjectKey && teacherData[subjectKey]) {
+                            Object.keys(teacherData[subjectKey]).forEach(quizId => {
+                                const quizInfo = teacherData[subjectKey][quizId];
+                                loadedQuizzes[quizId] = { ...quizInfo, authorUid: teacherId };
+                                
                                 const opt = document.createElement('option');
                                 opt.value = quizId;
-                                opt.text = (data[teacherId][sub][quizId].theme_title || "Тест").toUpperCase();
+                                // Базадан теманын аталышын алуу
+                                const titleName = quizInfo.theme || quizInfo.theme_title || quizInfo.title || quizInfo.topic || "Аталышсыз тест";
+                                opt.text = titleName.toUpperCase();
                                 themeSel.appendChild(opt);
+                                hasData = true;
                             });
                         }
                     });
                 }
+                
+                if (!hasData) {
+                    themeSel.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
+                }
+            }).catch(error => {
+                console.error("Firebase'ден маалымат алууда ката кетти:", error);
+                themeSel.innerHTML = '<option value="">-- Ката кетти --</option>';
             });
         }
 
@@ -130,7 +155,6 @@
             const subject = document.getElementById('teacher-subject-select').value;
             if(!quizId) return alert("Теманы тандаңыз!");
             
-            // Шилтемени сиздин multi-quiz папкаңызга багыттайбыз
             const targetUrl = `../multi-quiz/play.html?teacherUid=${loadedQuizzes[quizId].authorUid}&subject=${encodeURIComponent(subject)}&quizId=${quizId}`;
             window.location.href = targetUrl;
         }
