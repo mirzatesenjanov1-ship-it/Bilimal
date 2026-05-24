@@ -99,48 +99,68 @@
             return text.replace(/[^a-z0-9а-яөүң]/gi, '_').toLowerCase();
         }
 
+        function addQuizToSelect(quizId, quizInfo, teacherId, themeSel) {
+            if (loadedQuizzes[quizId]) return; // Дубликат болбосу үчүн
+            
+            loadedQuizzes[quizId] = { ...quizInfo, authorUid: teacherId };
+            const opt = document.createElement('option');
+            opt.value = quizId;
+            const titleName = quizInfo.theme || quizInfo.theme_title || quizInfo.title || quizInfo.topic || "Аталышсыз тест";
+            opt.text = titleName.toUpperCase();
+            themeSel.appendChild(opt);
+        }
+
         function loadTeacherThemesFromFirebase() {
             const sub = document.getElementById('teacher-subject-select').value;
             const themeSel = document.getElementById('teacher-theme-select');
+            
             if (!sub) {
                 themeSel.innerHTML = '<option value="">-- Алгач предметти тандаңыз --</option>';
                 return;
             }
             
             themeSel.innerHTML = '<option>Жүктөлүүдө...</option>';
-            loadedQuizzes = {}; // Тазалоо
-            
-            // Сүрөттөгүдөй 'teacherQuizzes' деп оңдолду
-            db.ref('teacherQuizzes').once('value').then(snapshot => {
-                const data = snapshot.val();
-                let hasData = false;
+            loadedQuizzes = {}; 
+            let hasData = false;
+
+            // Базада 'teacherQuizzes' да, 'tests' да болушу мүмкүн, экөөнү тең карайбыз
+            Promise.all([
+                db.ref('teacherQuizzes').once('value'),
+                db.ref('tests').once('value')
+            ]).then(snapshots => {
                 themeSel.innerHTML = '<option value="">-- Теманы тандаңыз --</option>';
-
-                if(data) {
-                    Object.keys(data).forEach(teacherId => {
-                        const teacherData = data[teacherId];
-                        // Предметтин атын универсалдуу издөө (чоң/кичине тамгасына карабай)
-                        const subjectKey = Object.keys(teacherData).find(k => 
-                            k === sub || k.toLowerCase() === sub.toLowerCase() || k === safeFirebasePath(sub)
-                        );
-
-                        if(subjectKey && teacherData[subjectKey]) {
-                            Object.keys(teacherData[subjectKey]).forEach(quizId => {
-                                const quizInfo = teacherData[subjectKey][quizId];
-                                loadedQuizzes[quizId] = { ...quizInfo, authorUid: teacherId };
-                                
-                                const opt = document.createElement('option');
-                                opt.value = quizId;
-                                // Базадан теманын аталышын алуу
-                                const titleName = quizInfo.theme || quizInfo.theme_title || quizInfo.title || quizInfo.topic || "Аталышсыз тест";
-                                opt.text = titleName.toUpperCase();
-                                themeSel.appendChild(opt);
-                                hasData = true;
-                            });
-                        }
-                    });
-                }
                 
+                snapshots.forEach(snapshot => {
+                    const data = snapshot.val();
+                    if(data) {
+                        Object.keys(data).forEach(teacherId => {
+                            const teacherData = data[teacherId];
+                            if(!teacherData || typeof teacherData !== 'object') return;
+
+                            Object.keys(teacherData).forEach(key => {
+                                const childData = teacherData[key];
+                                if(!childData) return;
+
+                                // 1-вариант: Структурасы "Предмет -> Тесттер" болсо
+                                if (key === sub || key.toLowerCase() === sub.toLowerCase() || key === safeFirebasePath(sub)) {
+                                    Object.keys(childData).forEach(quizId => {
+                                        addQuizToSelect(quizId, childData[quizId], teacherId, themeSel);
+                                        hasData = true;
+                                    });
+                                } 
+                                // 2-вариант: Тесттер тикелей сакталып, ичинде 'subject' талаасы болсо
+                                else if (typeof childData === 'object') {
+                                    const qSub = childData.subject || childData.subjectName || childData.предмет;
+                                    if (qSub && (qSub === sub || qSub.toLowerCase() === sub.toLowerCase())) {
+                                        addQuizToSelect(key, childData, teacherId, themeSel);
+                                        hasData = true;
+                                    }
+                                }
+                            });
+                        });
+                    }
+                });
+
                 if (!hasData) {
                     themeSel.innerHTML = '<option value="">-- Бул предметте азырынча тест жок --</option>';
                 }
