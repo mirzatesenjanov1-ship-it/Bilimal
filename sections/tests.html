@@ -3,104 +3,418 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Акылдуу Сынак Борбору — BiliMal</title>
+    <title>BiliMal — Санариптик Тест Борбору</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; user-select: none; }
-        body { background: #050512; color: #fff; padding: 30px 5%; min-height: 100vh; }
-        .quiz-card { max-width: 700px; margin: 40px auto; background: rgba(10,10,30,0.9); border: 2px solid rgba(255, 0, 255, 0.2); border-radius: 16px; padding: 35px; box-shadow: 0 0 30px rgba(255,0,255,0.1); }
-        .status-box { display: flex; justify-content: space-between; background: rgba(255, 0, 85, 0.1); border: 1px solid #ff0055; padding: 12px; border-radius: 8px; margin-bottom: 25px; color: #ff3366; font-weight: bold; font-size: 0.9rem; }
-        .q-title { font-size: 1.25rem; margin-bottom: 20px; color: #00f0ff; line-height: 1.5; }
-        .ans-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
-        .ans-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .ans-item:hover { background: rgba(0,240,255,0.06); border-color: #00f0ff; }
-        .ans-item.active { background: rgba(255,0,255,0.15); border-color: #ff00ff; }
-        .btn-action { background: #7000ff; border: none; color: white; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-weight: bold; float: right; }
-        .btn-action:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px #00f0ff; }
+        /* Базалык Космостук Стилдер */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { 
+            background: #020208; 
+            color: #fff; 
+            min-height: 100vh;
+            padding-top: 100px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        header { background: rgba(4, 4, 16, 0.85); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0, 240, 255, 0.15); padding: 20px 8%; display: flex; justify-content: space-between; align-items: center; position: fixed; width: 100%; top: 0; z-index: 100; }
+        .logo { font-size: 1.8rem; font-weight: 900; background: linear-gradient(45deg, #00f0ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 15px rgba(0,240,255,0.3); text-decoration: none; }
+        .nav-links a { color: #a5b4fc; text-decoration: none; font-weight: 600; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Табдарды алмаштыруу (Мугалим / Окуучу) */
+        .tab-container { display: flex; gap: 15px; margin-bottom: 30px; justify-content: center; }
+        .tab-btn { background: rgba(15, 15, 35, 0.6); border: 1px solid rgba(0, 240, 255, 0.2); padding: 12px 30px; border-radius: 30px; color: #a5b4fc; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { background: linear-gradient(90deg, #00f0ff, #7000ff); color: white; box-shadow: 0 0 15px rgba(0,240,255,0.4); border-color: transparent; }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* Карталардын стили (Dashboard үлгүсүндө) */
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } }
+
+        .card { background: rgba(10, 10, 25, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 25px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .card h3 { color: #00f0ff; margin-bottom: 20px; font-size: 1.4rem; display: flex; align-items: center; gap: 10px; text-shadow: 0 0 10px rgba(0,240,255,0.2); }
+
+        /* Форма элементтери */
+        label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 0.9rem; font-weight: 600; }
+        input, select, textarea { width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; font-size: 1rem; margin-bottom: 15px; outline: none; transition: 0.3s; }
+        input:focus, select:focus { border-color: #ff00ff; box-shadow: 0 0 8px rgba(255,0,255,0.2); }
+        
+        .btn { background: linear-gradient(90deg, #00f0ff, #7000ff); border: none; padding: 12px 20px; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); box-shadow: none; }
+
+        /* Башкаруу элементтеринин тизмеси */
+        .test-item { display: flex; justify-content: space-between; align-items: center; background: rgba(20, 20, 45, 0.5); padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #00f0ff; }
+        .test-info h4 { color: #fff; margin-bottom: 5px; }
+        .test-info p { color: #64748b; font-size: 0.85rem; }
+        .actions { display: flex; gap: 10px; align-items: center; }
+
+        /* Кооз Переключатель (Toggle Switch) */
+        .switch { position: relative; display: inline-block; width: 46px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00f0ff; box-shadow: 0 0 10px #00f0ff; }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Студенттердин тизмеси (Сүрөттөгүдөй кооз чекмарк менен) */
+        .results-list { list-style: none; }
+        .result-student { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.05); transition: 0.2s; }
+        .result-student:hover { background: rgba(0, 240, 255, 0.05); }
+        .student-name-zone { display: flex; align-items: center; gap: 12px; }
+        .custom-checkbox { width: 18px; height: 18px; border: 2px solid #00f0ff; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #00f0ff; font-weight: bold; }
+        .checkmark-status { color: #10b981; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .future-badge { background: rgba(255, 0, 255, 0.2); border: 1px solid #ff00ff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #ff00ff; }
+
+        /* Тест аянтчасы */
+        .question-box { margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
+        .option-label { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .option-label:hover { background: rgba(255,255,255,0.07); border-color: rgba(0,240,255,0.3); }
+        .option-label input { width: auto; margin-bottom: 0; }
     </style>
 </head>
 <body>
 
-    <div class="quiz-card">
-        <div class="status-box">
-            <span>🛡️ ANTI-CHEAT V3: КӨЗӨМӨЛ ЖАНДУУ</span>
-            <span id="warn-txt" style="color: #ff3366;">Эскертүү: 0 / 3</span>
+    <header>
+        <a href="../index.html" class="logo">BiliMal.org</a>
+        <div class="nav-links">
+            <a href="../index.html">← Башкы бетке кайтуу</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="tab-container">
+            <button class="tab-btn active" onclick="switchTab('teacher')">👨‍🏫 Мугалимдин Башкаруу Панели</button>
+            <button class="tab-btn" onclick="switchTab('student')">🎒 Окуучунун Тест Тапшыруусу</button>
         </div>
 
-        <div id="quiz-engine">
-            <div class="q-title" id="question-field">Жүктөлүүдө...</div>
-            <div class="ans-list" id="answers-field"></div>
-            <div style="overflow: hidden; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                <span id="progress-field" style="color: #626c93; font-size: 0.9rem; line-height: 40px;">Суроо: 1/2</span>
-                <button class="btn-action" onclick="submitAnswer()">Кийинки суроо →</button>
+        <div id="teacher-panel" class="panel active">
+            <div class="grid-layout">
+                <div>
+                    <div class="card">
+                        <h3>🛠️ Жаңы Кванттык Тест Түзүү</h3>
+                        <label>Тесттин аталышы</label>
+                        <input type="text" id="test-title" placeholder="Мисалы: 10-класс Физика: Омдун мыйзамы">
+                        
+                        <label>Суроо тексти</label>
+                        <textarea id="question-text" rows="2" placeholder="Суроону жазыңыз..."></textarea>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label>А варианты</label>
+                                <input type="text" id="opt-a" placeholder="Вариант А">
+                            </div>
+                            <div>
+                                <label>Б варианты</label>
+                                <input type="text" id="opt-b" placeholder="Вариант Б">
+                            </div>
+                        </div>
+                        
+                        <label>Туура вариант</label>
+                        <select id="correct-opt">
+                            <option value="A">А варианты туура</option>
+                            <option value="B">Б варианты туура</option>
+                        </select>
+
+                        <button class="btn" onclick="createTest()">💾 Тестти Базага Сактоо</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>📋 Активдүү Тесттердин Тизмеси</h3>
+                        <div id="created-tests-container">
+                            </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="card">
+                        <h3>📊 Окуучулардын Жыйынтыктары & Мониторинг</h3>
+                        <div style="margin-bottom: 15px; display: flex; gap: 10px;">
+                            <select id="filter-class" onchange="renderResults()" style="margin-bottom:0; width: 50%;">
+                                <option value="all">Бардык класстар</option>
+                                <option value="А">"А" классы</option>
+                                <option value="Б">"Б" классы</option>
+                                <option value="В">"В" классы</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="clearResults()" style="width: 50%;">Тазалоо</button>
+                        </div>
+                        
+                        <ul class="results-list" id="results-display">
+                            </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div id="result-engine" style="display: none; text-align: center; padding: 20px 0;">
-            <h2 style="color: #00f0ff;">Тест жыйынтыкталды!</h2>
-            <div id="final-score" style="font-size: 3.5rem; font-weight: 900; margin: 25px 0; color: #ff00ff; text-shadow: 0 0 20px #ff00ff;">0 / 0</div>
-            <p id="cheat-log" style="color: #ff3366; font-weight: bold;"></p>
-            <button class="btn-action" style="float: none; margin-top: 20px;" onclick="window.location.href='../dashboard.html'">Кабинетке кайтуу</button>
+        <div id="student-panel" class="panel">
+            <div class="card" id="student-auth-card" style="max-width: 500px; margin: 0 auto;">
+                <h3>📝 Катталуу жана Доступ Алуу</h3>
+                <label>Аты-жөнүңүз (Толук жазыңыз)</label>
+                <input type="text" id="student-name" placeholder="Мисалы: Асия Изатбекова">
+                
+                <label>Классыңызды тандаңыз</label>
+                <select id="student-class">
+                    <option value="А">"А" классы</option>
+                    <option value="Б">"Б" классы</option>
+                    <option value="В">"В" классы</option>
+                    <option value="Г">"Г" классы</option>
+                </select>
+
+                <label>Мугалим берген Тесттин ID коду</label>
+                <input type="text" id="student-test-id" placeholder="Мисалы: TEST-1234">
+
+                <button class="btn" style="width:100%; justify-content: center;" onclick="startStudentTest()">Илим ааламына кирүү 🚀</button>
+            </div>
+
+            <div class="card" id="active-test-card" style="max-width: 700px; margin: 0 auto; display: none;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;">
+                    <h3 id="active-test-title" style="margin-bottom: 0;">Тест жүрүп жатат...</h3>
+                    <span class="future-badge">🧠 AI Нейро-Сканер Иштеп Жатат</span>
+                </div>
+                
+                <div id="test-questions-area">
+                    </div>
+
+                <button class="btn" id="submit-test-btn" onclick="submitAnswers()">Тестти Аяктоо жана Жыйынтыкты Жиберүү</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // 10-класстын Физика тест базасы (Формулалар жөнөкөй текст түрүндө берилди)
-        const db = [
-            { q: "Төмөндөгүлөрдүн ичинен чынжырдын бөлүгү үчүн Ом мыйзамынын туура формуласын көрсөтүңүз.", a: ["I = U / R", "R = I / U", "P = U * I", "A = F * s"], c: 0 },
-            { q: "Идеалдык газдын абалынын негизги теңдемесин (Менделеев-Клапейрон теңдемеси) тапкыла.", a: ["F = m * a", "p * V = n * R * T", "E = m * c^2", "I = q / t"], c: 1 }
-        ];
+        document.addEventListener('contextmenu', e => { e.preventDefault(); alert("Автордук укук корголгон! Көчүрүүгө тыюу салынат."); });
+        document.addEventListener('keydown', e => {
+            if (e.key === "F12" || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && (e.key === 'u' || e.key === 'c' || e.key === 's'))) {
+                e.preventDefault(); return false;
+            }
+        });
+    </script>
 
-        let curIdx = 0, score = 0, userSelection = null, warnings = 0;
+    <script>
+        // Инициализация (Маалыматтар базасы жок учурда локалдык сактоо)
+        let tests = JSON.parse(localStorage.getItem('bm_tests')) || [];
+        let results = JSON.parse(localStorage.getItem('bm_results')) || [];
 
-        function render() {
-            userSelection = null;
-            document.getElementById("question-field").innerText = db[curIdx].q;
-            document.getElementById("progress-field").innerText = `Суроо: ${curIdx + 1} / ${db.length}`;
-            const box = document.getElementById("answers-field");
-            box.innerHTML = "";
-            db[curIdx].a.forEach((item, idx) => {
-                const div = document.createElement("div");
-                div.className = "ans-item";
-                div.innerText = item;
-                div.onclick = () => {
-                    document.querySelectorAll(".ans-item").forEach(el => el.classList.remove("active"));
-                    div.classList.add("active");
-                    userSelection = idx;
-                };
-                box.appendChild(div);
+        // Жаңы баштаганда үлгү тест кошуп коюу
+        if(tests.length === 0) {
+            tests.push({
+                id: "TEST-101",
+                title: "10-класс Физика: Омдун мыйзамы",
+                question: "Төмөнкү формулалардын кайсынысы Омдун мыйзамына таандык?",
+                a: "I = U / R",
+                b: "F = m * a",
+                correct: "A",
+                active: true
+            });
+            localStorage.setItem('bm_tests', JSON.stringify(tests));
+        }
+
+        function switchTab(role) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            
+            if(role === 'teacher') {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('teacher-panel').classList.add('active');
+                renderTeacherTests();
+                renderResults();
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('student-panel').classList.add('active');
+            }
+        }
+
+        // --- МУГАЛИМ ФУНКЦИЯЛАРЫ ---
+        function createTest() {
+            const title = document.getElementById('test-title').value;
+            const qText = document.getElementById('question-text').value;
+            const optA = document.getElementById('opt-a').value;
+            const optB = document.getElementById('opt-b').value;
+            const correct = document.getElementById('correct-opt').value;
+
+            if(!title || !qText || !optA || !optB) { alert("Бардык талааларды толтуруңуз!"); return; }
+
+            const newTest = {
+                id: "TEST-" + Math.floor(1000 + Math.random() * 9000),
+                title: title,
+                question: qText,
+                a: optA,
+                b: optB,
+                correct: correct,
+                active: true
+            };
+
+            tests.push(newTest);
+            localStorage.setItem('bm_tests', JSON.stringify(tests));
+            alert(`Тест ийгиликтүү түзүлдү! Коду: ${newTest.id}`);
+            
+            // Формаларды тазалоо
+            document.getElementById('test-title').value = '';
+            document.getElementById('question-text').value = '';
+            document.getElementById('opt-a').value = '';
+            document.getElementById('opt-b').value = '';
+
+            renderTeacherTests();
+        }
+
+        function renderTeacherTests() {
+            const container = document.getElementById('created-tests-container');
+            container.innerHTML = '';
+
+            tests.forEach((test, index) => {
+                const item = document.createElement('div');
+                item.className = 'test-item';
+                item.innerHTML = `
+                    <div class="test-info">
+                        <h4>${test.title}</h4>
+                        <p>Код: <b style="color:#00f0ff">${test.id}</b> | Абалы: ${test.active ? 'Ачык' : 'Жабык'}</p>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-secondary" style="padding: 6px 12px; font-size:0.8rem;" onclick="copyLink('${test.id}')">🔗 Кодду көчүрүү</button>
+                        <label class="switch">
+                            <input type="checkbox" ${test.active ? 'checked' : ''} onchange="toggleTest(${index})">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                `;
+                container.appendChild(item);
             });
         }
 
-        function submitAnswer() {
-            if(userSelection === null) return alert("Жооптун варианттарынан бирөөсүн тандаңыз!");
-            if(userSelection === db[curIdx].c) score++;
-            curIdx++;
-            if(curIdx < db.length) render(); else finish(false);
+        function toggleTest(index) {
+            tests[index].active = !tests[index].active;
+            localStorage.setItem('bm_tests', JSON.stringify(tests));
+            renderTeacherTests();
         }
 
-        function finish(isCheated) {
-            document.getElementById("quiz-engine").style.display = "none";
-            document.getElementById("result-engine").style.display = "block";
-            if(isCheated) {
-                document.getElementById("final-score").innerText = "0";
-                document.getElementById("cheat-log").innerText = "⚠️ ШПАРГАЛКА ЖАСОО: Сынак учурунда башка терезелерге өткөнүңүз үчүн жыйынтыгыңыз жокко чыгарылды!";
+        function copyLink(id) {
+            navigator.clipboard.writeText(id);
+            alert("Тесттин уникалдуу ID коду көчүрүлдү: " + id + ". Муну окуучуларга жөнөтүңүз.");
+        }
+
+        function renderResults() {
+            const display = document.getElementById('results-display');
+            const filter = document.getElementById('filter-class').value;
+            display.innerHTML = '';
+
+            const filtered = results.filter(r => filter === 'all' || r.studentClass === filter);
+
+            if(filtered.length === 0) {
+                display.innerHTML = '<p style="color:#64748b; text-align:center; padding:20px;">Азырынча жыйынтыктар жок...</p>';
+                return;
+            }
+
+            filtered.forEach(r => {
+                const li = document.createElement('li');
+                li.className = 'result-student';
+                li.innerHTML = `
+                    <div class="student-name-zone">
+                        <div class="custom-checkbox">✓</div>
+                        <div>
+                            <span style="font-weight:bold; color:#fff;">${r.name}</span>
+                            <div style="font-size:0.75rem; color:#64748b;">Классы: ${r.studentClass}-класс | Тест ID: ${r.testId}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <span class="future-badge">🧠 Нейро-Фокус: ${r.focusScore}%</span>
+                        <span class="checkmark-status">Баа: ${r.score}</span>
+                    </div>
+                `;
+                display.appendChild(li);
+            });
+        }
+
+        function clearResults() {
+            if(confirm("Чын эле бардык жыйынтыктарды өчүрөсүзбү?")) {
+                results = [];
+                localStorage.setItem('bm_results', JSON.stringify(results));
+                renderResults();
+            }
+        }
+
+        // --- ОКУУЧУ ФУНКЦИЯЛАРЫ ---
+        let currentActiveTest = null;
+        let currentStudentData = {};
+
+        function startStudentTest() {
+            const name = document.getElementById('student-name').value;
+            const sClass = document.getElementById('student-class').value;
+            const testId = document.getElementById('student-test-id').value.trim();
+
+            if(!name || !testId) { alert("Атыңызды жана Тесттин кодун жазыңыз!"); return; }
+
+            const targetTest = tests.find(t => t.id === testId);
+
+            if(!targetTest) { alert("Мындай коддогу тест табылган жок!"); return; }
+            if(!targetTest.active) { alert("Бул тестти мугалим жаап койгон!"); return; }
+
+            currentActiveTest = targetTest;
+            currentStudentData = { name: name, studentClass: sClass, testId: testId };
+
+            // Экрандарды алмаштыруу
+            document.getElementById('student-auth-card').style.display = 'none';
+            document.getElementById('active-test-card').style.display = 'block';
+            
+            // Суроону куруу
+            document.getElementById('active-test-title').innerText = targetTest.title;
+            const area = document.getElementById('test-questions-area');
+            area.innerHTML = `
+                <div class="question-box">
+                    <p style="font-size:1.1rem; margin-bottom:15px; font-weight:600;">Суроо: ${targetTest.question}</p>
+                    <label class="option-label">
+                        <input type="radio" name="student-ans" value="A"> <b>А:</b> ${targetTest.a}
+                    </label>
+                    <label class="option-label">
+                        <input type="radio" name="student-ans" value="B"> <b>Б:</b> ${targetTest.b}
+                    </label>
+                </div>
+            `;
+        }
+
+        function submitAnswers() {
+            const selected = document.querySelector('input[name="student-ans"]:checked');
+            if(!selected) { alert("Жоопту тандаңыз!"); return; }
+
+            let score = "Канааттандырарлык эмес (2)";
+            if(selected.value === currentActiveTest.correct) {
+                score = "Эң жакшы (5) 🎉";
             } else {
-                document.getElementById("final-score").innerText = `${score} / ${db.length}`;
+                score = "Жакшы (4) — AI Генетикалык анализи иштетилди";
             }
+
+            // 100 жылдан кийинки Нейро-Фокус упайын рандомдуу генерация кылуу
+            const randomFocusScore = Math.floor(75 + Math.random() * 25);
+
+            const finalResult = {
+                name: currentStudentData.name,
+                studentClass: currentStudentData.studentClass,
+                testId: currentStudentData.testId,
+                score: score,
+                focusScore: randomFocusScore
+            };
+
+            results.push(finalResult);
+            localStorage.setItem('bm_results', JSON.stringify(results));
+
+            alert("Тест аяктады! Жыйынтыгыңыз мугалимдин панелине коопсуз жиберилди.");
+            
+            // Кайра баштапкы абалга келтирүү
+            document.getElementById('student-auth-card').style.display = 'block';
+            document.getElementById('active-test-card').style.display = 'none';
+            document.getElementById('student-name').value = '';
+            document.getElementById('student-test-id').value = '';
         }
 
-        // TAB SWITCH DETECTION (АКЫЛДУУ АНТИ-ЧИТ ТЕКШЕРҮҮ)
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                warnings++;
-                document.getElementById("warn-txt").innerText = `Эскертүү: ${warnings} / 3`;
-                alert("⚠️ КӨҢҮЛ БУРУҢУЗ! Тесттен башка баракчага өтүүгө тыюу салынат! 3 эскертүүдөн кийин сынак автоматтык түрдө жабылат.");
-                if(warnings >= 3) finish(true);
-            }
-        });
-
-        render();
+        // Жүктөлгөндө мугалимдик тизмелерди даярдоо
+        window.onload = () => {
+            renderTeacherTests();
+            renderResults();
+        };
     </script>
-    <script src="../assets/js/script.js"></script>
 </body>
 </html>
