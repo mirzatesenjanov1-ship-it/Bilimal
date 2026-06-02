@@ -59,7 +59,6 @@
         .badge-anticheat { background: rgba(255, 0, 0, 0.2); border: 1px solid #ff0000; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: #ff4444; font-weight: bold; }
         .badge-ai { background: rgba(255, 0, 255, 0.2); border: 1px solid #ff00ff; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; color: #ff00ff; }
 
-        /* Окуучунун панели */
         .question-box { margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 10px; }
         .option-label { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
         .option-label:hover { background: rgba(255,255,255,0.07); border-color: rgba(0,240,255,0.3); }
@@ -84,14 +83,17 @@
     </div>
 
     <div class="container">
-        <div class="tab-container">
+        <!-- Бул блок окуучу ссылка менен киргенде жашырылат -->
+        <div class="tab-container" id="main-tab-container">
             <button class="tab-btn active" onclick="switchTab('teacher')">👨‍🏫 Мугалимдин Башкаруу Панели</button>
-            <button class="tab-btn" id="student-tab-btn" onclick="switchTab('student')">🎒 Окуучунун Тест Тапшыруусу</button>
+            <button class="tab-btn" onclick="switchTab('student')">🎒 Окуучунун Тест Тапшыруусу</button>
         </div>
 
+        <!-- ================= МУГАЛИМДИН ПАНЕЛИ ================= -->
         <div id="teacher-panel" class="panel active">
             <div class="grid-layout">
                 <div>
+                    <!-- Тест Түзүү / Түзөтүү Картасы -->
                     <div class="card">
                         <h3 id="form-title">🛠️ Жаңы Тест Түзүү</h3>
                         <input type="hidden" id="edit-test-id" value="">
@@ -119,6 +121,7 @@
                             <option value="B">Б варианты туура</option>
                         </select>
 
+                        <!-- Чектөөлөр жана Anti-Cheat -->
                         <div style="background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                             <label>Окуучу канча жолу тапшыра алат?</label>
                             <select id="attempts-limit">
@@ -137,7 +140,6 @@
                                     <span class="slider"></span>
                                 </label>
                             </div>
-                            <p style="font-size: 0.75rem; color:#64748b; margin-top: 5px;">Эгер жандырылса, окуучу башка вкладкага өтсө тест жабылат.</p>
                         </div>
 
                         <button class="btn" id="save-test-btn" style="width: 100%;" onclick="saveTest()">💾 Тестти Базага Сактоо</button>
@@ -146,11 +148,13 @@
                 </div>
 
                 <div>
+                    <!-- Активдүү Тесттер -->
                     <div class="card">
                         <h3>📋 Тесттердин Тизмеси</h3>
                         <div id="created-tests-container"></div>
                     </div>
 
+                    <!-- Жыйынтыктар -->
                     <div class="card">
                         <h3>📊 Жыйынтыктар & Мониторинг</h3>
                         <div style="margin-bottom: 15px; display: flex; gap: 10px;">
@@ -167,6 +171,7 @@
             </div>
         </div>
 
+        <!-- ================= ОКУУЧУНУН ПАНЕЛИ ================= -->
         <div id="student-panel" class="panel">
             <div class="card" id="student-auth-card" style="max-width: 500px; margin: 0 auto;">
                 <h3>📝 Доступ Алуу</h3>
@@ -181,12 +186,14 @@
                 </select>
 
                 <label>Шилтемедеги Тесттин ID коду</label>
-                <input type="text" id="student-test-id" placeholder="Мисалы: TEST-1234" readonly style="background: rgba(0,240,255,0.1); border-color:#00f0ff;">
-                <p style="font-size: 0.8rem; color:#a5b4fc; margin-top:-10px; margin-bottom:15px;">* Код автоматтык түрдө шилтемеден алынды.</p>
+                <input type="text" id="student-test-id" placeholder="Мисалы: TEST-1234">
+                
+                <p id="auto-code-msg" style="font-size: 0.8rem; color:#a5b4fc; margin-top:-10px; margin-bottom:15px; display:none;">* Код автоматтык түрдө шилтемеден алынды.</p>
 
-                <button class="btn" style="width:100%;" onclick="startStudentTest()">Баштоо 🚀</button>
+                <button class="btn" style="width:100%; justify-content: center;" onclick="startStudentTest()">Баштоо 🚀</button>
             </div>
 
+            <!-- Жигердүү Тест Терезеси -->
             <div class="card" id="active-test-card" style="max-width: 700px; margin: 0 auto; display: none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 20px;">
                     <h3 id="active-test-title" style="margin-bottom: 0;">Тест...</h3>
@@ -200,6 +207,7 @@
         </div>
     </div>
 
+    <!-- ⚙️ БАШКАРУУ МОТОРУ -->
     <script>
         let tests = JSON.parse(localStorage.getItem('bm_tests')) || [];
         let results = JSON.parse(localStorage.getItem('bm_results')) || [];
@@ -210,37 +218,50 @@
         let antiCheatActive = false;
 
         function switchTab(role) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const panels = document.querySelectorAll('.panel');
+            
+            tabBtns.forEach(btn => btn.classList.remove('active'));
+            panels.forEach(p => p.classList.remove('active'));
             
             if(role === 'teacher') {
-                document.querySelectorAll('.tab-btn')[0].classList.add('active');
-                document.getElementById('teacher-panel').classList.add('active');
+                if(tabBtns.length > 0) tabBtns[0].classList.add('active');
+                const teacherPanel = document.getElementById('teacher-panel');
+                if(teacherPanel) teacherPanel.classList.add('active');
                 renderTeacherTests();
                 renderResults();
             } else {
-                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                if(tabBtns.length > 1) tabBtns[1].classList.add('active');
                 document.getElementById('student-panel').classList.add('active');
             }
         }
 
-        // --- URL ШИЛТЕМЕСИН ТЕКШЕРҮҮ ---
+        // --- URL ШИЛТЕМЕСИН ТЕКШЕРҮҮ ЖАНА ЖАШЫРУУ ЛОГИКАСЫ ---
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const testIdParam = urlParams.get('testid');
             
             if (testIdParam) {
-                // Эгер шилтемеде testid болсо, дароо окуучу панелине өткөрөбүз
+                // Окуучу шилтеме менен киргенде:
+                const tabContainer = document.getElementById('main-tab-container');
+                if(tabContainer) tabContainer.style.display = 'none'; // Вкладкаларды толук жашыруу
+                
+                const teacherPanel = document.getElementById('teacher-panel');
+                if(teacherPanel) teacherPanel.remove(); // Мугалим панелин DOM'дон өчүрүү
+
                 switchTab('student');
-                document.getElementById('student-test-id').value = testIdParam;
-                // readonly кылып коюлган, өзгөртө албайт
+                
+                const studentIdInput = document.getElementById('student-test-id');
+                studentIdInput.value = testIdParam;
+                studentIdInput.setAttribute('readonly', 'true');
+                studentIdInput.style.background = "rgba(0,240,255,0.1)";
+                studentIdInput.style.borderColor = "#00f0ff";
+                
+                document.getElementById('auto-code-msg').style.display = 'block';
             } else {
+                // Мугалим жөнөкөй киргенде:
                 renderTeacherTests();
                 renderResults();
-                // Эгер мугалим өзү тест ID жазгысы келсе, readonly алып салабыз
-                document.getElementById('student-test-id').removeAttribute('readonly');
-                document.getElementById('student-test-id').style.background = "rgba(0, 0, 0, 0.5)";
-                document.getElementById('student-test-id').style.borderColor = "rgba(255, 255, 255, 0.1)";
             }
         };
 
@@ -261,14 +282,27 @@
                 // Тестти жаңыртуу
                 const index = tests.findIndex(t => t.id === editId);
                 if(index !== -1) {
-                    tests[index] = { ...tests[index], title, question: qText, a: optA, b: optB, correct, limit, isAntiCheat };
+                    tests[index].title = title;
+                    tests[index].question = qText;
+                    tests[index].a = optA;
+                    tests[index].b = optB;
+                    tests[index].correct = correct;
+                    tests[index].limit = limit;
+                    tests[index].isAntiCheat = isAntiCheat;
                     alert("Тест ийгиликтүү жаңыртылды!");
                 }
             } else {
                 // Жаңы тест түзүү
                 const newTest = {
                     id: "TEST-" + Math.floor(1000 + Math.random() * 9000),
-                    title, question: qText, a: optA, b: optB, correct, active: true, limit, isAntiCheat
+                    title: title, 
+                    question: qText, 
+                    a: optA, 
+                    b: optB, 
+                    correct: correct, 
+                    active: true, 
+                    limit: limit, 
+                    isAntiCheat: isAntiCheat
                 };
                 tests.push(newTest);
                 alert(`Тест түзүлдү!`);
@@ -290,11 +324,15 @@
             document.getElementById('opt-a').value = test.a;
             document.getElementById('opt-b').value = test.b;
             document.getElementById('correct-opt').value = test.correct;
+            
+            // Эски сакталган тесттерде limit жок болсо ката бербеши үчүн:
             document.getElementById('attempts-limit').value = test.limit || 'unlimited';
             document.getElementById('anti-cheat-toggle').checked = test.isAntiCheat !== false;
 
-            document.getElementById('save-test-btn').innerHTML = "💾 Өзгөртүүлөрдү Сактоо";
-            document.getElementById('save-test-btn').style.background = "linear-gradient(90deg, #ff8c00, #ff0080)";
+            const saveBtn = document.getElementById('save-test-btn');
+            saveBtn.innerHTML = "💾 Өзгөртүүлөрдү Сактоо";
+            saveBtn.style.background = "linear-gradient(90deg, #ff8c00, #ff0080)";
+            
             document.getElementById('cancel-edit-btn').style.display = "block";
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -311,23 +349,30 @@
             document.getElementById('attempts-limit').value = "unlimited";
             document.getElementById('anti-cheat-toggle').checked = true;
 
-            document.getElementById('save-test-btn').innerHTML = "💾 Тестти Базага Сактоо";
-            document.getElementById('save-test-btn').style.background = "linear-gradient(90deg, #00f0ff, #7000ff)";
+            const saveBtn = document.getElementById('save-test-btn');
+            saveBtn.innerHTML = "💾 Тестти Базага Сактоо";
+            saveBtn.style.background = "linear-gradient(90deg, #00f0ff, #7000ff)";
+            
             document.getElementById('cancel-edit-btn').style.display = "none";
         }
 
         function renderTeacherTests() {
             const container = document.getElementById('created-tests-container');
+            if(!container) return; // Окуучу панелинде ката бербеши үчүн
+            
             container.innerHTML = '';
 
             tests.forEach(test => {
                 const item = document.createElement('div');
                 item.className = 'test-item';
                 
-                const limitText = test.limit === 'unlimited' ? 'Чектөөсүз' : `${test.limit} жолу`;
-                const antiCheatText = test.isAntiCheat ? '<span class="badge-anticheat">🛡️ AC V4</span>' : '';
+                // Коопсуздук текшерүү (Эски сакталган тесттер үчүн)
+                const safeLimit = test.limit || 'unlimited';
+                const safeAntiCheat = test.isAntiCheat !== false;
 
-                // Толук URL генерациялоо
+                const limitText = safeLimit === 'unlimited' ? 'Чектөөсүз' : `${safeLimit} жолу`;
+                const antiCheatText = safeAntiCheat ? '<span class="badge-anticheat">🛡️ AC V4</span>' : '';
+
                 const currentUrl = window.location.href.split('?')[0];
                 const fullLink = `${currentUrl}?testid=${test.id}`;
 
@@ -355,8 +400,10 @@
 
         function toggleTest(id) {
             const index = tests.findIndex(t => t.id === id);
-            tests[index].active = !tests[index].active;
-            localStorage.setItem('bm_tests', JSON.stringify(tests));
+            if(index !== -1) {
+                tests[index].active = !tests[index].active;
+                localStorage.setItem('bm_tests', JSON.stringify(tests));
+            }
         }
 
         function deleteTest(id) {
@@ -374,6 +421,8 @@
 
         function renderResults() {
             const display = document.getElementById('results-display');
+            if(!display) return;
+            
             const filter = document.getElementById('filter-class').value;
             display.innerHTML = '';
 
@@ -423,8 +472,9 @@
             if(!targetTest.active) { alert("Бул тестти мугалим жаап койгон!"); return; }
 
             // Лимитти текшерүү
+            const safeLimit = targetTest.limit || 'unlimited';
             const previousAttempts = results.filter(r => r.name === name && r.testId === testId).length;
-            if(targetTest.limit !== 'unlimited' && previousAttempts >= parseInt(targetTest.limit)) {
+            if(safeLimit !== 'unlimited' && previousAttempts >= parseInt(safeLimit)) {
                 alert(`Кечиресиз, сиз бул тестти ${previousAttempts} жолу тапшыргансыз. Сиздин лимит бүттү!`);
                 return;
             }
@@ -433,11 +483,10 @@
             currentStudentData = { name, studentClass: sClass, testId };
 
             // Anti-Cheat V4 Жандыруу
-            if(targetTest.isAntiCheat) {
+            if(targetTest.isAntiCheat !== false) {
                 antiCheatActive = true;
                 cheatWarnings = 0;
                 document.getElementById('test-badges-display').innerHTML = `<span class="badge-anticheat">🛡️ Anti-Cheat V4 Активдүү</span>`;
-                // Окуучуну Fullscreen режимге өтүүсүн сурануу
                 try { document.documentElement.requestFullscreen(); } catch(e) {}
             } else {
                 antiCheatActive = false;
@@ -462,11 +511,10 @@
             `;
         }
 
-        // ANTI-CHEAT V4 ОКУЯЛАРДЫ КӨЗӨМӨЛДӨӨ (Башка вкладкага өтүп кетсе)
         document.addEventListener("visibilitychange", () => {
             if (document.hidden && antiCheatActive && currentActiveTest) {
                 cheatWarnings++;
-                if (cheatWarnings >= 1) { // Биринчи эле жолу өткөндө жазалайбыз (катаал режим)
+                if (cheatWarnings >= 1) { 
                     forceSubmitCheat();
                 }
             }
@@ -474,7 +522,7 @@
 
         function forceSubmitCheat() {
             document.getElementById('anticheat-overlay').style.display = 'flex';
-            antiCheatActive = false; // Токтотуу
+            antiCheatActive = false; 
 
             const finalResult = {
                 name: currentStudentData.name,
@@ -509,13 +557,14 @@
             results.push(finalResult);
             localStorage.setItem('bm_results', JSON.stringify(results));
 
-            antiCheatActive = false; // Тест бүттү, анти-чит өчүрүлөт
+            antiCheatActive = false; 
             if (document.fullscreenElement) {
                 document.exitFullscreen();
             }
 
             alert("Жыйынтык ийгиликтүү жиберилди!");
-            window.location.href = window.location.pathname; // Баракчаны жаңылоо (URL тазалоо үчүн)
+            // URL дарегинен тесттин кодун алып салуу үчүн баракчаны тазалоо менен жаңыртабыз
+            window.location.href = window.location.pathname;
         }
     </script>
 </body>
