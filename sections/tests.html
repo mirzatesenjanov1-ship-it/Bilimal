@@ -166,6 +166,11 @@
                     <div id="dynamicFields">
                         </div>
 
+                    <div style="margin: 20px 0 15px; display: flex; align-items: center; justify-content: space-between; background: rgba(0, 240, 255, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed rgba(0, 240, 255, 0.3);">
+                        <span style="font-size: 0.95rem; color: #e2e8f0;">Учурдагы кошулган суроолор: <strong id="questionCounter" style="color: #00f0ff; font-size: 1.1rem;">0</strong></span>
+                        <button type="button" class="btn-copy" style="background: #00f0ff; color: #000; border: none; padding: 8px 16px; font-weight: bold; border-radius: 6px;" onclick="addQuestionToList()">➕ Суроону Кошуу</button>
+                    </div>
+
                     <div class="switch-container">
                         <span style="font-size: 0.9rem; color: #a1a1aa; font-weight: bold;">🛡 Anti-Cheat V4 Кошуу</span>
                         <label class="switch">
@@ -174,7 +179,7 @@
                         </label>
                     </div>
 
-                    <button class="btn btn-primary" onclick="saveTest()" style="margin-top: 15px;">💾 Тестти Базага Сактоо</button>
+                    <button class="btn btn-primary" onclick="saveTest()" style="margin-top: 15px;">💾 Бүтүн Тестти Базага Сактоо</button>
                 </div>
 
                 <div class="right-column">
@@ -231,7 +236,7 @@
                 <div id="testContentArea">
                     </div>
                 
-                <button class="btn btn-primary" style="background: #00f0ff; color: #000; margin-top: 25px;" onclick="submitAnswer()">Жоопту Жөнөтүү ✅</button>
+                <button class="btn btn-primary" style="background: #00f0ff; color: #000; margin-top: 25px;" onclick="submitAnswer()">Кийинки суроо ➡️</button>
             </div>
 
             <div class="card student-test-area panel" id="studentSuccessArea" style="text-align: center; padding: 50px 20px;">
@@ -244,13 +249,23 @@
     </div>
 
     <script>
-        let currentActiveTestForStudent = null;
+        // Глобалдык өзгөрмөлөр
+        let tempQuestions = []; // Мугалим кошуп жаткан суроолордун убактылуу базасы
+        let currentActiveTestForStudent = null; // Окуучу иштеп жаткан тест
+        let currentQuestionIndex = 0; // Окуучу учурда кайсы суроодо турат
+        let studentAnswers = []; // Окуучунун берген жооптору
 
         // --- 1. ФОРМАЛАРДЫ АЛМАШТЫРУУ (Мугалим) ---
         function toggleFormFields() {
             const type = document.getElementById('testType').value;
             const container = document.getElementById('dynamicFields');
             let html = '';
+
+            // Башка типке өткөндө убактылуу кошулган суроолор тазаланат
+            tempQuestions = [];
+            if(document.getElementById('questionCounter')) {
+                document.getElementById('questionCounter').innerText = '0';
+            }
 
             if (type === 'simple') {
                 html = `
@@ -280,7 +295,7 @@
                 html = `
                     <div class="form-group">
                         <label>PISA: Негизги Текст / Окуя (Кырдаал):</label>
-                        <textarea id="t_pisaText" placeholder="Бул жерге окуучу окуп түшүнө турган чоң текстти же кырдаалды жазыңыз..." style="min-height: 150px;"></textarea>
+                        <textarea id="t_pisaText" placeholder="Бул жерге окуучу окуп түшүнө турган чоң текстти же кырдаалды жазыңыз..." style="min-height: 120px;"></textarea>
                     </div>
                     <div class="form-group">
                         <label>Текст боюнча суроо / Маселе:</label>
@@ -293,16 +308,97 @@
                         <label>Тапшырманын шарты (Окуучуга көрүнөт):</label>
                         <textarea id="t_question" placeholder="Эссенин темасын же диктанттын шартын жазыңыз..."></textarea>
                     </div>
-                    <div class="form-group" style="border: 1px dashed #27273a; padding: 15px; border-radius: 8px; text-align: center;">
-                        <span style="color: #a1a1aa; font-size: 0.9rem;">🎤 Аудио жазуу (Пландоодо)</span>
-                    </div>
                 `;
             }
 
             container.innerHTML = html;
         }
 
-        // --- 2. РОЛДОРДУ КОТОРУУ ---
+        // --- 2. СУРООНУ УЧУРДАГЫ ТЕСТКЕ КОШУУ ---
+        function addQuestionToList() {
+            const type = document.getElementById('testType').value;
+            let questionObj = {};
+
+            if (type === 'simple') {
+                const q = document.getElementById('t_question').value.trim();
+                const a = document.getElementById('t_optA').value.trim();
+                const b = document.getElementById('t_optB').value.trim();
+                const correct = document.getElementById('t_correctOpt').value;
+                
+                if (!q || !a || !b) { alert("Учурдагы суроону жана варианттарды толук толтуруңуз!"); return; }
+                
+                questionObj = { question: q, optA: a, optB: b, correct: correct };
+                
+                // Кийинки суроо үчүн талааларды гана тазалайбыз
+                document.getElementById('t_question').value = '';
+                document.getElementById('t_optA').value = '';
+                document.getElementById('t_optB').value = '';
+            } 
+            else if (type === 'pisa') {
+                const pisaText = document.getElementById('t_pisaText').value.trim();
+                const q = document.getElementById('t_question').value.trim();
+                
+                if (!pisaText || !q) { alert("PISA текстин жана суроосун жазыңыз!"); return; }
+                
+                questionObj = { pisaText: pisaText, question: q };
+                document.getElementById('t_question').value = ''; // Жаңы суроо жазууга тазалайбыз
+            } 
+            else if (type === 'essay') {
+                const q = document.getElementById('t_question').value.trim();
+                if (!q) { alert("Тапшырманын шартын жазыңыз!"); return; }
+                
+                questionObj = { question: q };
+                document.getElementById('t_question').value = '';
+            }
+
+            tempQuestions.push(questionObj);
+            document.getElementById('questionCounter').innerText = tempQuestions.length;
+        }
+
+        // --- 3. ТЕСТТИ ТОЛУК САКТОО ---
+        function saveTest() {
+            const title = document.getElementById('testTitle').value.trim();
+            const type = document.getElementById('testType').value;
+            
+            if (!title) { alert("Тесттин аталышын жазыңыз!"); return; }
+
+            // Эгер мугалим акыркы жазган суроосун "Суроону Кошуу" деп баспай туруп түз эле сактап салса, аны автоматтык түрдө кошуп алабыз
+            const currentQText = document.getElementById('t_question') ? document.getElementById('t_question').value.trim() : "";
+            if (currentQText !== "") {
+                addQuestionToList();
+            }
+
+            if (tempQuestions.length === 0) {
+                alert("Ката! Тестти сактоо үчүн эң аз дегенде 1 суроо кошууңуз керек. 'Суроону Кошуу' баскычын басыңыз.");
+                return;
+            }
+
+            const testId = 'TEST-' + Math.floor(1000 + Math.random() * 9000);
+            
+            // Тесттин объектисине суроолордун массив тизмесин толук байлайбыз
+            let newTest = { 
+                id: testId, 
+                title: title, 
+                type: type, 
+                questions: tempQuestions, 
+                date: new Date().toLocaleDateString() 
+            };
+
+            let tests = JSON.parse(localStorage.getItem('biliMalTests')) || [];
+            tests.push(newTest);
+            localStorage.setItem('biliMalTests', JSON.stringify(tests));
+
+            // Форманы баштапкы абалга келтирүү
+            document.getElementById('testTitle').value = '';
+            tempQuestions = [];
+            document.getElementById('questionCounter').innerText = '0';
+            toggleFormFields(); 
+
+            alert(`✅ Ийгиликтүү сакталды! Түзүлгөн тестте суроолордун саны: ${newTest.questions.length}. \nКоду: ${testId}`);
+            renderTests();
+        }
+
+        // --- 4. РОЛДОРДУ КОТОРУУ ---
         function switchRole(role) {
             document.getElementById('teacherPanel').classList.remove('active');
             document.getElementById('studentPanel').classList.remove('active');
@@ -318,53 +414,13 @@
                 document.getElementById('studentPanel').classList.add('active');
                 document.getElementById('btnStudent').classList.add('active-student');
                 
-                // Reset student view
                 document.getElementById('studentLoginArea').classList.add('active');
                 document.getElementById('studentTestProcessArea').classList.remove('active');
                 document.getElementById('studentSuccessArea').classList.remove('active');
             }
         }
 
-        // --- 3. ТЕСТТИ САКТОО ---
-        function saveTest() {
-            const title = document.getElementById('testTitle').value.trim();
-            const type = document.getElementById('testType').value;
-            
-            if (!title) { alert("Тесттин аталышын жазыңыз!"); return; }
-
-            const testId = 'TEST-' + Math.floor(1000 + Math.random() * 9000);
-            let newTest = { id: testId, title: title, type: type, date: new Date().toLocaleDateString() };
-
-            if (type === 'simple') {
-                newTest.question = document.getElementById('t_question').value.trim();
-                newTest.optA = document.getElementById('t_optA').value.trim();
-                newTest.optB = document.getElementById('t_optB').value.trim();
-                newTest.correct = document.getElementById('t_correctOpt').value;
-                if(!newTest.question || !newTest.optA || !newTest.optB) { alert("Суроону жана варианттарды толук толтуруңуз!"); return; }
-            } 
-            else if (type === 'pisa') {
-                newTest.pisaText = document.getElementById('t_pisaText').value.trim();
-                newTest.question = document.getElementById('t_question').value.trim();
-                if(!newTest.pisaText || !newTest.question) { alert("PISA текстин жана суроону жазыңыз!"); return; }
-            } 
-            else if (type === 'essay') {
-                newTest.question = document.getElementById('t_question').value.trim();
-                if(!newTest.question) { alert("Тапшырманын шартын жазыңыз!"); return; }
-            }
-
-            let tests = JSON.parse(localStorage.getItem('biliMalTests')) || [];
-            tests.push(newTest);
-            localStorage.setItem('biliMalTests', JSON.stringify(tests));
-
-            // Форманы тазалоо
-            document.getElementById('testTitle').value = '';
-            toggleFormFields(); 
-
-            alert(`✅ Тест сакталды! ID: ${testId}`);
-            renderTests();
-        }
-
-        // --- 4. ТЕСТТЕРДИ ЭКРАНГА ЧЫГАРУУ (Мугалим) ---
+        // --- 5. ТЕСТТЕРДИ ЭКРАНГА ЧЫГАРУУ ---
         function renderTests() {
             const container = document.getElementById('activeTestsList');
             container.innerHTML = '';
@@ -376,6 +432,7 @@
 
             tests.reverse().forEach(test => {
                 let typeName = test.type === 'simple' ? 'Жөнөкөй' : test.type === 'pisa' ? 'PISA Тест' : 'Эссе';
+                let qCount = test.questions ? test.questions.length : 1;
                 
                 const div = document.createElement('div');
                 div.className = 'list-item';
@@ -384,7 +441,8 @@
                         <div class="item-info">
                             <h4>${test.title}</h4>
                             <span class="badge">Код: ${test.id}</span>
-                            <span class="badge" style="color:#aaa; border-color:#333;">${typeName}</span>
+                            <span class="badge" style="color:#aaa; border-color:#333;">Суроолор: ${qCount}</span>
+                            <span class="badge" style="color:#00f0ff; border-color:#00f0ff;">${typeName}</span>
                         </div>
                     </div>
                     <div class="item-actions">
@@ -410,7 +468,7 @@
             }
         }
 
-        // --- 5. ТЕСТТИ БАШТОО (Окуучу) ---
+        // --- 6. ОКУУЧУНУН ТЕСТИН БАШТООСУ ---
         function startTest() {
             const name = document.getElementById('studentName').value.trim();
             const sClass = document.getElementById('studentClass').value;
@@ -425,98 +483,147 @@
                 currentActiveTestForStudent = foundTest;
                 currentActiveTestForStudent.studentName = name;
                 currentActiveTestForStudent.studentClass = sClass;
+                currentQuestionIndex = 0; // Биринчи суроодон баштайбыз
+                studentAnswers = []; // Жоопторду тазалайбыз
                 
                 document.getElementById('studentLoginArea').classList.remove('active');
                 document.getElementById('studentTestProcessArea').classList.add('active');
                 
-                document.getElementById('displayTestTitle').innerText = foundTest.title;
-                
                 let typeBadge = foundTest.type === 'simple' ? 'Жөнөкөй Тест' : foundTest.type === 'pisa' ? 'PISA Кырдаалдык Тест' : 'Эссе / Ачык суроо';
                 document.getElementById('displayTestTypeBadge').innerText = typeBadge;
 
-                const contentArea = document.getElementById('testContentArea');
-                let html = '';
-
-                if (foundTest.type === 'simple') {
-                    html = `
-                        <div class="question-box">${foundTest.question}</div>
-                        <div class="options-grid">
-                            <label class="option-label">
-                                <input type="radio" name="studentAns" value="A"> А) ${foundTest.optA}
-                            </label>
-                            <label class="option-label">
-                                <input type="radio" name="studentAns" value="B"> Б) ${foundTest.optB}
-                            </label>
-                        </div>
-                    `;
-                } else if (foundTest.type === 'pisa') {
-                    html = `
-                        <div class="pisa-scenario"><strong>Кырдаал (Окуу үчүн текст):</strong><br><br>${foundTest.pisaText}</div>
-                        <div class="question-box"><strong>Суроо:</strong><br>${foundTest.question}</div>
-                        <div class="form-group">
-                            <label>Сиздин кеңири жообуңуз:</label>
-                            <textarea id="studentTextAns" placeholder="Жоопту негиздеп жазыңыз..."></textarea>
-                        </div>
-                    `;
-                } else if (foundTest.type === 'essay') {
-                    html = `
-                        <div class="question-box"><strong>Тапшырма:</strong><br>${foundTest.question}</div>
-                        <div class="form-group">
-                            <label>Жообуңуз / Эссеңиз:</label>
-                            <textarea id="studentTextAns" placeholder="Бул жерге жазыңыз..."></textarea>
-                        </div>
-                    `;
-                }
-                contentArea.innerHTML = html;
-
+                showQuestionForStudent();
             } else {
                 alert("Ката! Мындай код менен тест табылган жок.");
             }
         }
 
-        // --- 6. ЖООПТУ ЖӨНӨТҮҮ (Окуучу) ---
-        function submitAnswer() {
-            let answerVal = "";
-            let status = "Текшерилүүдө";
-            let color = "#b533ff";
+        // --- 7. СУРООНУ ОКУУЧУГА КӨРСӨТҮҮ (ИНДЕКС БОЮНЧА) ---
+        function showQuestionForStudent() {
+            const foundTest = currentActiveTestForStudent;
+            const index = currentQuestionIndex;
+            const total = foundTest.questions.length;
+            
+            // Тесттин аталышы жана канчанчы суроо экени көрсөтүлөт
+            document.getElementById('displayTestTitle').innerText = `${foundTest.title} (${index + 1}/${total})`;
+            
+            const contentArea = document.getElementById('testContentArea');
+            let html = '';
+            const currentQ = foundTest.questions[index];
 
-            if (currentActiveTestForStudent.type === 'simple') {
+            if (foundTest.type === 'simple') {
+                html = `
+                    <div class="question-box"><strong>Суроо ${index + 1}:</strong><br>${currentQ.question}</div>
+                    <div class="options-grid">
+                        <label class="option-label">
+                            <input type="radio" name="studentAns" value="A"> А) ${currentQ.optA}
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="studentAns" value="B"> Б) ${currentQ.optB}
+                        </label>
+                    </div>
+                `;
+            } else if (foundTest.type === 'pisa') {
+                html = `
+                    <div class="pisa-scenario"><strong>Кырдаал (Окуу үчүн текст):</strong><br><br>${currentQ.pisaText}</div>
+                    <div class="question-box"><strong>Суроо ${index + 1}:</strong><br>${currentQ.question}</div>
+                    <div class="form-group">
+                        <label>Сиздин кеңири жообуңуз:</label>
+                        <textarea id="studentTextAns" placeholder="Жоопту негиздеп жазыңыз..."></textarea>
+                    </div>
+                `;
+            } else if (foundTest.type === 'essay') {
+                html = `
+                    <div class="question-box"><strong>Тапшырма ${index + 1}:</strong><br>${currentQ.question}</div>
+                    <div class="form-group">
+                        <label>Жообуңуз / Эссеңиз:</label>
+                        <textarea id="studentTextAns" placeholder="Бул жерге жазыңыз..."></textarea>
+                    </div>
+                `;
+            }
+            contentArea.innerHTML = html;
+
+            // Баскычтын текстин тууралоо
+            const actionBtn = document.querySelector('#studentTestProcessArea button');
+            if (index === total - 1) {
+                actionBtn.innerText = "Жоопту Жөнөтүү ✅";
+            } else {
+                actionBtn.innerText = "Кийинки суроо ➡️";
+            }
+        }
+
+        // --- 8. ОКУУЧУНУН ЖООБУН КАТТОО ЖАНА КИЙИНКИГЕ ӨТҮҮ ---
+        function submitAnswer() {
+            const foundTest = currentActiveTestForStudent;
+            const index = currentQuestionIndex;
+            const currentQ = foundTest.questions[index];
+            let answerVal = "";
+
+            if (foundTest.type === 'simple') {
                 const selected = document.querySelector('input[name="studentAns"]:checked');
                 if (!selected) { alert("Вариантты тандаңыз!"); return; }
-                answerVal = selected.value; // A же B
+                answerVal = selected.value;
                 
-                if (answerVal === currentActiveTestForStudent.correct) {
-                    status = "Туура (100%)"; color = "#00f0ff";
-                } else {
-                    status = "Ката (0%)"; color = "#ef4444";
-                }
-                answerVal = answerVal === 'A' ? "А варианты" : "Б варианты";
+                // Туура же ката экенин текшерүү
+                let isCorrect = (answerVal === currentQ.correct);
+                studentAnswers.push({
+                    qNum: index + 1,
+                    text: answerVal === 'A' ? "А варианты" : "Б варианты",
+                    isCorrect: isCorrect
+                });
             } else {
                 answerVal = document.getElementById('studentTextAns').value.trim();
                 if (!answerVal) { alert("Жоопту жазыңыз!"); return; }
-                status = "Мугалим текшерет ⏳";
+                studentAnswers.push({
+                    qNum: index + 1,
+                    text: answerVal,
+                    isCorrect: null
+                });
             }
 
-            const resultObj = {
-                student: currentActiveTestForStudent.studentName,
-                sClass: currentActiveTestForStudent.studentClass,
-                testId: currentActiveTestForStudent.id,
-                testTitle: currentActiveTestForStudent.title,
-                answer: answerVal,
-                status: status,
-                color: color,
-                time: new Date().toLocaleTimeString()
-            };
+            // Кийинки суроого өтүү же тестти бүтүрүү
+            if (currentQuestionIndex < foundTest.questions.length - 1) {
+                currentQuestionIndex++;
+                showQuestionForStudent();
+            } else {
+                // ТЕСТ ТОЛУК БҮТТҮ -> Базага жыйынтыкты сактайбыз
+                let status = "";
+                let color = "#b533ff";
+                let formattedResultHTML = "";
 
-            let results = JSON.parse(localStorage.getItem('biliMalResults')) || [];
-            results.push(resultObj);
-            localStorage.setItem('biliMalResults', JSON.stringify(results));
+                if (foundTest.type === 'simple') {
+                    let correctCount = studentAnswers.filter(a => a.isCorrect).length;
+                    let pct = Math.round((correctCount / foundTest.questions.length) * 100);
+                    status = `Жыйынтык: ${correctCount}/${foundTest.questions.length} (${pct}%)`;
+                    color = pct >= 50 ? "#00f0ff" : "#ef4444";
+                    
+                    formattedResultHTML = studentAnswers.map(a => `Суроо ${a.qNum}: ${a.text} (${a.isCorrect ? 'Туура ✅' : 'Ката ❌'})`).join('<br>');
+                } else {
+                    status = "Мугалим текшерет ⏳";
+                    formattedResultHTML = studentAnswers.map(a => `<strong>Суроо ${a.qNum}:</strong> ${a.text}`).join('<br><br>');
+                }
 
-            document.getElementById('studentTestProcessArea').classList.remove('active');
-            document.getElementById('studentSuccessArea').classList.add('active');
+                const resultObj = {
+                    student: foundTest.studentName,
+                    sClass: foundTest.studentClass,
+                    testId: foundTest.id,
+                    testTitle: foundTest.title,
+                    answer: formattedResultHTML,
+                    status: status,
+                    color: color,
+                    time: new Date().toLocaleTimeString()
+                };
+
+                let results = JSON.parse(localStorage.getItem('biliMalResults')) || [];
+                results.push(resultObj);
+                localStorage.setItem('biliMalResults', JSON.stringify(results));
+
+                document.getElementById('studentTestProcessArea').classList.remove('active');
+                document.getElementById('studentSuccessArea').classList.add('active');
+            }
         }
 
-        // --- 7. ЖЫЙЫНТЫКТАРДЫ КӨРСӨТҮҮ (Мугалим) ---
+        // --- 9. ЖЫЙЫНТЫКТАРДЫ КӨРСӨТҮҮ (Мугалим) ---
         function renderResults() {
             const container = document.getElementById('resultsList');
             container.innerHTML = '';
@@ -534,7 +641,7 @@
                         <h4>👤 ${res.student} <span style="font-size:0.8rem; color:#a1a1aa; font-weight:normal;">(${res.sClass} | ${res.time})</span></h4>
                         <p style="color: #a1a1aa; font-size: 0.85rem; margin-bottom: 8px;">Тест: ${res.testTitle}</p>
                         <div class="result-box">
-                            <p style="font-size:0.9rem; color:#e2e8f0;">📝 <strong>Жооп:</strong> ${res.answer}</p>
+                            <p style="font-size:0.9rem; color:#e2e8f0; line-height:1.4;">${res.answer}</p>
                         </div>
                     </div>
                     <div class="result-status" style="color: ${res.color};">${res.status}</div>
