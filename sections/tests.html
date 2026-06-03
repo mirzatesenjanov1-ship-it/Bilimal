@@ -367,6 +367,67 @@
             saveBtn.disabled = false;
         }
     }
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+    // 1. Өзүңүздүн Firebase конфигурацияңызды бул жерге жазыңыз
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "...",
+        appId: "..."
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // 2. Сактоо функциясы (window.saveTest деп жарыялап коёбуз)
+    window.saveTest = async function() {
+        const testTitle = document.getElementById('mainTestTitle').value.trim();
+        if (!testTitle) {
+            alert("⚠️ Теманы жазыңыз!");
+            return;
+        }
+
+        const blocks = document.querySelectorAll('.test-block[data-type]');
+        const questionsData = [];
+
+        blocks.forEach(block => {
+            const type = block.getAttribute('data-type');
+            let blockData = { type: type };
+            // ... (мурунку логиканы сактап каласыз)
+            if (type === 'simple') {
+                blockData.question = block.querySelector('.q-text').value;
+                // (ошондой эле калган бөлүктөрүн толук жазасыз)
+            }
+            questionsData.push(blockData);
+        });
+
+        const saveBtn = document.querySelector('.main-save-btn');
+        saveBtn.innerText = "⏳ Firebase'ге сакталууда...";
+        saveBtn.disabled = true;
+
+        try {
+            // Firebase Firestore'го жазуу
+            const docRef = await addDoc(collection(db, "tests"), {
+                title: testTitle,
+                questions: questionsData,
+                createdAt: new Date()
+            });
+
+            alert("✅ Ийгиликтүү! ID: " + docRef.id);
+        } catch (e) {
+            console.error("Ката:", e);
+            alert("❌ Ката кетти.");
+        } finally {
+            saveBtn.innerText = "💾 Тестти сактоо";
+            saveBtn.disabled = false;
+        }
+    }
+</script>
 </script>
 
 </body>
