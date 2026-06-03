@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bilimal.org - Таза Тест Конструктору</title>
+    <title>BilimAl.org - Акылдуу Тест Конструктору</title>
     <style>
         :root {
             --bg-color: #0b0f19;
             --card-bg: #151b29;
             --primary: #00d2ff;
+            --success: #10b981;
             --text-main: #e2e8f0;
             --text-muted: #94a3b8;
             --danger: #ef4444;
@@ -35,22 +36,37 @@
             border-bottom: 1px solid var(--border);
         }
         
-        /* Негизги баскыч */
-        .main-add-btn {
-            background-color: var(--primary);
-            color: #000;
+        /* Баскычтардын блогу */
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            margin-top: 20px;
+        }
+        .btn {
             border: none;
             padding: 15px 20px;
             font-size: 16px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            width: 100%;
             transition: 0.3s;
-            margin-bottom: 30px;
+            flex: 1;
+        }
+        .main-add-btn {
+            background-color: var(--primary);
+            color: #000;
             box-shadow: 0 4px 6px rgba(0, 210, 255, 0.2);
         }
         .main-add-btn:hover { background-color: #00b8e6; transform: translateY(-2px); }
+        
+        .main-save-btn {
+            background-color: var(--success);
+            color: white;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.2);
+        }
+        .main-save-btn:hover { background-color: #059669; transform: translateY(-2px); }
+        .main-save-btn:disabled { background-color: #064e3b; cursor: not-allowed; transform: none; box-shadow: none;}
 
         /* Тест блоктору */
         .test-block {
@@ -83,7 +99,7 @@
         }
         .btn-remove:hover { background-color: var(--danger); color: white; }
 
-        /* Формат тандоочу меню (Блоктун ичинде) */
+        /* Формат тандоочу меню */
         .type-selector {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -104,7 +120,7 @@
         .type-card p { margin: 0; font-size: 12px; color: var(--text-muted); }
 
         /* Жалпы форма элементтери */
-        input[type="text"], input[type="number"], textarea, select {
+        input[type="text"], input[type="number"], textarea {
             width: 100%;
             padding: 10px;
             border-radius: 6px;
@@ -118,14 +134,7 @@
         textarea { resize: vertical; }
         label { font-size: 12px; color: var(--text-muted); }
 
-        /* PISA формасы */
-        .pisa-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        
-        /* Варианттар */
+        .pisa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .option-item { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
         .option-item input[type="radio"] { transform: scale(1.2); cursor: pointer; }
     </style>
@@ -134,18 +143,21 @@
 
 <div class="container">
     <div class="header">
-        <h2>🛠 БилимАс: Акылдуу Тест Конструктору</h2>
+        <h2>🛠 BilimAl: Акылдуу Тест Конструктору</h2> 
     </div>
 
     <div id="testContainer"></div>
 
-    <button class="main-add-btn" onclick="addEmptyBlock()">+ Жаңы суроо блогун кошуу</button>
+    <div class="action-buttons">
+        <button class="btn main-add-btn" onclick="addEmptyBlock()">+ Жаңы суроо блогун кошуу</button>
+        <button class="btn main-save-btn" onclick="saveTest()">💾 Тестти маалымат базасына сактоо</button>
+    </div>
 </div>
 
 <script>
     let blockCount = 0;
 
-    // 1-КАДАМ: Бош блок кошуу
+    // 1. Бош блок кошуу функциясы
     function addEmptyBlock() {
         blockCount++;
         const container = document.getElementById("testContainer");
@@ -153,8 +165,8 @@
         const block = document.createElement("div");
         block.className = "test-block";
         block.id = `block-${blockCount}`;
+        block.setAttribute('data-id', blockCount); 
 
-        // Бош блоктун ичиндеги формат тандоо менюсу
         block.innerHTML = `
             <div class="test-block-header">
                 <span class="block-title">Суроо #${blockCount} - Форматты тандаңыз</span>
@@ -178,15 +190,14 @@
         `;
 
         container.appendChild(block);
-        
-        // Экранды жаңы кошулган блокко жылдыруу
         block.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    // 2-КАДАМ: Тандалган форматка жараша блокту куруу
+    // 2. Блокту тандалган форматка жараша куруу
     function buildBlock(id, type) {
-        // Тандоо менюсун жашырабыз
         document.getElementById(`selector-${id}`).style.display = 'none';
+        const block = document.getElementById(`block-${id}`);
+        block.setAttribute('data-type', type); 
         
         const contentDiv = document.getElementById(`content-${id}`);
         const headerTitle = document.querySelector(`#block-${id} .block-title`);
@@ -195,14 +206,14 @@
             headerTitle.innerHTML = `📝 Жөнөкөй Суроо #${id}`;
             contentDiv.innerHTML = `
                 <label>Суроонун тексти:</label>
-                <input type="text" placeholder="Мисалы: Ньютондун экинчи мыйзамынын формуласы кайсы?">
+                <input type="text" class="q-text" placeholder="Мисалы: Ньютондун экинчи мыйзамынын формуласы кайсы?">
                 
                 <div style="margin-top: 15px;">
                     <label>Жооптун варианттары (Туура жоопту белгилеңиз):</label>
-                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" placeholder="А варианты..."></div>
-                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" placeholder="Б варианты..."></div>
-                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" placeholder="В варианты..."></div>
-                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" placeholder="Г варианты..."></div>
+                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" class="opt-text" placeholder="А варианты..."></div>
+                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" class="opt-text" placeholder="Б варианты..."></div>
+                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" class="opt-text" placeholder="В варианты..."></div>
+                    <div class="option-item"><input type="radio" name="correct-${id}"> <input type="text" class="opt-text" placeholder="Г варианты..."></div>
                 </div>
             `;
         } else if (type === 'pisa') {
@@ -211,16 +222,14 @@
                 <div class="pisa-grid">
                     <div>
                         <label>Окуя / Текст / Шарт (Сол жак бөлүк):</label>
-                        <textarea placeholder="Бул жерге текстти жазыңыз..." style="height: 150px;"></textarea>
-                        <label style="display:block; margin-top:10px;">Сүрөт же график тиркөө:</label>
-                        <input type="file" style="font-size:12px;">
+                        <textarea class="pisa-context" placeholder="Бул жерге текстти жазыңыз..." style="height: 150px;"></textarea>
                     </div>
                     <div>
                         <label>Текстке тиешелүү суроо жана жооп талаасы (Оң жак бөлүк):</label>
-                        <textarea placeholder="1-суроо: Графиктеги өзгөрүүнү түшүндүрүңүз..." style="height: 100px;"></textarea>
+                        <textarea class="pisa-questions" placeholder="1-суроо: Графиктеги өзгөрүүнү түшүндүрүңүз..." style="height: 100px;"></textarea>
                         <div style="margin-top: 15px; padding: 10px; background: var(--bg-color); border: 1px dashed var(--border); border-radius: 6px;">
                             <label>Баалоо критерийи (Мугалим үчүн):</label>
-                            <input type="text" placeholder="Мисалы: Толук жооп үчүн - 2 балл, жарым үчүн - 1 балл">
+                            <input type="text" class="pisa-criteria" placeholder="Мисалы: Толук жооп үчүн - 2 балл, жарым үчүн - 1 балл">
                         </div>
                     </div>
                 </div>
@@ -229,31 +238,98 @@
             headerTitle.innerHTML = `🎧 Аудио-Диктант / Эссе #${id}`;
             contentDiv.innerHTML = `
                 <label>Тапшырманын темасы же шарты:</label>
-                <input type="text" placeholder="Мисалы: Электромагниттик индукция боюнча эссе жаз">
+                <input type="text" class="essay-topic" placeholder="Мисалы: Электромагниттик индукция боюнча эссе жаз">
                 
                 <div style="margin-top: 15px; padding: 15px; border: 1px solid var(--border); border-radius: 6px; background-color: var(--bg-color);">
-                    <label>Аудио файл жүктөө (Милдеттүү эмес):</label>
-                    <div style="display: flex; gap: 15px; align-items: center; margin-top: 5px;">
-                        <input type="file" accept="audio/*" style="width: auto;">
-                        <span style="font-size: 12px; color: var(--text-muted);">же Шилтеме:</span>
-                        <input type="text" placeholder="URL шилтеме...">
-                    </div>
+                    <label>Аудио шилтеме (Милдеттүү эмес):</label>
+                    <input type="text" class="essay-link" placeholder="Аудио файлдын URL шилтемеси...">
                 </div>
 
                 <div style="margin-top: 15px;">
                     <label>Жооптун минималдуу сөз саны (чектөө):</label>
-                    <input type="number" placeholder="Мисалы: 150" style="width: 200px; display: block;">
+                    <input type="number" class="essay-min" placeholder="Мисалы: 150" style="width: 200px; display: block;">
                 </div>
             `;
         }
     }
 
-    // Блокту өчүрүү функциясы
+    // 3. Блокту өчүрүү
     function removeBlock(id) {
         const block = document.getElementById(`block-${id}`);
         if (block) {
             block.style.opacity = '0';
             setTimeout(() => { block.remove(); }, 300);
+        }
+    }
+
+    // 4. ТЕСТТИ САКТОО ЖАНА СЕРВЕРГЕ (PHP) ЖӨНӨТҮҮ
+    async function saveTest() {
+        const blocks = document.querySelectorAll('.test-block[data-type]');
+        const testData = [];
+
+        if(blocks.length === 0) {
+            alert("Сактоо үчүн жок дегенде 1 суроо блогун толтуруңуз!");
+            return;
+        }
+
+        // Маалыматтарды HTML формадан окуп алуу
+        blocks.forEach(block => {
+            const id = block.getAttribute('data-id');
+            const type = block.getAttribute('data-type');
+            let blockData = { id: id, type: type };
+
+            if (type === 'simple') {
+                blockData.question = block.querySelector('.q-text').value;
+                blockData.options = [];
+                const optionInputs = block.querySelectorAll('.opt-text');
+                const radioInputs = block.querySelectorAll(`input[name="correct-${id}"]`);
+                
+                optionInputs.forEach((opt, index) => {
+                    blockData.options.push({
+                        text: opt.value,
+                        isCorrect: radioInputs[index].checked
+                    });
+                });
+            } else if (type === 'pisa') {
+                blockData.context = block.querySelector('.pisa-context').value;
+                blockData.questions = block.querySelector('.pisa-questions').value;
+                blockData.criteria = block.querySelector('.pisa-criteria').value;
+            } else if (type === 'essay') {
+                blockData.topic = block.querySelector('.essay-topic').value;
+                blockData.audioLink = block.querySelector('.essay-link').value;
+                blockData.minWords = block.querySelector('.essay-min').value;
+            }
+            testData.push(blockData);
+        });
+
+        const saveBtn = document.querySelector('.main-save-btn');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = "⏳ Сакталууда...";
+        saveBtn.disabled = true;
+
+        // PHP серверге жөнөтүү
+        try {
+            const response = await fetch('save_test.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testData)
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+                alert("✅ Ийгиликтүү! Тест маалымат базасына сакталды.\nТест коду: " + result.test_code);
+            } else {
+                alert("❌ Ката чыкты: " + result.message);
+            }
+        } catch (error) {
+            console.error("Сервер катасы:", error);
+            alert("❌ Серверге туташууда ката кетти. save_test.php файлы ордунда экенин текшериңиз.");
+        } finally {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
         }
     }
 </script>
