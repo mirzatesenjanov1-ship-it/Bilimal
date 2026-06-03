@@ -36,6 +36,22 @@
             border-bottom: 1px solid var(--border);
         }
         
+        /* Тесттин жалпы маалымат блогу */
+        .test-info-block {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid var(--primary); /* Башкалардан айырмаланып турушу үчүн көк чек */
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
+        }
+        .test-info-block h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
         /* Баскычтардын блогу */
         .action-buttons {
             display: flex;
@@ -144,6 +160,12 @@
 <div class="container">
     <div class="header">
         <h2>🛠 BilimAl: Акылдуу Тест Конструктору</h2> 
+    </div>
+
+    <div class="test-info-block">
+        <h3>📋 Тесттин жалпы маалыматы</h3>
+        <label>Кайсы бөлүм же предмет боюнча түзүлдү?</label>
+        <input type="text" id="mainTestTitle" placeholder="Мисалы: 10-класс Физика: Омдун мыйзамы (1-чейрек үчүн)">
     </div>
 
     <div id="testContainer"></div>
@@ -262,17 +284,25 @@
         }
     }
 
-    // 4. ТЕСТТИ САКТОО ЖАНА СЕРВЕРГЕ (PHP) ЖӨНӨТҮҮ
+    // 4. ТЕСТТИ САКТОО ЖАНА СЕРВЕРГЕ ЖӨНӨТҮҮ
     async function saveTest() {
-        const blocks = document.querySelectorAll('.test-block[data-type]');
-        const testData = [];
-
-        if(blocks.length === 0) {
-            alert("Сактоо үчүн жок дегенде 1 суроо блогун толтуруңуз!");
+        const testTitle = document.getElementById('mainTestTitle').value.trim();
+        
+        // Теманын жазылганын текшерүү
+        if (!testTitle) {
+            alert("⚠️ Сураныч, эң жогору жактагы 'Кайсы бөлүм же предмет боюнча түзүлдү?' деген жерди толтуруңуз!");
+            document.getElementById('mainTestTitle').focus();
             return;
         }
 
-        // Маалыматтарды HTML формадан окуп алуу
+        const blocks = document.querySelectorAll('.test-block[data-type]');
+        const questionsData = [];
+
+        if(blocks.length === 0) {
+            alert("⚠️ Сактоо үчүн жок дегенде 1 суроо блогун толтуруңуз!");
+            return;
+        }
+
         blocks.forEach(block => {
             const id = block.getAttribute('data-id');
             const type = block.getAttribute('data-type');
@@ -299,22 +329,27 @@
                 blockData.audioLink = block.querySelector('.essay-link').value;
                 blockData.minWords = block.querySelector('.essay-min').value;
             }
-            testData.push(blockData);
+            questionsData.push(blockData);
         });
+
+        // БАРДЫК МААЛЫМАТТЫ БИР ОБЪЕКТКЕ ЧОГУЛТУУ
+        const finalPayload = {
+            title: testTitle,
+            questions: questionsData
+        };
 
         const saveBtn = document.querySelector('.main-save-btn');
         const originalText = saveBtn.innerHTML;
         saveBtn.innerHTML = "⏳ Сакталууда...";
         saveBtn.disabled = true;
 
-        // PHP серверге жөнөтүү
         try {
             const response = await fetch('save_test.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(testData)
+                body: JSON.stringify(finalPayload)
             });
 
             const result = await response.json();
