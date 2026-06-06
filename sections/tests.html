@@ -14,7 +14,6 @@
             --text-muted: #94a3b8;
             --danger: #ef4444;
             --border: #1e293b;
-            --hover-bg: #1e293b;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -23,12 +22,12 @@
             padding: 20px;
             margin: 0;
         }
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .navbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid var(--border); }
-        .logo { font-size: 24px; font-weight: bold; color: var(--primary); }
-        .user-info { font-size: 14px; color: var(--success); background: rgba(16, 185, 129, 0.1); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--success); }
+        .logo { font-size: 24px; font-weight: bold; color: var(--primary); text-decoration: none; }
+        .user-info { font-size: 14px; color: var(--success); background: rgba(16, 185, 129, 0.1); padding: 5px 15px; border-radius: 20px; border: 1px solid var(--success); }
         
-        .main-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 30px; }
+        .main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 30px; }
         .card { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 25px; margin-bottom: 25px; }
         .card-title { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 0; margin-bottom: 20px; }
 
@@ -44,6 +43,7 @@
         .btn-save { background-color: var(--success); color: white; width: 100%; font-size: 16px; padding: 15px; margin-top: 20px; }
         .btn-danger { background-color: var(--danger); color: white; padding: 6px 12px; font-size: 13px; border-radius: 4px; border:none; cursor: pointer;}
         .btn-edit { background-color: #f59e0b; color: white; padding: 6px 12px; font-size: 13px; border-radius: 4px; border:none; cursor: pointer;}
+        .btn-link { background-color: #3b82f6; color: white; padding: 6px 12px; font-size: 13px; border-radius: 4px; border:none; cursor: pointer;}
         .btn-secondary { background: #1e293b; color: var(--text-main); border: 1px solid var(--border); font-size: 13px; padding: 6px 12px; border-radius: 4px; cursor:pointer;}
 
         .question-block { background: var(--bg-color); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-top: 15px; }
@@ -56,8 +56,10 @@
         .badge { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
         .badge-code { background: rgba(0, 210, 255, 0.1); color: var(--primary); border: 1px solid var(--primary); }
         
-        /* Жыйынтыктар таблицасы */
-        .results-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        /* Таблица жана фильтр */
+        .filter-container { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .filter-select { width: 180px; padding: 8px; background: var(--bg-color); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; }
+        .results-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         .results-table th, .results-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
         .results-table th { color: var(--text-muted); }
         .grade-5 { color: #10b981; font-weight: bold; }
@@ -82,19 +84,17 @@
 
 <div class="container">
     <div class="navbar">
-        <div class="logo">BiliMal.org</div>
-        <div id="authStatusBlock" class="user-info">🔄 Колдонуучу текшерилүүдө...</div>
-        <div>
-            <a href="#" id="logoutBtn" style="color: var(--danger); text-decoration: none; font-size: 14px; margin-left: 15px; display:none;">Чыгуу 🚪</a>
-        </div>
+        <a href="/" class="logo">BiliMal.org</a>
+        <div id="authStatusBlock" class="user-info">🔄 Текшерилүүдө...</div>
+        <a href="#" id="logoutBtn" style="color: var(--danger); text-decoration: none; font-size: 14px; margin-left: 15px; display:none;">Чыгуу 🚪</a>
     </div>
 
     <div class="main-grid">
         
+        <!-- СОЛ ЖАК: ТЕСТ КОНСТРУКТОРУ -->
         <div>
             <div class="card">
                 <div class="card-title" id="formFormTitle">🛠 Жаңы Тапшырма / Тест Түзүү</div>
-                
                 <input type="hidden" id="editingTestKey" value="">
 
                 <div class="form-group">
@@ -131,16 +131,24 @@
             </div>
         </div>
 
+        <!-- ОҢ ЖАК: АКТИВДҮҮ ТЕСТТЕР ЖАНА КЛАСС БОЙОНЧА МОНИТОРИНГ -->
         <div>
             <div class="card">
                 <div class="card-title">📋 Сиздин Активдүү Тесттериңиз</div>
-                <div id="activeTestsList">
-                    <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px;">Сураныч, адегенде системага кириңиз...</div>
-                </div>
+                <div id="activeTestsList"></div>
             </div>
 
             <div class="card">
                 <div class="card-title">📊 Жыйынтыктар & Мониторинг (Баалоо)</div>
+                
+                <!-- КЛАССТАРДЫ СУЗУП ФИЛЬТРЛӨӨҮ -->
+                <div class="filter-container">
+                    <label for="classFilter">Класс тандаңыз:</label>
+                    <select id="classFilter" class="filter-select">
+                        <option value="all">🌐 Бардык класстар</option>
+                    </select>
+                </div>
+
                 <div id="resultsMonitorContainer">
                     <div style="color: var(--text-muted); font-size: 14px; text-align: center; padding: 10px;">Жыйынтыктар жүктөлүүдө...</div>
                 </div>
@@ -155,6 +163,7 @@
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
+    // Сиздин Firebase конфигурацияңыз
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -171,46 +180,39 @@
 
     let currentTeacherUid = null;
     let selectedQuestionType = 'simple';
+    let globalResultsArray = []; // Фильтрлөө үчүн жыйынтыктарды убактылуу сактоочу массив
 
     const testQuestionsContainer = document.getElementById("testQuestionsContainer");
     const questionCountBadge = document.getElementById("questionCountBadge");
     const activeTestsList = document.getElementById("activeTestsList");
     const resultsMonitorContainer = document.getElementById("resultsMonitorContainer");
+    const classFilter = document.getElementById("classFilter");
     const saveTestBtn = document.getElementById("saveTestBtn");
     const editingTestKey = document.getElementById("editingTestKey");
 
-    // Түр тандалгандагы визуалдык эффект
     window.selectType = function(type) {
         selectedQuestionType = type;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`type-${type}`).classList.add('active');
     }
 
-    // 1. АВТОРИЗАЦИЯНЫ ТЕКШЕРҮҮ (Ар бир мугалим өзүнүкүн көрөт)
+    // АВТОРИЗАЦИЯ
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentTeacherUid = user.uid;
             document.getElementById("authStatusBlock").innerText = `👨‍🏫 Мугалим: ${user.email}`;
             document.getElementById("logoutBtn").style.display = "inline";
-            
-            // Базадан ушул мугалимдин маалыматын гана угуу
             loadTeacherTests();
             loadStudentResults();
         } else {
-            // Эгер логин боло элек болсо, авторизация барагына багыттоо керек
-            document.getElementById("authStatusBlock").innerText = "⚠️ Сиз кирген жоксуз!";
-            activeTestsList.innerHTML = "<div style='color:var(--danger); text-align:center;'>Сураныч, катталып кириңиз!</div>";
-            // window.location.href = "login.html"; // Логин барагыңыз бар болсо ачыңыз
+            document.getElementById("authStatusBlock").innerText = "⚠️ Кирген жоксуз";
+            activeTestsList.innerHTML = "<div style='color:var(--danger); text-align:center;'>Сураныч, кирүүдөн өтүңүз.</div>";
         }
     });
 
-    // Чыгуу функциясы
     document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
 
-    // 2. СУРОО БЛОКТОРУН ТҮЗҮҮ
-    document.getElementById("addBlockBtn").addEventListener("click", () => {
-        addQuestionBlock({}, selectedQuestionType);
-    });
+    document.getElementById("addBlockBtn").addEventListener("click", () => addQuestionBlock({}, selectedQuestionType));
 
     function addQuestionBlock(data = {}, type = 'simple') {
         const qId = data.id || Date.now();
@@ -237,14 +239,14 @@
                 <div class="block-header"><strong>📊 PISA Блогу</strong> <button class="btn-danger" style="padding:2px 8px;" onclick="document.getElementById('q-${qId}').remove(); updateCount();">X</button></div>
                 <textarea class="pisa-context" placeholder="Окуя / Контекст тексти..." style="margin-bottom:10px; height:80px;">${data.context || ''}</textarea>
                 <input type="text" class="pisa-question" value="${data.question || ''}" placeholder="Бул текстке тиешелүү суроо..." style="margin-bottom:10px;">
-                <input type="text" class="pisa-criteria" value="${data.criteria || ''}" placeholder="Баалоо критерийи (Мугалим үчүн)...">
+                <input type="text" class="pisa-criteria" value="${data.criteria || ''}" placeholder="Баалоо критерийи...">
             `;
         } else if (type === "essay") {
             innerHTML = `
                 <div class="block-header"><strong>🎧 Аудио-Диктант / Эссе</strong> <button class="btn-danger" style="padding:2px 8px;" onclick="document.getElementById('q-${qId}').remove(); updateCount();">X</button></div>
-                <input type="text" class="essay-topic" value="${data.topic || ''}" placeholder="Эссенин темасы же тапшырма шарты..." style="margin-bottom:10px;">
-                <input type="text" class="essay-link" value="${data.audioLink || ''}" placeholder="Аудио шилтеме (же файл URL)..." style="margin-bottom:10px;">
-                <input type="number" class="essay-min" value="${data.minWords || ''}" placeholder="Минималдуу сөз саны (чектөө)" style="width:200px;">
+                <input type="text" class="essay-topic" value="${data.topic || ''}" placeholder="Эссе темасы..." style="margin-bottom:10px;">
+                <input type="text" class="essay-link" value="${data.audioLink || ''}" placeholder="Аудио шилтеме..." style="margin-bottom:10px;">
+                <input type="number" class="essay-min" value="${data.minWords || ''}" placeholder="Минималдуу сөз саны" style="width:200px;">
             `;
         }
 
@@ -257,29 +259,26 @@
         questionCountBadge.innerText = document.querySelectorAll(".question-block").length;
     };
 
-    // 3. САКТОО ЖАНА ӨЗГӨРТҮҮ (МУГАЛИМДИН UID ИЧИНЕ ЖАЗУУ)
+    // САКТОО СИСТЕМАСЫ
     saveTestBtn.addEventListener("click", async () => {
         if (!currentTeacherUid) return;
         const testTitle = document.getElementById("mainTestTitle").value.trim();
         const antiCheatActive = document.getElementById("antiCheatToggle").checked;
         const blocks = document.querySelectorAll(".question-block");
 
-        if (!testTitle) { alert("⚠️ Сураныч, Тесттин темасын жазыңыз!"); return; }
-        if (blocks.length === 0) { alert("⚠️ Кеминде 1 суроо кошуңуз!"); return; }
+        if (!testTitle) { alert("Тапшырманын аталышын жазыңыз!"); return; }
+        if (blocks.length === 0) { alert("Кеминде 1 суроо кошуңуз!"); return; }
 
         const preparedQuestions = [];
         blocks.forEach(block => {
             const type = block.getAttribute("data-type");
             let data = { type: type };
-
             if (type === "simple") {
                 data.question = block.querySelector(".q-text").value;
                 data.options = [];
                 const txts = block.querySelectorAll(".opt-text");
                 const rds = block.querySelectorAll("input[type='radio']");
-                txts.forEach((t, i) => {
-                    data.options.push({ text: t.value, isCorrect: rds[i].checked });
-                });
+                txts.forEach((t, i) => { data.options.push({ text: t.value, isCorrect: rds[i].checked }); });
             } else if (type === "pisa") {
                 data.context = block.querySelector(".pisa-context").value;
                 data.question = block.querySelector(".pisa-question").value;
@@ -293,13 +292,11 @@
         });
 
         saveTestBtn.disabled = true;
-        
         let isEdit = editingTestKey.value !== "";
         let testKey = isEdit ? editingTestKey.value : push(ref(db, `teachers_data/${currentTeacherUid}/tests`)).key;
         let testCode = isEdit ? document.getElementById(`code-${testKey}`).innerText : "TEST-" + Math.floor(1000 + Math.random() * 9000);
 
         try {
-            // Мугалимдин жеке папкасына сактоо
             await set(ref(db, `teachers_data/${currentTeacherUid}/tests/${testKey}`), {
                 test_code: testCode,
                 title: testTitle,
@@ -308,13 +305,12 @@
                 created_at: Date.now()
             });
 
-            // Окуучулар издей турган глобалдык издөө түйүнүн жаңыртуу
             await set(ref(db, `global_test_lookup/${testCode}`), {
                 teacher_uid: currentTeacherUid,
                 test_id: testKey
             });
 
-            alert(isEdit ? "✅ Тест ийгиликтүү өзгөртүлдү!" : `✅ Жаңы тест базага кошулду! Коду: ${testCode}`);
+            alert(isEdit ? "✅ Тест жаңыртылды!" : `✅ Тест түзүлдү! Коду: ${testCode}`);
             resetForm();
         } catch (e) {
             alert("Ката чыкты: " + e.message);
@@ -323,7 +319,6 @@
         }
     });
 
-    // Түзөтүүнү жокко чыгаруу
     document.getElementById("cancelEditBtn").addEventListener("click", resetForm);
 
     function resetForm() {
@@ -335,19 +330,23 @@
         updateCount();
     }
 
-    // 4. ТЕСТТЕРДИН ТИЗМЕСИН ГЕНЕРАЦИЯЛОО ЖАНА РЕДАКЦИЯЛОО
+    // ТЕСТТЕРДИ ЖҮКТӨӨ ЖАНА ССЫЛКА ГЕНЕРАЦИЯЛОО
     function loadTeacherTests() {
         const myTestsRef = ref(db, `teachers_data/${currentTeacherUid}/tests`);
         onValue(myTestsRef, (snapshot) => {
             activeTestsList.innerHTML = "";
             if (!snapshot.exists()) {
-                activeTestsList.innerHTML = "<div style='color:var(--text-muted); text-align:center;'>Сизде азырынча тесттер жок.</div>";
+                activeTestsList.innerHTML = "<div style='color:var(--text-muted); text-align:center;'>Тесттериңиз жок.</div>";
                 return;
             }
 
             snapshot.forEach((child) => {
                 const key = child.key;
                 const test = child.val();
+                
+                // Түз шилтемени автоматтык түрдө куруу (Сиздин доменге ылайыкташкан)
+                const testLink = `${window.location.origin}/sections/take-test.html?code=${test.test_code}`;
+
                 const item = document.createElement("div");
                 item.className = "test-list-item";
                 item.innerHTML = `
@@ -356,9 +355,10 @@
                         <span class="badge badge-code">Код: <span id="code-${key}">${test.test_code}</span></span>
                         <span class="badge" style="background:#334155;">Суроолор: ${test.questions ? test.questions.length : 0}</span>
                     </div>
-                    <div style="display:flex; gap:8px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-link" onclick="copyLink('${testLink}')">🔗 Ссылканы көчүрүү</button>
                         <button class="btn-edit" onclick="editTest('${key}')">✏️ Өзгөртүү</button>
-                        <button class="btn-danger" style="padding:4px 10px;" onclick="deleteTest('${key}', '${test.test_code}')">🗑️ Өчүрүү</button>
+                        <button class="btn-danger" style="padding:4px 10px;" onclick="deleteTest('${key}', '${test.test_code}')">🗑️</button>
                     </div>
                 `;
                 activeTestsList.appendChild(item);
@@ -366,78 +366,127 @@
         });
     }
 
-    // ТЕСТТИ КАЙРА РЕДАКЦИЯЛООГО АЛЫП КЕЛҮҮ ФУНКЦИЯСЫ
+    // Ссылканы алмашуу буферине көчүрүү функциясы
+    window.copyLink = function(link) {
+        navigator.clipboard.writeText(link).then(() => {
+            alert("🔗 Тесттин түз шилтемеси көчүрүлдү! Окуучуларга жөнөтсөңүз болот.");
+        }).catch(err => {
+            alert("Көчүрүү мүмкүн болгон жок, шилтеме: " + link);
+        });
+    }
+
     window.editTest = function(key) {
         const testRef = ref(db, `teachers_data/${currentTeacherUid}/tests/${key}`);
         onValue(testRef, (snapshot) => {
             const test = snapshot.val();
             if (!test) return;
-
             document.getElementById("mainTestTitle").value = test.title;
             document.getElementById("antiCheatToggle").checked = test.anti_cheat;
             editingTestKey.value = key;
-
             document.getElementById("formFormTitle").innerText = "✏️ Тестти Өзгөртүү режими";
             document.getElementById("cancelEditBtn").style.display = "block";
-
             testQuestionsContainer.innerHTML = "";
             if(test.questions) {
-                test.questions.forEach((q, index) => {
-                    addQuestionBlock({...q, id: index}, q.type);
-                });
+                test.questions.forEach((q, index) => { addQuestionBlock({...q, id: index}, q.type); });
             }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }, { onlyOnce: true });
     };
 
-    // Тестти өчүрүү
     window.deleteTest = async function(key, code) {
-        if(confirm("Бул тестти жана анын кодун өчүрүүнү каалайсызбы?")) {
+        if(confirm("Өчүрүүнү каалайсызбы?")) {
             await remove(ref(db, `teachers_data/${currentTeacherUid}/tests/${key}`));
             await remove(ref(db, `global_test_lookup/${code}`));
         }
     }
 
-    // 5. ОКУУЧУЛАРДЫН ЖЫЙЫНТЫКТАРЫН РЕАЛДЫК УБАГЫНДА МОНИТОРИНГ КЫЛУУ
+    // ЖЫЙЫНТЫКТАРДЫ ЖҮКТӨӨ ЖАНА КЛАСС БОЙОНЧА ФИЛЬТРЛӨӨ
     function loadStudentResults() {
         const resultsRef = ref(db, `teachers_data/${currentTeacherUid}/results`);
         onValue(resultsRef, (snapshot) => {
+            globalResultsArray = [];
+            const availableClasses = new Set();
+
             if (!snapshot.exists()) {
-                resultsMonitorContainer.innerHTML = "<div style='color:var(--text-muted); text-align:center; padding:15px;'>Окуучулардан азырынча жооп түшө элек.</div>";
+                resultsMonitorContainer.innerHTML = "<div style='color:var(--text-muted); text-align:center;'>Окуучулардан жооп түшө элек.</div>";
                 return;
             }
 
-            let tableHTML = `
-                <table class="results-table">
-                    <thead>
-                        <tr>
-                            <th>Окуучу</th>
-                            <th>Класс</th>
-                            <th>Тест коду</th>
-                            <th>Балл</th>
-                            <th>Баа</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-
             snapshot.forEach((child) => {
                 const res = child.val();
-                tableHTML += `
-                    <tr>
-                        <td><strong>${res.student_name}</strong></td>
-                        <td>${res.class}</td>
-                        <td><span style="color:var(--primary)">${res.test_code}</span></td>
-                        <td>${res.score}/${res.max_score}</td>
-                        <td><span class="grade-${res.grade}">${res.grade}</span></td>
-                    </tr>
-                `;
+                globalResultsArray.push(res);
+                if (res.class) {
+                    availableClasses.add(res.class.trim());
+                }
             });
 
-            tableHTML += `</tbody></table>`;
-            resultsMonitorContainer.innerHTML = tableHTML;
+            // Селекттин ичиндеги класстардын тизмесин жаңыртуу (11-А, 11-Б ж.б.)
+            const currentSelected = classFilter.value;
+            classFilter.innerHTML = '<option value="all">🌐 Бардык класстар</option>';
+            
+            // Сорттолгон класстарды кошуу
+            Array.from(availableClasses).sort().forEach(className => {
+                const opt = document.createElement("option");
+                opt.value = className;
+                opt.innerText = `🏫 ${className} классы`;
+                classFilter.appendChild(opt);
+            });
+
+            // Мурда тандалган класс жоголуп кетпеши үчүн кайра ордуна коюу
+            classFilter.value = currentSelected ? currentSelected : "all";
+
+            // Таблицаны көрсөтүү
+            renderResultsTable(classFilter.value);
         });
     }
+
+    // Таблицаны тандалган класс боюнча экранга чыгаруучу функция
+    function renderResultsTable(selectedClass) {
+        let filteredData = globalResultsArray;
+        
+        if (selectedClass !== "all") {
+            filteredData = globalResultsArray.filter(item => item.class && item.class.trim() === selectedClass);
+        }
+
+        if (filteredData.length === 0) {
+            resultsMonitorContainer.innerHTML = "<div style='color:var(--text-muted); text-align:center; padding:15px;'>Бул класста азырынча жыйынтык жок.</div>";
+            return;
+        }
+
+        let tableHTML = `
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Окуучу</th>
+                        <th>Класс</th>
+                        <th>Тест коду</th>
+                        <th>Балл</th>
+                        <th>Баа</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        filteredData.forEach((res) => {
+            tableHTML += `
+                <tr>
+                    <td><strong>${res.student_name}</strong></td>
+                    <td><span style="color: #a78bfa; font-weight:bold;">${res.class}</span></td>
+                    <td><span style="color:var(--primary)">${res.test_code}</span></td>
+                    <td>${res.score}/${res.max_score}</td>
+                    <td><span class="grade-${res.grade}">${res.grade}</span></td>
+                </tr>
+            `;
+        });
+
+        tableHTML += `</tbody></table>`;
+        resultsMonitorContainer.innerHTML = tableHTML;
+    }
+
+    // Фильтр өзгөргөндө таблицаны кайра куруу
+    classFilter.addEventListener("change", (e) => {
+        renderResultsTable(e.target.value);
+    });
 
 </script>
 
