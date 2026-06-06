@@ -56,7 +56,6 @@
         .badge { font-size: 11px; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
         .badge-code { background: rgba(0, 210, 255, 0.1); color: var(--primary); border: 1px solid var(--primary); }
         
-        /* Таблица жана фильтр */
         .filter-container { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
         .filter-select { width: 180px; padding: 8px; background: var(--bg-color); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; }
         .results-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -141,7 +140,6 @@
             <div class="card">
                 <div class="card-title">📊 Жыйынтыктар & Мониторинг (Баалоо)</div>
                 
-                <!-- КЛАССТАРДЫ СУЗУП ФИЛЬТРЛӨӨҮ -->
                 <div class="filter-container">
                     <label for="classFilter">Класс тандаңыз:</label>
                     <select id="classFilter" class="filter-select">
@@ -163,7 +161,6 @@
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
     import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    // Сиздин Firebase конфигурацияңыз
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -180,7 +177,7 @@
 
     let currentTeacherUid = null;
     let selectedQuestionType = 'simple';
-    let globalResultsArray = []; // Фильтрлөө үчүн жыйынтыктарды убактылуу сактоочу массив
+    let globalResultsArray = []; 
 
     const testQuestionsContainer = document.getElementById("testQuestionsContainer");
     const questionCountBadge = document.getElementById("questionCountBadge");
@@ -196,7 +193,6 @@
         document.getElementById(`type-${type}`).classList.add('active');
     }
 
-    // АВТОРИЗАЦИЯ
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentTeacherUid = user.uid;
@@ -259,7 +255,6 @@
         questionCountBadge.innerText = document.querySelectorAll(".question-block").length;
     };
 
-    // САКТОО СИСТЕМАСЫ
     saveTestBtn.addEventListener("click", async () => {
         if (!currentTeacherUid) return;
         const testTitle = document.getElementById("mainTestTitle").value.trim();
@@ -330,7 +325,6 @@
         updateCount();
     }
 
-    // ТЕСТТЕРДИ ЖҮКТӨӨ ЖАНА ССЫЛКА ГЕНЕРАЦИЯЛОО
     function loadTeacherTests() {
         const myTestsRef = ref(db, `teachers_data/${currentTeacherUid}/tests`);
         onValue(myTestsRef, (snapshot) => {
@@ -344,8 +338,8 @@
                 const key = child.key;
                 const test = child.val();
                 
-                // Түз шилтемени автоматтык түрдө куруу (Сиздин доменге ылайыкташкан)
-                const testLink = `${window.location.origin}/sections/take-test.html?code=${test.test_code}`;
+                // ТУУРА ЖОЛГО ӨЗГӨРТҮЛДҮ: GitHub Pages үчүн негизги папкага шилтеме курат
+                const testLink = `${window.location.origin}/take-test.html?code=${test.test_code}`;
 
                 const item = document.createElement("div");
                 item.className = "test-list-item";
@@ -366,7 +360,6 @@
         });
     }
 
-    // Ссылканы алмашуу буферине көчүрүү функциясы
     window.copyLink = function(link) {
         navigator.clipboard.writeText(link).then(() => {
             alert("🔗 Тесттин түз шилтемеси көчүрүлдү! Окуучуларга жөнөтсөңүз болот.");
@@ -400,7 +393,6 @@
         }
     }
 
-    // ЖЫЙЫНТЫКТАРДЫ ЖҮКТӨӨ ЖАНА КЛАСС БОЙОНЧА ФИЛЬТРЛӨӨ
     function loadStudentResults() {
         const resultsRef = ref(db, `teachers_data/${currentTeacherUid}/results`);
         onValue(resultsRef, (snapshot) => {
@@ -420,11 +412,9 @@
                 }
             });
 
-            // Селекттин ичиндеги класстардын тизмесин жаңыртуу (11-А, 11-Б ж.б.)
             const currentSelected = classFilter.value;
             classFilter.innerHTML = '<option value="all">🌐 Бардык класстар</option>';
             
-            // Сорттолгон класстарды кошуу
             Array.from(availableClasses).sort().forEach(className => {
                 const opt = document.createElement("option");
                 opt.value = className;
@@ -432,15 +422,11 @@
                 classFilter.appendChild(opt);
             });
 
-            // Мурда тандалган класс жоголуп кетпеши үчүн кайра ордуна коюу
             classFilter.value = currentSelected ? currentSelected : "all";
-
-            // Таблицаны көрсөтүү
             renderResultsTable(classFilter.value);
         });
     }
 
-    // Таблицаны тандалган класс боюнча экранга чыгаруучу функция
     function renderResultsTable(selectedClass) {
         let filteredData = globalResultsArray;
         
@@ -483,7 +469,6 @@
         resultsMonitorContainer.innerHTML = tableHTML;
     }
 
-    // Фильтр өзгөргөндө таблицаны кайра куруу
     classFilter.addEventListener("change", (e) => {
         renderResultsTable(e.target.value);
     });
