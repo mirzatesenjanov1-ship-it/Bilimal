@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl.org - Тест Тапшыруу</title>
-    <!-- Google AdSense Скрипти -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-241750360816" crossorigin="anonymous"></script>
     <style>
         :root {
@@ -231,9 +230,10 @@
         questions.forEach((q, index) => {
             const block = document.createElement("div");
             block.className = "question-block";
+            const qPoints = q.points || (q.type === 'simple' ? 1 : q.type === 'pisa' ? 2 : 10);
 
             if (q.type === "simple") {
-                block.innerHTML = `<p><strong>${index + 1}. ${q.question}</strong></p>`;
+                block.innerHTML = `<p><strong>${index + 1}. ${q.question}</strong> <span style="color:var(--primary); font-size:12px;">(${qPoints} балл)</span></p>`;
                 if(q.options) {
                     q.options.forEach((opt, oIdx) => {
                         if(opt.text) {
@@ -249,13 +249,13 @@
             } else if (q.type === "pisa") {
                 block.innerHTML = `
                     <div class="context-box"><strong>Контекст:</strong><br>${q.context || ''}</div>
-                    <p><strong>${index + 1}. ${q.question || ''}</strong></p>
+                    <p><strong>${index + 1}. ${q.question || ''}</strong> <span style="color:var(--primary); font-size:12px;">(макс. ${qPoints} балл)</span></p>
                     <textarea id="pisa-${index}" placeholder="Бул жерге толук жообуңузду далилдеп жазыңыз..."></textarea>
                 `;
             } else if (q.type === "essay") {
                 let audioHTML = q.audioLink ? `<audio src="${q.audioLink}" controls></audio>` : '';
                 block.innerHTML = `
-                    <p><strong>${index + 1}. Тема: ${q.topic || ''}</strong></p>
+                    <p><strong>${index + 1}. Тема: ${q.topic || ''}</strong> <span style="color:var(--primary); font-size:12px;">(макс. ${qPoints} балл)</span></p>
                     ${audioHTML}
                     <p style="font-size:12px; color:var(--text-muted);">Минималдуу сөз саны: ${q.minWords || 0}</p>
                     <textarea id="essay-${index}" placeholder="Жоопту ушул жерге териңиз..."></textarea>
@@ -292,7 +292,6 @@
         }
     });
 
-    // МУГАЛИМДИН ШКАЛАСЫ ЖАНА АЧЫК СУРООЛОР ҮЧҮН БААЛОО КАТТАЛЫШЫ
     async function submitTest() {
         let score = 0;
         let maxScore = 0;
@@ -301,23 +300,22 @@
 
         testData.questions.forEach((q, index) => {
             let record = { type: q.type };
+            const qPoints = parseInt(q.points) || (q.type === 'simple' ? 1 : q.type === 'pisa' ? 2 : 10);
+            maxScore += qPoints;
 
             if (q.type === "simple") {
-                maxScore++;
                 const selected = document.querySelector(`input[name="q-${index}"]:checked`);
                 const answerIdx = selected ? parseInt(selected.value) : -1;
                 
                 record.selected_index = answerIdx;
                 if (answerIdx !== -1 && q.options[answerIdx] && q.options[answerIdx].isCorrect) {
-                    score++;
+                    score += qPoints;
                 }
             } else if (q.type === "pisa") {
-                maxScore += 2; // PISA максималдуу 2 баллдык босого
                 const pisaVal = document.getElementById(`pisa-${index}`);
                 record.text_answer = pisaVal ? pisaVal.value.trim() : '';
                 record.teacher_given_score = 0; 
             } else if (q.type === "essay") {
-                maxScore += 10; // Эссе максималдуу 10 балл
                 const essayVal = document.getElementById(`essay-${index}`);
                 record.text_answer = essayVal ? essayVal.value.trim() : '';
                 record.teacher_given_score = 0; 
@@ -327,7 +325,6 @@
 
         let grade = "Текшерилүүдө ⏳";
 
-        // Мугалим өзү орноткон шкала боюнча Жөнөкөй тестти дароо автоматтык баалоо
         if (isFullyAutomated) {
             const scale = testData.grading_scale || { min3: 0, min4: 0, min5: 0 };
             if (score >= scale.min5) grade = "5";
