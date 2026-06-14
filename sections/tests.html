@@ -135,7 +135,6 @@
 
     <div class="main-grid">
         
-        <!-- СОЛ ЖАК: ТЕСТ КУРАГЫЧ -->
         <div>
             <div class="card">
                 <div class="card-title" id="formFormTitle">🛠 Жаңы Тапшырма / Тест Түзүү</div>
@@ -160,13 +159,10 @@
                     Учурдагы суроолор: <strong id="questionCountBadge" style="color: var(--primary);">0</strong>
                 </div>
 
-                <!-- Суроолор ушул контейнердин ичине кошулат -->
                 <div id="testQuestionsContainer"></div>
 
-                <!-- ЭКИНЧИ ЫҢГАЙЛУУ БАСКЫЧ: Суроолор тизмегинин астына дагы кошулду -->
                 <button class="btn btn-add" id="addBlockBtnBottom" style="margin-top: 20px;"><i class="fa-solid fa-plus"></i> Жаңы суроо блогун кошуу</button>
 
-                <!-- ЖӨНӨКӨЙ ТЕСТКЕ МУГАЛИМ ӨЗҮ КОЁ ТУРГАН ШКАЛА -->
                 <div id="simpleTestGradingScale" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
                     <h3 style="font-size: 15px; color: var(--primary); margin-bottom: 12px;"><i class="fa-solid fa-sliders"></i> Баалоо босогосун балл менен орнотуңуз:</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
@@ -204,7 +200,6 @@
             </div>
         </div>
 
-        <!-- ОҢ ЖАК: ЖУРНАЛ ЖАНА АКТИВДҮҮ ТЕСТТЕР -->
         <div>
             <div class="card">
                 <div class="card-title">📋 Сиздин Активдүү Тесттериңиз</div>
@@ -234,7 +229,6 @@
     </div>
 </div>
 
-<!-- ТЕКШЕРҮҮ ЖАНА БААЛОО МОДАЛЫ -->
 <div id="gradingModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -249,7 +243,6 @@
     </div>
 </div>
 
-<!-- Эскертүү эскертмеси (Toast) -->
 <div id="notificationToast" class="notification-toast">
     <i class="fa-solid fa-circle-check" style="color: var(--success); font-size: 18px;"></i>
     <span id="notificationText">Ийгиликтүү аткарылды!</span>
@@ -614,20 +607,28 @@
         }
 
         if (filteredData.length === 0) {
-            resultsMonitorContainer.innerHTML = "<div style='color:var(--text-muted); font-size: 14px; text-align: center; padding: 10px;'>Бул класста азырынча жыйынтык жок.</div>";
+            resultsMonitorContainer.innerHTML = `
+                <div style='color:var(--text-muted); font-size: 14px; text-align: center; padding: 10px;'>Бул класста азырынча жыйынтык жок.</div>
+                <button class="btn btn-secondary" onclick="window.printResults()" style="width:100%; margin-top:10px;" disabled><i class="fa-solid fa-print"></i> Журналды басып чыгаруу (Экспорт)</button>
+            `;
             return;
         }
 
         let tableHTML = `
-            <table class="results-table">
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;" class="no-print-section">
+                <button class="btn btn-secondary" onclick="window.printResults()" style="flex: 1; padding: 8px; font-size: 13px;"><i class="fa-solid fa-print"></i> Басып чыгаруу / PDF</button>
+                <button class="btn-danger" onclick="window.clearClassResults('${selectedClass}')" style="flex: 1; border-radius: 6px; padding: 8px; font-size: 13px;"><i class="fa-solid fa-trash-can"></i> Бул тизмени тазалоо</button>
+            </div>
+            <table class="results-table" id="printableResultsTable">
                 <thead>
                     <tr>
+                        <th style="width: 40px; text-align: center;" class="no-print">✔</th>
                         <th>Окуучу</th>
                         <th>Класс</th>
                         <th>Код</th>
                         <th>Балл</th>
                         <th>Баа</th>
-                        <th>Текшерүү</th>
+                        <th class="no-print">Текшерүү</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -636,22 +637,42 @@
         filteredData.forEach((res) => {
             const isManual = res.test_type === "pisa" || res.test_type === "essay";
             const gradeClass = res.grade && res.grade.includes("⏳") ? "pending-badge" : `grade-${res.grade}`;
+            const isChecked = res.is_reviewed ? "checked" : "";
+            const rowStyle = res.is_reviewed ? "style='opacity: 0.65; background: rgba(16, 185, 129, 0.02);'" : "";
             
             tableHTML += `
-                <tr>
+                <tr ${rowStyle} id="row-${res.key}">
+                    <td style="text-align: center;" class="no-print">
+                        <input type="checkbox" ${isChecked} onchange="window.toggleResultReview('${res.key}', this.checked)" style="width:16px; height:16px; cursor:pointer;">
+                    </td>
                     <td><strong>${res.student_name}</strong></td>
                     <td><span style="color: #a78bfa; font-weight:bold;">${res.class}</span></td>
                     <td><span style="color:var(--primary)">${res.test_code}</span></td>
                     <td>${res.score}/${res.max_score}</td>
                     <td><span class="${gradeClass}">${res.grade}</span></td>
-                    <td>
-                        ${isManual ? `<button class="btn-edit" style="padding:4px 8px; font-size:11px;" onclick="openGradingModal('${res.key}')">🔍 Баалоо</button>` : `<span style="color:var(--text-muted); font-size:11px;">Автоматтык</span>`}
+                    <td class="no-print" style="display: flex; gap: 6px; align-items: center;">
+                        ${isManual ? `<button class="btn-edit" style="padding:4px 8px; font-size:11px;" onclick="openGradingModal('${res.key}')">🔍 Баалоо</button>` : `<span style="color:var(--text-muted); font-size:11px; padding: 4px 0;">Автоматтык</span>`}
+                        <button class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteSingleResult('${res.key}')"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
             `;
         });
 
         tableHTML += `</tbody></table>`;
+        
+        // Басып чыгаруу (Принтер) стили
+        tableHTML += `
+            <style>
+                @media print {
+                    body * { visibility: hidden; background: white !important; color: black !important; }
+                    #printableResultsTable, #printableResultsTable * { visibility: visible; }
+                    #printableResultsTable { position: absolute; left: 0; top: 0; width: 100%; border: 1px solid #000; font-size: 14px; border-collapse: collapse; }
+                    #printableResultsTable th, #printableResultsTable td { border: 1px solid #000; padding: 8px; text-align: left; color: black !important; }
+                    .no-print, .no-print-section { display: none !important; }
+                }
+            </style>
+        `;
+        
         resultsMonitorContainer.innerHTML = tableHTML;
     }
 
@@ -788,6 +809,74 @@
             }
         }, {onlyOnce: true});
     });
+
+
+    // =========================================================================
+    // ЖАҢЫ ФУНКЦИЯЛАР: ЖЫЙЫНТЫКТАРДЫ БАШКАРУУ (ӨЧҮРҮҮ, ГАЛОЧКА, БАСЫП ЧЫГАРУУ)
+    // =========================================================================
+
+    // 1. Жыйынтыкты текшерилди деп белгилөө (Галочка функциясы)
+    window.toggleResultReview = async function(resultKey, checkedState) {
+        if (!currentTeacherUid || !resultKey) return;
+        try {
+            const resultRef = ref(db, `teachers_data/${currentTeacherUid}/results/${resultKey}`);
+            await update(resultRef, { is_reviewed: checkedState });
+            
+            const row = document.getElementById(`row-${resultKey}`);
+            if (row) {
+                if (checkedState) {
+                    row.style.opacity = "0.65";
+                    row.style.background = "rgba(16, 185, 129, 0.02)";
+                } else {
+                    row.style.opacity = "1";
+                    row.style.background = "transparent";
+                }
+            }
+            showNotification(checkedState ? "✔ Текшерилди деп белгиленди" : "Кайра активдүү абалга кайтарылды");
+        } catch (e) {
+            showNotification("Ката чыкты: " + e.message, true);
+        }
+    }
+
+    // 2. Бир окуучунун жыйынтыгын тизмеден өчүрүү (Таблицадагы кнопка)
+    window.deleteSingleResult = async function(resultKey) {
+        if (!currentTeacherUid || !resultKey) return;
+        if (confirm("Бул окуучунун жыйынтыгын өчүрүүнү каалайсызбы? Кайра калыбына келбейт!")) {
+            try {
+                await remove(ref(db, `teachers_data/${currentTeacherUid}/results/${resultKey}`));
+                showNotification("🗑 Окуучунун жыйынтыгы өчүрүлдү.");
+            } catch (e) {
+                showNotification("Өчүрүүдө ката чыкты: " + e.message, true);
+            }
+        }
+    }
+
+    // 3. Тандалган класстын же бардык окуучулардын жыйынтыктарын жапырт тазалоо
+    window.clearClassResults = async function(selectedClass) {
+        if (!currentTeacherUid) return;
+        
+        let targetText = selectedClass === "all" ? "БАРДЫК класстардын жыйынтыктарын" : `🏫 ${selectedClass} классынын бардык жыйынтыктарын`;
+        if (!confirm(`${targetText} толугу менен өчүрүүнү каалайсызбы?\nБул аракетти артка кайтаруу мүмкүн эмес!`)) return;
+
+        try {
+            if (selectedClass === "all") {
+                await remove(ref(db, `teachers_data/${currentTeacherUid}/results`));
+            } else {
+                const filteredData = globalResultsArray.filter(item => item.class && item.class.trim() === selectedClass);
+                for (const item of filteredData) {
+                    await remove(ref(db, `teachers_data/${currentTeacherUid}/results/${item.key}`));
+                }
+            }
+            showNotification("🗑 Тизме ийгиликтүү тазаланды.");
+        } catch (e) {
+            showNotification("Тазалоодо ката чыкты: " + e.message, true);
+        }
+    }
+
+    // 4. Тизмени принтерге чыгаруу же PDF түрүндө сактоо
+    window.printResults = function() {
+        window.print();
+    }
 
 </script>
 
