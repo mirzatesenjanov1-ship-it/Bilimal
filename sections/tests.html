@@ -99,13 +99,12 @@
         input:checked + .slider:before { transform: translateX(20px); }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center; }
-        .modal-content { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 30px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
+        .modal-content { background-color: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 30px; width: 90%; max-width: 750px; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; }
         .close-modal { color: var(--text-muted); font-size: 24px; cursor: pointer; }
         .close-modal:hover { color: var(--danger); }
         .student-response-block { background: var(--bg-color); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
 
-        /* Жөнөкөй билдирүү терезесинин стилдери */
         .notification-toast {
             position: fixed;
             bottom: 20px;
@@ -122,6 +121,13 @@
             gap: 10px;
             font-size: 14px;
         }
+
+        /* Текшерүү терезесиндеги варианттардын кооз стили */
+        .preview-option { padding: 8px 12px; border-radius: 6px; margin-top: 5px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .preview-correct { background: rgba(16, 185, 129, 0.15); border: 1px solid var(--success); color: #fff; }
+        .preview-wrong { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #fff; }
+        .preview-normal { background: #1e293b; color: var(--text-muted); opacity: 0.6; }
+        .cheat-warning-box { background: rgba(239, 68, 68, 0.12); border: 1px dashed var(--danger); color: #fca5a5; padding: 12px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
     </style>
 </head>
 <body>
@@ -135,6 +141,7 @@
 
     <div class="main-grid">
         
+        <!-- СОЛ ЖАК -->
         <div>
             <div class="card">
                 <div class="card-title" id="formFormTitle">🛠 Жаңы Тапшырма / Тест Түзүү</div>
@@ -160,7 +167,6 @@
                 </div>
 
                 <div id="testQuestionsContainer"></div>
-
                 <button class="btn btn-add" id="addBlockBtnBottom" style="margin-top: 20px;"><i class="fa-solid fa-plus"></i> Жаңы суроо блогун кошуу</button>
 
                 <div id="simpleTestGradingScale" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
@@ -182,7 +188,7 @@
                 </div>
 
                 <div class="switch-container">
-                    <span>🛡️ Anti-Cheat V4 Кошуу</span>
+                    <span>🛡️ Anti-Cheat V4 Кошуу (Башка жакка өтүүгө тыюу салуу)</span>
                     <label class="switch">
                         <input type="checkbox" id="antiCheatToggle" checked>
                         <span class="slider"></span>
@@ -200,6 +206,7 @@
             </div>
         </div>
 
+        <!-- ОҢ ЖАК -->
         <div>
             <div class="card">
                 <div class="card-title">📋 Сиздин Активдүү Тесттериңиз</div>
@@ -229,6 +236,7 @@
     </div>
 </div>
 
+<!-- ТЕКШЕРҮҮ ЖАНА БААЛОО МОДАЛЫ -->
 <div id="gradingModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -236,6 +244,10 @@
             <span class="close-modal" id="closeGradingModalBtn">&times;</span>
         </div>
         <div id="modalTestMeta" style="font-size:13px; color:var(--text-muted); margin-bottom:15px;"></div>
+        
+        <!-- АНТИЧИТ ЖӨНҮНДӨ МААЛЫМАТ КУТУСУ -->
+        <div id="modalCheatStatus"></div>
+
         <div id="modalAnswersBody"></div>
         <div style="margin-top:20px; text-align:right;">
             <button class="btn btn-save" id="submitGradesBtn" style="width:auto; margin:0;">💾 Бааны сактоо жана журналга чыгаруу</button>
@@ -285,7 +297,6 @@
     const toast = document.getElementById("notificationToast");
     const toastText = document.getElementById("notificationText");
 
-    // Жеке билдирүү функциясы (alert() ордуна)
     function showNotification(text, isError = false) {
         toastText.innerText = text;
         const icon = toast.querySelector("i");
@@ -299,21 +310,14 @@
             toast.style.borderColor = "var(--primary)";
         }
         toast.style.display = "flex";
-        setTimeout(() => {
-            toast.style.display = "none";
-        }, 4000);
+        setTimeout(() => { toast.style.display = "none"; }, 4000);
     }
 
     window.selectType = function(type) {
         selectedQuestionType = type;
         document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(`type-${type}`).classList.add('active');
-        
-        if (type === 'simple') {
-            simpleScaleBlock.style.display = "block";
-        } else {
-            simpleScaleBlock.style.display = "none";
-        }
+        if (type === 'simple') { simpleScaleBlock.style.display = "block"; } else { simpleScaleBlock.style.display = "none"; }
     }
 
     onAuthStateChanged(auth, (user) => {
@@ -330,8 +334,6 @@
     });
 
     document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
-    
-    // Эки баскычка тең суроо кошуу иш-аракетин байлайбыз
     document.getElementById("addBlockBtn").addEventListener("click", () => addQuestionBlock({}, selectedQuestionType));
     addBlockBtnBottom.addEventListener("click", () => addQuestionBlock({}, selectedQuestionType));
 
@@ -382,25 +384,16 @@
                 </div>
             `;
         }
-
         qBlock.innerHTML = innerHTML;
         testQuestionsContainer.appendChild(qBlock);
         updateCount();
-
-        // ЫҢГАЙЛУУЛУК: Жаңы кошулган суроого экранды автоматтык түрдө жумшак жылдырабыз
         qBlock.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     window.updateCount = function() {
         const count = document.querySelectorAll(".question-block").length;
         questionCountBadge.innerText = count;
-        
-        // Эгер суроолор жок болсо, астыңкы баскычты жашырып, бар болсо көрсөтүп турабыз
-        if (count > 0) {
-            addBlockBtnBottom.style.display = "block";
-        } else {
-            addBlockBtnBottom.style.display = "none";
-        }
+        addBlockBtnBottom.style.display = count > 0 ? "block" : "none";
     };
 
     saveTestBtn.addEventListener("click", async () => {
@@ -494,13 +487,10 @@
                 activeTestsList.innerHTML = "<div style='color:var(--text-muted); text-align:center;'>Тесттериңиз жок.</div>";
                 return;
             }
-
             snapshot.forEach((child) => {
                 const key = child.key;
                 const test = child.val();
-                
                 const testLink = `${window.location.origin}/sections/take-test.html?code=${test.test_code}`;
-
                 const item = document.createElement("div");
                 item.className = "test-list-item";
                 item.innerHTML = `
@@ -524,9 +514,7 @@
     window.copyLink = function(link) {
         navigator.clipboard.writeText(link).then(() => {
             showNotification("🔗 Шилтеме көчүрүлдү! Окуучуларга жөнөтүңүз.");
-        }).catch(err => {
-            showNotification("Көчүрүү мүмкүн болгон жок", true);
-        });
+        }).catch(err => { showNotification("Көчүрүү мүмкүн болгон жок", true); });
     }
 
     window.editTest = function(key) {
@@ -539,19 +527,14 @@
             editingTestKey.value = key;
             document.getElementById("formFormTitle").innerText = "✏️ Тестти Өзгөртүү режими";
             document.getElementById("cancelEditBtn").style.display = "block";
-            
             if (test.grading_scale) {
                 document.getElementById("scaleMin3").value = test.grading_scale.min3 || "";
                 document.getElementById("scaleMin4").value = test.grading_scale.min4 || "";
                 document.getElementById("scaleMin5").value = test.grading_scale.min5 || "";
             }
-
             selectType(test.type || 'simple');
-
             testQuestionsContainer.innerHTML = "";
-            if(test.questions) {
-                test.questions.forEach((q, index) => { addQuestionBlock({...q, id: index}, q.type); });
-            }
+            if(test.questions) { test.questions.forEach((q, index) => { addQuestionBlock({...q, id: index}, q.type); }); }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }, { onlyOnce: true });
     };
@@ -569,31 +552,24 @@
         onValue(resultsRef, (snapshot) => {
             globalResultsArray = [];
             const availableClasses = new Set();
-
             if (!snapshot.exists()) {
                 resultsMonitorContainer.innerHTML = "<div style='color:var(--text-muted); font-size: 14px; text-align: center; padding: 10px;'>Окуучулардан жооп түшө элек.</div>";
                 return;
             }
-
             snapshot.forEach((child) => {
                 const res = child.val();
                 res.key = child.key; 
                 globalResultsArray.push(res);
-                if (res.class) {
-                    availableClasses.add(res.class.trim());
-                }
+                if (res.class) { availableClasses.add(res.class.trim()); }
             });
-
             const currentSelected = classFilter.value;
             classFilter.innerHTML = '<option value="all">🌐 Бардык класстар</option>';
-            
             Array.from(availableClasses).sort().forEach(className => {
                 const opt = document.createElement("option");
                 opt.value = className;
                 opt.innerText = `🏫 ${className} классы`;
                 classFilter.appendChild(opt);
             });
-
             classFilter.value = currentSelected ? currentSelected : "all";
             renderResultsTable(classFilter.value);
         });
@@ -601,10 +577,7 @@
 
     function renderResultsTable(selectedClass) {
         let filteredData = globalResultsArray;
-        
-        if (selectedClass !== "all") {
-            filteredData = globalResultsArray.filter(item => item.class && item.class.trim() === selectedClass);
-        }
+        if (selectedClass !== "all") { filteredData = globalResultsArray.filter(item => item.class && item.class.trim() === selectedClass); }
 
         if (filteredData.length === 0) {
             resultsMonitorContainer.innerHTML = `
@@ -628,30 +601,33 @@
                         <th>Код</th>
                         <th>Балл</th>
                         <th>Баа</th>
-                        <th class="no-print">Текшерүү</th>
+                        <th class="no-print">Кароо</th>
                     </tr>
                 </thead>
                 <tbody>
         `;
 
         filteredData.forEach((res) => {
-            const isManual = res.test_type === "pisa" || res.test_type === "essay";
             const gradeClass = res.grade && res.grade.includes("⏳") ? "pending-badge" : `grade-${res.grade}`;
             const isChecked = res.is_reviewed ? "checked" : "";
             const rowStyle = res.is_reviewed ? "style='opacity: 0.65; background: rgba(16, 185, 129, 0.02);'" : "";
             
+            // Anti-Cheat эскертүү белгиси түздөн-түз журналдын таблицасында да көрүнөт
+            const hasCheated = res.focus_loss_count && res.focus_loss_count > 0;
+            const cheatBadge = hasCheated ? ` <span title="Экрандан башка жакка өткөн!" style="color:var(--danger); font-size:12px; cursor:help;"><i class="fa-solid fa-triangle-exclamation"></i> Шпион (${res.focus_loss_count})</span>` : "";
+
             tableHTML += `
                 <tr ${rowStyle} id="row-${res.key}">
                     <td style="text-align: center;" class="no-print">
                         <input type="checkbox" ${isChecked} onchange="window.toggleResultReview('${res.key}', this.checked)" style="width:16px; height:16px; cursor:pointer;">
                     </td>
-                    <td><strong>${res.student_name}</strong></td>
+                    <td><strong>${res.student_name}</strong>${cheatBadge}</td>
                     <td><span style="color: #a78bfa; font-weight:bold;">${res.class}</span></td>
                     <td><span style="color:var(--primary)">${res.test_code}</span></td>
                     <td>${res.score}/${res.max_score}</td>
                     <td><span class="${gradeClass}">${res.grade}</span></td>
                     <td class="no-print" style="display: flex; gap: 6px; align-items: center;">
-                        ${isManual ? `<button class="btn-edit" style="padding:4px 8px; font-size:11px;" onclick="openGradingModal('${res.key}')">🔍 Баалоо</button>` : `<span style="color:var(--text-muted); font-size:11px; padding: 4px 0;">Автоматтык</span>`}
+                        <button class="btn-edit" style="padding:4px 8px; font-size:11px;" onclick="openGradingModal('${res.key}')">🔍 Текшерүү</button>
                         <button class="btn-danger" style="padding:4px 8px; font-size:11px;" onclick="window.deleteSingleResult('${res.key}')"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
@@ -659,8 +635,6 @@
         });
 
         tableHTML += `</tbody></table>`;
-        
-        // Басып чыгаруу (Принтер) стили
         tableHTML += `
             <style>
                 @media print {
@@ -672,27 +646,45 @@
                 }
             </style>
         `;
-        
         resultsMonitorContainer.innerHTML = tableHTML;
     }
 
-    classFilter.addEventListener("change", (e) => {
-        renderResultsTable(e.target.value);
-    });
+    classFilter.addEventListener("change", (e) => { renderResultsTable(e.target.value); });
 
     const gradingModal = document.getElementById("gradingModal");
     const modalStudentName = document.getElementById("modalStudentName");
     const modalTestMeta = document.getElementById("modalTestMeta");
     const modalAnswersBody = document.getElementById("modalAnswersBody");
+    const modalCheatStatus = document.getElementById("modalCheatStatus");
 
     window.openGradingModal = function(resultKey) {
         activeGradingResultKey = resultKey;
         activeGradingResultData = globalResultsArray.find(r => r.key === resultKey);
-
         if(!activeGradingResultData) return;
 
         modalStudentName.innerText = `👨‍🎓 Окуучу: ${activeGradingResultData.student_name} (${activeGradingResultData.class} классы)`;
         modalTestMeta.innerText = `Тесттин темасы: "${activeGradingResultData.test_title}" | Коду: ${activeGradingResultData.test_code}`;
+
+        // ANTI-CHEAT маалыматын чыгаруу (башка жакка өткөнү же издөө кылганы)
+        if (activeGradingResultData.focus_loss_count && activeGradingResultData.focus_loss_count > 0) {
+            modalCheatStatus.innerHTML = `
+                <div class="cheat-warning-box">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:20px; color:var(--danger)"></i>
+                    <div>
+                        <strong>КӨЧҮРҮҮ ЭСКЕРТҮҮСҮ!</strong> Бул окуучу тестти аткарып жатканда 
+                        <strong style="color:white; background:var(--danger); padding:2px 6px; border-radius:4px;">${activeGradingResultData.focus_loss_count} жолу</strong> 
+                        экрандан башка жакка (Гуглдан издөөгө, Ватсапка же башка өтмөккө) өттү!
+                    </div>
+                </div>
+            `;
+        } else {
+            modalCheatStatus.innerHTML = `
+                <div class="cheat-warning-box" style="background:rgba(16,185,129,0.1); border-color:var(--success); color:#a7f3d0;">
+                    <i class="fa-solid fa-circle-check" style="font-size:20px; color:var(--success)"></i>
+                    <div><strong>Таза жооп:</strong> Окуучу тест учурунда башка терезелерге же издөө системаларына өткөн жок.</div>
+                </div>
+            `;
+        }
 
         modalAnswersBody.innerHTML = "";
 
@@ -700,13 +692,11 @@
         onValue(testRef, (snapshot) => {
             let activeTestMeta = null;
             snapshot.forEach((child) => {
-                if(child.val().test_code === activeGradingResultData.test_code) {
-                    activeTestMeta = child.val();
-                }
+                if(child.val().test_code === activeGradingResultData.test_code) { activeTestMeta = child.val(); }
             });
 
             if(!activeTestMeta) {
-                modalAnswersBody.innerHTML = "<p style='color:var(--danger)'>Ката: Тесттин түпкү суроолору базадан табылбады (балким өчүрүлгөн).</p>";
+                modalAnswersBody.innerHTML = "<p style='color:var(--danger)'>Ката: Тесттин түпкү суроолору базадан табылбады.</p>";
                 return;
             }
 
@@ -716,9 +706,45 @@
 
                 const block = document.createElement("div");
                 block.className = "student-response-block";
-                const maxQPoints = originalQ.points || (originalQ.type === 'pisa' ? 2 : 10);
+                const maxQPoints = originalQ.points || 1;
 
-                if (originalQ.type === "pisa") {
+                // 1. ЖӨНӨКӨЙ ТЕСТТЕРДИ ТЕКШЕРҮҮ ЖАНА КАТАЛАРЫН КӨРСӨТҮҮ
+                if (originalQ.type === "simple" || !originalQ.type) {
+                    let optionsHTML = "";
+                    let isStudentCorrect = false;
+
+                    originalQ.options.forEach((opt, oIdx) => {
+                        let optClass = "preview-normal";
+                        let icon = '<i class="fa-regular fa-circle"></i>';
+
+                        if (opt.isCorrect) {
+                            optClass = "preview-correct";
+                            icon = '<i class="fa-solid fa-circle-check" style="color:var(--success)"></i> (Туура жооп)';
+                        }
+                        if (ans.selected_index === oIdx) {
+                            icon += " <strong>← Окуучу ушуну тандаган</strong>";
+                            if (!opt.isCorrect) {
+                                optClass = "preview-wrong";
+                                icon = '<i class="fa-solid fa-circle-xmark" style="color:var(--danger)"></i> ' + icon;
+                            } else {
+                                isStudentCorrect = true;
+                            }
+                        }
+                        optionsHTML += `<div class="preview-option ${optClass}">${icon} ${opt.text}</div>`;
+                    });
+
+                    const earnedPoints = isStudentCorrect ? maxQPoints : 0;
+
+                    block.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <p style="margin-top:0;"><strong>Суроо №${index+1} (Тексттик тест):</strong> ${originalQ.question}</p>
+                            <span style="font-weight:bold; color:${earnedPoints > 0 ? 'var(--success)':'var(--danger)'}">Балл: ${earnedPoints}/${maxQPoints}</span>
+                        </div>
+                        <div>${optionsHTML}</div>
+                    `;
+                } 
+                // 2. PISA ТЕСТТЕРИН ТЕКШЕРҮҮ
+                else if (originalQ.type === "pisa") {
                     block.innerHTML = `
                         <p style="margin-top:0;"><strong>Суроо №${index+1} (PISA):</strong> ${originalQ.question}</p>
                         <div style="background:rgba(255,255,255,0.02); padding:8px; border-radius:4px; font-size:12px; margin-bottom:8px; color:var(--text-muted);">
@@ -730,7 +756,9 @@
                             <input type="number" class="q-grade-input" data-index="${index}" value="${ans.teacher_given_score || 0}" min="0" max="${maxQPoints}" style="width:120px; padding:6px;">
                         </div>
                     `;
-                } else if (originalQ.type === "essay") {
+                } 
+                // 3. ЭССЕ / АУДИО ТЕСТТЕРИН ТЕКШЕРҮҮ
+                else if (originalQ.type === "essay") {
                     block.innerHTML = `
                         <p style="margin-top:0;"><strong>Тема №${index+1} (Эссе):</strong> ${originalQ.topic}</p>
                         <p style="color:var(--primary); font-size:14px; margin-bottom:10px;"><strong>Жазылган диктант/эссе:</strong><br><span style="white-space:pre-wrap;">"${ans.text_answer || 'Жооп жазылган эмес'}"</span></p>
@@ -747,9 +775,7 @@
         }, {onlyOnce: true});
     };
 
-    document.getElementById("closeGradingModalBtn").addEventListener("click", () => {
-        gradingModal.style.display = "none";
-    });
+    document.getElementById("closeGradingModalBtn").addEventListener("click", () => { gradingModal.style.display = "none"; });
 
     document.getElementById("submitGradesBtn").addEventListener("click", async () => {
         if(!activeGradingResultKey || !activeGradingResultData) return;
@@ -758,7 +784,6 @@
         let newTotalScore = 0;
         let updatedAnswers = [...activeGradingResultData.answers];
 
-        // Мугалим койгон баллдарды сактоо
         inputs.forEach(input => {
             const idx = parseInt(input.getAttribute("data-index"));
             const scoreVal = parseInt(input.value) || 0;
@@ -766,19 +791,16 @@
             updatedAnswers[idx].teacher_given_score = scoreVal;
         });
 
-        // Эгер Жөнөкөй суроолор кошулган болсо, автоматтык баллдарын дагы кошуп эсептөө
         const testRef = ref(db, `teachers_data/${currentTeacherUid}/tests`);
         onValue(testRef, async (snapshot) => {
             let activeTestMeta = null;
             snapshot.forEach((child) => {
-                if(child.val().test_code === activeGradingResultData.test_code) {
-                    activeTestMeta = child.val();
-                }
+                if(child.val().test_code === activeGradingResultData.test_code) { activeTestMeta = child.val(); }
             });
 
             if(activeTestMeta) {
                 activeGradingResultData.answers.forEach((ans, idx) => {
-                    if (ans.type === 'simple') {
+                    if (ans.type === 'simple' || !ans.type) {
                         const originalQ = activeTestMeta.questions[idx];
                         const qPoints = originalQ.points || 1;
                         if (ans.selected_index !== -1 && originalQ.options[ans.selected_index] && originalQ.options[ans.selected_index].isCorrect) {
@@ -801,8 +823,7 @@
                     grade: automaticGrade,
                     answers: updatedAnswers
                 });
-
-                showNotification(`✅ Баа ийгиликтүү коюлду! Жалпы балл: ${newTotalScore}, Баа: ${automaticGrade}`);
+                showNotification(`✅ Жыйынтык сакталды! Балл: ${newTotalScore}, Баа: ${automaticGrade}`);
                 gradingModal.style.display = "none";
             } catch(e) {
                 showNotification("Сактоодо ката чыкты: " + e.message, true);
@@ -810,18 +831,11 @@
         }, {onlyOnce: true});
     });
 
-
-    // =========================================================================
-    // ЖАҢЫ ФУНКЦИЯЛАР: ЖЫЙЫНТЫКТАРДЫ БАШКАРУУ (ӨЧҮРҮҮ, ГАЛОЧКА, БАСЫП ЧЫГАРУУ)
-    // =========================================================================
-
-    // 1. Жыйынтыкты текшерилди деп белгилөө (Галочка функциясы)
     window.toggleResultReview = async function(resultKey, checkedState) {
         if (!currentTeacherUid || !resultKey) return;
         try {
             const resultRef = ref(db, `teachers_data/${currentTeacherUid}/results/${resultKey}`);
             await update(resultRef, { is_reviewed: checkedState });
-            
             const row = document.getElementById(`row-${resultKey}`);
             if (row) {
                 if (checkedState) {
@@ -833,28 +847,21 @@
                 }
             }
             showNotification(checkedState ? "✔ Текшерилди деп белгиленди" : "Кайра активдүү абалга кайтарылды");
-        } catch (e) {
-            showNotification("Ката чыкты: " + e.message, true);
-        }
+        } catch (e) { showNotification("Ката чыкты: " + e.message, true); }
     }
 
-    // 2. Бир окуучунун жыйынтыгын тизмеден өчүрүү (Таблицадагы кнопка)
     window.deleteSingleResult = async function(resultKey) {
         if (!currentTeacherUid || !resultKey) return;
         if (confirm("Бул окуучунун жыйынтыгын өчүрүүнү каалайсызбы? Кайра калыбына келбейт!")) {
             try {
                 await remove(ref(db, `teachers_data/${currentTeacherUid}/results/${resultKey}`));
                 showNotification("🗑 Окуучунун жыйынтыгы өчүрүлдү.");
-            } catch (e) {
-                showNotification("Өчүрүүдө ката чыкты: " + e.message, true);
-            }
+            } catch (e) { showNotification("Өчүрүүдө ката чыкты: " + e.message, true); }
         }
     }
 
-    // 3. Тандалган класстын же бардык окуучулардын жыйынтыктарын жапырт тазалоо
     window.clearClassResults = async function(selectedClass) {
         if (!currentTeacherUid) return;
-        
         let targetText = selectedClass === "all" ? "БАРДЫК класстардын жыйынтыктарын" : `🏫 ${selectedClass} классынын бардык жыйынтыктарын`;
         if (!confirm(`${targetText} толугу менен өчүрүүнү каалайсызбы?\nБул аракетти артка кайтаруу мүмкүн эмес!`)) return;
 
@@ -868,16 +875,10 @@
                 }
             }
             showNotification("🗑 Тизме ийгиликтүү тазаланды.");
-        } catch (e) {
-            showNotification("Тазалоодо ката чыкты: " + e.message, true);
-        }
+        } catch (e) { showNotification("Тазалоодо ката чыкты: " + e.message, true); }
     }
 
-    // 4. Тизмени принтерге чыгаруу же PDF түрүндө сактоо
-    window.printResults = function() {
-        window.print();
-    }
-
+    window.printResults = function() { window.print(); }
 </script>
 
 </body>
