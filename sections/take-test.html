@@ -54,6 +54,7 @@
         .option-label:hover { border-color: var(--primary); background: rgba(0,210,255,0.02); }
         .option-label input { margin-right: 10px; }
         .timer-bar { background: #ff5252; color: #fff; padding: 10px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 20px; display: none; }
+        .cheat-warning { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 10px; border-radius: 6px; font-size: 13px; text-align: center; margin-bottom: 15px; font-weight: bold; display: none; }
     </style>
 </head>
 <body>
@@ -73,7 +74,6 @@
             <label>Класыңызды тандаңыз:</label>
             <select id="studentClass">
                 <option value="" disabled selected>-- Классты тандаңыз --</option>
-                <!-- Класстар JS аркылуу 1-Адан 12-Дга чейин толтурулат -->
             </select>
         </div>
         
@@ -82,10 +82,11 @@
 
     <!-- ТЕСТ ТАПШЫРУУ ЭКРАНЫ -->
     <div id="quizScreen" class="quiz-box">
+        <div class="cheat-warning" id="cheatCounterView">Эскертүү: Башка терезеге өтпөңүз!</div>
         <div class="timer-bar" id="timerDisplay">Убакыт: --:--</div>
         <h3 id="displayTestTitle" style="color:#fff; margin-bottom:20px;">Тест жүктөлүүдө...</h3>
         <div id="questionsContainer"></div>
-        <button class="btn" style="background-color:var(--success); color:#fff;" onclick="finishTestAndSubmit()"><i class="fa-solid fa-paper-plane"></i> Жоопторду жөнөтүү</button>
+        <button class="btn" style="background-color:var(--success); color:#fff;" onclick="finishTestAndSubmit(false)"><i class="fa-solid fa-paper-plane"></i> Жоопторду жөнөтүү</button>
     </div>
 </div>
 
@@ -113,8 +114,8 @@
     let resultId = null; 
     let antiCheatActive = false;
     let countdownInterval = null;
+    let leaveCount = 0; // 🔢 Окуучунун терезеден чыгуу санын эсептегич
 
-    // 🌟 1-А дан 12-Д га чейин тизмени автоматтык түрдө жаратуу
     function generateClassOptions() {
         const select = document.getElementById("studentClass");
         const letters = ["А", "Б", "В", "Г", "Д"];
@@ -155,7 +156,6 @@
         document.getElementById("quizScreen").style.display = "block";
         document.getElementById("displayTestTitle").innerText = testData.title;
 
-        // Базага жаңы бош жыйынтык ордун ачуу (Процесс статусунда)
         const resultRef = push(ref(db, `teachers_data/${teacherUid}/results`));
         resultId = resultRef.key;
 
@@ -164,11 +164,10 @@
             student_class: sClass,
             test_code: testCode,
             test_title: testData.title,
-            status: "Процесс",
+            status: "Процесс", // Реалдуу убакытта мугалим "Чечүүдө..." деп көрөт
             timestamp: Date.now()
         });
 
-        // 🚨 АНТИ-ЧИТТИ ИШКЕ КИРГИЗҮҮ ЛОГИКАСЫ (Бул жер оңдолду!)
         if (antiCheatActive) {
             setupAntiCheat();
         }
@@ -178,27 +177,49 @@
     }
 
     function setupAntiCheat() {
-        // Окуучу башка терезеге өткөндө же вкладканы алмаштырганда уурдап кармоо
+        const warningBox = document.getElementById("cheatCounterView");
+        warningBox.style.display = "block";
+        warningBox.innerText = "⚠️ Anti-Cheat КҮЙГҮЗҮЛДҮ! Башка терезеге өтсөңүз тест дароо жабылат! (Мүмкүнчүлүк: 3 жолу)";
+
         window.addEventListener("blur", logCheatAttempt);
         document.addEventListener("visibilitychange", () => {
-            if (document.hidden) {
-                logCheatAttempt();
-            }
+            if (document.hidden) logCheatAttempt();
         });
     }
 
     function logCheatAttempt() {
         if (!resultId) return;
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString() + " (" + now.toLocaleDateString() + ")";
+        leaveCount++;
         
-        // Мугалимдин мониторуна заматта сигнал жөнөтүү
-        const logPushRef = push(ref(db, `teachers_data/${teacherUid}/results/${resultId}/logs`));
-        set(logPushRef, {
-            type: "leave",
-            message: "⚠️ Окуучу терезеден чыкты (Шпаргалка колдонуу коркунучу!)",
-            time: timeStr
-        });
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString();
+        const warningBox = document.getElementById("cheatCounterView");
+
+        if (leaveCount <= 3) {
+            warningBox.innerText = `⚠️ ЭСКЕРТҮҮ! Сиз терезеден чыктыңыз! Калган мүмкүнчүлүк: ${3 - leaveCount}/3`;
+            
+            // Мугалимдин тактасына убактысы жана чыгуу номери менен заматта жазуу
+            const logPushRef = push(ref(db, `teachers_data/${teacherUid}/results/${resultId}/logs`));
+            set(logPushRef, {
+                type: "leave",
+                message: `⚠️ Окуучу терезеден чыкты [№${leaveCount}-жолу] (Шпаргалка коркунучу!)`,
+                time: timeStr
+            });
+        } 
+        
+        // 🚨 Эгерде 3 жолудан ашып кетсе (4-жолу чыкканда) автоматтык түрдө куулат!
+        if (leaveCount > 3) {
+            window.removeEventListener("blur", logCheatAttempt);
+            
+            const logPushRef = push(ref(db, `teachers_data/${teacherUid}/results/${resultId}/logs`));
+            set(logPushRef, {
+                type: "kick",
+                message: `🚫 ОКУУЧУ ТЕСТТЕН КУУЛДУ! 3төн ашык терезе алмаштырды.`,
+                time: timeStr
+            });
+            
+            finishTestAndSubmit(true); // Автоматтык түрдө бөгөттөп сактоо
+        }
     }
 
     function renderQuestions() {
@@ -243,17 +264,14 @@
             
             if (timeRemaining <= 0) {
                 clearInterval(countdownInterval);
-                alert("Убактыңыз бүттү! Жооптор автоматтык түрдө жөнөтүлөт.");
-                finishTestAndSubmit();
+                finishTestAndSubmit(false);
             }
             timeRemaining--;
         }, 1000);
     }
 
-    window.finishTestAndSubmit = async function() {
+    window.finishTestAndSubmit = async function(wasKicked = false) {
         if (countdownInterval) clearInterval(countdownInterval);
-        
-        // Анти-чит угуучуларын өчүрүү (тест аяктагандан кийин ката жазылбашы керек)
         window.removeEventListener("blur", logCheatAttempt);
 
         const savedAnswers = [];
@@ -289,16 +307,24 @@
         });
 
         const isSimpleOnly = testData.type === 'SIMPLE';
+        
+        // Акыркы статус чечилет
+        let finalStatus = isSimpleOnly ? "Бааланды" : "Аяктады";
+        if (wasKicked) finalStatus = "Бөгөттөлдү";
 
         await update(ref(db, `teachers_data/${teacherUid}/results/${resultId}`), {
             answers: savedAnswers,
-            score: autoScore,
+            score: wasKicked ? 0 : autoScore, // Эгер бөгөттөлсө 0 баллга айланат
             max_score: totalMaxPoints,
-            status: isSimpleOnly ? "Бааланды" : "Аяктады"
+            status: finalStatus
         });
 
-        alert("Тест ийгиликтүү аяктады! Рахмат.");
-        document.body.innerHTML = `<div style="text-align:center; padding:5px;"><h2 style="color:var(--success);">🎉 Тест аяктады!</h2><p>Жоопторуңуз мугалимге ийгиликтүү жөнөтүлдү.</p></div>`;
+        if(wasKicked) {
+            document.body.innerHTML = `<div style="text-align:center; padding:50px;"><h2 style="color:#ef4444;">🚫 ТЕСТТЕН БӨГӨТТӨЛДҮҢҮЗ!</h2><p>Сиз 3 жолудан ашык башка терезеге (шпаргалкага) өттүңүз. Жыйынтыгыңыз жокко чыгарылды жана мугалимге билдирилди!</p></div>`;
+        } else {
+            alert("Тест аяктады!");
+            document.body.innerHTML = `<div style="text-align:center; padding:50px;"><h2 style="color:var(--success);">🎉 Тест аяктады!</h2><p>Жоопторуңуз мугалимге ийгиликтүү жөнөтүлдү.</p></div>`;
+        }
     }
 </script>
 </body>
