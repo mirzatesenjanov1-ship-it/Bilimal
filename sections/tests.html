@@ -144,7 +144,7 @@
         </div>
     </div>
 
-    <!-- ЖЫЙЫНТЫКТАР / РЕАЛДУУ УБАҚЫТТАГЫ МОНИТОР -->
+    <!-- ЖЫЙЫНТЫКТАР -->
     <div>
         <div class="card">
             <div class="title" style="justify-content: space-between;">
@@ -227,7 +227,7 @@
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
             loadActiveTests();
-            listenToStudentResults(); // 📡 Firebase onValue аркылуу реалдуу убакытта угуу башталды
+            listenToStudentResults();
         } else {
             window.location.href = "../login.html";
         }
@@ -432,9 +432,19 @@
         }
     }
 
+    // 🛠️ ШИЛТЕМЕНИ АВТОМАТТЫК ТҮРДӨ ТУУРА АНЫКТООЧУ ФУНКЦИЯ
     window.copyLink = function(code) {
-        const link = `${window.location.origin}/take-test.html?code=${code}`;
-        navigator.clipboard.writeText(link).then(() => alert("Шилтеме көчүрүлдү!"));
+        // Учурдагы толук даректи алып, акыркы файлдын атын өчүрүп, ордуна 'take-test.html' кошот.
+        // Бул файл кайсы папкада жайгашпасын (мисалы /sections/ папкасында), даректи катасыз курат.
+        let currentPath = window.location.href;
+        let basePath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+        const finalUrl = `${basePath}/take-test.html?code=${code}`;
+        
+        navigator.clipboard.writeText(finalUrl).then(() => {
+            alert("Тесттин шилтемеси көчүрүлдү!\nАны окуучуларга жөнөтсөңүз болот.");
+        }).catch(err => {
+            alert("Көчүрүүдө ката кетти. Колдон шилтеме: " + finalUrl);
+        });
     }
 
     function listenToStudentResults() {
@@ -446,7 +456,7 @@
                 return;
             }
             globalResultsCached = snap.val();
-            filterResultsByTest(); // Базада окуучу белгилеген сайын тизме реалдуу убакытта жаңырат!
+            filterResultsByTest();
         });
     }
 
@@ -467,7 +477,6 @@
             const isChecked = status === "Бааланды";
 
             let statusHtml = "";
-            // 🚨 Реалдуу убакытта статус текшерүү
             if (status === "Процесс") {
                 statusHtml = `<span style="color:#00d2ff; font-weight:bold;"><i class="fa-solid fa-spinner fa-spin"></i> Чечүүдө...</span>`;
             } else if (status === "Бөгөттөлдү") {
