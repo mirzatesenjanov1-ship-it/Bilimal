@@ -37,19 +37,24 @@
             border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 14px; box-sizing: border-box;
         }
         
+        /* Сиздин баштапкы баскычтардын дизайны (image_546e02.png негизинде) */
         .btn { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
         .btn-primary { background-color: var(--primary); color: #000; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
         .btn-outline.active { background: #1a2a3a; border-color: var(--primary); color: var(--primary); }
         .btn-success { background-color: var(--success); color: white; width: 100%; margin-top: 15px; font-size: 15px; padding: 12px; }
         .btn-edit { background-color: #eab308; color: #000; }
-        .btn-delete { background-color: var(--danger); color: white; }
+        .btn-delete { background-color: var(--danger); color: white; padding: 10px; }
         .btn-copy { background-color: #3b82f6; color: white; }
-        .btn-grade { background-color: #f59e0b; color: #000; }
+        .btn-grade { background-color: #f59e0b; color: #000; padding: 10px 18px; font-size: 14px; }
+        .btn-excel { background-color: #107c41; color: white; font-size: 12px; padding: 6px 12px; }
 
         .test-item { background: #0f1422; border: 1px solid var(--border); padding: 18px; border-radius: 8px; margin-bottom: 15px; }
-        .result-row { display: grid; grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr; align-items: center; text-align: center; gap: 10px; background: #0f1422; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+        
+        /* Жыйынтыктар тизмегинин стили */
+        .result-row { display: grid; grid-template-columns: 2.2fr 0.6fr 1.2fr 1fr 1.6fr; align-items: center; text-align: center; gap: 10px; background: #0f1422; border: 1px solid var(--border); padding: 14px; border-radius: 8px; margin-bottom: 10px; }
         .result-row div:first-child { text-align: left; }
+        .checked-row { border-left: 4px solid var(--success); background: rgba(16, 185, 129, 0.02); }
         
         .test-meta-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
         .tag { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }
@@ -66,10 +71,8 @@
         .modal-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
         .q-review-box { background: #0b0f19; border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
         
-        /* Anti-Cheat Журналынын стили */
         .log-container { background: #1c2333; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; }
         .log-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .log-item:last-child { border-bottom: none; }
         .log-danger { color: var(--danger); }
         .log-success { color: var(--success); }
     </style>
@@ -84,6 +87,7 @@
 </div>
 
 <div class="main-layout">
+    <!-- СОЛ ТАРАП -->
     <div>
         <div class="card">
             <div class="title" id="editorModeTitle">✏️ Тестти Түзүү режими</div>
@@ -138,16 +142,27 @@
         </div>
     </div>
 
+    <!-- ОҢ ТАРАП: ОКУУЧУЛАРДЫН ЖЫЙЫНТЫГЫ (ЖАҢЫЛАНДЫ) -->
     <div>
         <div class="card">
-            <div class="title">🎓 Окуучулардын жыйынтыктары жана Баалоо</div>
+            <div class="title" style="justify-content: space-between;">
+                <span>🎓 Окуучулардын жыйынтыктары</span>
+                <button class="btn btn-excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel-ге жүктөө</button>
+            </div>
             
-            <div style="display: grid; grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr; padding: 10px; background: #0f1422; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
+            <!-- 🔍 ФИЛЬТР БӨЛҮГҮ -->
+            <div style="margin-bottom: 15px;">
+                <select id="filterTestSelect" onchange="filterResultsByTest()" style="padding: 8px; font-size: 13px;">
+                    <option value="all">Бардык тесттердин жыйынтыктары</option>
+                </select>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 2.2fr 0.6fr 1.2fr 1fr 1.6fr; padding: 10px; background: #0f1422; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
                 <div style="text-align: left;">Окуучунун аты</div>
                 <div>Класс</div>
                 <div>Тест коду</div>
                 <div>Статус</div>
-                <div style="text-align: right;">Аракет</div>
+                <div style="text-align: right;">Аракеттер</div>
             </div>
 
             <div id="studentResultsContainer">Жүктөлүүдө...</div>
@@ -155,6 +170,7 @@
     </div>
 </div>
 
+<!-- БААЛОО ЖАНА REALTIME MONITORING МОДАЛЫ -->
 <div class="modal" id="gradingModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -201,14 +217,15 @@
     let questionsArray = [];
     let editingTestId = null;
     let activeResultId = null;
-    let unsubscribeResults = null; // Реалдуу убакытты токтотуу үчүн
+    let unsubscribeResults = null;
+    let globalResultsCached = {}; // Экспорт үчүн кэш
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
             loadActiveTests();
-            listenToStudentResults(); // Realtime угуу режимине өткөрдүк
+            listenToStudentResults();
         } else {
             window.location.href = "../login.html";
         }
@@ -354,19 +371,31 @@
 
     async function loadActiveTests() {
         const container = document.getElementById("activeTestsList");
+        const filterSelect = document.getElementById("filterTestSelect");
         if (!teacherUid) return;
         const snap = await get(ref(db, `teachers_data/${teacherUid}/tests`));
         if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
+        
         container.innerHTML = "";
+        // Фильтрдин ичин тазалап, кайра толтуруу
+        filterSelect.innerHTML = `<option value="all">Бардык тесттердин жыйынтыктары</option>`;
+
         snap.forEach((child) => {
             const t = child.val();
             const actualId = child.key;
+            
+            // Фильтрге кошуу
+            const opt = document.createElement("option");
+            opt.value = t.code;
+            opt.innerText = t.title;
+            filterSelect.appendChild(opt);
+
             const div = document.createElement("div");
             div.className = "test-item";
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <strong style="color:#fff;">${t.title}</strong>
+                        <strong style="color:#fff; font-size:15px;">${t.title}</strong>
                         <div class="test-meta-tags">
                             <span class="tag tag-code">Код: ${t.code}</span>
                             <span class="tag tag-type">Түрү: ${t.type}</span>
@@ -403,50 +432,113 @@
         }
     }
 
-    // 📡 РЕАЛДУУ УБАКЫТТА ОКУУЧУЛАРДЫ ТЫҢШОО (onValue)
+    window.copyLink = function(code) {
+        const link = `${window.location.origin}/take-test.html?code=${code}`;
+        navigator.clipboard.writeText(link).then(() => alert("Шилтеме көчүрүлдү!"));
+    }
+
+    // 📡 ЖИЙИНТЫКТАРДЫ REALTIME ОКУУ ЖАНА ФИЛЬТРЛӨӨ
     function listenToStudentResults() {
-        const container = document.getElementById("studentResultsContainer");
         const resultsRef = ref(db, `teachers_data/${teacherUid}/results`);
         
         onValue(resultsRef, (snap) => {
             if (!snap.exists()) {
-                container.innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
+                document.getElementById("studentResultsContainer").innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
+                globalResultsCached = {};
                 return;
             }
-            container.innerHTML = "";
-            snap.forEach((child) => {
-                const res = child.val();
-                const resId = child.key;
-
-                const score = res.score !== undefined ? res.score : 0;
-                const max = res.max_score || 100;
-                const status = res.status || "Текшерилүүдө";
-
-                let statusHtml = "";
-                let actionBtn = `<button class="btn btn-grade" onclick="openGradeModal('${resId}')">Көрүү/Баалоо</button>`;
-
-                if (status === "Процесс") {
-                    statusHtml = `<span style="color:#00d2ff;"><i class="fa-solid fa-spinner fa-spin"></i> Чечип жатат...</span>`;
-                } else if (status === "Аяктады") {
-                    statusHtml = `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
-                } else {
-                    statusHtml = `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>`;
-                }
-
-                const div = document.createElement("div");
-                div.className = "result-row";
-                div.innerHTML = `
-                    <div>
-                        <strong style="color:#fff;">${res.student_name || 'Окуучу'}</strong>
-                        <div style="font-size:11px; color:var(--text-muted);">${res.test_title || 'Тест'}</div>
-                    </div>
-                    <div style="color:#a855f7; font-weight:bold;">${res.student_class || '—'}</div>
-                    <div style="color:var(--primary); font-size:13px;">${res.test_code || '—'}</div>
-                    <div>${statusHtml}</div>
-                    <div style="text-align: right;">${actionBtn}</div>`;
-                container.appendChild(div);
-            });
+            globalResultsCached = snap.val();
+            filterResultsByTest(); // Тизмени түзүү функциясын чакырабыз
         });
+    }
+
+    window.filterResultsByTest = function() {
+        const container = document.getElementById("studentResultsContainer");
+        const filterValue = document.getElementById("filterTestSelect").value;
+        container.innerHTML = "";
+
+        let hasData = false;
+
+        Object.keys(globalResultsCached).forEach((resId) => {
+            const res = globalResultsCached[resId];
+            
+            // Фильтр текшерүүсү
+            if (filterValue !== "all" && res.test_code !== filterValue) return;
+            hasData = true;
+
+            const score = res.score !== undefined ? res.score : 0;
+            const max = res.max_score || 100;
+            const status = res.status || "Текшерилүүдө";
+            const isChecked = status === "Бааланды";
+
+            let statusHtml = "";
+            if (status === "Процесс") {
+                statusHtml = `<span style="color:#00d2ff;"><i class="fa-solid fa-spinner fa-spin"></i> Чечүүдө</span>`;
+            } else if (status === "Аяктады") {
+                statusHtml = `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
+            } else {
+                statusHtml = `<span style="color:var(--success); font-weight:bold;"><i class="fa-solid fa-circle-check"></i> ${score}/${max}</span>`;
+            }
+
+            const div = document.createElement("div");
+            div.className = `result-row ${isChecked ? 'checked-row' : ''}`;
+            div.innerHTML = `
+                <div>
+                    <strong style="color:#fff;">${res.student_name || 'Окуучу'}</strong>
+                    <div style="font-size:11px; color:var(--text-muted); text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:140px;">${res.test_title || 'Тест'}</div>
+                </div>
+                <div style="color:#a855f7; font-weight:bold;">${res.student_class || '—'}</div>
+                <div style="color:var(--primary); font-size:13px;">${res.test_code || '—'}</div>
+                <div>${statusHtml}</div>
+                <div style="text-align: right; display:flex; gap:6px; justify-content: flex-end; align-items:center;">
+                    <button class="btn btn-grade" onclick="openGradeModal('${resId}')">Көрүү</button>
+                    <button class="btn btn-delete" onclick="deleteResult('${resId}')" style="background:#dc2626; border-radius:6px;"><i class="fa-solid fa-trash-can"></i></button>
+                </div>`;
+            container.appendChild(div);
+        });
+
+        if (!hasData) {
+            container.innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Бул тест боюнча жыйынтыктар табылган жок.</div>";
+        }
+    }
+
+    // 🗑️ ЖИЙИНТЫКТЫ ӨЧҮРҮҮ ФУНКЦИЯСЫ
+    window.deleteResult = async function(resId) {
+        if (confirm("Бул окуучунун жыйынтыгын өчүрүүнү каалайсызбы? Базадан биротоло тазаланат.")) {
+            await remove(ref(db, `teachers_data/${teacherUid}/results/${resId}`));
+            alert("Жыйынтык өчүрүлдү!");
+        }
+    }
+
+    // 📥 EXCEL (CSV) ФОРМАТКА ЖҮКТӨӨ ФУНКЦИЯСЫ
+    window.exportToExcel = function() {
+        if (Object.keys(globalResultsCached).length === 0) {
+            alert("Жүктөө үчүн маалымат жок!");
+            return;
+        }
+
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Кыргыз ариптери бузулбаш үчүн BOM коду
+        csvContent += "Окуучунун аты,Классы,Тесттин аталышы,Тест коду,Топтогон балы,Максималдуу балл,Статусу\n";
+
+        Object.values(globalResultsCached).forEach(res => {
+            let name = res.student_name ? res.student_name.replace(/,/g, " ") : "—";
+            let sClass = res.student_class || "—";
+            let title = res.test_title ? res.test_title.replace(/,/g, " ") : "—";
+            let code = res.test_code || "—";
+            let score = res.score !== undefined ? res.score : 0;
+            let max = res.max_score || 100;
+            let status = res.status || "—";
+
+            csvContent += `${name},${sClass},${title},${code},${score},${max},${status}\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `BilimAl_Жыйынтыктар_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     // 👁️ LIVE MONITORING ЖАНА ЖООП КӨРҮҮ
@@ -456,19 +548,16 @@
         const logArea = document.getElementById("antiCheatRealtimeLog");
         const answersArea = document.getElementById("modalAnswersArea");
 
-        // Эгер мурунку тыңшоо иштеп жатса, аны өчүрөбүз
         if (unsubscribeResults) unsubscribeResults();
 
         const studentRef = ref(db, `teachers_data/${teacherUid}/results/${resultId}`);
         
-        // Тандалган окуучунун өзгөрүүлөрүн ТҮЗ ТЫҢШОО (Окуучу терезе алмаштырса бул жер заматта жаңырат)
         unsubscribeResults = onValue(studentRef, (snap) => {
             if (!snap.exists()) return;
             const data = snap.val();
 
-            document.getElementById("modalTitle").innerText = `Мониторинг: ${data.student_name} (${data.student_class} классы)`;
+            document.getElementById("modalTitle").innerText = `Мониторинг: ${data.student_name} (${data.student_class})`;
 
-            // 🚨 Логдорду чыгаруу
             logArea.innerHTML = "";
             if (data.logs) {
                 Object.values(data.logs).reverse().forEach(log => {
@@ -485,7 +574,6 @@
                 logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыга элек.</div>";
             }
 
-            // 📋 Жоопторун чыгаруу
             answersArea.innerHTML = "";
             if (data.answers) {
                 data.answers.forEach((ans, idx) => {
@@ -527,13 +615,14 @@
             maxTotal += max;
         }
 
+        // Статусту "Бааланды" деп өзгөртөбүз, ошондо сыртынан жашыл галочка жана сызык пайда болот
         await update(ref(db, `teachers_data/${teacherUid}/results/${activeResultId}`), {
             score: total,
             max_score: maxTotal,
             status: "Бааланды"
         });
 
-        alert("Баа бекитилди!");
+        alert("Жыйынтык ийгиликтүү бааланды жана бекитилди!");
         closeGradeModal();
     }
 </script>
