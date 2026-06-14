@@ -22,7 +22,7 @@
             color: var(--text-main);
             padding: 20px;
             margin: 0;
-            /* Экрандан текстти таптакыр белгилете албай тургандай кылып блоктоо */
+            /* Экрандан текстти көчүрө албагыдай кылуу */
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
@@ -57,19 +57,21 @@
 </head>
 <body>
 
+<!-- Anti-Cheat Эскертүү терезеси -->
 <div id="cheatOverlay" class="cheat-overlay">
     <div class="cheat-box">
         <i class="fa-solid fa-triangle-exclamation" style="font-size: 50px; color: var(--danger); margin-bottom: 15px;"></i>
-        <h2 style="color: #fff; margin-top: 0;">КӨЧҮРҮҮГӨ ТЫЮУ САЛЫНГАН!</h2>
+        <h2 style="color: #fff; margin-top: 0;">ЭСКЕРТҮҮ!</h2>
         <p style="color: var(--text-muted); font-size: 15px; line-height: 1.6;">
-            Сиз экрандан башка терезеге өттүңүз же телефондун каптал издөө (AI / Google Lens) куралын иштеттиңиз! 
-            Бул аракет **мугалимдин панелине эскертүү катары жөнөтүлдү**.
+            Тест учурунда башка терезеге өтүүгө же браузерди жашырууга (minimize) тыюу салынат! 
+            Бул аракет **мугалимдин панелине жазылды**.
         </p>
         <button class="btn btn-primary" onclick="closeCheatOverlay()" style="margin-top: 15px;">Тестти улантуу ↩</button>
     </div>
 </div>
 
 <div class="container">
+    <!-- КАТТАЛУУ -->
     <div class="card" id="startCard">
         <div class="title"><i class="fa-solid fa-user-graduate"></i> Тестке кирүү</div>
         <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
@@ -89,6 +91,7 @@
         <button class="btn btn-primary" id="startTestBtn">Кирүү жана Тестти баштоо 🚀</button>
     </div>
 
+    <!-- ТЕСТТИН КӨРҮНҮШҮ -->
     <div id="testContentCard" class="card" style="display: none;">
         <div id="testHeaderTitle" class="title" style="font-size: 20px; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 15px;">Жүктөлүүдө...</div>
         <div id="dynamicQuestionsArea"></div>
@@ -100,7 +103,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    // Сиздин Firebase конфигурацияңыз
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -114,31 +116,29 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Шилтемеден тесттин кодун алып чыгуу (?code=TEST-1234)
     const urlParams = new URLSearchParams(window.location.search);
     const testCode = urlParams.get('code');
 
     let globalTestData = null;
     let globalTeacherUid = null;
     let globalTestId = null;
-    let myResultKey = null; // Бул окуучунун реалдуу убакыттагы жыйынтык ID'си
+    let myResultKey = null;
 
-    let focusLossCount = 0; // Жаңы Anti-Cheat эсептегичи
-    let isTestActive = false; // Окуучу киргенде гана иштейт
+    let focusLossCount = 0; 
+    let isTestActive = false; 
 
     if (!testCode) {
-        document.getElementById("startCard").innerHTML = "<div style='color:var(--danger); text-align:center; font-weight:bold;'>Ката: Тесттин коду табылган жок! Шилтемени туура ачыңыз.</div>";
+        document.getElementById("startCard").innerHTML = "<div style='color:var(--danger); text-align:center; font-weight:bold;'>Ката: Тесттин коду табылган жок!</div>";
     } else {
         fetchTestMetaData();
     }
 
-    // 1. Тесттин бар экенин жана мугалимдин маалыматын текшерүү
     async function fetchTestMetaData() {
         try {
             const lookupRef = ref(db, `global_test_lookup/${testCode}`);
             const lookupSnap = await get(lookupRef);
             if (!lookupSnap.exists()) {
-                document.getElementById("startCard").innerHTML = "<div style='color:var(--danger); text-align:center;'>Мындай код менен тест табылган жок же өчүрүлгөн!</div>";
+                document.getElementById("startCard").innerHTML = "<div style='color:var(--danger); text-align:center;'>Мындай код менен тест табылган жок!</div>";
                 return;
             }
             const meta = lookupSnap.val();
@@ -150,20 +150,16 @@
             if (testSnap.exists()) {
                 globalTestData = testSnap.val();
             }
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // 2. Тестти баштоо баскычы басылганда
     document.getElementById("startTestBtn").addEventListener("click", () => {
         const name = document.getElementById("studentName").value.trim();
         const sClass = document.getElementById("studentClass").value.trim();
 
-        if (!name || !sClass) { alert("Сураныч, атыңызды жана классыңызды жазыңыз!"); return; }
-        if (!globalTestData) { alert("Тест маалыматы жүктөлө элек, бир аз күтө туруңуз..."); return; }
+        if (!name || !sClass) { alert("Сураныч, маалыматтарды толтуруңуз!"); return; }
+        if (!globalTestData) { alert("Тест жүктөлө элек, күтө туруңуз..."); return; }
 
-        // Жаңы уникалдуу жыйынтык ачкычын түзүү
         myResultKey = "RES-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
         document.getElementById("startCard").style.display = "none";
@@ -172,18 +168,13 @@
 
         renderQuestions(globalTestData.questions);
         
-        // Anti-Cheat'ти активдештирүү
         isTestActive = true;
-        
-        // Биринчи ирет окуучу кирди деп базага бош жыйынтык даярдап коюу
         saveLiveCheatProgress();
     });
 
-    // 3. Суроолорду экранга чыгаруу
     function renderQuestions(questions) {
         const area = document.getElementById("dynamicQuestionsArea");
         area.innerHTML = "";
-
         if (!questions) return;
 
         questions.forEach((q, idx) => {
@@ -212,7 +203,7 @@
                     <div class="q-title">${idx + 1}. [PISA Тапшырмасы]</div>
                     <div style="background:rgba(255,255,255,0.02); padding:12px; border-radius:6px; border-left:3px solid var(--primary); font-size:14px; margin-bottom:15px; color:var(--text-muted); line-height:1.6; white-space:pre-wrap;">${q.context}</div>
                     <div class="q-title" style="font-size:15px;">Суроо: ${q.question} <span style="color:var(--primary); font-size:12px;">(макс. ${q.points || 2} балл)</span></div>
-                    <textarea class="text-answer-input" rows="4" placeholder="Бул жерге толук жообуңузду негиздеп жазыңыз..."></textarea>
+                    <textarea class="text-answer-input" rows="4" placeholder="Жообуңузду ушул жерге жазыңыз..."></textarea>
                 `;
             } else if (q.type === "essay") {
                 let audioHTML = q.audioLink ? `<div style="margin-bottom:12px;"><audio src="${q.audioLink}" controls style="width:100%;"></audio></div>` : "";
@@ -221,7 +212,7 @@
                     <p style="font-size:14px; color:var(--text-muted); line-height:1.5;">${q.topic}</p>
                     ${audioHTML}
                     <div style="font-size:12px; color:var(--danger); margin-bottom:8px;">Минималдуу сөз саны: ${q.minWords || 0} сөз</div>
-                    <textarea class="text-answer-input" rows="8" placeholder="Эссе же диктантты бул жерге жазыңыз..."></textarea>
+                    <textarea class="text-answer-input" rows="8" placeholder="Эссени бул жерге жазыңыз..."></textarea>
                 `;
             }
             area.appendChild(block);
@@ -229,17 +220,15 @@
     }
 
     /* ==========================================================================
-       🛡️ ANTI-CHEAT V5 ТУТУМУ (МАКСИМАЛДУУ КҮЧӨТҮЛГӨН КОРГОО)
+       🛡️ СТАБИЛДҮҮ ANTI-CHEAT ТУТУМУ (ОҢДОЛГОН ВЕРСИЯСЫ)
        ========================================================================== */
 
-    // Аракетти реалдуу убакытта базага жөнөтүү
     function saveLiveCheatProgress() {
         if (!isTestActive || !globalTestData.anti_cheat) return;
         
         const name = document.getElementById("studentName").value.trim();
         const sClass = document.getElementById("studentClass").value.trim();
         
-        // Бул жерде окуучу тестти бүтө электе эле анын шпиондук саны реалдуу убакытта мугалимге барып турат
         const liveRef = ref(db, `teachers_data/${globalTeacherUid}/results/${myResultKey}`);
         set(liveRef, {
             student_name: name,
@@ -251,7 +240,7 @@
             max_score: calculateMaxScore(),
             grade: "Текшерилүүдө ⏳",
             is_reviewed: false,
-            answers: [] // Толук жооптор эң аягында кошулат
+            answers: []
         });
     }
 
@@ -266,35 +255,29 @@
         document.getElementById("cheatOverlay").style.display = "none";
     }
 
-    // 1-Деңгээл: Браузерден өтмөктү же терезени алмаштырганда
+    // 1. Негизги жана эң туруктуу коргоо: Браузердин терезесин таптакыр алмаштырганда гана иштейт
     window.addEventListener('blur', () => { triggerCheatDetected(); });
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { triggerCheatDetected(); } });
 
-    // 2-Деңгээл: Мобилдик калкыма менюларды (Google Lens, Скриншот, AI Search) блоктоо
-    window.addEventListener('pointercancel', () => { triggerCheatDetected(); });
-    window.addEventListener('touchcancel', () => { triggerCheatDetected(); });
+    // Эскертүү: Скролл (ылдый жылдыруу) жана Клавиатура ачылгандагы каталарды болтурбоо үчүн
+    // touchcancel, pointercancel жана resize окуялары бул жерден ТОЛУГУ МЕНЕН АЛЫП САЛЫНДЫ.
 
-    // 3-Деңгээл: Экранды экиге бөлүү (Split screen) же өлчөмүн кичирейтүү
-    window.addEventListener('resize', () => { triggerCheatDetected(); });
-
-    // 4-Деңгээл: Текстти көчүрүү, чаптоо жана чычкандын оң баскычын таптакыр өчүрүү
-    document.addEventListener('copy', (e) => { e.preventDefault(); alert('❌ Бул тестте текстти көчүрүүгө тыюу салынган!'); });
-    document.addEventListener('paste', (e) => { e.preventDefault(); alert('❌ Сырттан текст алып келип чаптоого тыюу салынган!'); });
+    // 2. Көчүрүү жана чаптоону блоктоо
+    document.addEventListener('copy', (e) => { e.preventDefault(); alert('❌ Текстти көчүрүүгө тыюу салынган!'); });
+    document.addEventListener('paste', (e) => { e.preventDefault(); alert('❌ Сырттан текст коюуга тыюу салынган!'); });
     document.addEventListener('contextmenu', (e) => { e.preventDefault(); });
 
-    // 5-Деңгээл: Издөө баскычтарын (Ctrl+F, Ctrl+C, Ctrl+V, F12) блоктоо
+    // 3. Клавиатурадагы ысык баскычтарды блоктоо (Компьютер үчүн)
     window.addEventListener('keydown', (e) => {
         if (e.ctrlKey && (e.key === 'f' || e.key === 'F' || e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V' || e.key === 'u' || e.key === 'U')) {
             e.preventDefault();
-            alert('🔒 Бул баскычтарды колдонуу бөгөттөлгөн!');
             return false;
         }
         if (e.key === 'F12') { e.preventDefault(); return false; }
     });
 
-
     /* ==========================================================================
-       🏁 ТЕСТТИ АЯКТОО ЖАНА МУГАЛИМГЕ ЖӨНӨТҮҮ
+       🏁 ЖЫЙЫНТЫКТЫ ЖӨНӨТҮҮ
        ========================================================================== */
     function calculateMaxScore() {
         let max = 0;
@@ -306,10 +289,9 @@
 
     document.getElementById("submitAnswersBtn").addEventListener("click", async () => {
         if (!isTestActive) return;
-        
-        if (!confirm("Тестти чын эле аяктап, жыйынтыкты мугалимге жөнөтөсүзбү?")) return;
+        if (!confirm("Тестти аяктап, жыйынтыкты мугалимге жөнөтөсүзбү?")) return;
 
-        isTestActive = false; // Anti-Cheat токтотулат
+        isTestActive = false;
         document.getElementById("submitAnswersBtn").disabled = true;
 
         const qBlocks = document.querySelectorAll(".q-block");
@@ -319,7 +301,6 @@
         qBlocks.forEach((block, idx) => {
             const type = block.getAttribute("data-type");
             const originalQ = globalTestData.questions[idx];
-
             let ansData = { type: type, selected_index: -1, text_answer: "", teacher_given_score: 0 };
 
             if (type === "simple") {
@@ -327,20 +308,17 @@
                 if (radio) {
                     const selIdx = parseInt(radio.value);
                     ansData.selected_index = selIdx;
-                    // Эгер жооп туура болсо балл кошуу
                     if (originalQ.options[selIdx] && originalQ.options[selIdx].isCorrect) {
                         totalScore += (parseInt(originalQ.points) || 1);
                     }
                 }
             } else {
-                // PISA же Эссе үчүн тексттик жоопту алуу
                 const txt = block.querySelector(".text-answer-input");
                 ansData.text_answer = txt ? txt.value.trim() : "";
             }
             studentAnswersArray.push(ansData);
         });
 
-        // Бааны пайыздык эсеп менен чыгаруу (Жөнөкөй тесттер үчүн автоматтык түрдө)
         let maxScore = calculateMaxScore();
         let percent = (totalScore / maxScore) * 100;
         let finalGrade = "2";
@@ -350,13 +328,11 @@
             else if (percent >= 70) finalGrade = "4";
             else if (percent >= 40) finalGrade = "3";
         } else {
-            // Эгер ичинде PISA же Эссе болсо, мугалим өзү текшерип баа бергиче "Текшерилүүдө ⏳" деп турат
             finalGrade = "Текшерилүүдө ⏳";
         }
 
         const name = document.getElementById("studentName").value.trim();
         const sClass = document.getElementById("studentClass").value.trim();
-
         const finalResultRef = ref(db, `teachers_data/${globalTeacherUid}/results/${myResultKey}`);
         
         try {
@@ -368,27 +344,21 @@
                 score: totalScore,
                 max_score: maxScore,
                 grade: finalGrade,
-                focus_loss_count: focusLossCount, // Бардык эреже бузуулар мугалимге жөнөтүлөт
+                focus_loss_count: focusLossCount,
                 is_reviewed: false,
                 answers: studentAnswersArray,
                 submitted_at: Date.now()
             });
 
             document.getElementById("testContentCard").innerHTML = `
-                <div style="text-align:center; padding:4px 0;">
+                <div style="text-align:center; padding:20px 0;">
                     <i class="fa-solid fa-circle-check" style="font-size:60px; color:var(--success); margin-bottom:20px;"></i>
                     <h2 style="color:#fff;">Тест ийгиликтүү тапшырылды!</h2>
-                    <p style="color:var(--text-muted);">Сиздин жообуңуз маалымат базасына сакталды жана мугалимге жөнөтүлдү.</p>
-                    <div style="background:var(--bg-color); padding:15px; border-radius:8px; display:inline-block; margin-top:15px; border:1px solid var(--border);">
-                        ${globalTestData.type === 'simple' ? `<strong>Сиздин бааңыз: <span style="color:var(--primary); font-size:18px;">${finalGrade}</span></strong>` : `<strong>Ачык суроолор камтылган. Мугалим жакында текшерип, баалайт.</strong>`}
-                    </div>
+                    <p style="color:var(--text-muted);">Жоопторуңуз мугалимге жөнөтүлдү.</p>
                 </div>
             `;
-        } catch (e) {
-            alert("Жыйынтыкты сактоодо ката чыкты: " + e.message);
-        }
+        } catch (e) { alert("Ката чыкты: " + e.message); }
     });
 </script>
-
 </body>
 </html>
