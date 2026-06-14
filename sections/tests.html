@@ -37,7 +37,6 @@
             border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 14px; box-sizing: border-box;
         }
         
-        /* Сиздин баштапкы баскычтардын дизайны */
         .btn { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
         .btn-primary { background-color: var(--primary); color: #000; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
@@ -60,13 +59,19 @@
         .q-editor-block { border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 15px; margin-top: 15px; background: rgba(255,255,255,0.01); border-radius: 6px; position: relative; }
         .remove-q-btn { position: absolute; top: 12px; right: 12px; background: var(--danger); color: white; border: none; border-radius: 4px; width: 22px; height: 22px; cursor: pointer; }
         
-        /* Модалдык терезенин стили */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: #151b29; border: 1px solid var(--border); width: 90%; max-width: 750px; max-height: 85vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
         .modal-header { padding: 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
         .modal-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
         .q-review-box { background: #0b0f19; border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        
+        /* Anti-Cheat Журналынын стили */
+        .log-container { background: #1c2333; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; }
+        .log-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .log-item:last-child { border-bottom: none; }
+        .log-danger { color: var(--danger); }
+        .log-success { color: var(--success); }
     </style>
 </head>
 <body>
@@ -153,10 +158,18 @@
 <div class="modal" id="gradingModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 style="margin:0;" id="modalTitle">Баалоо</h3>
+            <h3 style="margin:0;" id="modalTitle">Баалоо жана Мониторинг</h3>
             <button onclick="closeGradeModal()" style="background:transparent; border:none; color:#fff; font-size:22px; cursor:pointer;">&times;</button>
         </div>
-        <div class="modal-body" id="modalAnswersArea"></div>
+        <div class="modal-body">
+            <div class="title" style="font-size: 15px; color: var(--danger); margin-bottom: 10px;"><i class="fa-solid fa-shield-halved"></i> Реалдуу убакыттагы Anti-Cheat Монитор</div>
+            <div class="log-container" id="antiCheatRealtimeLog">
+                <div style="color:var(--text-muted);">Иш-аракеттер журналы жүктөлүүдө...</div>
+            </div>
+
+            <div class="title" style="font-size: 15px; margin-bottom: 10px;"><i class="fa-solid fa-file-signature"></i> Окуучунун жооптору</div>
+            <div id="modalAnswersArea"></div>
+        </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeGradeModal()">Жабуу</button>
             <button class="btn btn-success" onclick="submitFinalGrades()" style="margin:0; width:auto;">Жыйынтыкты бекитүү</button>
@@ -167,7 +180,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, remove, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getDatabase, ref, set, get, remove, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -188,13 +201,14 @@
     let questionsArray = [];
     let editingTestId = null;
     let activeResultId = null;
+    let unsubscribeResults = null; // Реалдуу убакытты токтотуу үчүн
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
             loadActiveTests();
-            loadStudentResults();
+            listenToStudentResults(); // Realtime угуу режимине өткөрдүк
         } else {
             window.location.href = "../login.html";
         }
@@ -211,7 +225,6 @@
     window.addQuestionBlock = function(savedData = null) {
         const area = document.getElementById("questionsBuilderArea");
         const qIndex = questionsArray.length;
-        
         const qBlock = document.createElement("div");
         qBlock.className = "q-editor-block";
         qBlock.id = `q-block-${qIndex}`;
@@ -244,7 +257,6 @@
         qBlock.innerHTML = html;
         area.appendChild(qBlock);
 
-        // Эгер өзгөртүү режиминде маалымат келсе, инпуттарга толтурабыз
         if (savedData) {
             if (type === "simple") {
                 qBlock.querySelector(".q-text").value = savedData.question || "";
@@ -274,7 +286,6 @@
         questionsArray[idx] = null;
     }
 
-    // ТЕСТТИ САКТОО (ЖАҢЫ ЖАНА ӨЗГӨРТҮҮ)
     window.saveTest = async function() {
         if (!teacherUid) return;
         const title = document.getElementById("testTitle").value.trim();
@@ -308,7 +319,6 @@
 
         if(finalQuestions.length === 0) { alert("Суроо кошуңуз!"); return; }
 
-        // Эгер эски тест болсо ID сакталат, жаңы болсо түзүлөт
         let testId = editingTestId || "TEST-" + Date.now();
         let testCode = "TEST-" + Math.floor(1000 + Math.random() * 9000);
 
@@ -318,9 +328,7 @@
         }
 
         const payload = {
-            id: testId,
-            code: testCode,
-            title: title,
+            id: testId, code: testCode, title: title,
             type: finalQuestions.some(q => q.type !== 'simple') ? 'PISA' : 'SIMPLE',
             anti_cheat: document.getElementById("antiCheatToggle").checked,
             attempts_limit: document.getElementById("testAttemptsLimit").value,
@@ -332,8 +340,7 @@
         await set(ref(db, `global_test_lookup/${testCode}`), { teacher_uid: teacherUid, test_id: testId });
 
         alert("Тест сакталды! Коду: " + testCode);
-        resetForm();
-        loadActiveTests();
+        resetForm(); loadActiveTests();
     }
 
     function resetForm() {
@@ -345,156 +352,166 @@
         document.getElementById("editorModeTitle").innerText = "✏️ Тестти Түзүү режими";
     }
 
-    // 📋 АКТИВДҮҮ ТЕСТТЕРДИН ТИЗМЕСИ (ӨЗГӨРТҮҮ ЖАНА ӨЧҮРҮҮ БАСКЫЧТАРЫ)
     async function loadActiveTests() {
         const container = document.getElementById("activeTestsList");
         if (!teacherUid) return;
-        
         const snap = await get(ref(db, `teachers_data/${teacherUid}/tests`));
-        if (!snap.exists()) {
-            container.innerHTML = "<div style='color:var(--text-muted);'>Тесттер азырынча жок.</div>";
-            return;
-        }
-
+        if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
         container.innerHTML = "";
         snap.forEach((child) => {
             const t = child.val();
-            const actualId = child.key; // Коопсуз уникалдуу ID
-            const code = t.code || "Жок";
-            const type = t.type || "SIMPLE";
-
+            const actualId = child.key;
             const div = document.createElement("div");
             div.className = "test-item";
             div.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <div>
-                        <strong style="color:#fff; font-size:15px;">${t.title}</strong>
+                        <strong style="color:#fff;">${t.title}</strong>
                         <div class="test-meta-tags">
-                            <span class="tag tag-code">Код: ${code}</span>
-                            <span class="tag tag-type">Түрү: ${type}</span>
+                            <span class="tag tag-code">Код: ${t.code}</span>
+                            <span class="tag tag-type">Түрү: ${t.type}</span>
                         </div>
                     </div>
                     <div style="display:flex; gap:8px;">
-                        <button class="btn btn-copy" onclick="copyLink('${code}')"><i class="fa-solid fa-link"></i> Көчүрүү</button>
+                        <button class="btn btn-copy" onclick="copyLink('${t.code}')"><i class="fa-solid fa-link"></i> Код</button>
                         <button class="btn btn-edit" onclick="editTest('${actualId}')"><i class="fa-solid fa-pen"></i> Өзгөртүү</button>
-                        <button class="btn btn-delete" onclick="deleteTest('${actualId}', '${code}')"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
+                        <button class="btn btn-delete" onclick="deleteTest('${actualId}', '${t.code}')"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>`;
             container.appendChild(div);
         });
     }
 
-    // 🛠️ ӨЗГӨРТҮҮ ФУНКЦИЯСЫ (Басылганда формага кайра толтурат)
     window.editTest = async function(id) {
-        resetForm();
-        editingTestId = id;
+        resetForm(); editingTestId = id;
         document.getElementById("editorModeTitle").innerText = "🛠️ Тестти Өзгөртүү режими";
-
         const snap = await get(ref(db, `teachers_data/${teacherUid}/tests/${id}`));
         if (!snap.exists()) return;
-        
         const t = snap.val();
         document.getElementById("testTitle").value = t.title || "";
         document.getElementById("testAttemptsLimit").value = t.attempts_limit || "unlimited";
         document.getElementById("testDuration").value = t.duration_minutes !== "unlimited" ? t.duration_minutes : "";
         document.getElementById("antiCheatToggle").checked = t.anti_cheat !== false;
-
-        if (t.questions) {
-            t.questions.forEach(q => {
-                addQuestionBlock(q); // Ар бир суроону толтуруп чыгарат
-            });
-        }
-        document.getElementById("testTitle").scrollIntoView({ behavior: 'smooth' });
+        if (t.questions) t.questions.forEach(q => addQuestionBlock(q));
     }
 
     window.deleteTest = async function(id, code) {
-        if (confirm("Бул тестти биротоло өчүргүңүз келеби?")) {
+        if (confirm("Өчүрүлсүнбү?")) {
             await remove(ref(db, `teachers_data/${teacherUid}/tests/${id}`));
-            if(code !== "Жок") await remove(ref(db, `global_test_lookup/${code}`));
+            await remove(ref(db, `global_test_lookup/${code}`));
             loadActiveTests();
         }
     }
 
-    window.copyLink = function(code) {
-        const link = `${window.location.origin}/take-test.html?code=${code}`;
-        navigator.clipboard.writeText(link).then(() => alert("Шилтеме көчүрүлдү!"));
-    }
-
-    // ==========================================
-    // ОКУУЧУЛАРДЫН ЖЫЙЫНТЫГЫН КӨРСӨТҮҮ ЖАНА БААЛОО
-    // ==========================================
-    async function loadStudentResults() {
+    // 📡 РЕАЛДУУ УБАКЫТТА ОКУУЧУЛАРДЫ ТЫҢШОО (onValue)
+    function listenToStudentResults() {
         const container = document.getElementById("studentResultsContainer");
-        if (!teacherUid) return;
+        const resultsRef = ref(db, `teachers_data/${teacherUid}/results`);
+        
+        onValue(resultsRef, (snap) => {
+            if (!snap.exists()) {
+                container.innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
+                return;
+            }
+            container.innerHTML = "";
+            snap.forEach((child) => {
+                const res = child.val();
+                const resId = child.key;
 
-        const snap = await get(ref(db, `teachers_data/${teacherUid}/results`));
-        if (!snap.exists()) {
-            container.innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
-            return;
-        }
+                const score = res.score !== undefined ? res.score : 0;
+                const max = res.max_score || 100;
+                const status = res.status || "Текшерилүүдө";
 
-        container.innerHTML = "";
-        snap.forEach((child) => {
-            const res = child.val();
-            const resId = child.key;
+                let statusHtml = "";
+                let actionBtn = `<button class="btn btn-grade" onclick="openGradeModal('${resId}')">Көрүү/Баалоо</button>`;
 
-            const score = res.score !== undefined ? res.score : 0;
-            const max = res.max_score || 100;
-            const status = res.status || "Текшерилүүдө";
+                if (status === "Процесс") {
+                    statusHtml = `<span style="color:#00d2ff;"><i class="fa-solid fa-spinner fa-spin"></i> Чечип жатат...</span>`;
+                } else if (status === "Аяктады") {
+                    statusHtml = `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
+                } else {
+                    statusHtml = `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>`;
+                }
 
-            let statusHtml = status === "Бааланды" || status === "Автоматтык" 
-                ? `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>` 
-                : `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
-
-            let actionBtn = status === "Бааланды" || status === "Автоматтык"
-                ? `<span style="color:var(--text-muted); font-size:12px;">Бүттү</span>`
-                : `<button class="btn btn-grade" onclick="openGradeModal('${resId}')">Баалоо</button>`;
-
-            const div = document.createElement("div");
-            div.className = "result-row";
-            div.innerHTML = `
-                <div>
-                    <strong style="color:#fff;">${res.student_name || 'Окуучу'}</strong>
-                    <div style="font-size:11px; color:var(--text-muted); text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:150px;">${res.test_title || 'Тест'}</div>
-                </div>
-                <div style="color:#a855f7; font-weight:bold;">${res.student_class || '10'}</div>
-                <div style="color:var(--primary); font-size:13px;">${res.test_code || 'Жок'}</div>
-                <div>${statusHtml}</div>
-                <div style="text-align: right;">${actionBtn}</div>`;
-            container.appendChild(div);
+                const div = document.createElement("div");
+                div.className = "result-row";
+                div.innerHTML = `
+                    <div>
+                        <strong style="color:#fff;">${res.student_name || 'Окуучу'}</strong>
+                        <div style="font-size:11px; color:var(--text-muted);">${res.test_title || 'Тест'}</div>
+                    </div>
+                    <div style="color:#a855f7; font-weight:bold;">${res.student_class || '—'}</div>
+                    <div style="color:var(--primary); font-size:13px;">${res.test_code || '—'}</div>
+                    <div>${statusHtml}</div>
+                    <div style="text-align: right;">${actionBtn}</div>`;
+                container.appendChild(div);
+            });
         });
     }
 
-    window.openGradeModal = async function(resultId) {
+    // 👁️ LIVE MONITORING ЖАНА ЖООП КӨРҮҮ
+    window.openGradeModal = function(resultId) {
         activeResultId = resultId;
         const modal = document.getElementById("gradingModal");
-        const area = document.getElementById("modalAnswersArea");
+        const logArea = document.getElementById("antiCheatRealtimeLog");
+        const answersArea = document.getElementById("modalAnswersArea");
+
+        // Эгер мурунку тыңшоо иштеп жатса, аны өчүрөбүз
+        if (unsubscribeResults) unsubscribeResults();
+
+        const studentRef = ref(db, `teachers_data/${teacherUid}/results/${resultId}`);
         
-        const snap = await get(ref(db, `teachers_data/${teacherUid}/results/${resultId}`));
-        if (!snap.exists()) return;
-        const data = snap.val();
+        // Тандалган окуучунун өзгөрүүлөрүн ТҮЗ ТЫҢШОО (Окуучу терезе алмаштырса бул жер заматта жаңырат)
+        unsubscribeResults = onValue(studentRef, (snap) => {
+            if (!snap.exists()) return;
+            const data = snap.val();
 
-        document.getElementById("modalTitle").innerText = `Баалоо: ${data.student_name} (${data.student_class} классы)`;
-        area.innerHTML = "";
+            document.getElementById("modalTitle").innerText = `Мониторинг: ${data.student_name} (${data.student_class} классы)`;
 
-        if (data.answers) {
-            data.answers.forEach((ans, idx) => {
-                const box = document.createElement("div");
-                box.className = "q-review-box";
-                box.innerHTML = `
-                    <div><strong>№${idx+1} Суроо:</strong> ${ans.question}</div>
-                    <div style="color:var(--primary); margin:8px 0;">👤 Жооп: "${ans.student_answer || 'Жооп жок'}"</div>
-                    <div>
-                        <label>Балл корутундусу (Макс: ${ans.max_points || 30}):</label>
-                        <input type="number" class="grade-score-input" data-max="${ans.max_points || 30}" value="0" style="width:100px;">
-                    </div>`;
-                area.appendChild(box);
-            });
-        }
+            // 🚨 Логдорду чыгаруу
+            logArea.innerHTML = "";
+            if (data.logs) {
+                Object.values(data.logs).reverse().forEach(log => {
+                    const typeClass = log.type === "leave" ? "log-danger" : "log-success";
+                    const icon = log.type === "leave" ? "⚠️" : "✅";
+                    const div = document.createElement("div");
+                    div.className = "log-item";
+                    div.innerHTML = `
+                        <span class="${typeClass}">${icon} ${log.message}</span>
+                        <span style="color:var(--text-muted); font-size:11px;">${log.time}</span>`;
+                    logArea.appendChild(div);
+                });
+            } else {
+                logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыга элек.</div>";
+            }
+
+            // 📋 Жоопторун чыгаруу
+            answersArea.innerHTML = "";
+            if (data.answers) {
+                data.answers.forEach((ans, idx) => {
+                    const box = document.createElement("div");
+                    box.className = "q-review-box";
+                    box.innerHTML = `
+                        <div><strong>№${idx+1} Суроо:</strong> ${ans.question}</div>
+                        <div style="color:var(--primary); margin:8px 0; font-weight:500;">👤 Окуучунун жообу: "${ans.student_answer || 'Жооп жазыла элек...'}"</div>
+                        <div>
+                            <label>Балл берүү (Макс: ${ans.max_points || 30}):</label>
+                            <input type="number" class="grade-score-input" data-max="${ans.max_points || 30}" value="${ans.given_points || 0}" style="width:100px;">
+                        </div>`;
+                    answersArea.appendChild(box);
+                });
+            } else {
+                answersArea.innerHTML = "<div style='color:var(--text-muted);'>Окуучу азырынча суроолорго жооп бере элек...</div>";
+            }
+        });
+
         modal.style.display = "flex";
     }
 
-    window.closeGradeModal = function() { document.getElementById("gradingModal").style.display = "none"; }
+    window.closeGradeModal = function() {
+        if (unsubscribeResults) unsubscribeResults();
+        document.getElementById("gradingModal").style.display = "none";
+    }
 
     window.submitFinalGrades = async function() {
         if (!activeResultId) return;
@@ -516,9 +533,8 @@
             status: "Бааланды"
         });
 
-        alert("Жыйынтык бекитилди!");
+        alert("Баа бекитилди!");
         closeGradeModal();
-        loadStudentResults();
     }
 </script>
 </body>
