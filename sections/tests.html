@@ -144,11 +144,11 @@
         </div>
     </div>
 
-    <!-- ЖЫЙЫНТЫКТАР -->
+    <!-- ЖЫЙЫНТЫКТАР / РЕАЛДУУ УБАҚЫТТАГЫ МОНИТОР -->
     <div>
         <div class="card">
             <div class="title" style="justify-content: space-between;">
-                <span>🎓 Окуучулардын жыйынтыктары</span>
+                <span>🎓 Окуучулардын жыйынтыктары (Түз эфир)</span>
                 <button class="btn btn-excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel-ге жүктөө</button>
             </div>
             
@@ -227,7 +227,7 @@
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
             loadActiveTests();
-            listenToStudentResults();
+            listenToStudentResults(); // 📡 Firebase onValue аркылуу реалдуу убакытта угуу башталды
         } else {
             window.location.href = "../login.html";
         }
@@ -446,7 +446,7 @@
                 return;
             }
             globalResultsCached = snap.val();
-            filterResultsByTest();
+            filterResultsByTest(); // Базада окуучу белгилеген сайын тизме реалдуу убакытта жаңырат!
         });
     }
 
@@ -467,10 +467,13 @@
             const isChecked = status === "Бааланды";
 
             let statusHtml = "";
+            // 🚨 Реалдуу убакытта статус текшерүү
             if (status === "Процесс") {
-                statusHtml = `<span style="color:#00d2ff;"><i class="fa-solid fa-spinner fa-spin"></i> Чечүүдө</span>`;
+                statusHtml = `<span style="color:#00d2ff; font-weight:bold;"><i class="fa-solid fa-spinner fa-spin"></i> Чечүүдө...</span>`;
+            } else if (status === "Бөгөттөлдү") {
+                statusHtml = `<span style="color:#ef4444; font-weight:bold;"><i class="fa-solid fa-ban"></i> АНТИЧИТ АЙДОО!</span>`;
             } else if (status === "Аяктады") {
-                statusHtml = `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
+                statusHtml = `<span style="color:#eab308; font-weight:bold;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
             } else {
                 statusHtml = `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>`;
             }
@@ -479,6 +482,7 @@
 
             const div = document.createElement("div");
             div.className = `result-row ${isChecked ? 'checked-row' : ''}`;
+            div.style.borderLeft = status === "Бөгөттөлдү" ? "4px solid #ef4444" : (status === "Процесс" ? "4px solid #00d2ff" : "");
             div.innerHTML = `
                 <div class="check-btn" onclick="toggleResultCheck('${resId}', '${status}')">
                     <i class="${checkIcon}"></i>
@@ -503,6 +507,7 @@
     }
 
     window.toggleResultCheck = async function(resId, currentStatus) {
+        if(currentStatus === "Процесс") return;
         const nextStatus = currentStatus === "Бааланды" ? "Аяктады" : "Бааланды";
         await update(ref(db, `teachers_data/${teacherUid}/results/${resId}`), { status: nextStatus });
     }
@@ -540,12 +545,12 @@
             logArea.innerHTML = "";
             if (data.logs) {
                 Object.values(data.logs).reverse().forEach(log => {
-                    const typeClass = log.type === "leave" ? "log-danger" : "log-success";
-                    const icon = log.type === "leave" ? "⚠️" : "✅";
-                    logArea.innerHTML += `<div class="log-item"><span class="${typeClass}">${icon} ${log.message}</span><span style="color:var(--text-muted); font-size:11px;">${log.time}</span></div>`;
+                    const typeClass = log.type === "leave" ? "log-danger" : (log.type === "kick" ? "log-danger" : "log-success");
+                    const icon = log.type === "leave" ? "⚠️" : (log.type === "kick" ? "🚫" : "✅");
+                    logArea.innerHTML += `<div class="log-item"><span class="${typeClass}" style="font-weight:bold;">${icon} ${log.message}</span><span style="color:var(--text-muted); font-size:11px;">${log.time}</span></div>`;
                 });
             } else {
-                logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыга элек.</div>";
+                logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыка элек.</div>";
             }
 
             answersArea.innerHTML = "";
@@ -558,6 +563,8 @@
                             <div><label>Балл (Макс: ${ans.max_points}):</label><input type="number" class="grade-score-input" data-max="${ans.max_points}" value="${ans.given_points || 0}" style="width:100px;"></div>
                         </div>`;
                 });
+            } else {
+                answersArea.innerHTML = "<div style='color:var(--text-muted);'>Окуучу суроолорду аткарып жатат, бүткөндө жооптор ушул жерге түшөт.</div>";
             }
         });
         modal.style.display = "flex";
