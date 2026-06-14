@@ -37,7 +37,6 @@
             border: 1px solid var(--border); border-radius: 6px; color: var(--text-main); font-size: 14px; box-sizing: border-box;
         }
         
-        /* Сиздин баштапкы баскычтардын дизайны (image_546e02.png негизинде) */
         .btn { padding: 10px 16px; font-size: 13px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
         .btn-primary { background-color: var(--primary); color: #000; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
@@ -51,11 +50,18 @@
 
         .test-item { background: #0f1422; border: 1px solid var(--border); padding: 18px; border-radius: 8px; margin-bottom: 15px; }
         
-        /* Жыйынтыктар тизмегинин стили */
-        .result-row { display: grid; grid-template-columns: 2.2fr 0.6fr 1.2fr 1fr 1.6fr; align-items: center; text-align: center; gap: 10px; background: #0f1422; border: 1px solid var(--border); padding: 14px; border-radius: 8px; margin-bottom: 10px; }
-        .result-row div:first-child { text-align: left; }
-        .checked-row { border-left: 4px solid var(--success); background: rgba(16, 185, 129, 0.02); }
+        /* ЖҮҮНТЫКТАР ТИЗМЕГИНИН СТИЛИ (Эми 6 тилкелүү болду - Галочка үчүн орун ачылды) */
+        .result-row { display: grid; grid-template-columns: 0.4fr 2fr 0.6fr 1.2fr 1fr 1.4fr; align-items: center; text-align: center; gap: 10px; background: #0f1422; border: 1px solid var(--border); padding: 14px; border-radius: 8px; margin-bottom: 10px; transition: 0.2s; }
+        .result-row div:nth-child(2) { text-align: left; }
         
+        /* Текшерилген окуучунун катары жашыл рамка менен кооздолот */
+        .checked-row { border-left: 4px solid var(--success); background: rgba(16, 185, 129, 0.03); }
+        
+        /* Кликтеле турган интерактивдүү галочканын стили */
+        .check-btn { font-size: 18px; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .check-btn:hover { color: var(--success); transform: scale(1.15); }
+        .check-active { color: var(--success) !important; }
+
         .test-meta-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
         .tag { padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }
         .tag-code { background: rgba(0, 210, 255, 0.1); color: var(--primary); }
@@ -87,7 +93,6 @@
 </div>
 
 <div class="main-layout">
-    <!-- СОЛ ТАРАП -->
     <div>
         <div class="card">
             <div class="title" id="editorModeTitle">✏️ Тестти Түзүү режими</div>
@@ -142,7 +147,6 @@
         </div>
     </div>
 
-    <!-- ОҢ ТАРАП: ОКУУЧУЛАРДЫН ЖЫЙЫНТЫГЫ (ЖАҢЫЛАНДЫ) -->
     <div>
         <div class="card">
             <div class="title" style="justify-content: space-between;">
@@ -150,14 +154,14 @@
                 <button class="btn btn-excel" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Excel-ге жүктөө</button>
             </div>
             
-            <!-- 🔍 ФИЛЬТР БӨЛҮГҮ -->
             <div style="margin-bottom: 15px;">
                 <select id="filterTestSelect" onchange="filterResultsByTest()" style="padding: 8px; font-size: 13px;">
                     <option value="all">Бардык тесттердин жыйынтыктары</option>
                 </select>
             </div>
             
-            <div style="display: grid; grid-template-columns: 2.2fr 0.6fr 1.2fr 1fr 1.6fr; padding: 10px; background: #0f1422; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
+            <div style="display: grid; grid-template-columns: 0.4fr 2fr 0.6fr 1.2fr 1fr 1.4fr; padding: 10px; background: #0f1422; border-radius: 6px; font-size: 12px; font-weight: bold; color: var(--text-muted); margin-bottom: 10px; text-align: center;">
+                <div><i class="fa-solid fa-square-check"></i></div>
                 <div style="text-align: left;">Окуучунун аты</div>
                 <div>Класс</div>
                 <div>Тест коду</div>
@@ -170,7 +174,6 @@
     </div>
 </div>
 
-<!-- БААЛОО ЖАНА REALTIME MONITORING МОДАЛЫ -->
 <div class="modal" id="gradingModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -218,7 +221,7 @@
     let editingTestId = null;
     let activeResultId = null;
     let unsubscribeResults = null;
-    let globalResultsCached = {}; // Экспорт үчүн кэш
+    let globalResultsCached = {};
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -377,14 +380,12 @@
         if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
         
         container.innerHTML = "";
-        // Фильтрдин ичин тазалап, кайра толтуруу
         filterSelect.innerHTML = `<option value="all">Бардык тесттердин жыйынтыктары</option>`;
 
         snap.forEach((child) => {
             const t = child.val();
             const actualId = child.key;
             
-            // Фильтрге кошуу
             const opt = document.createElement("option");
             opt.value = t.code;
             opt.innerText = t.title;
@@ -437,10 +438,8 @@
         navigator.clipboard.writeText(link).then(() => alert("Шилтеме көчүрүлдү!"));
     }
 
-    // 📡 ЖИЙИНТЫКТАРДЫ REALTIME ОКУУ ЖАНА ФИЛЬТРЛӨӨ
     function listenToStudentResults() {
         const resultsRef = ref(db, `teachers_data/${teacherUid}/results`);
-        
         onValue(resultsRef, (snap) => {
             if (!snap.exists()) {
                 document.getElementById("studentResultsContainer").innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
@@ -448,10 +447,11 @@
                 return;
             }
             globalResultsCached = snap.val();
-            filterResultsByTest(); // Тизмени түзүү функциясын чакырабыз
+            filterResultsByTest();
         });
     }
 
+    // 📡 ЖИЙИНТЫКТАРДЫ ФИЛЬТРЛӨӨ ЖАНА ГАЛОЧКА МЕНЕН ЧЫГАРУУ
     window.filterResultsByTest = function() {
         const container = document.getElementById("studentResultsContainer");
         const filterValue = document.getElementById("filterTestSelect").value;
@@ -462,13 +462,14 @@
         Object.keys(globalResultsCached).forEach((resId) => {
             const res = globalResultsCached[resId];
             
-            // Фильтр текшерүүсү
             if (filterValue !== "all" && res.test_code !== filterValue) return;
             hasData = true;
 
             const score = res.score !== undefined ? res.score : 0;
             const max = res.max_score || 100;
             const status = res.status || "Текшерилүүдө";
+            
+            // Текшерилгенин текшерүү логикасы
             const isChecked = status === "Бааланды";
 
             let statusHtml = "";
@@ -477,12 +478,18 @@
             } else if (status === "Аяктады") {
                 statusHtml = `<span style="color:#eab308;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
             } else {
-                statusHtml = `<span style="color:var(--success); font-weight:bold;"><i class="fa-solid fa-circle-check"></i> ${score}/${max}</span>`;
+                statusHtml = `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>`;
             }
+
+            // Галочканын визуалдык иконасы
+            const checkIcon = isChecked ? 'fa-solid fa-square-check check-active' : 'fa-regular fa-square';
 
             const div = document.createElement("div");
             div.className = `result-row ${isChecked ? 'checked-row' : ''}`;
             div.innerHTML = `
+                <div class="check-btn" onclick="toggleResultCheck('${resId}', '${status}')">
+                    <i class="${checkIcon}"></i>
+                </div>
                 <div>
                     <strong style="color:#fff;">${res.student_name || 'Окуучу'}</strong>
                     <div style="font-size:11px; color:var(--text-muted); text-overflow:ellipsis; white-space:nowrap; overflow:hidden; max-width:140px;">${res.test_title || 'Тест'}</div>
@@ -502,7 +509,16 @@
         }
     }
 
-    // 🗑️ ЖИЙИНТЫКТЫ ӨЧҮРҮҮ ФУНКЦИЯСЫ
+    // ⚡ ТҮЗ ЭЛЕ ТИЗМЕДЕН ГАЛОЧКАНЫ ӨЗГӨРТҮҮ (Жаңы курал)
+    window.toggleResultCheck = async function(resId, currentStatus) {
+        const nextStatus = currentStatus === "Бааланды" ? "Аяктады" : "Бааланды";
+        
+        await update(ref(db, `teachers_data/${teacherUid}/results/${resId}`), {
+            status: nextStatus
+        });
+        // onValue автоматтык түрдө тизмени заматта жаңылайт
+    }
+
     window.deleteResult = async function(resId) {
         if (confirm("Бул окуучунун жыйынтыгын өчүрүүнү каалайсызбы? Базадан биротоло тазаланат.")) {
             await remove(ref(db, `teachers_data/${teacherUid}/results/${resId}`));
@@ -510,14 +526,12 @@
         }
     }
 
-    // 📥 EXCEL (CSV) ФОРМАТКА ЖҮКТӨӨ ФУНКЦИЯСЫ
     window.exportToExcel = function() {
         if (Object.keys(globalResultsCached).length === 0) {
             alert("Жүктөө үчүн маалымат жок!");
             return;
         }
-
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Кыргыз ариптери бузулбаш үчүн BOM коду
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
         csvContent += "Окуучунун аты,Классы,Тесттин аталышы,Тест коду,Топтогон балы,Максималдуу балл,Статусу\n";
 
         Object.values(globalResultsCached).forEach(res => {
@@ -528,7 +542,6 @@
             let score = res.score !== undefined ? res.score : 0;
             let max = res.max_score || 100;
             let status = res.status || "—";
-
             csvContent += `${name},${sClass},${title},${code},${score},${max},${status}\n`;
         });
 
@@ -541,7 +554,6 @@
         document.body.removeChild(link);
     }
 
-    // 👁️ LIVE MONITORING ЖАНА ЖООП КӨРҮҮ
     window.openGradeModal = function(resultId) {
         activeResultId = resultId;
         const modal = document.getElementById("gradingModal");
@@ -615,7 +627,6 @@
             maxTotal += max;
         }
 
-        // Статусту "Бааланды" деп өзгөртөбүз, ошондо сыртынан жашыл галочка жана сызык пайда болот
         await update(ref(db, `teachers_data/${teacherUid}/results/${activeResultId}`), {
             score: total,
             max_score: maxTotal,
