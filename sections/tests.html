@@ -50,14 +50,11 @@
 
         .test-item { background: #0f1422; border: 1px solid var(--border); padding: 18px; border-radius: 8px; margin-bottom: 15px; }
         
-        /* ЖҮҮНТЫКТАР ТИЗМЕГИНИН СТИЛИ (Эми 6 тилкелүү болду - Галочка үчүн орун ачылды) */
         .result-row { display: grid; grid-template-columns: 0.4fr 2fr 0.6fr 1.2fr 1fr 1.4fr; align-items: center; text-align: center; gap: 10px; background: #0f1422; border: 1px solid var(--border); padding: 14px; border-radius: 8px; margin-bottom: 10px; transition: 0.2s; }
         .result-row div:nth-child(2) { text-align: left; }
         
-        /* Текшерилген окуучунун катары жашыл рамка менен кооздолот */
         .checked-row { border-left: 4px solid var(--success); background: rgba(16, 185, 129, 0.03); }
         
-        /* Кликтеле турган интерактивдүү галочканын стили */
         .check-btn { font-size: 18px; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
         .check-btn:hover { color: var(--success); transform: scale(1.15); }
         .check-active { color: var(--success) !important; }
@@ -134,7 +131,7 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="antiCheatToggle" checked style="width:16px; height:16px;">
-                    <span style="font-size:13px;">Anti-Cheat Күйгүзүү (Башка терезеге өтүүнү бөгөттөө)</span>
+                    <span style="font-size:13px; font-weight: bold; color: #ff5252;">Anti-Cheat Күйгүзүү (Башка терезеге өтүүнү бөгөттөө)</span>
                 </div>
             </div>
 
@@ -147,6 +144,7 @@
         </div>
     </div>
 
+    <!-- ЖЫЙЫНТЫКТАР -->
     <div>
         <div class="card">
             <div class="title" style="justify-content: space-between;">
@@ -174,6 +172,7 @@
     </div>
 </div>
 
+<!-- МОДАЛДЫК ТЕРЕЗЕ ЖАНА РЕАЛДУУ АНТИ-ЧИТ МОНИТОРУ -->
 <div class="modal" id="gradingModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -451,25 +450,20 @@
         });
     }
 
-    // 📡 ЖИЙИНТЫКТАРДЫ ФИЛЬТРЛӨӨ ЖАНА ГАЛОЧКА МЕНЕН ЧЫГАРУУ
     window.filterResultsByTest = function() {
         const container = document.getElementById("studentResultsContainer");
         const filterValue = document.getElementById("filterTestSelect").value;
         container.innerHTML = "";
-
         let hasData = false;
 
         Object.keys(globalResultsCached).forEach((resId) => {
             const res = globalResultsCached[resId];
-            
             if (filterValue !== "all" && res.test_code !== filterValue) return;
             hasData = true;
 
             const score = res.score !== undefined ? res.score : 0;
             const max = res.max_score || 100;
             const status = res.status || "Текшерилүүдө";
-            
-            // Текшерилгенин текшерүү логикасы
             const isChecked = status === "Бааланды";
 
             let statusHtml = "";
@@ -481,7 +475,6 @@
                 statusHtml = `<span style="color:var(--success); font-weight:bold;">${score}/${max}</span>`;
             }
 
-            // Галочканын визуалдык иконасы
             const checkIcon = isChecked ? 'fa-solid fa-square-check check-active' : 'fa-regular fa-square';
 
             const div = document.createElement("div");
@@ -499,7 +492,7 @@
                 <div>${statusHtml}</div>
                 <div style="text-align: right; display:flex; gap:6px; justify-content: flex-end; align-items:center;">
                     <button class="btn btn-grade" onclick="openGradeModal('${resId}')">Көрүү</button>
-                    <button class="btn btn-delete" onclick="deleteResult('${resId}')" style="background:#dc2626; border-radius:6px;"><i class="fa-solid fa-trash-can"></i></button>
+                    <button class="btn btn-delete" onclick="deleteResult('${resId}')"><i class="fa-solid fa-trash-can"></i></button>
                 </div>`;
             container.appendChild(div);
         });
@@ -509,49 +502,27 @@
         }
     }
 
-    // ⚡ ТҮЗ ЭЛЕ ТИЗМЕДЕН ГАЛОЧКАНЫ ӨЗГӨРТҮҮ (Жаңы курал)
     window.toggleResultCheck = async function(resId, currentStatus) {
         const nextStatus = currentStatus === "Бааланды" ? "Аяктады" : "Бааланды";
-        
-        await update(ref(db, `teachers_data/${teacherUid}/results/${resId}`), {
-            status: nextStatus
-        });
-        // onValue автоматтык түрдө тизмени заматта жаңылайт
+        await update(ref(db, `teachers_data/${teacherUid}/results/${resId}`), { status: nextStatus });
     }
 
     window.deleteResult = async function(resId) {
-        if (confirm("Бул окуучунун жыйынтыгын өчүрүүнү каалайсызбы? Базадан биротоло тазаланат.")) {
+        if (confirm("Өчүрүлсүнбү?")) {
             await remove(ref(db, `teachers_data/${teacherUid}/results/${resId}`));
-            alert("Жыйынтык өчүрүлдү!");
         }
     }
 
     window.exportToExcel = function() {
-        if (Object.keys(globalResultsCached).length === 0) {
-            alert("Жүктөө үчүн маалымат жок!");
-            return;
-        }
-        let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-        csvContent += "Окуучунун аты,Классы,Тесттин аталышы,Тест коду,Топтогон балы,Максималдуу балл,Статусу\n";
-
+        if (Object.keys(globalResultsCached).length === 0) return;
+        let csvContent = "data:text/csv;charset=utf-8,\uFEFFОкуучунун аты,Классы,Тесттин аталышы,Тест коду,Топтогон балы,Максималдуу балл,Статусу\n";
         Object.values(globalResultsCached).forEach(res => {
-            let name = res.student_name ? res.student_name.replace(/,/g, " ") : "—";
-            let sClass = res.student_class || "—";
-            let title = res.test_title ? res.test_title.replace(/,/g, " ") : "—";
-            let code = res.test_code || "—";
-            let score = res.score !== undefined ? res.score : 0;
-            let max = res.max_score || 100;
-            let status = res.status || "—";
-            csvContent += `${name},${sClass},${title},${code},${score},${max},${status}\n`;
+            csvContent += `${res.student_name || '—'},${res.student_class || '—'},${res.test_title || '—'},${res.test_code || '—'},${res.score || 0},${res.max_score || 100},${res.status || '—'}\n`;
         });
-
-        const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `BilimAl_Жыйынтыктар_${Date.now()}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", `BilimAl_Жыйынтыктар.csv`);
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
     }
 
     window.openGradeModal = function(resultId) {
@@ -561,13 +532,9 @@
         const answersArea = document.getElementById("modalAnswersArea");
 
         if (unsubscribeResults) unsubscribeResults();
-
-        const studentRef = ref(db, `teachers_data/${teacherUid}/results/${resultId}`);
-        
-        unsubscribeResults = onValue(studentRef, (snap) => {
+        unsubscribeResults = onValue(ref(db, `teachers_data/${teacherUid}/results/${resultId}`), (snap) => {
             if (!snap.exists()) return;
             const data = snap.val();
-
             document.getElementById("modalTitle").innerText = `Мониторинг: ${data.student_name} (${data.student_class})`;
 
             logArea.innerHTML = "";
@@ -575,12 +542,7 @@
                 Object.values(data.logs).reverse().forEach(log => {
                     const typeClass = log.type === "leave" ? "log-danger" : "log-success";
                     const icon = log.type === "leave" ? "⚠️" : "✅";
-                    const div = document.createElement("div");
-                    div.className = "log-item";
-                    div.innerHTML = `
-                        <span class="${typeClass}">${icon} ${log.message}</span>
-                        <span style="color:var(--text-muted); font-size:11px;">${log.time}</span>`;
-                    logArea.appendChild(div);
+                    logArea.innerHTML += `<div class="log-item"><span class="${typeClass}">${icon} ${log.message}</span><span style="color:var(--text-muted); font-size:11px;">${log.time}</span></div>`;
                 });
             } else {
                 logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыга элек.</div>";
@@ -589,52 +551,32 @@
             answersArea.innerHTML = "";
             if (data.answers) {
                 data.answers.forEach((ans, idx) => {
-                    const box = document.createElement("div");
-                    box.className = "q-review-box";
-                    box.innerHTML = `
-                        <div><strong>№${idx+1} Суроо:</strong> ${ans.question}</div>
-                        <div style="color:var(--primary); margin:8px 0; font-weight:500;">👤 Окуучунун жообу: "${ans.student_answer || 'Жооп жазыла элек...'}"</div>
-                        <div>
-                            <label>Балл берүү (Макс: ${ans.max_points || 30}):</label>
-                            <input type="number" class="grade-score-input" data-max="${ans.max_points || 30}" value="${ans.given_points || 0}" style="width:100px;">
+                    answersArea.innerHTML += `
+                        <div class="q-review-box">
+                            <div><strong>№${idx+1} Суроо:</strong> ${ans.question}</div>
+                            <div style="color:var(--primary); margin:8px 0;">👤 Жообу: "${ans.student_answer || 'Жооп жок'}"</div>
+                            <div><label>Балл (Макс: ${ans.max_points}):</label><input type="number" class="grade-score-input" data-max="${ans.max_points}" value="${ans.given_points || 0}" style="width:100px;"></div>
                         </div>`;
-                    answersArea.appendChild(box);
                 });
-            } else {
-                answersArea.innerHTML = "<div style='color:var(--text-muted);'>Окуучу азырынча суроолорго жооп бере элек...</div>";
             }
         });
-
         modal.style.display = "flex";
     }
 
-    window.closeGradeModal = function() {
-        if (unsubscribeResults) unsubscribeResults();
-        document.getElementById("gradingModal").style.display = "none";
-    }
+    window.closeGradeModal = function() { if (unsubscribeResults) unsubscribeResults(); document.getElementById("gradingModal").style.display = "none"; }
 
     window.submitFinalGrades = async function() {
         if (!activeResultId) return;
         const inputs = document.querySelectorAll(".grade-score-input");
-        let total = 0;
-        let maxTotal = 0;
-
+        let total = 0, maxTotal = 0;
         for (let input of inputs) {
             const val = parseInt(input.value) || 0;
             const max = parseInt(input.getAttribute("data-max"));
-            if (val > max) { alert("Балл максималдуу баллдан ашпашы керек!"); return; }
-            total += val;
-            maxTotal += max;
+            if (val > max) { alert("Балл ашпашы керек!"); return; }
+            total += val; maxTotal += max;
         }
-
-        await update(ref(db, `teachers_data/${teacherUid}/results/${activeResultId}`), {
-            score: total,
-            max_score: maxTotal,
-            status: "Бааланды"
-        });
-
-        alert("Жыйынтык ийгиликтүү бааланды жана бекитилди!");
-        closeGradeModal();
+        await update(ref(db, `teachers_data/${teacherUid}/results/${activeResultId}`), { score: total, max_score: maxTotal, status: "Бааланды" });
+        alert("Ийгиликтүү бааланды!"); closeGradeModal();
     }
 </script>
 </body>
