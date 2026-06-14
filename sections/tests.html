@@ -36,7 +36,7 @@
         }
         .btn { padding: 12px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
         .btn-primary { background-color: var(--primary); color: #000; }
-        .btn-success { background-color: var(--success); color: white; width: 100%; justify-content: center; margin-top: 15px; font-size: 16px; }
+        .btn-success { background-color: var(--success); color: white; width: 100%; justify-content: center; margin-top: 15px; font-size: 16px; padding: 15px; }
         .btn-danger { background-color: var(--danger); color: white; padding: 8px 12px; }
         
         .test-item { background: var(--bg-color); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
@@ -55,7 +55,7 @@
 <div class="header">
     <a href="#" class="logo">BilimAl.org</a>
     <div style="background: rgba(0,210,255,0.1); padding: 8px 15px; border-radius: 20px; font-size: 14px; border: 1px solid var(--primary);">
-        👤 Мугалим: <span id="teacherEmail">Жүктөлүүдө...</span>
+        👤 Мугалим: <span id="teacherEmail">Текшерилүүдө...</span>
     </div>
 </div>
 
@@ -66,13 +66,13 @@
             
             <div class="form-group">
                 <label>Тапшырманын аталышы (Темасы):</label>
-                <input type="text" id="testTitle" placeholder="Мисалы: 10-класс Кинематика">
+                <input type="text" id="testTitle" placeholder="Мисалы: Электродинамика негиздери">
             </div>
 
             <div class="form-group">
                 <label>Суроонун форматын тандаңыз:</label>
                 <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-                    <button class="btn btn-primary" onclick="setQuestionType('simple')" style="justify-content:center;">📋 Жөнөкөй текст</button>
+                    <button class="btn btn-primary" onclick="setQuestionType('simple')" style="justify-content:center;">📋 Жөнөкөй тест</button>
                     <button class="btn btn-primary" onclick="setQuestionType('pisa')" style="justify-content:center;">🗺️ PISA Блогу</button>
                     <button class="btn btn-primary" onclick="setQuestionType('essay')" style="justify-content:center;">🎧 Audio / Эссе</button>
                 </div>
@@ -130,14 +130,15 @@
     <div>
         <div class="card">
             <div class="title"><i class="fa-solid fa-list-check"></i> Сиздин Активдүү Тесттериңиз</div>
-            <div id="activeTestsList">Жүктөлүүдө...</div>
+            <div id="activeTestsList">Колдонуучу текшерилүүдө...</div>
         </div>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getDatabase, ref, set, push, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+    import { getDatabase, ref, set, get, remove } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -150,15 +151,26 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getDatabase(app);
 
-    // Тесттерди идентификациялоо үчүн убактылуу мугалимдин UID'си
-    const teacherUid = "teacher_mirzat_123"; 
-    document.getElementById("teacherEmail").innerText = "mirzatestebesov51@gmail.com";
+    // 🔑 ЧИНҮҮҮ МУГАЛИМДИН UID ЖАНА EMAILЫН АВТОМАТТЫК АЛУУ БӨЛҮГҮ
+    let teacherUid = null; 
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            teacherUid = user.uid; // Firebase Auth тараткан чыныгы UID орнотулду!
+            document.getElementById("teacherEmail").innerText = user.email;
+            loadActiveTests(); // Колдонуучу такталгандан кийин эски тесттерди чакыруу
+        } else {
+            // Эгер логин кутусунан өтпөсө, кайра артка жөнөтүү
+            window.location.href = "../login.html"; 
+        }
+    });
 
     let currentSelectedType = "simple";
     let questionsArray = [];
-    let editingTestId = null; // Эгер өзгөртүп жатсак ушул жерге ID жазылат
+    let editingTestId = null;
 
     window.setQuestionType = function(type) {
         currentSelectedType = type;
@@ -209,12 +221,13 @@
     }
 
     window.removeQuestionData = function(idx) {
-        document.getElementById(`q-block-${idx}`).remove();
+        const target = document.getElementById(`q-block-${idx}`);
+        if(target) target.remove();
         questionsArray[idx] = null;
     }
 
-    // 💾 БАЗАГА САКТОО ФУНКЦИЯСЫ
     window.saveTest = async function() {
+        if (!teacherUid) { alert("Ката: Колдонуучу аныктала элек!"); return; }
         const title = document.getElementById("testTitle").value.trim();
         if (!title) { alert("Тесттин темасын жазыңыз!"); return; }
 
@@ -250,7 +263,6 @@
 
         if (finalQuestions.length === 0) { alert("Эч кандай суроо түзүлгөн жок!"); return; }
 
-        // Жаңы жөндөөлөрдү чогултуу
         const attemptsLimit = document.getElementById("testAttemptsLimit").value;
         const duration = document.getElementById("testDuration").value ? parseInt(document.getElementById("testDuration").value) : "unlimited";
         const startTime = document.getElementById("testStartTime").value || "";
@@ -261,11 +273,9 @@
         let testCode = "";
 
         if (!testId) {
-            // Жаңы тест болсо уникалдуу ID жана Код түзүү
             testId = "TEST-" + Date.now();
             testCode = "TEST-" + Math.floor(1000 + Math.random() * 9000);
         } else {
-            // Өзгөртүп жатсак, эски кодду сактап калабыз
             const oldSnap = await get(ref(db, `teachers_data/${teacherUid}/tests/${testId}`));
             testCode = oldSnap.val().code;
         }
@@ -283,16 +293,13 @@
             questions: finalQuestions
         };
 
-        // 1. Мугалимдин өзүнүн папкасына сактоо
         await set(ref(db, `teachers_data/${teacherUid}/tests/${testId}`), testPayload);
-        
-        // 2. Издөө системасына кыска шилтеме үчүн сактоо
         await set(ref(db, `global_test_lookup/${testCode}`), {
             teacher_uid: teacherUid,
             test_id: testId
         });
 
-        alert(`Ийгиликтүү сакталды! Окуучулар үчүн КУТКАРУУ коду: ${testCode}`);
+        alert(`Ийгиликтүү сакталды! Тесттин коду: ${testCode}`);
         resetForm();
         loadActiveTests();
     }
@@ -309,8 +316,8 @@
         document.getElementById("editorModeTitle").innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Жаңы тест түзүү режими`;
     }
 
-    // ТЕСТТЕРДИН ТИЗМЕСИН ЖҮКТӨӨ
     async function loadActiveTests() {
+        if (!teacherUid) return;
         const listContainer = document.getElementById("activeTestsList");
         listContainer.innerHTML = "Жүктөлүүдө...";
 
@@ -342,7 +349,7 @@
     window.editTest = async function(id) {
         resetForm();
         editingTestId = id;
-        document.getElementById("editorModeTitle").innerHTML = `<i class="fa-solid fa-edit"></i> Тестти Өзгөртүү режими (ID: ${id})`;
+        document.getElementById("editorModeTitle").innerHTML = `<i class="fa-solid fa-edit"></i> Тестти Өзгөртүү режими`;
 
         const snap = await get(ref(db, `teachers_data/${teacherUid}/tests/${id}`));
         if(snap.exists()) {
@@ -389,9 +396,6 @@
             loadActiveTests();
         }
     }
-
-    // Алгачкы жүктөө
-    loadActiveTests();
 </script>
 </body>
 </html>
