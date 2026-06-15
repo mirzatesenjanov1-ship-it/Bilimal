@@ -29,7 +29,6 @@
         .card-title { font-weight: 700; font-size: 1.15rem; color: #fff; margin-bottom: 4px; }
         .card-desc { font-size: 0.85rem; color: #94a3b8; }
 
-        /* ИЙКЕМДҮҮ ТӨЛӨМ МОДАЛДЫК ТЕРЕЗЕСИ */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 8, 0.95); backdrop-filter: blur(15px); display: none; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; padding: 20px; }
         .modal-content { background: rgba(15, 15, 35, 0.95); border: 2px solid #ff00ff; padding: 35px; border-radius: 20px; max-width: 550px; width: 100%; text-align: center; box-shadow: 0 0 40px rgba(255, 0, 255, 0.25); position: relative; }
         .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; color: #94a3b8; cursor: pointer; transition: 0.3s; }
@@ -55,11 +54,11 @@
 </head>
 <body>
 
-    <!-- ДИНАМИКАЛЫК МОДАЛДЫК ТЕРЕЗЕ -->
+    <!-- ТӨЛӨМ МОДАЛДЫК ТЕРЕЗЕСИ -->
     <div id="payment-modal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closePayment()">&times;</span>
-            <h2 id="modal-title">🚀 Премиум Бөлүмгө Уруксат Алуу</h2>
+            <h2 id="modal-title">🚀 Уруксат Алуу</h2>
             <p style="color: #94a3b8;">Бул бөлүмдү активдештирүү үчүн төмөнкү кадамдарды аткарыңыз:</p>
             
             <div id="modal-price" class="price-tag">Жазылуу баасы: --</div>
@@ -144,7 +143,6 @@
             </div>
         </a>
 
-        <!-- ЛАБОРАТОРИЯ ЭМИ СЕЗГҮЧ КАРТА БОЛДУ -->
         <div class="card" onclick="handleAccess('lab')">
             <div class="card-icon">🔬</div>
             <div>
@@ -162,10 +160,10 @@
         </a>
     </div>
 
-    <!-- JAVASCRIPT ЛОГИКА -->
     <script>
-        let currentEmail = localStorage.getItem('bilimal_user_email');
-        let activeModalType = ""; // Кайсы бөлүм ачылып жатканын билүү үчүн ('game' же 'lab')
+        // Почтаны дароо кичинекей тамгага айландырып сактайбыз (Тамгалардын коопсуздугу үчүн)
+        let currentEmail = localStorage.getItem('bilimal_user_email') ? localStorage.getItem('bilimal_user_email').toLowerCase().trim() : null;
+        let activeModalType = ""; 
         
         if (!currentEmail) {
             window.location.href = 'index.html';
@@ -174,7 +172,6 @@
             updateStatusUI();
         }
 
-        // БАЗАНЫ ТЕКШЕРҮҮ ЖАНА АВТО-ӨЧҮРҮҮ
         function getSectionStatus(type) {
             let expiryTime = localStorage.getItem('vip_' + type + '_' + currentEmail);
             let currentTime = new Date().getTime();
@@ -184,13 +181,12 @@
                 return expiryDate.toLocaleDateString('ky-KG', { day: 'numeric', month: 'long', year: 'numeric' }) + " чейин";
             } else {
                 if (expiryTime) {
-                    localStorage.removeItem('vip_' + type + '_' + currentEmail); // Мөөнөтү бүтсө авто-тазалоо
+                    localStorage.removeItem('vip_' + type + '_' + currentEmail);
                 }
                 return false;
             }
         }
 
-        // ИНТЕРФЕЙСТЕГИ СТАТУСТАРДЫ ЖАҢЫЛОО
         function updateStatusUI() {
             let gameVip = getSectionStatus('game');
             let labVip = getSectionStatus('lab');
@@ -215,7 +211,6 @@
             }
         }
 
-        // БӨЛҮМДӨРГӨ КИРҮҮ БАСКЫЧТАРЫНЫН ЛОГИКАСЫ
         function handleAccess(type) {
             activeModalType = type;
             let hasAccess = getSectionStatus(type);
@@ -224,7 +219,6 @@
                 if (type === 'game') window.location.href = 'sections/test-games.html';
                 if (type === 'lab') window.location.href = 'sections/lab-works.html';
             } else {
-                // Модалдык терезени басылган бөлүмгө карап өзгөртүү
                 if (type === 'game') {
                     document.getElementById('modal-title').innerText = "🚀 Оюн Тесттерине Уруксат Алуу";
                     document.getElementById('modal-price').innerText = "Жазылуу баасы: 2 айга / 200 сом";
@@ -248,18 +242,18 @@
             window.open(`https://wa.me/${myWhatsAppNumber}?text=${encodedMessage}`, '_blank');
         }
 
-        // КОД МЕНЕН АКТИВАЦИЯЛОО (ЭКИ БӨЛҮМГӨ ТЕҢ УНИКАЛДУУ КОД ЧЫГАРАТ)
+        // КОД МЕНЕН АКТИВАЦИЯЛОО
         function activateWithCode() {
-            let enteredCode = document.getElementById('activation-code-input').value.trim();
+            let enteredCode = document.getElementById('activation-code-input').value.trim().toUpperCase();
             
-            // Ар бир бөлүмдүн өзүнүн өзүнчө тузу (salt) болот, коддор аралашып кетпейт
+            // Сөздөрдүн аралашуусунан коргоо (ушул жер оңдолду)
             let secretSalt = activeModalType === 'game' ? "GAME_SALT_2026" : "LAB_SALT_2026";
             let generatedCode = btoa(currentEmail + secretSalt).substring(0, 10).toUpperCase();
 
             if (enteredCode === generatedCode) {
-                let expiryTime = new Date().getTime() + (60 * 24 * 60 * 60 * 1000); // 2 ай (60 күн)
+                let expiryTime = new Date().getTime() + (60 * 24 * 60 * 60 * 1000); 
                 localStorage.setItem('vip_' + activeModalType + '_' + currentEmail, expiryTime.toString());
-                alert("Куттуктайбыз! Тандалган бөлүмгө 2 айлык VIP уруксат ийгиликтүү иштетилди! 🎉");
+                alert("Куттуктайбыз! VIP уруксат ийгиликтүү иштетилди! 🎉");
                 location.reload();
             } else {
                 alert("Ката код! Бул код сиз тандаган бөлүмгө таандык эмес же ката жазылды.");
