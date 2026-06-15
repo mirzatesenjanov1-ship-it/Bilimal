@@ -45,6 +45,12 @@
         .wa-btn { display: inline-flex; align-items: center; gap: 10px; background: #25D366; color: white; padding: 14px 25px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 1rem; box-shadow: 0 5px 15px rgba(37,211,102,0.4); transition: 0.3s; border: none; cursor: pointer; width: 100%; justify-content: center; margin-top: 10px; }
         .wa-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(37,211,102,0.6); }
         .instruction-step { text-align: left; background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 3px solid #00f0ff; font-size: 0.9rem; line-height: 1.5; color: #cbd5e1; }
+
+        /* АКТИВАЦИЯ КОД КИРГИЗҮҮЧҮ ЖЕР */
+        .code-input-box { margin-top: 20px; background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; border: 1px dashed rgba(255, 0, 255, 0.4); }
+        .code-input { width: 70%; padding: 10px; border-radius: 6px; border: 1px solid #7000ff; background: #000; color: #fff; text-align: center; font-size: 1rem; font-weight: bold; letter-spacing: 2px; }
+        .code-btn { width: 25%; padding: 10px; border-radius: 6px; background: #7000ff; color: #fff; font-weight: bold; border: none; cursor: pointer; transition: 0.3s; }
+        .code-btn:hover { background: #ff00ff; }
     </style>
 </head>
 <body>
@@ -58,11 +64,11 @@
             <div class="price-tag"> Жазылуу баасы: 2 айга / 200 сом </div>
 
             <div class="instruction-step">
-                <strong>1-Кадам:</strong> Уюлдук телефонуңуз менен <strong>МБанк QR</strong> кодун сканерлеп, 200 сом төлөңүз жана төлөм чегин (квитанциясын) телефонго сактаңыз.
+                <strong>1-Кадам:</strong> МБанк QR аркылуу 200 сом төлөп, чегин сактаңыз.
             </div>
 
             <div class="instruction-step">
-                <strong>2-Кадам:</strong> Төмөндөгү жашыл баскычты басыңыз. Ал автоматтык түрдө сиздин даяр өтүнмө текстиңизди көчүрүп, биздин <strong>Бизнес WhatsApp'ка</strong> багыттайт. Чекти тиркеп жөнөтүңүз.
+                <strong>2-Кадам:</strong> Төмөнкү жашыл баскычты басып WhatsApp'ка чекти жөнөтүңүз. Биз сизге дароо <b>АКТИВАЦИЯЛЫК КОД</b> беребиз. Ал кодду төмөнгө жазып уруксат ачасыз.
             </div>
 
             <div class="qr-container">
@@ -79,7 +85,12 @@
             <button class="wa-btn" onclick="sendWhatsAppRequest()">
                 <span>💬 Өтүнмөнү WhatsAppка жөнөтүү (Чек тиркөө)</span>
             </button>
-            <p style="font-size: 0.8rem; color: #64748b; margin-top: 12px;">Уруксат чек текшерилгенден кийин 24 сааттын ичинде берилет.</p>
+
+            <div class="code-input-box">
+                <p style="font-size: 0.85rem; color: #a5b4fc; margin-bottom: 8px;">Админден алган кодду бул жерге чаптаңыз:</p>
+                <input type="text" id="activation-code-input" class="code-input" placeholder="КОДДУ ЖАЗЫҢЫЗ">
+                <button class="code-btn" onclick="activateWithCode()">ОК</button>
+            </div>
         </div>
     </div>
 
@@ -148,29 +159,23 @@
     </div>
 
     <script>
-        // Баракча жүктөлгөндө кирген колдонуучуну текшерүү
         let currentEmail = localStorage.getItem('bilimal_user_email');
         
         if (!currentEmail) {
-            alert("Адегенде сайттан катталып же кириңиз!");
             window.location.href = 'index.html';
         } else {
             document.getElementById('user-email').innerText = "Колдонуучу: " + currentEmail;
             checkVIPStatus();
         }
 
-        // VIP статусун ар бир почта үчүн өзүнчө текшерүү функциясы
         function checkVIPStatus() {
-            // Эми уруксат ар бир почтага уникалдуу түрдө байланат
             let vipExpiryTime = localStorage.getItem('vip_until_' + currentEmail);
             let statusText = document.getElementById('vip-status');
-            let currentTime = new Date().getTime(); // Азыркы реалдуу убакыт
+            let currentTime = new Date().getTime();
             
             if (vipExpiryTime && parseInt(vipExpiryTime) > currentTime) {
-                // Качан бүтөрүн кыргызча форматка айлантуу
                 let expiryDate = new Date(parseInt(vipExpiryTime));
                 let formattedDate = expiryDate.toLocaleDateString('ky-KG', { day: 'numeric', month: 'long', year: 'numeric' });
-
                 statusText.innerText = "VIP жазылуу активдүү ✨ (Мөөнөтү: " + formattedDate + " чейин)";
                 statusText.className = "status-text status-active";
                 return true;
@@ -181,7 +186,6 @@
             }
         }
 
-        // Оюн бөлүмүн баскандагы логика
         function handleGameAccess() {
             if (checkVIPStatus()) {
                 window.location.href = 'sections/test-games.html';
@@ -194,18 +198,31 @@
             document.getElementById('payment-modal').style.display = 'none';
         }
 
-        // Автоматтык түрдө текст курап, WhatsApp'ка багыттоо
         function sendWhatsAppRequest() {
             let myWhatsAppNumber = "996556400477"; 
-            let messageText = `Саламатсызбы! BiliMal.org долбоорунун "Оюн Тесттери" бөлүмүнө уруксат алуу үчүн төлөм аткардым. \n\n📧 Менин электрондук почтам: ${currentEmail}\n\nТөмөндө төлөмдүн чегин тиркеп жатам. Сураныч, уруксат берип коюңуз.`;
-            
+            let messageText = `Саламатсызбы! BiliMal.org долбоорунун "Оюн Тесттери" бөлүмүнө уруксат алуу үчүн төлөм аткардым. \n\n📧 Менин электрондук почтам: ${currentEmail}\n\nТөмөндө төлөмдүн чегин тиркеп жатам. Активация кодун жөнөтүп коюңузчу.`;
             let encodedMessage = encodeURIComponent(messageText);
-            let whatsappUrl = `https://wa.me/${myWhatsAppNumber}?text=${encodedMessage}`;
-            
-            window.open(whatsappUrl, '_blank');
+            window.open(`https://wa.me/${myWhatsAppNumber}?text=${encodedMessage}`, '_blank');
         }
 
-        // Системадан туура чыгуу (башка аккаунттар катып калбайт)
+        // КОД МЕНЕН АКТИВАЦИЯЛОО ФУНКЦИЯСЫ (ОКУУЧУ ТЕЛЕФОНУНАН АТКАРАТ)
+        function activateWithCode() {
+            let enteredCode = document.getElementById('activation-code-input').value.trim();
+            
+            // Окуучунун почтасына карап математикалык уникалдуу код чыгаруу
+            let secretSalt = "BILIMAL_SALT_2026";
+            let generatedCode = btoa(currentEmail + secretSalt).substring(0, 10).toUpperCase();
+
+            if (enteredCode === generatedCode) {
+                let expiryTime = new Date().getTime() + (60 * 24 * 60 * 60 * 1000); // 2 ай (60 күн)
+                localStorage.setItem('vip_until_' + currentEmail, expiryTime.toString());
+                alert("Куттуктайбыз! Премиум оюндарга 2 айлык VIP уруксат ийгиликтүү иштетилди. 🐎");
+                location.reload();
+            } else {
+                alert("Ката код! Сураныч, кодду туура көчүрүп жазыңыз же админге кайрылыңыз.");
+            }
+        }
+
         function logout() {
             localStorage.removeItem('bilimal_user_email');
             localStorage.removeItem('bilimal_user_pass');
