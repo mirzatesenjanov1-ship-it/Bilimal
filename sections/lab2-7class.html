@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лабораториялык иш №2 (7-класс) — BiliMal 3D Density</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #020208; color: #fff; min-height: 100vh; padding: 25px 4%; }
+        
+        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; transition: 0.3s; }
+        .back-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.4); }
+
+        .lab-container { background: rgba(10, 10, 25, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); padding: 35px; border-radius: 20px; max-width: 1000px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .lab-header { text-align: center; border-bottom: 2px dashed rgba(0, 240, 255, 0.3); padding-bottom: 20px; margin-bottom: 30px; }
+        .lab-header h2 { color: #00f0ff; font-size: 1.8rem; margin-bottom: 5px; }
+        .lab-header p { color: #a5b4fc; font-weight: bold; letter-spacing: 1px; }
+
+        h3 { color: #00f0ff; margin: 25px 0 15px 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+
+        /* 📐 ФИЗИКАЛЫК ФОРМУЛА ПАНЕЛИ */
+        .formula-container { display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .formula-card { flex: 1; min-width: 250px; background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 0 15px rgba(0, 240, 255, 0.1); }
+        .formula-main { font-size: 1.4rem; color: #00f0ff; font-weight: bold; letter-spacing: 1px; }
+        .formula-live { font-size: 1rem; color: #ff00ff; margin-top: 5px; font-family: monospace; }
+
+        /* 3D СТОЛ */
+        .viewport-container { background: #090d16; border: 2px solid #1e293b; border-radius: 16px; padding: 20px; margin: 25px 0; position: relative; }
+        .workbench { height: 550px; border-radius: 12px; position: relative; overflow: hidden; border: 1px dashed rgba(0, 240, 255, 0.2); }
+        #canvas3d { width: 100%; height: 100%; display: block; }
+        
+        .tools-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .btn-tool { background: #7000ff; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-tool:hover { background: #ff00ff; }
+        .btn-action { background: #00ff66; color: #000; }
+        .btn-action:hover { background: #fff; }
+
+        /* ТАБЛИЦА */
+        .table-wrap { overflow-x: auto; margin: 25px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        table { width: 100%; border-collapse: collapse; background: rgba(15, 15, 35, 0.8); }
+        th, td { padding: 14px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
+        th { background: #1e1b4b; color: #00f0ff; }
+        td input { width: 90px; background: #000; border: 1px solid #00f0ff; color: #fff; padding: 8px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 1.1rem; }
+        td input[readonly] { border-color: #ff00ff; background: rgba(255, 0, 255, 0.1); color: #ff00ff; cursor: not-allowed; }
+
+        .text-feedback { width: 100%; height: 75px; background: #000; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 8px; margin-top: 8px; resize: none; font-size: 1rem; }
+        .submit-btn { background: #00ff66; color: #000; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1.2rem; margin-top: 25px; transition: 0.3s; }
+        .submit-btn:hover { background: #fff; }
+
+        /* ИНФО ТАБЛИЧКА */
+        .info-badge { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.85); padding: 12px; border-radius: 8px; border: 1px solid #7000ff; font-size: 13px; font-family: monospace; z-index: 10; pointer-events: none; }
+        .info-badge span { color: #00f0ff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <a href="lab-works.html" class="back-btn">← Тизмеге кайтуу</a>
+
+    <div class="lab-container">
+        <div class="lab-header">
+            <h2>ЛАБОРАТОРИЯЛЫК ИШ №2 (7-класс)</h2>
+            <p>🔬 Катуу нерселердин тыгыздыктарын аныктоо 🚀</p>
+        </div>
+
+        <div class="formula-container">
+            <div class="formula-card">
+                <div class="formula-main">Нерсенин көлөмү: V = V₂ - V₁</div>
+                <div id="live-v-text" class="formula-live">V = ? - ? = ? см³</div>
+            </div>
+            <div class="formula-card">
+                <div class="formula-main">Тыгыздык формуласы: ρ = m / V</div>
+                <div id="live-rho-text" class="formula-live">ρ = ? / ? = ? г/см³</div>
+            </div>
+        </div>
+
+        <div class="viewport-container">
+            <div class="info-badge">
+                📍 ТАРАЗАДА: <span id="weight-display">0.00 г</span><br>
+                📍 МЕНЗУРКАДА: <span id="cylinder-display">50 мл</span>
+            </div>
+
+            <div class="tools-panel">
+                <button class="btn-tool" onclick="selectMaterial('wood', 24, 50, 80, 0xb45309)">🪵 Жыгач брусок</button>
+                <button class="btn-tool" onclick="selectMaterial('copper', 178, 50, 70, 0xea580c)">🪙 Жез брусок</button>
+                <button class="btn-tool" onclick="selectMaterial('iron', 156, 50, 70, 0x475569)">🧱 Болот брусок</button>
+                <span style="color:#64748b; margin: 0 5px;">|</span>
+                <button class="btn-tool btn-action" onclick="actionMeasureMass()">⚖️ Массаны өлчөө</button>
+                <button class="btn-tool btn-action" onclick="actionDunkCylinder()">🧪 Мензуркага салуу</button>
+            </div>
+
+            <div class="workbench" id="bench">
+                <div id="canvas3d"></div>
+            </div>
+        </div>
+
+        <h3>📊 Өлчөө жана эсептөө таблицасы:</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Нерсенин аталышы</th>
+                        <th>m (массасы, г)</th>
+                        <th>V₁ (суунун көлөмү, см³)</th>
+                        <th>V₂ (суу+брусок, см³)</th>
+                        <th>V (брусоктун көлөмү, см³) ⚡</th>
+                        <th>ρ (тыгыздыгы, г/см³) ⚡</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="label-material" style="font-weight: bold; color: #00f0ff;">Жыгач брусок</td>
+                        <td><input type="number" id="val-m" oninput="autoCalculateDensity()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-v1" oninput="autoCalculateDensity()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-v2" oninput="autoCalculateDensity()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-v" readonly placeholder="Авто"></td>
+                        <td><input type="number" id="val-rho" readonly placeholder="Авто"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>❓ Корутунду суроо:</h3>
+        <p>Эгерде биз ушул эле брусокту чоңураак кылып кесип алсак, анын тыгыздыгы өзгөрөбү? Эмне үчүн?</p>
+        <textarea class="text-feedback" id="val-q" placeholder="Өз ой-пикириңизди жазыңыз..."></textarea>
+
+        <button class="submit-btn" onclick="verifyDensityExperiment()">💻 Жыйынтыкты Текшерүү</button>
+    </div>
+
+    <script>
+        // Брусоктордун реалдуу физикалык маанилери (массасы, баштапкы суу, акыркы суу)
+        let activeBox = { type: 'wood', mass: 24, v1: 50, v2: 80, color: 0xb45309 };
+        
+        // ⚡ АВТОМАТТЫК ЭСЕПТӨӨ СИСТЕМЕСИ
+        function autoCalculateDensity() {
+            let m = parseFloat(document.getElementById('val-m').value);
+            let v1 = parseFloat(document.getElementById('val-v1').value);
+            let v2 = parseFloat(document.getElementById('val-v2').value);
+
+            let txtM = isNaN(m) ? "?" : m;
+            let txtV1 = isNaN(v1) ? "?" : v1;
+            let txtV2 = isNaN(v2) ? "?" : v2;
+
+            if (!isNaN(v1) && !isNaN(v2)) {
+                let vBox = v2 - v1;
+                document.getElementById('val-v').value = Number(vBox.toFixed(2));
+                document.getElementById('live-v-text').innerHTML = `V = ${txtV2} - ${txtV1} = <b style="color:#00ff66;">${Number(vBox.toFixed(2))}</b> см³`;
+                
+                if (!isNaN(m) && vBox > 0) {
+                    let rho = m / vBox;
+                    document.getElementById('val-rho').value = Number(rho.toFixed(2));
+                    document.getElementById('live-rho-text').innerHTML = `ρ = ${txtM} / ${vBox.toFixed(2)} = <b style="color:#00ff66;">${Number(rho.toFixed(2))}</b> г/см³`;
+                } else {
+                    document.getElementById('val-rho').value = "";
+                    document.getElementById('live-rho-text').innerText = `ρ = ${txtM} / ? = ? г/см³`;
+                }
+            } else {
+                document.getElementById('val-v').value = "";
+                document.getElementById('val-rho').value = "";
+                document.getElementById('live-v-text').innerText = `V = ? - ? = ? см³`;
+                document.getElementById('live-rho-text').innerText = `ρ = ? / ? = ? г/см³`;
+            }
+        }
+
+        // ════════════ THREE.JS 3D СЕНА СТАРТ ════════════
+        let scene, camera, renderer, controls;
+        let scaleMesh, cylinderMesh, waterMesh, boxMesh;
+        const container = document.getElementById('canvas3d');
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 7, 14);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Жарыктар
+            scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+            let dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // Виртуалдык столдун торчосу
+            const grid = new THREE.GridHelper(20, 20, 0x00f0ff, 0x1e293b);
+            grid.position.y = -2;
+            scene.add(grid);
+
+            // 1. ЭЛЕКТРОНДУК ТАРАЗА (Сол тарапта)
+            const scaleGeo = new THREE.BoxGeometry(3, 0.4, 3);
+            const scaleMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.2 });
+            scaleMesh = new THREE.Mesh(scaleGeo, scaleMat);
+            scaleMesh.position.set(-3.5, -1.8, 0);
+            scene.add(scaleMesh);
+
+            // 2. МЕНЗУРКА / ЦИЛИНДР (Оң тарапта)
+            const cylGeo = new THREE.CylinderGeometry(0.8, 0.8, 4, 32, 1, true);
+            const cylMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+            cylinderMesh = new THREE.Mesh(cylGeo, cylMat);
+            cylinderMesh.position.set(3.5, 0, 0);
+            scene.add(cylinderMesh);
+
+            // Мензурканын түбү
+            const baseGeo = new THREE.CylinderGeometry(1, 1, 0.1, 32);
+            const baseMesh = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+            baseMesh.position.set(3.5, -1.95, 0);
+            scene.add(baseMesh);
+
+            // 3. МЕНЗУРКА ИЧИНДЕГИ СУУ
+            const waterGeo = new THREE.CylinderGeometry(0.78, 0.78, 1.8, 32);
+            const waterMat = new THREE.MeshStandardMaterial({ color: 0x00aaff, transparent: true, opacity: 0.6 });
+            waterMesh = new THREE.Mesh(waterGeo, waterMat);
+            waterMesh.position.set(3.5, -1, 0); // Баштапкы суу (50 мл деңгээли)
+            scene.add(waterMesh);
+
+            // 4. ОЙНОЛУУЧУ БРУСОК
+            update3DBox();
+
+            // Башкаруу камерасы
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function update3DBox() {
+            if (boxMesh) scene.remove(boxMesh);
+
+            // Массага жараша визуалдык өлчөм берүү
+            let size = (activeBox.mass / 100) * 0.5 + 0.4;
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshStandardMaterial({ color: activeBox.color, roughness: 0.4 });
+            
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff }));
+
+            boxMesh = new THREE.Mesh(geometry, material);
+            boxMesh.add(line);
+            
+            // Баштапкы абалы — столдун ортосунда турат
+            boxMesh.position.set(0, -1.6, 0);
+            scene.add(boxMesh);
+        }
+
+        function selectMaterial(mat, mass, v1, v2, colorHex) {
+            activeBox = { type: mat, mass: mass, v1: v1, v2: v2, color: colorHex };
+            let names = { wood: 'Жыгач брусок', copper: 'Жез брусок', iron: 'Болот брусок' };
+            document.getElementById('label-material').innerText = names[mat];
+            
+            // Интерфейсти баштапкы абалга келтирүү
+            document.getElementById('weight-display').innerText = "0.00 г";
+            document.getElementById('cylinder-display').innerText = "50 мл";
+            waterMesh.scale.y = 1.0;
+            waterMesh.position.y = -1;
+
+            update3DBox();
+            clearInputs();
+            autoCalculateDensity();
+        }
+
+        // ИШ-АРАКЕТ: МАССАНЫ ӨЛЧӨӨ (Таразага коюу)
+        function actionMeasureMass() {
+            if (!boxMesh) return;
+            // Брусокту 3D форматта таразанын үстүнө жылдыруу
+            boxMesh.position.set(-3.5, -1.4, 0);
+            document.getElementById('weight-display').innerText = activeBox.mass + ".00 г";
+        }
+
+        // ИШ-АРАКЕТ: МЕНЗУРКАГА САЛУУ (Сууга чөктүрүү)
+        function actionDunkCylinder() {
+            if (!boxMesh) return;
+            // Брусок мензурканын ичине суунун түбүнө кирет
+            boxMesh.position.set(3.5, -1.6, 0);
+            
+            // Суунун көлөмү визуалдык түрдө көтөрүлөт
+            let ratio = activeBox.v2 / activeBox.v1;
+            waterMesh.scale.y = ratio;
+            waterMesh.position.y = -2 + (0.9 * ratio);
+
+            document.getElementById('cylinder-display').innerText = activeBox.v2 + " мл";
+        }
+
+        function clearInputs() {
+            document.getElementById('val-m').value = '';
+            document.getElementById('val-v1').value = '';
+            document.getElementById('val-v2').value = '';
+            document.getElementById('val-v').value = '';
+            document.getElementById('val-rho').value = '';
+        }
+
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        // ════════════ THREE.JS 3D СЕНА АЯКТОО ════════════
+
+        // ЖЫЙЫНТЫКТЫ ТЕКШЕРҮҮ
+        function verifyDensityExperiment() {
+            let sm = parseFloat(document.getElementById('val-m').value);
+            let sv1 = parseFloat(document.getElementById('val-v1').value);
+            let sv2 = parseFloat(document.getElementById('val-v2').value);
+            let srho = parseFloat(document.getElementById('val-rho').value);
+            let sq = document.getElementById('val-q').value.trim();
+
+            if (isNaN(sm) || isNaN(sv1) || isNaN(sv2) || isNaN(srho) || sq === "") {
+                alert("❌ Таблицадагы бардык ченөөлөрдү толтуруңуз жана корутунду суроого жооп жазыңыз!");
+                return;
+            }
+
+            // Тараза жана мензурка көрсөткөн так маанилер менен салыштыруу
+            if (Math.abs(sm - activeBox.mass) > 0.1) {
+                alert("❌ Массасы (m) ката жазылды. Алгач брусокту таразага коюп ченеңиз.");
+                return;
+            }
+            if (Math.abs(sv1 - activeBox.v1) > 0.1 || Math.abs(sv2 - activeBox.v2) > 0.1) {
+                alert("❌ Суунун көлөмдөрүн (V₁ же V₂) ката жаздыңыз. Мензурканын маалыматын караңыз.");
+                return;
+            }
+
+            alert("🎉 Керемет! Катуу нерсенин тыгыздыгын аныктоо боюнча №2 лабораториялык иш эң сонун аткарылды! Сиздин бааңыз: 5! 🌟");
+        }
+
+        window.onload = () => { init3D(); };
+    </script>
+</body>
+</html>
