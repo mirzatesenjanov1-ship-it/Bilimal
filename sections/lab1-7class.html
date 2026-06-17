@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораториялык иш №1 (7-класс) — BiliMal 3D</title>
+    <title>Лабораториялык иш №1 (7-класс) — BiliMal 3D Pro</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
@@ -20,8 +20,13 @@
 
         h3 { color: #00f0ff; margin: 25px 0 15px 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
 
-        /* 3D СТОЛДУН КОНТЕЙНЕРИ */
-        .viewport-container { background: #090d16; border: 2px solid #1e293b; border-radius: 16px; padding: 20px; margin: 25px 0; }
+        /* 📐 ФИЗИКАЛЫК ФОРМУЛА ПАНЕЛИ */
+        .formula-card { background: rgba(255, 0, 255, 0.05); border: 1px solid rgba(255, 0, 255, 0.2); padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 15px rgba(255, 0, 255, 0.1); }
+        .formula-main { font-size: 1.6rem; color: #ff00ff; font-weight: bold; letter-spacing: 2px; }
+        .formula-live { font-size: 1.1rem; color: #00f0ff; margin-top: 5px; font-family: monospace; }
+
+        /* 3D СТОЛ */
+        .viewport-container { background: #090d16; border: 2px solid #1e293b; border-radius: 16px; padding: 20px; margin: 25px 0; position: relative; }
         .workbench { height: 550px; border-radius: 12px; position: relative; overflow: hidden; border: 1px dashed rgba(0, 240, 255, 0.2); }
         #canvas3d { width: 100%; height: 100%; display: block; }
         
@@ -47,14 +52,14 @@
 
         .ruler-title-tag { background: #ca8a04; height: 16px; font-size: 9px; text-align: center; color: white; font-weight: bold; line-height: 16px; width: 100%; }
 
-        .step-card { background: rgba(255,255,255,0.02); padding: 15px; border-radius: 10px; margin-bottom: 12px; border-left: 4px solid #7000ff; display: flex; align-items: flex-start; gap: 12px; }
-        .step-num { background: #7000ff; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; flex-shrink: 0; }
-
+        /* ТАБЛИЦА */
         .table-wrap { overflow-x: auto; margin: 25px 0; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
         table { width: 100%; border-collapse: collapse; background: rgba(15, 15, 35, 0.8); }
         th, td { padding: 14px; text-align: center; border: 1px solid rgba(255, 255, 255, 0.1); }
         th { background: #1e1b4b; color: #00f0ff; }
         td input { width: 100px; background: #000; border: 1px solid #00f0ff; color: #fff; padding: 8px; text-align: center; border-radius: 6px; font-weight: bold; font-size: 1.1rem; }
+        /* Көлөмдүн кутучасы автоматтык болгондуктан өзгөчө стилде болот */
+        td input#val-v { border-color: #ff00ff; background: rgba(255, 0, 255, 0.1); color: #ff00ff; cursor: not-allowed; }
 
         .text-feedback { width: 100%; height: 75px; background: #000; border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px; border-radius: 8px; margin-top: 8px; resize: none; font-size: 1rem; }
         .submit-btn { background: #00ff66; color: #000; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1.2rem; margin-top: 25px; transition: 0.3s; }
@@ -68,7 +73,12 @@
     <div class="lab-container">
         <div class="lab-header">
             <h2>ЛАБОРАТОРИЯЛЫК ИШ №1 (7-класс)</h2>
-            <p>🔬 Катуу нерсенин өлчөмдөрүн өлчөө (Чыныгы Ирактивдүү 3D Модель 🚀)</p>
+            <p>🔬 Катуу нерсенин өлчөмдөрүн өлчөө (Автоматтык Интеллектуалдык Версия 🚀)</p>
+        </div>
+
+        <div class="formula-card">
+            <div class="formula-main">Физикалык формула: V = a × b × h</div>
+            <div id="live-formula-text" class="formula-live">V = ? × ? × ? = ? см³</div>
         </div>
 
         <div class="viewport-container">
@@ -82,7 +92,7 @@
                 <div id="canvas3d"></div>
 
                 <div id="ruler-h" class="ruler-horiz">
-                    <div class="ruler-title-tag">ГОРИЗОНТАЛДЫК СЫЗГЫЧ (Узундук $a$ / Туурасы $b$)</div>
+                    <div class="ruler-title-tag">ГОРИЗОНТАЛДЫК СЫЗГЫЧ (Узундук a / Туурасы b)</div>
                     <div class="scale-h">
                         <div class="ticks-mm"></div>
                         <div class="ticks-cm"></div>
@@ -97,7 +107,7 @@
                 </div>
 
                 <div id="ruler-v" class="ruler-vert">
-                    <div class="ruler-title-tag" style="font-size:8px;">ВЕРТИКАЛДЫК (Бийиктик $h$)</div>
+                    <div class="ruler-title-tag" style="font-size:8px;">ВЕРТИКАЛДЫК (Бийиктик h)</div>
                     <div class="scale-v">
                         <div class="ticks-mm-v"></div>
                         <div class="ticks-cm-v"></div>
@@ -112,11 +122,6 @@
             </div>
         </div>
 
-        <div class="step-card">
-            <div class="step-num">🎮</div>
-            <div><b>3D Башкаруу эрежеси:</b> Чычкандын сол баскычын басып туруп жылдырсаңыз, брусокту **3D форматта каалаган тарапка буруп (поворот)** көрө аласыз. Сызгычтарды кармап, брусоктун кырларына дал келтирип, узундугун, туурасын жана бийиктигин дароо ченеңиз!</div>
-        </div>
-
         <h3>📊 Өлчөө жана эсептөө таблицасы:</h3>
         <div class="table-wrap">
             <table>
@@ -126,16 +131,16 @@
                         <th>a (узундугу, см)</th>
                         <th>b (туурасы, см)</th>
                         <th>h (бийиктиги, см)</th>
-                        <th>V (Көлөмү, см³)</th>
+                        <th>V (Көлөмү, см³) Авто-эсептөө ⚡</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td id="label-material" style="font-weight: bold; color: #ff00ff;">Жыгач брусок</td>
-                        <td><input type="number" id="val-a" step="any" placeholder="0"></td>
-                        <td><input type="number" id="val-b" step="any" placeholder="0"></td>
-                        <td><input type="number" id="val-h" step="any" placeholder="0"></td>
-                        <td><input type="number" id="val-v" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-a" oninput="autoCalculateVolume()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-b" oninput="autoCalculateVolume()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-h" oninput="autoCalculateVolume()" step="any" placeholder="0"></td>
+                        <td><input type="number" id="val-v" readonly placeholder="Авто"></td>
                     </tr>
                 </tbody>
             </table>
@@ -155,6 +160,27 @@
         const rulerV = document.getElementById('ruler-v');
         const bench = document.getElementById('bench');
 
+        // ⚡ АВТОМАТТЫК ЭСЕПТӨӨ ЖАНА ЖАНДУУ ФОРМУЛА ФУНКЦИЯСЫ
+        function autoCalculateVolume() {
+            let a = parseFloat(document.getElementById('val-a').value);
+            let b = parseFloat(document.getElementById('val-b').value);
+            let h = parseFloat(document.getElementById('val-h').value);
+
+            let txtA = isNaN(a) ? "?" : a;
+            let txtB = isNaN(b) ? "?" : b;
+            let txtH = isNaN(h) ? "?" : h;
+
+            if (!isNaN(a) && !isNaN(b) && !isNaN(h)) {
+                let volume = a * b * h;
+                // Көлөмдү үтүрдөн кийин эки белгиге чейин тактап чыгаруу
+                document.getElementById('val-v').value = Number(volume.toFixed(2));
+                document.getElementById('live-formula-text').innerHTML = `V = ${txtA} × ${txtB} × ${txtH} = <b style="color:#ff00ff;">${Number(volume.toFixed(2))}</b> см³`;
+            } else {
+                document.getElementById('val-v').value = "";
+                document.getElementById('live-formula-text').innerText = `V = ${txtA} × ${txtB} × ${txtH} = ? см³`;
+            }
+        }
+
         // ════════════ THREE.JS 3D СИСТЕМА СТАРТ ════════════
         let scene, camera, renderer, mesh, controls;
         const container = document.getElementById('canvas3d');
@@ -168,31 +194,25 @@
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
-            renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            // Жарык берүү
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
             dirLight.position.set(5, 10, 7);
-            dirLight.castShadow = true;
             scene.add(dirLight);
 
-            // Сетка түрүндөгү 3D стол
             const gridHelper = new THREE.GridHelper(20, 20, 0x00f0ff, 0x1e293b);
             gridHelper.position.y = -2;
             scene.add(gridHelper);
 
-            // 3D Брусокту түзүү
-            create3DBox(10 * 0.4, 4 * 0.4, 6 * 0.4, 0xb45309); // масштабдалган өлчөм
+            create3DBox(10 * 0.4, 4 * 0.4, 6 * 0.4, 0xb45309);
 
-            // Камераны айландыруучу OrbitControls (3D Поворот)
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Столдун астына өтүп кетпөө чектөөсү
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
             window.addEventListener('resize', onWindowResize);
             animate();
@@ -200,22 +220,13 @@
 
         function create3DBox(w, h, d, colorHex) {
             if (mesh) scene.remove(mesh);
-
             const geometry = new THREE.BoxGeometry(w, h, d);
-            
-            // Кырларын кооз көрсөтүүчү контур
             const edges = new THREE.EdgesGeometry(geometry);
             const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
-
-            const material = new THREE.MeshStandardMaterial({ 
-                color: colorHex, 
-                roughness: 0.4,
-                metalness: 0.2
-            });
-
+            const material = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.4 });
             mesh = new THREE.Mesh(geometry, material);
             mesh.add(line);
-            mesh.position.y = h / 2 - 2; // тордун үстүнө коюу
+            mesh.position.y = h / 2 - 2;
             scene.add(mesh);
         }
 
@@ -223,10 +234,9 @@
             realData.type = mat; realData.a = a; realData.b = b; realData.h = h;
             let names = { wood: 'Жыгач брусок', copper: 'Жез брусок', iron: 'Болот брусок' };
             document.getElementById('label-material').innerText = names[mat];
-            
-            // 3D фигураны жаңы өлчөмдөр менен кайра куруу (Three.js узундук-бийиктик-жазылык)
             create3DBox(a * 0.4, h * 0.4, b * 0.4, colorHex);
             clearInputs();
+            autoCalculateVolume();
         }
 
         function onWindowResize() {
@@ -243,7 +253,7 @@
         // ════════════ THREE.JS 3D СИСТЕМА АЯКТОО ════════════
 
 
-        // 🚀 СЫЗГЫЧТАРДЫ ЭРКИН ЖЫЛДЫРУУ (2D OVERLAY DRAG)
+        // 🚀 СЫЗГЫЧТАРДЫ ЭРКИН ЖЫЛДЫРУУ СИСТЕМА СТАРТ
         function makeDraggable(element) {
             let isDragging = false;
             let startX, startY, initX, initY;
@@ -255,7 +265,6 @@
                 isDragging = true;
                 let clientX = e.clientX || e.touches[0].clientX;
                 let clientY = e.clientY || e.touches[0].clientY;
-                
                 startX = clientX; startY = clientY;
                 initX = element.offsetLeft; initY = element.offsetTop;
 
@@ -270,7 +279,6 @@
                 if (!isDragging) return;
                 let clientX = e.clientX || e.touches[0].clientX;
                 let clientY = e.clientY || e.touches[0].clientY;
-
                 let nextX = initX + (clientX - startX);
                 let nextY = initY + (clientY - startY);
 
@@ -309,29 +317,20 @@
             let sq = document.getElementById('val-q').value.trim();
 
             if (isNaN(sa) || isNaN(sb) || isNaN(sh) || isNaN(sv) || sq === "") {
-                alert("❌ Сураныч, таблицаны жана корутунду суроону толук толтуруңуз!");
+                alert("❌ Сураныч, өлчөөлөрдү киргизиңиз жана корутунду суроого жооп жазыңыз!");
                 return;
             }
 
-            // Экран 3D болгондуктан, окуучу сызгычтан болжолдуу түрдө визуалдык баа берет
+            // Ченөө каталык диапазону
             if (Math.abs(sa - realData.a) > 0.5 || Math.abs(sb - realData.b) > 0.5 || Math.abs(sh - realData.h) > 0.5) {
-                alert("❌ Өлчөөлөрдө ката бар! Брусоктун чыныгы өлчөмдөрүнө жакыныраак маанилерди жазыңыз.");
+                alert("❌ Ченөө маанилеринде ката бар! Сызгычтарды брусокко жакыныраак коюп кайра текшериңиз.");
                 return;
             }
 
-            let studentCalcV = sa * sb * sh;
-            if (Math.abs(sv - studentCalcV) > 1.5) {
-                alert("📐 Көлөмдү (V = a × b × h) көбөйтүүдө математикалык ката кетти.");
-                return;
-            }
-
-            alert("🎉 Ура! Заманбап 3D симуляция ийгиликтүү өттү! Сиздин физикалык өлчөө бааңыз: 5! 🌟");
+            alert("🎉 Керемет! Физикалык формуланын негизинде авто-эсептөө ийгиликтүү иштеди жана ченөө туура аяктады! Сиздин бааңыз: 5! 🌟");
         }
 
-        // Ишке киргизүү
-        window.onload = () => {
-            init3D();
-        };
+        window.onload = () => { init3D(); };
     </script>
 </body>
 </html>
