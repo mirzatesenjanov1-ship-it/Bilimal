@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораториялык иш №1 (7-класс) — BiliMal</title>
+    <title>Лабораториялык иш №1 (7-класс) — BiliMal 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: #020208; color: #fff; min-height: 100vh; padding: 25px 4%; }
@@ -18,22 +20,17 @@
 
         h3 { color: #00f0ff; margin: 25px 0 15px 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
 
-        /* ВИРТУАЛДЫК СТОЛ */
+        /* 3D СТОЛДУН КОНТЕЙНЕРИ */
         .viewport-container { background: #090d16; border: 2px solid #1e293b; border-radius: 16px; padding: 20px; margin: 25px 0; }
-        .workbench { height: 550px; background: radial-gradient(circle, #131238 0%, #020208 100%); border-radius: 12px; position: relative; overflow: hidden; border: 1px dashed rgba(0, 240, 255, 0.2); }
+        .workbench { height: 550px; border-radius: 12px; position: relative; overflow: hidden; border: 1px dashed rgba(0, 240, 255, 0.2); }
+        #canvas3d { width: 100%; height: 100%; display: block; }
         
         .tools-panel { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .btn-tool { background: #7000ff; color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
         .btn-tool:hover { background: #ff00ff; }
-        .btn-view { background: #00f0ff; color: #000; }
-        .btn-view:hover { background: #fff; }
-        .btn-view.active { background: #ff00ff; color: #fff; border: 1px solid #fff; }
-
-        /* БРУСОК */
-        .object-box { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; font-weight: bold; color: rgba(255, 255, 255, 0.9); border: 2px solid rgba(255,255,255,0.3); box-shadow: 0 10px 25px rgba(0,0,0,0.7); transition: all 0.2s ease; text-shadow: 0 2px 4px #000; z-index: 2; }
 
         /* 📏 ГОРИЗОНТАЛДЫК СЫЗГЫЧ */
-        .ruler-horiz { position: absolute; top: 20px; left: 20px; width: 620px; height: 85px; background: rgba(254, 240, 138, 0.98); border: 2px solid #ca8a04; color: #000; cursor: move; user-select: none; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: none; z-index: 999; padding-left: 10px; }
+        .ruler-horiz { position: absolute; top: 20px; left: 20px; width: 620px; height: 85px; background: rgba(254, 240, 138, 0.95); border: 2px solid #ca8a04; color: #000; cursor: move; user-select: none; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: none; z-index: 999; padding-left: 10px; }
         .ruler-horiz .scale-h { position: relative; height: 35px; width: 600px; border-bottom: 2px solid #000; }
         .ruler-horiz .ticks-mm { position: absolute; bottom: 0; left: 0; width: 100%; height: 12px; background: repeating-linear-gradient(90deg, #000, #000 1.5px, transparent 1.5px, transparent 4px); }
         .ruler-horiz .ticks-cm { position: absolute; bottom: 0; left: 0; width: 100%; height: 26px; background: repeating-linear-gradient(90deg, #000, #000 2px, transparent 2px, transparent 40px); }
@@ -41,7 +38,7 @@
         .ruler-horiz .digits-h span { position: absolute; transform: translateX(-50%); }
 
         /* 📐 ВЕРТИКАЛДЫК СЫЗГЫЧ */
-        .ruler-vert { position: absolute; top: 120px; left: 20px; width: 85px; height: 420px; background: rgba(254, 240, 138, 0.98); border: 2px solid #ca8a04; color: #000; cursor: move; user-select: none; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: none; z-index: 999; }
+        .ruler-vert { position: absolute; top: 120px; left: 20px; width: 85px; height: 420px; background: rgba(254, 240, 138, 0.95); border: 2px solid #ca8a04; color: #000; cursor: move; user-select: none; border-radius: 4px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); touch-action: none; z-index: 999; }
         .ruler-vert .scale-v { position: absolute; top: 10px; right: 0; height: 400px; width: 35px; border-left: 2px solid #000; }
         .ruler-vert .ticks-mm-v { position: absolute; top: 0; right: 0; height: 100%; width: 12px; background: repeating-linear-gradient(0deg, #000, #000 1.5px, transparent 1.5px, transparent 4px); }
         .ruler-vert .ticks-cm-v { position: absolute; top: 0; right: 0; height: 100%; width: 26px; background: repeating-linear-gradient(0deg, #000, #000 2px, transparent 2px, transparent 40px); }
@@ -71,26 +68,21 @@
     <div class="lab-container">
         <div class="lab-header">
             <h2>ЛАБОРАТОРИЯЛЫК ИШ №1 (7-класс)</h2>
-            <p>🔬 Катуу нерсенин өлчөмдөрүн өлчөө (Кош сызгычтуу супер-модель 🚀)</p>
+            <p>🔬 Катуу нерсенин өлчөмдөрүн өлчөө (Чыныгы Ирактивдүү 3D Модель 🚀)</p>
         </div>
 
         <div class="viewport-container">
             <div class="tools-panel">
-                <button class="btn-tool" onclick="selectMaterial('wood', 10, 6, 4, '#b45309')">🪵 Жыгач брусок</button>
-                <button class="btn-tool" onclick="selectMaterial('copper', 8, 5, 3, '#ea580c')">🪙 Жез брусок</button>
-                <button class="btn-tool" onclick="selectMaterial('iron', 11, 7, 5, '#475569')">🧱 Болот брусок</button>
-                
-                <span style="color:#64748b; margin: 0 10px;">|</span>
-                
-                <button id="view-a" class="btn-tool btn-view active" onclick="changeAspect('a')">Алдынан көрүнүш</button>
-                <button id="view-b" class="btn-tool btn-view" onclick="changeAspect('b')">Үстүнөн көрүнүш</button>
+                <button class="btn-tool" onclick="change3DMaterial('wood', 10, 6, 4, 0xb45309)">🪵 Жыгач брусок</button>
+                <button class="btn-tool" onclick="change3DMaterial('copper', 8, 5, 3, 0xea580c)">🪙 Жез брусок</button>
+                <button class="btn-tool" onclick="change3DMaterial('iron', 11, 7, 5, 0x475569)">🧱 Болот брусок</button>
             </div>
 
             <div class="workbench" id="bench">
-                <div id="target-object" class="object-box" style="background-color: #b45309; width: 400px; height: 160px;">Жыгач брусок</div>
+                <div id="canvas3d"></div>
 
                 <div id="ruler-h" class="ruler-horiz">
-                    <div class="ruler-title-tag">ГОРИЗОНТАЛДЫК СЫЗГЫЧ (Узундук / Туурасы)</div>
+                    <div class="ruler-title-tag">ГОРИЗОНТАЛДЫК СЫЗГЫЧ (Узундук $a$ / Туурасы $b$)</div>
                     <div class="scale-h">
                         <div class="ticks-mm"></div>
                         <div class="ticks-cm"></div>
@@ -105,7 +97,7 @@
                 </div>
 
                 <div id="ruler-v" class="ruler-vert">
-                    <div class="ruler-title-tag" style="font-size:8px;">ВЕРТИКАЛДЫК (Бийиктик)</div>
+                    <div class="ruler-title-tag" style="font-size:8px;">ВЕРТИКАЛДЫК (Бийиктик $h$)</div>
                     <div class="scale-v">
                         <div class="ticks-mm-v"></div>
                         <div class="ticks-cm-v"></div>
@@ -117,13 +109,12 @@
                         <span style="top:360px;">9</span><span style="top:400px;">10</span>
                     </div>
                 </div>
-
             </div>
         </div>
 
         <div class="step-card">
-            <div class="step-num">💡</div>
-            <div><b>Кантип өлчөө керек?</b> Экранда эки сызгыч тең бир убакта турат. Горизонталдык сызгыч менен брусоктун узундугун же туурасын ченеңиз, ал эми вертикалдык сызгычты брусоктун капталына коюп, бийиктигин ($h$) дароо бир учурда өлчөңүз!</div>
+            <div class="step-num">🎮</div>
+            <div><b>3D Башкаруу эрежеси:</b> Чычкандын сол баскычын басып туруп жылдырсаңыз, брусокту **3D форматта каалаган тарапка буруп (поворот)** көрө аласыз. Сызгычтарды кармап, брусоктун кырларына дал келтирип, узундугун, туурасын жана бийиктигин дароо ченеңиз!</div>
         </div>
 
         <h3>📊 Өлчөө жана эсептөө таблицасы:</h3>
@@ -159,50 +150,100 @@
 
     <script>
         let realData = { type: 'wood', a: 10, b: 6, h: 4 }; 
-        let currentAspect = 'a';
-        const pixelScale = 40; 
 
         const rulerH = document.getElementById('ruler-h');
         const rulerV = document.getElementById('ruler-v');
         const bench = document.getElementById('bench');
-        const obj = document.getElementById('target-object');
 
-        function updateObjectGraphics() {
-            // "Алдынан" же "Үстүнөн" баскычтары басылганда брусоктун гана өлчөмү өзгөрөт, сызгычтар ордунда калат
-            if (currentAspect === 'a') {
-                obj.style.width = (realData.a * pixelScale) + 'px';
-                obj.style.height = (realData.h * pixelScale) + 'px';
-            } else if (currentAspect === 'b') {
-                obj.style.width = (realData.a * pixelScale) + 'px';
-                obj.style.height = (realData.b * pixelScale) + 'px';
-            }
+        // ════════════ THREE.JS 3D СИСТЕМА СТАРТ ════════════
+        let scene, camera, renderer, mesh, controls;
+        const container = document.getElementById('canvas3d');
+
+        function init3D() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050510);
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 8, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Жарык берүү
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 10, 7);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
+
+            // Сетка түрүндөгү 3D стол
+            const gridHelper = new THREE.GridHelper(20, 20, 0x00f0ff, 0x1e293b);
+            gridHelper.position.y = -2;
+            scene.add(gridHelper);
+
+            // 3D Брусокту түзүү
+            create3DBox(10 * 0.4, 4 * 0.4, 6 * 0.4, 0xb45309); // масштабдалган өлчөм
+
+            // Камераны айландыруучу OrbitControls (3D Поворот)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Столдун астына өтүп кетпөө чектөөсү
+
+            window.addEventListener('resize', onWindowResize);
+            animate();
         }
 
-        function selectMaterial(mat, a, b, h, hexColor) {
+        function create3DBox(w, h, d, colorHex) {
+            if (mesh) scene.remove(mesh);
+
+            const geometry = new THREE.BoxGeometry(w, h, d);
+            
+            // Кырларын кооз көрсөтүүчү контур
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
+
+            const material = new THREE.MeshStandardMaterial({ 
+                color: colorHex, 
+                roughness: 0.4,
+                metalness: 0.2
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            mesh.add(line);
+            mesh.position.y = h / 2 - 2; // тордун үстүнө коюу
+            scene.add(mesh);
+        }
+
+        function change3DMaterial(mat, a, b, h, colorHex) {
             realData.type = mat; realData.a = a; realData.b = b; realData.h = h;
             let names = { wood: 'Жыгач брусок', copper: 'Жез брусок', iron: 'Болот брусок' };
             document.getElementById('label-material').innerText = names[mat];
-            obj.style.backgroundColor = hexColor;
-            obj.innerText = names[mat];
-            updateObjectGraphics();
+            
+            // 3D фигураны жаңы өлчөмдөр менен кайра куруу (Three.js узундук-бийиктик-жазылык)
+            create3DBox(a * 0.4, h * 0.4, b * 0.4, colorHex);
             clearInputs();
         }
 
-        function changeAspect(aspect) {
-            currentAspect = aspect;
-            document.querySelectorAll('.btn-view').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('view-' + aspect).classList.add('active');
-            updateObjectGraphics();
+        function onWindowResize() {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
         }
 
-        function clearInputs() {
-            document.getElementById('val-a').value = '';
-            document.getElementById('val-b').value = '';
-            document.getElementById('val-h').value = '';
-            document.getElementById('val-v').value = '';
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
         }
+        // ════════════ THREE.JS 3D СИСТЕМА АЯКТОО ════════════
 
-        // 🚀 ЭКИ СЫЗГЫЧ ҮЧҮН ТӨГҮРӨК ИШТЕГЕН ДРАГ-ЭНД-ДРОП КЫЙМЫЛДАТКЫЧЫ
+
+        // 🚀 СЫЗГЫЧТАРДЫ ЭРКИН ЖЫЛДЫРУУ (2D OVERLAY DRAG)
         function makeDraggable(element) {
             let isDragging = false;
             let startX, startY, initX, initY;
@@ -215,10 +256,8 @@
                 let clientX = e.clientX || e.touches[0].clientX;
                 let clientY = e.clientY || e.touches[0].clientY;
                 
-                startX = clientX;
-                startY = clientY;
-                initX = element.offsetLeft;
-                initY = element.offsetTop;
+                startX = clientX; startY = clientY;
+                initX = element.offsetLeft; initY = element.offsetTop;
 
                 document.addEventListener('mousemove', dragMove);
                 document.addEventListener('touchmove', dragMove, { passive: false });
@@ -235,11 +274,10 @@
                 let nextX = initX + (clientX - startX);
                 let nextY = initY + (clientY - startY);
 
-                // Столдун ичинен чыгарбоо чектери
-                if (nextX < -30) nextX = -30;
+                if (nextX < -40) nextX = -40;
                 if (nextY < -10) nextY = -10;
-                if (nextX > bench.clientWidth - 60) nextX = bench.clientWidth - 60;
-                if (nextY > bench.clientHeight - 60) nextY = bench.clientHeight - 60;
+                if (nextX > bench.clientWidth - 50) nextX = bench.clientWidth - 50;
+                if (nextY > bench.clientHeight - 50) nextY = bench.clientHeight - 50;
 
                 element.style.left = nextX + 'px';
                 element.style.top = nextY + 'px';
@@ -253,9 +291,15 @@
             }
         }
 
-        // Эки сызгычты тең көз карандысыз иштетүү
         makeDraggable(rulerH);
         makeDraggable(rulerV);
+
+        function clearInputs() {
+            document.getElementById('val-a').value = '';
+            document.getElementById('val-b').value = '';
+            document.getElementById('val-h').value = '';
+            document.getElementById('val-v').value = '';
+        }
 
         function verifyExperiment() {
             let sa = parseFloat(document.getElementById('val-a').value);
@@ -269,29 +313,25 @@
                 return;
             }
 
-            if (Math.abs(sa - realData.a) > 0.3) {
-                alert("❌ Узундугун (a) туура эмес ченедиңиз. Горизонталдык сызгычты түз коюңуз.");
-                return;
-            }
-            if (Math.abs(sb - realData.b) > 0.3) {
-                alert("❌ Туурасын (b) туура эмес ченедиңиз. 'Үстүнөн көрүнүш' баскычын басып, горизонталдык сызгыч менен ченеңиз.");
-                return;
-            }
-            if (Math.abs(sh - realData.h) > 0.3) {
-                alert("❌ Бийиктигин (h) туура эмес ченедиңиз. Вертикалдык сызгычтын '0' санын брусоктун түбүнө коюңуз.");
+            // Экран 3D болгондуктан, окуучу сызгычтан болжолдуу түрдө визуалдык баа берет
+            if (Math.abs(sa - realData.a) > 0.5 || Math.abs(sb - realData.b) > 0.5 || Math.abs(sh - realData.h) > 0.5) {
+                alert("❌ Өлчөөлөрдө ката бар! Брусоктун чыныгы өлчөмдөрүнө жакыныраак маанилерди жазыңыз.");
                 return;
             }
 
             let studentCalcV = sa * sb * sh;
-            if (Math.abs(sv - studentCalcV) > 1.0) {
-                alert("📐 Ченөөлөр туура, бирок V = a × b × h формуласы менен көбөйтүүдө ката кетти.");
+            if (Math.abs(sv - studentCalcV) > 1.5) {
+                alert("📐 Көлөмдү (V = a × b × h) көбөйтүүдө математикалык ката кетти.");
                 return;
             }
 
-            alert("🎉 Керемет! Кош сызгыч системасы менен лабораториялык ишти 100% так аткардыңыз. Бааңыз: 5! 🌟");
+            alert("🎉 Ура! Заманбап 3D симуляция ийгиликтүү өттү! Сиздин физикалык өлчөө бааңыз: 5! 🌟");
         }
 
-        updateObjectGraphics();
+        // Ишке киргизүү
+        window.onload = () => {
+            init3D();
+        };
     </script>
 </body>
 </html>
