@@ -154,7 +154,7 @@
     </div>
 
     <script>
-        let isLoginMode = false; 
+        let isLoginMode = false;
 
         window.onload = function() {
             renderPageLayout();
@@ -225,21 +225,42 @@
             authBox.style.display = "none";
             document.getElementById('display-user-email').innerText = currentUser;
 
-            const myWhatsappNumber = "996556400477"; 
+            const myWhatsappNumber = "996556400477";
             const message = encodeURIComponent(`Саламатсызбы! Виртуалдык Лабораторияга кирүү үчүн төлөм чегин жөнөтүп жатам.\nМенин почтам: ${currentUser}`);
             document.getElementById('whatsapp-link').href = `https://wa.me/${myWhatsappNumber}?text=${message}`;
+
+            // =========================================================================
+            // 🌟 УРУКСАТ БЕРИЛГЕН ПОЧТАЛАРДЫН ТИЗМЕСИ (АДМИН УШУЛ ЖЕРГЕ ГАНА КОШОТ)
+            // =========================================================================
+            const allowedEmails = [
+                "mirzatesenjanov1@gmail.com",
+                "mirzatestebesov51@gmail.com",
+                "nasaatmedia@gmail.com"
+            ];
 
             let users = JSON.parse(localStorage.getItem('lab_users')) || {};
             let user = users[currentUser];
 
-            // 2 АЙЛЫК УБАКЫТТЫ БУЛ ЖЕРДЕ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРЕТ (ӨТҮП КЕТСЕ ЖАБАТ)
+            // Тизмедеги почта киргенде, анын түзмөгүндө автоматтык түрдө 2 айлык убакыт ачылат
+            if (allowedEmails.includes(currentUser)) {
+                if (!user) {
+                    users[currentUser] = { password: "123", vipUntil: null };
+                }
+                // Эгер убактысы жок болсо же мурунку кирген убактысы бүткөн болсо - жаңы 2 ай кошот
+                if (!users[currentUser].vipUntil || users[currentUser].vipUntil < new Date().getTime()) {
+                    users[currentUser].vipUntil = new Date().getTime() + (60 * 24 * 60 * 60 * 1000);
+                    localStorage.setItem('lab_users', JSON.stringify(users));
+                }
+                user = users[currentUser];
+            }
+
+            // Убакыттын бүтүү мөөнөтүн көзөмөлдөө
             if(user && user.vipUntil && user.vipUntil > new Date().getTime()) {
                 paywallBox.style.display = "none";
                 labBox.style.display = "block";
                 
-                // Колдонуучуга качан бүтөөрүн көрсөтүү
                 const endDate = new Date(user.vipUntil).toLocaleDateString('ky-KG', { year: 'numeric', month: 'long', day: 'numeric' });
-                vipBadge.innerText = `👑 VIP АКТИВДҮҮ (Мөөнөтү: ${endDate})`;
+                vipBadge.innerText = `👑 VIP АКТИВДҮҮ (Мөөнөтү: ${endDate} чейин)`;
             } else {
                 paywallBox.style.display = "block";
                 labBox.style.display = "none";
@@ -261,15 +282,11 @@
 
             let vipCodesStore = JSON.parse(localStorage.getItem('lab_vip_codes')) || {};
             
-            // Текшерүү: Код туурабы жана ушул колдонуучуга тиешелүүбү
             if(vipCodesStore[inputCode] && vipCodesStore[inputCode].email === currentUser) {
                 let users = JSON.parse(localStorage.getItem('lab_users')) || {};
-                
-                // Коддогу жазылган убакытты түз колдонуучуга өткөрүп берет
                 users[currentUser].vipUntil = vipCodesStore[inputCode].expireTime;
                 localStorage.setItem('lab_users', JSON.stringify(users));
 
-                // Иштетилген кодду өчүрүү
                 delete vipCodesStore[inputCode];
                 localStorage.setItem('lab_vip_codes', JSON.stringify(vipCodesStore));
 
@@ -277,10 +294,9 @@
                 statusIndicator.innerText = "👑 VIP АКТИВДҮҮ!";
 
                 setTimeout(() => {
-                    alert("✨ VIP ийгиликтүү активдештирилди! Лабораторияга 2 айлык жол ачылды.");
+                    alert("✨ VIP ийгиликтүү активдештирилди!");
                     renderPageLayout();
                 }, 800);
-
             } else {
                 alert("❌ Ката код же бул почтага тиешелүү эмес!");
             }
