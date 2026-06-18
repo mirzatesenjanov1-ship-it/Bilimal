@@ -90,7 +90,7 @@
         .mbank-qr img { width: 100%; height: 100%; object-fit: contain; }
         .whatsapp-btn { display: block; padding: 10px; background: #25D366; color: #fff; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 15px 0; font-size: 0.9rem; }
         .code-box { display: flex; gap: 8px; margin-top: 10px; }
-        .code-box input { flex: 1; padding: 10px; background: #000; border: 1px solid #1e293b; color: #fff; border-radius: 6px; text-align: center; }
+        .code-box input { flex: 1; padding: 10px; background: #000; border: 1px solid #1e293b; color: #fff; border-radius: 6px; text-align: center; color: #fff; font-weight: bold; }
         .code-box button { padding: 10px 15px; background: #00f0ff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -109,7 +109,6 @@
             </div>
         </div>
 
-        <!-- 📂 АКЫСЫЗ БӨЛҮМ -->
         <div class="section-title">📂 Акысыз методикалык материалдар</div>
         <div class="materials-grid">
             <div class="card">
@@ -126,7 +125,6 @@
             </div>
         </div>
 
-        <!-- 👑 VIP ПРЕМИУМ КУРАЛДАР -->
         <div class="section-title">✨ Визуалдык математика (Премиум куралдар)</div>
         <div class="materials-grid">
             <div class="card vip-card">
@@ -163,7 +161,6 @@
         </div>
     </div>
 
-    <!-- 🪟 ИНТЕРАКТИВДҮҮ СИМУЛЯТОРЛОР ТЕРЕЗЕСИ -->
     <div class="simulator-overlay" id="simulator-modal">
         <div class="simulator-container">
             <span class="close-sim" onclick="closeSimulator()">✕ Жабуу</span>
@@ -174,14 +171,11 @@
                 <div class="sim-canvas-area">
                     <canvas id="sim-canvas" width="500" height="400"></canvas>
                 </div>
-                <div class="sim-controls" id="sim-controls-zone">
-                    <!-- Бул жерге тандалган куралдын жөндөөчүлөрү (слайдерлери) скрипт аркылуу кошулат -->
-                </div>
+                <div class="sim-controls" id="sim-controls-zone"></div>
             </div>
         </div>
     </div>
 
-    <!-- 🪟 ТӨЛӨМ МОДАЛДЫК ТЕРЕЗЕСИ -->
     <div class="modal-overlay" id="vip-modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal()">✕</span>
@@ -189,10 +183,12 @@
                 <h3 style="color: #ff00ff; margin-bottom: 15px;">Катталуу / Кирүү</h3>
                 <div class="input-group"><input type="email" id="auth-email" placeholder="E-mail дарегиңиз"></div>
                 <div class="input-group"><input type="password" id="auth-password" placeholder="Сыр сөз"></div>
+                <input type="hidden" id="selected-tool-type" value="">
                 <button class="auth-btn" onclick="handleVipAuth()">Кийинки кадам →</button>
             </div>
             <div id="modal-pay-step" style="display: none;">
                 <h3 style="color: #00f0ff; margin-bottom: 10px;">VIP Активдештирүү 🔒</h3>
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px;">Аккаунт: <span id="user-display-email" style="color: #ff00ff;"></span></p>
                 <div class="mbank-qr"><img src="../../qrmbank.png" alt="QR"></div>
                 <a href="#" id="whatsapp-link" target="_blank" class="whatsapp-btn">🟢 Чекти Вотсапка жөнөтүү</a>
                 <div class="code-box">
@@ -226,7 +222,7 @@
             for(let x=0; x<bw; x+=80) { bgCtx.beginPath(); bgCtx.moveTo(x,0); bgCtx.lineTo(x,bh); bgCtx.stroke(); }
             bgParticles.forEach(p => {
                 p.x += p.sx; p.y += p.sy;
-                if(p.x<--100) p.x=bw+100; if(p.x>bw+100) p.x=-100; if(p.y<-50) p.y=bh+50; if(p.y>bh+50) p.y=-50;
+                if(p.x<-100) p.x=bw+100; if(p.x>bw+100) p.x=-100; if(p.y<-50) p.y=bh+50; if(p.y>bh+50) p.y=-50;
                 bgCtx.font = `bold ${p.fs}px monospace`; bgCtx.fillStyle = p.col; bgCtx.fillText(p.text, p.x, p.y);
             });
             requestAnimationFrame(animateBg);
@@ -234,7 +230,7 @@
         animateBg();
 
 
-        // --- СИМУЛЯТОРЛОРДУН ЛОГИКАЛЫК КОДДОРУ (ИНТЕРАКТИВ) ---
+        // --- СИМУЛЯТОРЛОРДУН ИШТӨӨЧҮ КОДДОРУ ---
         const simCanvas = document.getElementById('sim-canvas');
         const sCtx = simCanvas.getContext('2d');
         let activeSimLoop = null;
@@ -248,7 +244,7 @@
 
             if(type === 'graph') {
                 document.getElementById('sim-title').innerText = "Функциялардын графиктеринин конструктору";
-                document.getElementById('sim-desc').innerText = "Параболанын формуласы: y = ax² + bx + c. Төмөнкү слайдерлерди жылдырып, графиктин кандай өзгөрөрүн байкаңыз.";
+                document.getElementById('sim-desc').innerText = "Параболанын формуласы: y = ax² + bx + c. Слайдерлерди жылдырып, өзгөрүүнү байкаңыз.";
                 
                 simVars = { a: 1, b: 0, c: 0 };
                 controls.innerHTML = `
@@ -258,13 +254,12 @@
                 `;
                 function drawGraph() {
                     sCtx.clearRect(0,0,500,400);
-                    // Сетка жана остор
                     sCtx.strokeStyle = '#222'; sCtx.lineWidth = 1;
                     for(let i=0; i<500; i+=25) { sCtx.beginPath(); sCtx.moveTo(i,0); sCtx.lineTo(i,400); sCtx.stroke(); sCtx.beginPath(); sCtx.moveTo(0,i); sCtx.lineTo(500,i); sCtx.stroke(); }
                     sCtx.strokeStyle = '#555'; sCtx.lineWidth = 2;
                     sCtx.beginPath(); sCtx.moveTo(250,0); sCtx.lineTo(250,400); sCtx.stroke();
                     sCtx.beginPath(); sCtx.moveTo(0,200); sCtx.lineTo(500,200); sCtx.stroke();
-                    // Параболаны сызу
+                    
                     sCtx.strokeStyle = '#00f0ff'; sCtx.lineWidth = 3; sCtx.beginPath();
                     for(let px=0; px<=500; px++) {
                         let x = (px - 250) / 25; 
@@ -279,7 +274,7 @@
 
             } else if(type === 'pythagoras') {
                 document.getElementById('sim-title').innerText = "Пифагор теоремасынын суулуу далилдениши";
-                document.getElementById('sim-desc').innerText = "Төмөнкү слайдерди колдонуп, фигураны буруңуз. Катеттердеги (А жана Б) суунун көлөмү гипотенузанын (В) квадратына толуп калганын көрөсүз.";
+                document.getElementById('sim-desc').innerText = "Катеттердеги (А жана Б) суунун көлөмү фигура бурулганда гипотенузанын (В) квадратына толуп калат.";
                 
                 simVars = { angle: 0 };
                 controls.innerHTML = `
@@ -291,20 +286,16 @@
                     let rad = simVars.angle * Math.PI / 180;
                     sCtx.rotate(rad);
                     
-                    // Тик бурчтуу үч бурчтук (база)
                     sCtx.fillStyle = '#1e293b'; sCtx.beginPath(); sCtx.moveTo(0,0); sCtx.lineTo(80,0); sCtx.lineTo(0,-60); sCtx.closePath(); sCtx.fill();
                     
-                    // Катет А квадраты жана андагы суу
                     sCtx.strokeStyle = '#ff00ff'; sCtx.strokeRect(-60, 0, 60, 60);
                     let waterA = Math.max(0, 60 - (simVars.angle / 180)*60);
                     sCtx.fillStyle = 'rgba(0,240,255,0.6)'; sCtx.fillRect(-60, 60 - waterA, 60, waterA);
                     
-                    // Катет Б квадраты жана суу
                     sCtx.strokeRect(80, -60, 60, 60);
                     let waterB = Math.max(0, 60 - (simVars.angle / 180)*60);
                     sCtx.fillStyle = 'rgba(0,240,255,0.6)'; sCtx.fillRect(80, 0 - waterB, 60, waterB);
 
-                    // Гипотенуза В квадраты жана ага куюлган суу
                     sCtx.save(); sCtx.translate(0, -60); sCtx.rotate(-Math.atan2(60,80));
                     sCtx.strokeStyle = '#00f0ff'; sCtx.strokeRect(0, -100, 100, 100);
                     let waterC = (simVars.angle / 180) * 100;
@@ -318,7 +309,7 @@
 
             } else if(type === 'trig') {
                 document.getElementById('sim-title').innerText = "Интерактивдүү Тригонометриялык айлана";
-                document.getElementById('sim-desc').innerText = "Бурчту өзгөртүңүз. Айланадагы Синус (кызыл) жана Косинус (жашыл) сызыктары оң тарапка графикти түзүп чыгарат.";
+                document.getElementById('sim-desc').innerText = "Бурчту өзгөртүңүз. Айланадагы Синус (кызыл) сызыгы оң тарапка графикти (синусоиданы) түзүп чыгарат.";
                 
                 simVars = { angle: 0 };
                 controls.innerHTML = `
@@ -331,25 +322,19 @@
                     let rad = -simVars.angle * Math.PI / 180;
                     let px = cx + r * Math.cos(rad); let py = cy + r * Math.sin(rad);
 
-                    // Айлана
                     sCtx.strokeStyle = '#555'; sCtx.beginPath(); sCtx.arc(cx,cy,r,0,Math.PI*2); sCtx.stroke();
                     sCtx.beginPath(); sCtx.moveTo(cx-r-20,cy); sCtx.lineTo(cx+r+20,cy); sCtx.moveTo(cx,cy-r-20); sCtx.lineTo(cx,cy+r+20); sCtx.stroke();
 
-                    // Вектор
                     sCtx.strokeStyle = '#fff'; sCtx.lineWidth = 2; sCtx.beginPath(); sCtx.moveTo(cx,cy); sCtx.lineTo(px,py); sCtx.stroke();
+                    sCtx.strokeStyle = '#ef4444'; sCtx.beginPath(); sCtx.moveTo(px,cy); sCtx.lineTo(px,py); sCtx.stroke(); 
+                    sCtx.strokeStyle = '#22c55e'; sCtx.beginPath(); sCtx.moveTo(cx,py); sCtx.lineTo(px,py); sCtx.stroke(); 
 
-                    // Сinus (Y огу) жана Cosinus (X огу) сызыктары
-                    sCtx.strokeStyle = '#ef4444'; sCtx.beginPath(); sCtx.moveTo(px,cy); sCtx.lineTo(px,py); sCtx.stroke(); // Sin
-                    sCtx.strokeStyle = '#22c55e'; sCtx.beginPath(); sCtx.moveTo(cx,py); sCtx.lineTo(px,py); sCtx.stroke(); // Cos
-
-                    // Оң тарапка синусоида толкунун чийүү
                     wavePoints.unshift(py); if(wavePoints.length > 240) wavePoints.pop();
                     sCtx.strokeStyle = '#ef4444'; sCtx.beginPath();
                     for(let i=0; i<wavePoints.length; i++) {
                         if(i===0) sCtx.moveTo(250+i, wavePoints[i]); else sCtx.lineTo(250+i, wavePoints[i]);
                     }
                     sCtx.stroke();
-                    // Жетектөөчү сызык
                     sCtx.strokeStyle = 'rgba(255,255,255,0.2)'; sCtx.setLineDash([5,5]); sCtx.beginPath(); sCtx.moveTo(px,py); sCtx.lineTo(250,py); sCtx.stroke(); sCtx.setLineDash([]);
 
                     activeSimLoop = requestAnimationFrame(drawTrig);
@@ -358,36 +343,30 @@
 
             } else if(type === 'cube3d') {
                 document.getElementById('sim-title').innerText = "3D Геометриялык фигуралардын кесилиштери";
-                document.getElementById('sim-desc').innerText = "Кубду 3D мейкиндикте айландырыңыз жана кесүүчү тегиздиктин бийиктигин өзгөртүп, кесилиштин формасын изилдеңиз.";
+                document.getElementById('sim-desc').innerText = "Кубду айландырыңыз жана кесүүчү тегиздиктин бийиктигин өзгөртүп, кесилиштин формасын изилдеңиз.";
                 
-                simVars = { rot: 0, height: 0 };
+                simVars = { rot: 30, height: 0 };
                 controls.innerHTML = `
                     <div class="control-group"><label>Кубду айландыруу:</label><input type="range" min="0" max="360" value="30" oninput="simVars.rot=parseInt(this.value)"></div>
-                    <div class="control-group"><label>Кесилиштин бийиктиги (Сечение):</label><input type="range" min="-50" max="50" value="0" oninput="simVars.height=parseInt(this.value)"></div>
+                    <div class="control-group"><label>Кесилиштин бийиктиги:</label><input type="range" min="-50" max="50" value="0" oninput="simVars.height=parseInt(this.value)"></div>
                 `;
                 function drawCube() {
                     sCtx.clearRect(0,0,500,400);
                     sCtx.save(); sCtx.translate(250,200);
                     let angle = simVars.rot * Math.PI / 180;
 
-                    // 3D кубдун жөнөкөй проекциялык чекиттери
                     let size = 60;
                     let vertices = [
                         {x:-size, y:-size, z:-size}, {x:size, y:-size, z:-size}, {x:size, y:size, z:-size}, {x:-size, y:size, z:-size},
                         {x:-size, y:-size, z:size},  {x:size, y:-size, z:size},  {x:size, y:size, z:size},  {x:-size, y:size, z:size}
                     ];
-                    // Айландыруу матрицасы (Y огу боюнча)
                     let projected = vertices.map(v => {
                         let x1 = v.x * Math.cos(angle) - v.z * Math.sin(angle);
-                        let z1 = v.x * Math.sin(angle) + v.z * Math.cos(angle);
                         return { x: x1, y: v.y };
                     });
 
-                    // Кубдун кырларын сызуу
                     sCtx.strokeStyle = 'rgba(255,255,255,0.4)'; sCtx.lineWidth = 1;
-                    const faces = [[0,1,2,3], [4,5,6,7], [0,4], [1,5], [2,6], [3,7]];
                     sCtx.beginPath();
-                    // Каркас сызуу
                     for(let i=0; i<4; i++) {
                         sCtx.moveTo(projected[i].x, projected[i].y); sCtx.lineTo(projected[(i+1)%4].x, projected[(i+1)%4].y);
                         sCtx.moveTo(projected[i+4].x, projected[i+4].y); sCtx.lineTo(projected[((i+1)%4)+4].x, projected[((i+1)%4)+4].y);
@@ -395,13 +374,10 @@
                     }
                     sCtx.stroke();
 
-                    // Кесүүчү тегиздик (Сечение эффект)
                     sCtx.fillStyle = 'rgba(255, 0, 255, 0.4)';
                     sCtx.strokeStyle = '#ff00ff'; sCtx.lineWidth = 2;
                     sCtx.beginPath();
                     let h = simVars.height;
-                    // Кесилиштин горизонталдык тегиздигин сызуу
-                    let p1 = projected[0], p2 = projected[1], p3 = projected[5], p4 = projected[4];
                     sCtx.moveTo(projected[0].x - 20, h - 20); sCtx.lineTo(projected[1].x + 20, h - 10);
                     sCtx.lineTo(projected[2].x + 20, h + 20); sCtx.lineTo(projected[3].x - 20, h + 10);
                     sCtx.closePath(); sCtx.fill(); sCtx.stroke();
@@ -418,20 +394,25 @@
             if(activeSimLoop) cancelAnimationFrame(activeSimLoop);
         }
 
-        // --- ЛОГИН ЖАНА VIP УРУКСАТ ЛОГИКАСЫ ---
+        // --- ЛОГИН ЖАНА VIP УРУКСАТ ЛОГИКАСЫ (ОҢДОЛДО) ---
         function openVipTool(type) {
             const currentUser = localStorage.getItem('math_current_user');
             let users = JSON.parse(localStorage.getItem('math_users')) || {};
             
+            // Кайсы типтеги курал тандалганын жашыруун талаага жазып алабыз
+            document.getElementById('selected-tool-type').value = type;
+
             // Эгер колдонуучу VIP болсо дароо симуляторду ачат
             if(currentUser && users[currentUser] && users[currentUser].vipUntil > new Date().getTime()) {
                 startSimulator(type);
                 return;
             }
 
-            // VIP эмес болсо төлөм терезесин ачат
+            // VIP эмес болсо төлөм/каттоо терезесин ачат
             document.getElementById('vip-modal').style.display = 'flex';
-            if(currentUser) { showPayStep(currentUser); } else {
+            if(currentUser) { 
+                showPayStep(currentUser); 
+            } else {
                 document.getElementById('modal-auth-step').style.display = 'block';
                 document.getElementById('modal-pay-step').style.display = 'none';
             }
@@ -442,7 +423,7 @@
         function handleVipAuth() {
             const email = document.getElementById('auth-email').value.trim().toLowerCase();
             const password = document.getElementById('auth-password').value.trim();
-            if(!email || !password) { alert("Толтуруңуз!"); return; }
+            if(!email || !password) { alert("Талааларды толтуруңуз!"); return; }
             let users = JSON.parse(localStorage.getItem('math_users')) || {};
             if(!users[email]) { users[email] = { password: password, vipUntil: null }; localStorage.setItem('math_users', JSON.stringify(users)); }
             localStorage.setItem('math_current_user', email);
@@ -453,19 +434,27 @@
             document.getElementById('modal-auth-step').style.display = 'none';
             document.getElementById('modal-pay-step').style.display = 'block';
             document.getElementById('user-display-email').innerText = email;
-            const msg = encodeURIComponent(`Саламатсызбы! VIP уруксат үчүн төлөм чеги. Почта: ${email}`);
+            const msg = encodeURIComponent(`Саламатсызбы! VIP куралдар үчүн төлөм чеги. Почта: ${email}`);
             document.getElementById('whatsapp-link').href = `https://wa.me/996556400477?text=${msg}`;
         }
 
         function activateVipCode() {
             const code = document.getElementById('vip-code-input').value.trim().toUpperCase();
             const user = localStorage.getItem('math_current_user');
+            const targetType = document.getElementById('selected-tool-type').value; // Тандалган курал
+            
             if(code === "MATH777") {
                 let users = JSON.parse(localStorage.getItem('math_users')) || {};
-                users[user].vipUntil = new Date().getTime() + (30*24*60*60*1000);
+                users[user].vipUntil = new Date().getTime() + (30*24*60*60*1000); // 30 күнгө VIP
                 localStorage.setItem('math_users', JSON.stringify(users));
-                alert("Ийгиликтүү активдештирилди!"); closeModal(); checkVipStatus();
-            } else { alert("Ката код!"); }
+                alert("Ийгиликтүү активдештирилди!"); 
+                closeModal(); 
+                checkVipStatus();
+                // Активдештирилгенден кийин куралды дароо автоматтык түрдө ачабыз
+                if(targetType) startSimulator(targetType);
+            } else { 
+                alert("Ката код киргизилди!"); 
+            }
         }
 
         function checkVipStatus() {
@@ -476,7 +465,9 @@
             if(user) {
                 logoutLink.style.display = 'inline';
                 if(users[user] && users[user].vipUntil > new Date().getTime()) {
+                    const endDate = new Date(users[user].vipUntil).toLocaleDateString('ky-KG');
                     badge.style.display = 'inline-block';
+                    badge.innerText = `👑 VIP АКТИВДҮҮ (${endDate})`;
                 } else { badge.style.display = 'none'; }
             } else { badge.style.display = 'none'; logoutLink.style.display = 'none'; }
         }
