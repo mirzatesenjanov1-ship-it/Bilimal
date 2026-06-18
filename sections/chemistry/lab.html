@@ -115,7 +115,7 @@
         <div class="lab-header">
             <h1 style="font-size: 1.8rem; text-align: left;">Химия: Виртуалдык Лабораториялар 🧪</h1>
             <div>
-                <span class="vip-active-badge">👑 VIP АКТИВДҮҮ</span>
+                <span id="vip-countdown-badge" class="vip-active-badge">👑 VIP АКТИВДҮҮ</span>
                 <span class="logout-link" onclick="logout()">Чыгуу ✕</span>
             </div>
         </div>
@@ -146,7 +146,7 @@
 
             <div class="lab-card">
                 <div class="lab-number">Лабораториялык иш №4</div>
-                <div class="lab-title">Menuделеевдин таблицасы (3D)</div>
+                <div class="lab-title">Менделеевдин таблицасы (3D)</div>
                 <div class="lab-desc">Химиялык элементтердин атомдук түзүлүшүн жана электрондук катмарларын визуалдык көрүү.</div>
                 <a href="#" class="start-lab-btn" onclick="alert('Бул бөлүм жакында кошулат!')">Ишти баштоо →</a>
             </div>
@@ -213,6 +213,7 @@
             const paywallBox = document.getElementById('paywall-box');
             const labBox = document.getElementById('lab-box');
             const statusIndicator = document.getElementById('vip-status-indicator');
+            const vipBadge = document.getElementById('vip-countdown-badge');
 
             if(!currentUser) {
                 authBox.style.display = "block";
@@ -231,35 +232,21 @@
             let users = JSON.parse(localStorage.getItem('lab_users')) || {};
             let user = users[currentUser];
 
+            // 2 АЙЛЫК УБАКЫТТЫ БУЛ ЖЕРДЕ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРЕТ (ӨТҮП КЕТСЕ ЖАБАТ)
             if(user && user.vipUntil && user.vipUntil > new Date().getTime()) {
                 paywallBox.style.display = "none";
                 labBox.style.display = "block";
+                
+                // Колдонуучуга качан бүтөөрүн көрсөтүү
+                const endDate = new Date(user.vipUntil).toLocaleDateString('ky-KG', { year: 'numeric', month: 'long', day: 'numeric' });
+                vipBadge.innerText = `👑 VIP АКТИВДҮҮ (Мөөнөтү: ${endDate})`;
             } else {
                 paywallBox.style.display = "block";
                 labBox.style.display = "none";
                 
                 statusIndicator.className = "vip-status-box status-inactive";
-                statusIndicator.innerText = "❌ VIP активдештириле элек";
+                statusIndicator.innerText = "❌ VIP активдештириле элек же мөөнөтү бүттү";
             }
-        }
-
-        /* 👑 АДМИНДИК КОНСОЛЬ ФУНКЦИЯСЫ */
-        window.generateVipCode = function(email) {
-            if(!email) return "Ката: Электрондук почтаны жазыңыз!";
-            email = email.trim().toLowerCase();
-
-            let users = JSON.parse(localStorage.getItem('lab_users')) || {};
-            if(!users[email]) {
-                return 'Колдонуучу табылган жок!';
-            }
-
-            const generatedCode = `VIP-${Math.floor(1000 + Math.random() * 9000)}`;
-            let vipCodesStore = JSON.parse(localStorage.getItem('lab_vip_codes')) || {};
-            vipCodesStore[generatedCode] = email;
-            localStorage.setItem('lab_vip_codes', JSON.stringify(vipCodesStore));
-
-            console.log(`🎟️ КОД ДАЯР: ${generatedCode} (Колдонуучу: ${email})`);
-            return `Түзүлгөн VIP Код: ${generatedCode}`;
         }
 
         function activateVipCode() {
@@ -274,14 +261,15 @@
 
             let vipCodesStore = JSON.parse(localStorage.getItem('lab_vip_codes')) || {};
             
-            if(vipCodesStore[inputCode] && vipCodesStore[inputCode] === currentUser) {
+            // Текшерүү: Код туурабы жана ушул колдонуучуга тиешелүүбү
+            if(vipCodesStore[inputCode] && vipCodesStore[inputCode].email === currentUser) {
                 let users = JSON.parse(localStorage.getItem('lab_users')) || {};
                 
-                const twoMonthsTime = 60 * 24 * 60 * 60 * 1000;
-                users[currentUser].vipUntil = new Date().getTime() + twoMonthsTime;
-                
+                // Коддогу жазылган убакытты түз колдонуучуга өткөрүп берет
+                users[currentUser].vipUntil = vipCodesStore[inputCode].expireTime;
                 localStorage.setItem('lab_users', JSON.stringify(users));
 
+                // Иштетилген кодду өчүрүү
                 delete vipCodesStore[inputCode];
                 localStorage.setItem('lab_vip_codes', JSON.stringify(vipCodesStore));
 
@@ -289,7 +277,7 @@
                 statusIndicator.innerText = "👑 VIP АКТИВДҮҮ!";
 
                 setTimeout(() => {
-                    alert("✨ VIP ийгиликтүү активдештирилди! Лабораториялык иштерге жол ачылды.");
+                    alert("✨ VIP ийгиликтүү активдештирилди! Лабораторияга 2 айлык жол ачылды.");
                     renderPageLayout();
                 }, 800);
 
