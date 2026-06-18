@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Математика жана Алгебра — BiliMal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #03030c; color: #fff; min-height: 100vh; padding: 30px 4%; position: relative; overflow-x: hidden; }
+
+        /* 🌌 МАТЕМАТИКАЛЫК ФОН */
+        #math-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.15; }
+        .content-container { position: relative; z-index: 2; }
+        
+        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(0, 240, 255, 0.15); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; transition: 0.3s; }
+        .back-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.4); }
+
+        .header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        h1 { font-size: 2.2rem; color: #fff; text-shadow: 0 0 15px rgba(0,240,255,0.3); }
+
+        .vip-badge { background: rgba(255, 0, 255, 0.2); border: 1px solid #ff00ff; color: #ff00ff; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.85rem; display: none; box-shadow: 0 0 15px rgba(255, 0, 255, 0.3); }
+        .logout-link { color: #ef4444; cursor: pointer; font-size: 0.9rem; text-decoration: underline; margin-left: 15px; display: none; }
+
+        .section-title { font-size: 1.5rem; color: #ff00ff; margin: 30px 0 15px 0; display: flex; align-items: center; gap: 10px; }
+
+        /* КАРТАЛАР */
+        .materials-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; margin-bottom: 45px; }
+        .card { background: rgba(10, 10, 25, 0.85); border: 1px solid rgba(0, 240, 255, 0.15); border-radius: 12px; padding: 25px; transition: 0.3s; position: relative; backdrop-filter: blur(10px); }
+        .card:hover { border-color: #00f0ff; transform: translateY(-3px); box-shadow: 0 5px 20px rgba(0,240,255,0.2); }
+        
+        .card-tag { font-size: 0.75rem; color: #00f0ff; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .card-title { font-size: 1.25rem; color: #fff; margin-bottom: 10px; font-weight: bold; }
+        .card-desc { color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.4; }
+        
+        .btn { display: inline-block; width: 100%; text-align: center; padding: 10px; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 6px; text-decoration: none; font-weight: bold; transition: 0.2s; cursor: pointer; }
+        .btn:hover { background: #00f0ff; color: #000; }
+
+        .vip-card { border: 1px solid rgba(255, 0, 255, 0.35); background: rgba(18, 5, 30, 0.85); }
+        .vip-card:hover { border-color: #ff00ff; box-shadow: 0 5px 25px rgba(255, 0, 255, 0.35); }
+        .vip-card .card-tag { color: #ff00ff; }
+        .vip-card .btn { background: rgba(255, 0, 255, 0.15); color: #ff00ff; border-color: #ff00ff; }
+        .vip-card .btn:hover { background: #ff00ff; color: #fff; }
+        .lock-icon { position: absolute; top: 20px; right: 20px; font-size: 1.2rem; color: #ff00ff; }
+
+        /* ИНТЕРАКТИВДҮҮ ТЕРЕЗЕ */
+        .simulator-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(3,3,12,0.95); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }
+        .simulator-container { background: #090918; border: 2px solid #00f0ff; border-radius: 16px; width: 100%; max-width: 850px; padding: 25px; position: relative; }
+        .close-sim { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; color: #ef4444; cursor: pointer; font-weight: bold; }
+        .sim-layout { display: flex; gap: 20px; margin-top: 15px; flex-wrap: wrap; }
+        .sim-canvas-area { flex: 1; min-width: 300px; background: #000; border: 1px solid #1e293b; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-height: 400px; }
+        .sim-controls { width: 280px; background: rgba(255,255,255,0.03); padding: 20px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .control-group { margin-bottom: 18px; }
+        .control-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 6px; }
+        .control-group input[type="range"] { width: 100%; accent-color: #00f0ff; }
+        .control-group span { font-weight: bold; color: #00f0ff; float: right; }
+
+        /* ТӨЛӨМ МОДАЛЫ */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal-content { background: #090915; border: 2px solid #ff00ff; border-radius: 16px; width: 90%; max-width: 440px; padding: 30px; text-align: center; position: relative; }
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.5rem; color: #94a3b8; cursor: pointer; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group input { width: 100%; padding: 12px; background: #000; border: 1px solid #1e293b; color: #fff; border-radius: 8px; outline: none; }
+        .input-group input:focus { border-color: #ff00ff; }
+        .auth-btn { width: 100%; padding: 12px; background: #ff00ff; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .mbank-qr { width: 160px; height: 160px; margin: 15px auto; background: #fff; border: 3px solid #ff00ff; border-radius: 8px; padding: 5px; }
+        .mbank-qr img { width: 100%; height: 100%; object-fit: contain; }
+        .whatsapp-btn { display: block; padding: 10px; background: #25D366; color: #fff; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 15px 0; font-size: 0.9rem; }
+        .code-box { display: flex; gap: 8px; margin-top: 10px; }
+        .code-box input { flex: 1; padding: 10px; background: #000; border: 1px solid #1e293b; color: #fff; border-radius: 6px; text-align: center; font-weight: bold; }
+        .code-box button { padding: 10px 15px; background: #00f0ff; color: #000; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <canvas id="math-canvas"></canvas>
+
+    <div class="content-container">
+        <a href="../school-subjects.html" class="back-btn">← Артка кайтуу</a>
+
+        <div class="header-section">
+            <h1>Математика жана Алгебра Бөлүмү 📐</h1>
+            <div>
+                <span id="vip-status-badge" class="vip-badge">👑 VIP АКТИВДҮҮ</span>
+                <span id="logout-link" class="logout-link" onclick="logout()">Аккаунттан чыгуу ✕</span>
+            </div>
+        </div>
+
+        <div class="section-title">📂 Акысыз методикалык материалдар</div>
+        <div class="materials-grid">
+            <div class="card">
+                <div class="card-tag">КТП / ПЛАН</div>
+                <div class="card-title">Сабактын пландары (Түзүлгөн КТП)</div>
+                <div class="card-desc">Математика предмети боюнча бардык класстарга даяр бекитилген КТП файлдары.</div>
+                <button class="btn" onclick="alert('Календарлык план жүктөлүүдө...')">Жүктөп алуу (Excel)</button>
+            </div>
+            <div class="card">
+                <div class="card-tag">ТЕСТ</div>
+                <div class="card-title">Математикалык тесттер жыйнагы</div>
+                <div class="card-desc">Окуучулардын чейрекчил жана жылдык билим деңгээлин текшерүүчү интерактивдүү тест.</div>
+                <a href="tests.html" class="btn">Ачуу (Тест борбору) →</a>
+            </div>
+        </div>
+
+        <div class="section-title">✨ Визуалдык математика (Премиум куралдар)</div>
+        <div class="materials-grid">
+            <div class="card vip-card">
+                <span class="lock-icon">🔒</span>
+                <div class="card-tag">VIP КУРАЛ №1</div>
+                <div class="card-title">Функциялардын графиктеринин конструктору</div>
+                <div class="card-desc">Квадраттык функциянын коэффицентин өзгөртүп, параболанын реалдуу убакыттагы графигин көрүү.</div>
+                <button class="btn" onclick="openVipTool('graph')">Куралды ачуу (VIP) →</button>
+            </div>
+
+            <div class="card vip-card">
+                <span class="lock-icon">🔒</span>
+                <div class="card-tag">VIP КУРАЛ №2</div>
+                <div class="card-title">Пифагор теоремасынын суулуу далили</div>
+                <div class="card-desc">Катеттердин аянттарындагы суюктук гипотенузанын квадратына толук куюларын анимация менен изилдөө.</div>
+                <button class="btn" onclick="openVipTool('pythagoras')">Моделди ачуу (VIP) →</button>
+            </div>
+
+            <div class="card vip-card">
+                <span class="lock-icon">🔒</span>
+                <div class="card-tag">VIP КУРАЛ №3</div>
+                <div class="card-title">Интерактивдүү Тригонометриялык айлана</div>
+                <div class="card-desc">Радиус-векторду айландыруу аркылуу Sin жана Cos толкундарынын келип чыгышын байкоо.</div>
+                <button class="btn" onclick="openVipTool('trig')">Айлананы ачуу (VIP) →</button>
+            </div>
+
+            <div class="card vip-card">
+                <span class="lock-icon">🔒</span>
+                <div class="card-tag">VIP КУРАЛ №4</div>
+                <div class="card-title">3D Геометриялык фигуралардын кесилиштери</div>
+                <div class="card-desc">Стереометриядагы фигураларды ар кандай бурчта кесип, кесилиш формаларын 3D көрүү.</div>
+                <button class="btn" onclick="openVipTool('cube3d')">3D Моделди ачуу (VIP) →</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="simulator-overlay" id="simulator-modal">
+        <div class="simulator-container">
+            <span class="close-sim" onclick="closeSimulator()">✕ Жабуу</span>
+            <h2 id="sim-title" style="color: #00f0ff; margin-bottom: 5px;">Курал</h2>
+            <p id="sim-desc" style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 15px;"></p>
+            <div class="sim-layout">
+                <div class="sim-canvas-area"><canvas id="sim-canvas" width="500" height="400"></canvas></div>
+                <div class="sim-controls" id="sim-controls-zone"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="vip-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">✕</span>
+            <div id="modal-auth-step">
+                <h3 style="color: #ff00ff; margin-bottom: 15px;">Катталуу / Кирүү</h3>
+                <div class="input-group"><input type="email" id="auth-email" placeholder="E-mail дарегиңиз"></div>
+                <div class="input-group"><input type="password" id="auth-password" placeholder="Сыр сөз"></div>
+                <input type="hidden" id="selected-tool-type" value="">
+                <button class="auth-btn" onclick="handleVipAuth()">Кийинки кадам →</button>
+            </div>
+            <div id="modal-pay-step" style="display: none;">
+                <h3 style="color: #00f0ff; margin-bottom: 10px;">VIP Активдештирүү 🔒</h3>
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px;">Аккаунт: <span id="user-display-email" style="color: #ff00ff;"></span></p>
+                <div class="mbank-qr"><img src="../../qrmbank.png" alt="QR"></div>
+                <a href="#" id="whatsapp-link" target="_blank" class="whatsapp-btn">🟢 Чекти Вотсапка жөнөтүү</a>
+                <div class="code-box">
+                    <input type="text" id="vip-code-input" placeholder="Кодду жазыңыз">
+                    <button onclick="activateVipCode()">Кошуу</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Анимация фону
+        const bgCanvas = document.getElementById('math-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let bw = bgCanvas.width = window.innerWidth, bh = bgCanvas.height = window.innerHeight;
+        const mathElements = ["f(x)=ax²+bx+c", "a²+b²=c²", "sin(α)", "cos(β)", "π≈3.14", "∫f(x)dx", "lim(Δx→0)"];
+        const bgParticles = [];
+        for(let i=0; i<25; i++) {
+            bgParticles.push({ x: Math.random()*bw, y: Math.random()*bh, text: mathElements[Math.floor(Math.random()*mathElements.length)], fs: 18, sx: (Math.random()-0.5)*0.8, sy: (Math.random()-0.5)*0.8 });
+        }
+        function animate() {
+            bgCtx.clearRect(0,0,bw,bh); bgCtx.fillStyle = 'rgba(0, 240, 255, 0.2)'; bgCtx.font = "18px monospace";
+            bgParticles.forEach(p => { p.x += p.sx; p.y += p.sy; if(p.x<0||p.x>bw) p.sx*=-1; if(p.y<0||p.y>bh) p.sy*=-1; bgCtx.fillText(p.text, p.x, p.y); });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Симуляторлордун логикасы
+        const simCanvas = document.getElementById('sim-canvas');
+        const sCtx = simCanvas.getContext('2d');
+        let activeLoop = null; let simVars = {};
+
+        function startSimulator(type) {
+            document.getElementById('simulator-modal').style.display = 'flex';
+            const zone = document.getElementById('sim-controls-zone'); zone.innerHTML = '';
+            if(activeLoop) cancelAnimationFrame(activeLoop);
+
+            if(type === 'graph') {
+                document.getElementById('sim-title').innerText = "Функциялардын конструктору";
+                simVars = { a: 1, b: 0, c: 0 };
+                zone.innerHTML = `<div class="control-group"><label>Параметр a: <span id="va">1</span></label><input type="range" min="-4" max="4" step="0.1" value="1" oninput="simVars.a=parseFloat(this.value); document.getElementById('va').innerText=this.value"></div>`;
+                function draw() {
+                    sCtx.clearRect(0,0,500,400); sCtx.strokeStyle = '#334155'; sCtx.beginPath(); sCtx.moveTo(250,0); sCtx.lineTo(250,400); sCtx.moveTo(0,200); sCtx.lineTo(500,200); sCtx.stroke();
+                    sCtx.strokeStyle = '#00f0ff'; sCtx.lineWidth = 2; sCtx.beginPath();
+                    for(let px=0; px<=500; px++) { let x = (px-250)/25; let y = simVars.a*x*x; let py = 200 - (y*25); if(px===0) sCtx.moveTo(px,py); else sCtx.lineTo(px,py); }
+                    sCtx.stroke(); activeLoop = requestAnimationFrame(draw);
+                }
+                draw();
+            } 
+            else if(type === 'pythagoras') {
+                document.getElementById('sim-title').innerText = "Пифагор теоремасы";
+                simVars = { rot: 0 };
+                zone.innerHTML = `<div class="control-group"><label>Сууну куюу (Айландыруу):</label><input type="range" min="0" max="180" value="0" oninput="simVars.rot=parseInt(this.value)"></div>`;
+                function draw() {
+                    sCtx.clearRect(0,0,500,400); sCtx.save(); sCtx.translate(250,200); sCtx.rotate(simVars.rot * Math.PI/180);
+                    sCtx.strokeStyle = '#ff00ff'; sCtx.strokeRect(-40, -40, 40, 40); sCtx.strokeRect(0, -40, 50, 40);
+                    sCtx.fillStyle = 'rgba(0,240,255,0.5)'; sCtx.fillRect(-40, -40, 40, 40); sCtx.restore();
+                    activeLoop = requestAnimationFrame(draw);
+                }
+                draw();
+            }
+            else if(type === 'trig') {
+                document.getElementById('sim-title').innerText = "Тригонометриялык айлана";
+                simVars = { ang: 0 };
+                zone.innerHTML = `<div class="control-group"><label>Бурч: <span id="vdeg">0°</span></label><input type="range" min="0" max="360" value="0" oninput="simVars.ang=parseInt(this.value); document.getElementById('vdeg').innerText=this.value+'°'"></div>`;
+                function draw() {
+                    sCtx.clearRect(0,0,500,400); let r = 70, cx = 150, cy = 200;
+                    sCtx.strokeStyle = '#475569'; sCtx.beginPath(); sCtx.arc(cx,cy,r,0,Math.PI*2); sCtx.stroke();
+                    let rad = -simVars.ang * Math.PI / 180;
+                    sCtx.strokeStyle = '#00f0ff'; sCtx.beginPath(); sCtx.moveTo(cx,cy); sCtx.lineTo(cx+r*Math.cos(rad), cy+r*Math.sin(rad)); sCtx.stroke();
+                    activeLoop = requestAnimationFrame(draw);
+                }
+                draw();
+            }
+            else if(type === 'cube3d') {
+                document.getElementById('sim-title').innerText = "3D Фигуралардын кесилиштери";
+                simVars = { h: 0 };
+                zone.innerHTML = `<div class="control-group"><label>Кескич тегиздик бийиктиги:</label><input type="range" min="-40" max="40" value="0" oninput="simVars.h=parseInt(this.value)"></div>`;
+                function draw() {
+                    sCtx.clearRect(0,0,500,400); sCtx.strokeStyle = '#fff'; sCtx.strokeRect(200,150,100,100);
+                    sCtx.strokeStyle = '#ff00ff'; sCtx.beginPath(); sCtx.moveTo(150, 200+simVars.h); sCtx.lineTo(350, 200+simVars.h); sCtx.stroke();
+                    activeLoop = requestAnimationFrame(draw);
+                }
+                draw();
+            }
+        }
+
+        function closeSimulator() { document.getElementById('simulator-modal').style.display = 'none'; if(activeLoop) cancelAnimationFrame(activeLoop); }
+
+        // Ролдорду башкаруу жана кирүү системасы
+        function openVipTool(type) {
+            document.getElementById('selected-tool-type').value = type;
+            const user = localStorage.getItem('math_user');
+            if(user && JSON.parse(localStorage.getItem('math_vip_' + user))) { startSimulator(type); return; }
+            document.getElementById('vip-modal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('vip-modal').style.display = 'none'; }
+        function handleVipAuth() {
+            const email = document.getElementById('auth-email').value.trim();
+            if(!email) return alert("Почтаны жазыңыз!");
+            localStorage.setItem('math_user', email);
+            document.getElementById('modal-auth-step').style.display = 'none';
+            document.getElementById('modal-pay-step').style.display = 'block';
+            document.getElementById('user-display-email').innerText = email;
+            document.getElementById('whatsapp-link').href = `https://wa.me/996556400477?text=Привет, активируйте VIP для ${email}`;
+        }
+        function activateVipCode() {
+            const code = document.getElementById('vip-code-input').value.trim();
+            if(code === "MATH777") {
+                const user = localStorage.getItem('math_user');
+                localStorage.setItem('math_vip_' + user, "true");
+                alert("VIP ийгиликтүү кошулду!"); closeModal(); checkStatus();
+                startSimulator(document.getElementById('selected-tool-type').value);
+            } else { alert("Ката код!"); }
+        }
+        function checkStatus() {
+            const user = localStorage.getItem('math_user');
+            if(user && localStorage.getItem('math_vip_' + user)) {
+                document.getElementById('vip-status-badge').style.display = 'inline-block';
+                document.getElementById('logout-link').style.display = 'inline';
+            }
+        }
+        function logout() { localStorage.clear(); location.reload(); }
+        window.onload = checkStatus;
+    </script>
+</body>
+</html>
