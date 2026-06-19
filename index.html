@@ -1,4 +1,3 @@
-Индекс штмл 
 <!DOCTYPE html>
 <html lang="ky">
 <head>
@@ -97,6 +96,8 @@
         </div>
     </div>
 
+    <div id="story-modal" style="display: none;"></div>
+
     <canvas id="space-canvas"></canvas>
 
     <header>
@@ -186,13 +187,11 @@
     </footer>
 
     <script>
-        // Чычкандын оң баскычын бөгөттөө
         document.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             alert("Эскертүү: Автордук укук корголгон! Көчүрүүгө тыюу салынат.");
         });
 
-        // Клавиатурадагы көчүрүү жана изилдөө баскычтарын бөгөттөө
         document.addEventListener('keydown', function(e) {
             if (e.key === "F12") { e.preventDefault(); return false; }
             if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
@@ -347,13 +346,13 @@
             requestAnimationFrame(animate);
         }
 
-        // 🔐 АВТОРИЗАЦИЯ ЖАНА ДИНАМИКАЛЫК КВЕСТ ЖҮКТӨӨ ЛОГИКАСЫ
+        // АВТОРИЗАЦИЯ ЖАНА ФАЙЛДАРДЫ ДИНАМИКАЛЫК ЖҮКТӨӨ
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             animate();
             
-            // Квест баннерин "sections/quest-banner.html" файлынан катасыз тартып алуу
+            // Квест баннерин жүктөө
             fetch('sections/quest-banner.html')
                 .then(response => {
                     if (!response.ok) throw new Error('Файл табылгон жок');
@@ -364,12 +363,13 @@
                 })
                 .catch(err => console.error('Квест баннерин жүктөөдө ката чыкты:', err));
             
-            // Эгер мурда кирген болсо, терезени жашырабыз
+            // Колдонуучу мурун кирген болсо логинди жаап, окуяны текшеребиз
             const userEmail = localStorage.getItem('bilimal_user_email');
             const userPass = localStorage.getItem('bilimal_user_pass');
             
             if (userEmail && userPass) {
                 document.getElementById('login-modal').style.display = 'none';
+                checkStoryStatus();
             }
         });
 
@@ -378,17 +378,45 @@
             const passwordInput = document.getElementById('password-input').value;
             
             if (emailInput.includes('@') && emailInput.includes('.') && passwordInput.length >= 6) {
-                // Маалыматты браузердин эсинде сактоо (Тестирлөө үчүн)
                 localStorage.setItem('bilimal_user_email', emailInput);
                 localStorage.setItem('bilimal_user_pass', passwordInput);
                 
                 document.getElementById('login-modal').style.display = 'none';
                 alert('Кош келиңиз! Ийгиликтүү кирдиңиз.');
+                
+                checkStoryStatus();
             } else if (passwordInput.length < 6) {
                 alert('Пароль кеминде 6 белгиден турушу керек!');
             } else {
                 alert('Сураныч, туура электрондук почта жазыңыз.');
             }
+        }
+
+        // Квесттин киришүү окуясын текшерүү жана жүктөө
+        function checkStoryStatus() {
+            const storySeen = localStorage.getItem('bilimal_story_seen');
+            if (!storySeen) {
+                fetch('sections/quest-intro.html')
+                    .then(response => {
+                        if (!response.ok) throw new Error('Окуя файлы табылбады');
+                        return response.text();
+                    })
+                    .then(data => {
+                        const modal = document.getElementById('story-modal');
+                        modal.innerHTML = data;
+                        modal.style.display = 'flex';
+                        document.body.style.overflow = 'hidden'; // Скроллду убактылуу жабуу
+                    })
+                    .catch(err => console.error('Окуяны жүктөөдө ката:', err));
+            }
+        }
+
+        // Окуя терезеси жабылганда иштечү логика
+        function startQuestJourney() {
+            localStorage.setItem('bilimal_story_seen', 'true');
+            document.getElementById('story-modal').style.display = 'none';
+            document.body.style.overflow = 'auto'; // Скроллду кайра ачуу
+            alert('Саякат башталды! Сизге 1-деңгээлдеги Механика Өрөөнү ачылды! 🚀');
         }
     </script>
 </body>
