@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Island of Knowledge — BiliMal Quest</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        body { background: #020208; color: #fff; min-height: 100vh; overflow: hidden; display: flex; }
+
+        /* СОЛ КАПТАЛДАГЫ ОЮН МЕНЮСУ */
+        .game-sidebar { width: 100px; background: rgba(10, 10, 25, 0.95); border-right: 2px solid #1e1e38; display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 25px; z-index: 10; box-shadow: 5px 0 25px rgba(0,0,0,0.7); }
+        .logo-box { font-size: 1.5rem; font-weight: bold; color: #00f0ff; text-shadow: 0 0 10px #00f0ff; margin-bottom: 20px; }
+        .menu-btn { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: 0.3s; color: #94a3b8; }
+        .menu-btn span { font-size: 0.7rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .menu-btn i { font-size: 1.6rem; font-style: normal; }
+        .menu-btn:hover, .menu-btn.active { background: linear-gradient(135deg, #ff00ff, #00f0ff); color: #fff; border-color: #00f0ff; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transform: scale(1.05); }
+
+        /* ИГРАЛЫК ЭКРАНДЫН НЕГИЗГИ АЙМАГЫ */
+        .game-container { flex: 1; display: flex; flex-direction: column; position: relative; height: 100vh; }
+
+        /* ЖОГОРКУ СТАТУС ПАНЕЛИ */
+        .top-interface { height: 75px; background: linear-gradient(to bottom, rgba(10, 10, 25, 0.95), rgba(10,10,25,0.6)); border-bottom: 1px solid rgba(0, 240, 255, 0.2); display: flex; align-items: center; justify-content: space-between; padding: 0 30px; z-index: 5; }
+        .user-profile { display: flex; align-items: center; gap: 15px; }
+        .avatar-slot { width: 50px; height: 50px; border-radius: 50%; border: 2px solid #ff00ff; background: #000; overflow: hidden; box-shadow: 0 0 10px #ff00ff; }
+        .avatar-slot img { width: 100%; height: 100%; object-fit: cover; }
+        .user-info h4 { font-size: 1.05rem; color: #fff; letter-spacing: 0.5px; }
+        .level-badge { font-size: 0.8rem; background: #ff00ff; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 2px; display: inline-block; }
+        
+        .map-title { font-size: 1.4rem; font-weight: 800; letter-spacing: 2px; color: #fff; text-shadow: 0 0 15px rgba(0,240,255,0.5); }
+        .map-title span { color: #00f0ff; }
+
+        .game-currency { display: flex; gap: 20px; }
+        .currency-item { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); padding: 8px 15px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.95rem; }
+        .curr-blue { color: #00f0ff; text-shadow: 0 0 8px #00f0ff; }
+        .curr-purple { color: #ff00ff; text-shadow: 0 0 8px #ff00ff; }
+
+        /* ЭПИКАЛЫК ОЮН КАРТАСЫ */
+        .map-viewport { flex: 1; background: radial-gradient(circle, #0f0f2d 0%, #03030a 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .island-map { width: 1200px; height: 700px; background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop') center/cover; border-radius: 24px; border: 2px solid #1e1e38; position: relative; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        .map-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+        /* Локациялардын чекиттери */
+        .location-node { position: absolute; width: 55px; height: 55px; background: #050515; border: 3px solid #94a3b8; border-radius: 50%; z-index: 2; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: 0.4s; box-shadow: 0 0 15px rgba(0,0,0,0.6); }
+        .location-node::after { content: attr(data-name); position: absolute; bottom: -25px; white-space: nowrap; font-size: 0.8rem; font-weight: bold; color: #94a3b8; text-shadow: 0 2px 4px #000; transition: 0.3s; }
+        
+        .node-opened { border-color: #00f0ff; background: radial-gradient(circle, #00f0ff 0%, #002244 100%); box-shadow: 0 0 20px #00f0ff; color: #fff; }
+        .node-opened::after { color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.5); }
+        
+        .node-locked { border-color: #334155; background: #0f172a; color: #475569; cursor: not-allowed; filter: blur(0.5px); opacity: 0.5; }
+        .node-locked::after { color: #475569; }
+
+        /* Оюнчунун фигурасы */
+        .player-token { position: absolute; width: 24px; height: 24px; background: #ff00ff; border: 3px solid #fff; border-radius: 50%; z-index: 3; pointer-events: none; transform: translate(-50%, -50%); box-shadow: 0 0 15px #ff00ff, 0 0 30px #ff00ff; transition: all 1s ease-in-out; }
+        .player-token::before { content: 'СИЗ'; position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; background: #ff00ff; color: #fff; padding: 1px 4px; border-radius: 4px; font-weight: bold; }
+
+        /* ТӨМӨНКҮ ТАПШЫРМА ПАНЕЛИ */
+        .bottom-rewards-bar { height: 80px; background: rgba(10, 10, 25, 0.95); border-top: 1px solid rgba(255, 0, 255, 0.2); display: flex; align-items: center; padding: 0 40px; justify-content: space-between; z-index: 5; }
+        .progress-section { display: flex; align-items: center; gap: 20px; flex: 1; max-width: 70%; }
+        .progress-label { font-size: 0.85rem; font-weight: bold; color: #ff00ff; letter-spacing: 1px; }
+        .bar-container { flex: 1; height: 14px; background: #000; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden; position: relative; }
+        .bar-fill { width: 15%; height: 100%; background: linear-gradient(to right, #ff00ff, #00f0ff); box-shadow: 0 0 10px #00f0ff; transition: 0.5s; }
+        
+        .chests-container { display: flex; gap: 25px; }
+        .chest-item { font-size: 1.6rem; cursor: pointer; filter: grayscale(100%); opacity: 0.5; transition: 0.3s; }
+        .chest-item.unlocked { filter: grayscale(0%); opacity: 1; transform: scale(1.15); animation: pulse 1.5s infinite alternate; }
+        .chest-item:hover { transform: scale(1.25); }
+
+        @keyframes pulse {
+            0% { text-shadow: 0 0 5px #ffaa00; }
+            100% { text-shadow: 0 0 20px #ffaa00; }
+        }
+
+        /* КАТТАЛУУ ТЕРЕЗЕСИ (MODAL) */
+        .auth-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 8, 0.97); display: flex; align-items: center; justify-content: center; z-index: 999; transition: 0.5s; }
+        .auth-box { background: #0b0b1e; border: 2px solid #00f0ff; padding: 40px; border-radius: 24px; width: 420px; text-align: center; box-shadow: 0 0 40px rgba(0, 240, 255, 0.3); }
+        .auth-box h3 { color: #00f0ff; margin-bottom: 20px; font-size: 1.6rem; text-shadow: 0 0 10px #00f0ff; letter-spacing: 1px; }
+        .auth-input { width: 100%; padding: 14px; background: rgba(255,255,255,0.05); border: 1px solid #1e1e38; color: #fff; border-radius: 10px; margin-bottom: 20px; font-size: 1rem; outline: none; transition: 0.3s; }
+        .auth-input:focus { border-color: #ff00ff; box-shadow: 0 0 10px #ff00ff; }
+        .file-label { display: block; padding: 14px; background: #1e1e38; border: 1px dashed #00f0ff; border-radius: 10px; cursor: pointer; margin-bottom: 25px; font-size: 0.95rem; color: #94a3b8; transition: 0.3s; }
+        .file-label:hover { background: rgba(0,240,255,0.1); color: #fff; border-color: #ff00ff; }
+        .auth-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #ff00ff, #00f0ff); border: none; color: #fff; font-weight: bold; border-radius: 10px; cursor: pointer; font-size: 1.1rem; transition: 0.3s; box-shadow: 0 5px 15px rgba(0,240,255,0.3); }
+        .auth-btn:hover { transform: scale(1.02); box-shadow: 0 0 20px #00f0ff; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-modal" id="register-screen">
+        <div class="auth-box">
+            <h3>Катышуучуну Каттоо</h3>
+            <input type="text" id="player-name-input" class="auth-input" placeholder="Аты-жөнүңүздү жазыңыз..." required>
+            
+            <label class="file-label">
+                📷 Өзүңүздүн сүрөтүңүздү жүктөңүз
+                <input type="file" id="player-avatar-input" accept="image/*" style="display: none;" onchange="previewImage(this)">
+            </label>
+            <div id="file-name-preview" style="font-size: 0.85rem; color: #ff00ff; margin-bottom: 20px; font-weight: bold;"></div>
+
+            <button class="auth-btn" onclick="saveProfile()">Оюнду Баштоо 🚀</button>
+        </div>
+    </div>
+
+    <div class="game-sidebar">
+        <div class="logo-box">B</div>
+        <div class="menu-btn active"><i>🗺️</i><span>Карта</span></div>
+        <div class="menu-btn" onclick="alert('Тапшырмалар журналы жүктөлүүдө...')"><i>📜</i><span>Квест</span></div>
+        <div class="menu-btn" onclick="alert('Инвентарь бош!')"><i>🎒</i><span>Багаж</span></div>
+        <div class="menu-btn" onclick="alert('Рейтинг жакында ачылат!')"><i>🏆</i><span>РЕЙТИНГ</span></div>
+    </div>
+
+    <div class="game-container">
+        
+        <div class="top-interface">
+            <div class="user-profile">
+                <div class="avatar-slot">
+                    <img id="main-user-avatar" src="" alt="User Avatar">
+                </div>
+                <div class="user-info">
+                    <h4 id="main-user-name">Оюнчу</h4>
+                    <span class="level-badge">LEVEL 1 (Жаңы катышуучу)</span>
+                </div>
+            </div>
+
+            <div class="map-title">THE ISLAND OF <span>KNOWLEDGE</span></div>
+
+            <div class="game-currency">
+                <div class="currency-item curr-blue">🔷 <span id="xp-count">150</span> XP</div>
+                <div class="currency-item curr-purple">💎 <span id="gem-count">10</span> Кристалл</div>
+            </div>
+        </div>
+
+        <div class="map-viewport">
+            <div class="island-map" id="map-island">
+                <canvas class="map-canvas" id="connections-canvas"></canvas>
+
+                <div class="location-node node-opened" id="node1" data-name="Үмүт үңкүрү (Старт)" style="top: 85%; left: 8%;" onclick="movePlayer(1, 8, 85)">1</div>
+                <div class="location-node node-opened" id="node2" data-name="Жашыл Өрөөн" style="top: 70%; left: 25%;" onclick="movePlayer(2, 25, 70)">2</div>
+                <div class="location-node node-locked" id="node3" data-name="Алгебра Чеби" style="top: 45%; left: 30%;" onclick="movePlayer(3, 30, 45)">3</div>
+                <div class="location-node node-locked" id="node4" data-name="Байыркы Китепкана" style="top: 25%; left: 45%;" onclick="movePlayer(4, 45, 25)">4</div>
+                <div class="location-node node-locked" id="node5" data-name="Кристалл Үңкүрлөрү" style="top: 48%; left: 58%;" onclick="movePlayer(5, 58, 48)">5</div>
+                <div class="location-node node-locked" id="node6" data-name="Неон Академиясы" style="top: 75%; left: 75%;" onclick="movePlayer(6, 75, 75)">6</div>
+                <div class="location-node node-locked" id="node7" data-name="Асман Сепили (Финал)" style="top: 20%; left: 82%;" onclick="movePlayer(7, 82, 20)">7</div>
+
+                <div class="player-token" id="player-hero" style="top: 85%; left: 8%;"></div>
+            </div>
+        </div>
+
+        <div class="bottom-rewards-bar">
+            <div class="progress-section">
+                <span class="progress-label">ЖАЛПЫ ПРОГРЕСС:</span>
+                <div class="bar-container">
+                    <div class="bar-fill" id="main-progress"></div>
+                </div>
+            </div>
+            <div class="chests-container">
+                <div class="chest-item unlocked" title="10% Сандыгы" onclick="alert('Куттуктайм! Алгачкы квест белеги ачылды!')">📦</div>
+                <div class="chest-item" title="40% Сандыгы">🔒</div>
+                <div class="chest-item" title="70% Сандыгы">🔒</div>
+                <div class="chest-item" title="100% VIP Сандык">👑</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function previewImage(input) {
+            const preview = document.getElementById('file-name-preview');
+            if (input.files && input.files[0]) {
+                preview.innerText = "Тандалды: " + input.files[0].name;
+            }
+        }
+
+        function saveProfile() {
+            const name = document.getElementById('player-name-input').value.trim();
+            const avatarInput = document.getElementById('player-avatar-input');
+
+            if (!name) {
+                alert("Сураныч, атыңызды жазыңыз!");
+                return;
+            }
+
+            localStorage.setItem('quest_player_name', name);
+
+            if (avatarInput.files && avatarInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    localStorage.setItem('quest_player_avatar', e.target.result);
+                    loadSavedProfile();
+                }
+                reader.readAsDataURL(avatarInput.files[0]);
+            } else {
+                localStorage.setItem('quest_player_avatar', 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=100');
+                loadSavedProfile();
+            }
+        }
+
+        function loadSavedProfile() {
+            const savedName = localStorage.getItem('quest_player_name');
+            const savedAvatar = localStorage.getItem('quest_player_avatar');
+
+            if (savedName) {
+                document.getElementById('register-screen').style.display = 'none';
+                document.getElementById('main-user-name').innerText = savedName;
+                if (savedAvatar) {
+                    document.getElementById('main-user-avatar').src = savedAvatar;
+                }
+            }
+        }
+
+        function drawMapLines() {
+            const canvas = document.getElementById('connections-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const island = document.getElementById('map-island');
+            
+            canvas.width = island.clientWidth;
+            canvas.height = island.clientHeight;
+
+            const nodes = [
+                {id: 'node1', opened: true}, {id: 'node2', opened: true},
+                {id: 'node3', opened: false}, {id: 'node4', opened: false},
+                {id: 'node5', opened: false}, {id: 'node6', opened: false},
+                {id: 'node7', opened: false}
+            ];
+
+            ctx.lineWidth = 4;
+            
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const startNode = document.getElementById(nodes[i].id);
+                const endNode = document.getElementById(nodes[i+1].id);
+
+                const startX = startNode.offsetLeft + startNode.offsetWidth / 2;
+                const startY = startNode.offsetTop + startNode.offsetHeight / 2;
+                const endX = endNode.offsetLeft + endNode.offsetWidth / 2;
+                const endY = endNode.offsetTop + endNode.offsetHeight / 2;
+
+                ctx.getLineDash ? ctx.setLineDash([]) : null;
+                ctx.beginPath();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+
+                if (nodes[i+1].opened) {
+                    ctx.strokeStyle = '#00f0ff';
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = '#00f0ff';
+                } else {
+                    ctx.strokeStyle = '#1e1e38';
+                    ctx.shadowBlur = 0;
+                }
+                ctx.stroke();
+            }
+        }
+
+        function movePlayer(nodeNum, percentX, percentY) {
+            const node = document.getElementById('node' + nodeNum);
+            
+            if (node.classList.contains('node-locked')) {
+                alert("Бул аймак азырынча жабык! Кийинки этаптарга өтүү үчүн математикалык тапшырмаларды аткарып, жетиштүү упай топтоңуз!");
+                return;
+            }
+
+            const hero = document.getElementById('player-hero');
+            hero.style.left = percentX + '%';
+            hero.style.top = percentY + '%';
+
+            const progressFill = document.getElementById('main-progress');
+            progressFill.style.width = (nodeNum * 14.2) + '%';
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSavedProfile();
+            setTimeout(drawMapLines, 200);
+        });
+        window.onresize = drawMapLines;
+    </script>
+</body>
+</html>
