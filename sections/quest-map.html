@@ -39,27 +39,38 @@
         .island-map-svg { width: 1000px; height: 600px; background: #08081a; border-radius: 16px; box-shadow: 0 15px 50px rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.03); }
 
         /* Пульсациялоочу активдүү жолдор */
-        .quest-path { stroke-dasharray: 6; animation: pathMove 25s linear infinite; }
+        .quest-path { stroke-dasharray: 6; animation: pathMove 25s linear infinite; stroke: #475569; transition: stroke 0.5s; }
+        .quest-path.active { stroke: #00f0ff; filter: url(#neonGlow); }
         @keyframes pathMove { to { stroke-dashoffset: -500; } }
 
         /* Квест чекиттери */
         .node-group { cursor: pointer; }
-        .node-circle { transition: 0.3s; }
-        .node-group:hover .node-circle { r: 22; filter: url(#neonGlow); }
-        .node-text { font-size: 12px; font-weight: 900; fill: #fff; text-anchor: middle; pointer-events: none; }
-        .location-title { font-size: 11px; font-weight: 600; fill: #64748b; text-anchor: middle; pointer-events: none; transition: 0.3s; }
-        .node-group:hover .location-title { fill: #00f0ff; }
+        .node-group.locked { cursor: not-allowed; }
+        .node-circle { transition: 0.3s; fill: #151525; stroke: #334155; }
+        .node-group.active .node-circle { fill: #00f0ff; stroke: #fff; filter: url(#neonGlow); }
+        .node-group.completed .node-circle { fill: #0b0b1e; stroke: #ff00ff; }
+        
+        .node-text { font-size: 12px; font-weight: 900; fill: #475569; text-anchor: middle; pointer-events: none; }
+        .node-group.active .node-text { fill: #000; }
+        .node-group.completed .node-text { fill: #fff; }
+
+        .location-title { font-size: 11px; font-weight: 600; fill: #475569; text-anchor: middle; pointer-events: none; transition: 0.3s; }
+        .node-group.active .location-title { fill: #00f0ff; font-weight: bold; }
+        .node-group.completed .location-title { fill: #e2e8f0; }
 
         /* Төмөнкү Прогресс */
         .bottom-bar { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(4, 4, 10, 0.95); border-top: 1px solid rgba(255, 0, 255, 0.1); padding: 12px 30px; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
         .progress-section { display: flex; align-items: center; gap: 15px; flex: 1; max-width: 500px; }
         .progress-label { font-size: 0.8rem; font-weight: 800; color: #ff00ff; letter-spacing: 1px; }
         .progress-track { width: 100%; height: 10px; background: rgba(0,0,0,0.6); border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03); }
-        .progress-fill { height: 100%; width: 20%; background: linear-gradient(90deg, #ff00ff, #00f0ff); box-shadow: 0 0 8px #00f0ff; }
+        .progress-fill { height: 100%; width: 15%; background: linear-gradient(90deg, #ff00ff, #00f0ff); box-shadow: 0 0 8px #00f0ff; transition: width 0.5s; }
         
         .rewards-chests { display: flex; gap: 12px; font-size: 1.3rem; }
         .chest { opacity: 0.4; transition: 0.3s; cursor: not-allowed; }
         .chest.unlocked { opacity: 1; cursor: pointer; filter: drop-shadow(0 0 5px #ff00ff); }
+        
+        /* Жашыруун аймак жазуусу */
+        #terra-incognita { transition: opacity 0.5s; }
     </style>
 </head>
 <body>
@@ -69,7 +80,7 @@
             <img src="../men.jpeg" alt="Колдонуучу" class="avatar">
             <div class="user-meta">
                 <h3 id="user-email-display">окуучу@bilimal.org</h3>
-                <span class="badge-lvl">LEVEL 1 (Изилдөөчү)</span>
+                <span class="badge-lvl" id="user-level-badge">LEVEL 1 (Изилдөөчү)</span>
             </div>
         </div>
         <div class="map-title">THE ISLAND OF KNOWLEDGE</div>
@@ -106,15 +117,16 @@
                     <mask id="fogOfWarMask">
                         <rect width="1000" height="600" fill="#222222" />
                         
-                        <circle cx="150" cy="480" r="130" fill="#ffffff" filter="url(#fogBlur)" />
-                        
-                        <circle cx="320" cy="380" r="110" fill="#ffffff" filter="url(#fogBlur)" />
-                        
-                        <circle cx="480" cy="220" r="70" fill="#555555" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-1" cx="150" cy="480" r="130" fill="#ffffff" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-2" cx="320" cy="380" r="0" fill="#ffffff" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-3" cx="480" cy="220" r="0" fill="#ffffff" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-4" cx="650" cy="200" r="0" fill="#ffffff" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-5" cx="740" cy="420" r="0" fill="#ffffff" filter="url(#fogBlur)" />
+                        <circle id="fog-lock-6" cx="860" cy="300" r="0" fill="#ffffff" filter="url(#fogBlur)" />
                     </mask>
 
                     <filter id="fogBlur">
-                        <feGaussianBlur stdDeviation="35" />
+                        <feGaussianBlur stdDeviation="30" />
                     </filter>
                 </defs>
 
@@ -131,52 +143,52 @@
                     <path d="M 420 250 L 460 190 L 500 250 M 460 240 L 490 200 L 520 240" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="2" />
                     <path d="M 700 350 L 750 260 L 800 350" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" />
 
-                    <path class="quest-path" d="M 150 480 Q 220 400 320 380" fill="none" stroke="#00f0ff" stroke-width="3" filter="url(#neonGlow)" />
-                    
-                    <path class="quest-path" d="M 320 380 Q 420 300 480 220" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
-                    <path d="M 480 220 Q 550 260 650 200" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" stroke-dasharray="5" />
-                    <path d="M 650 200 Q 720 350 740 420" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" stroke-dasharray="5" />
-                    <path d="M 740 420 Q 820 430 860 300" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2" stroke-dasharray="5" />
+                    <path id="path-1" class="quest-path" d="M 150 480 Q 220 400 320 380" fill="none" stroke-width="3" />
+                    <path id="path-2" class="quest-path" d="M 320 380 Q 420 300 480 220" fill="none" stroke-width="3" />
+                    <path id="path-3" class="quest-path" d="M 480 220 Q 550 260 650 200" fill="none" stroke-width="3" />
+                    <path id="path-4" class="quest-path" d="M 650 200 Q 720 350 740 420" fill="none" stroke-width="3" />
+                    <path id="path-5" class="quest-path" d="M 740 420 Q 820 430 860 300" fill="none" stroke-width="3" />
 
-                    <g class="node-group" onclick="loadLevel(1, 'Beginner\'s Cave')">
-                        <circle class="node-circle" cx="150" cy="480" r="16" fill="#0b0b1e" stroke="#ff00ff" stroke-width="3" />
+                    <g id="node-1" class="node-group" onclick="selectLevel(1, 'Beginner\'s Cave')">
+                        <circle class="node-circle" cx="150" cy="480" r="16" />
                         <text class="node-text" x="150" y="484">1</text>
-                        <text class="location-title" x="150" y="515" style="fill: #e2e8f0;">Beginner's Cave</text>
+                        <text class="location-title" x="150" y="515">Beginner's Cave</text>
                     </g>
 
-                    <g class="node-group" onclick="loadLevel(2, 'Green Valley')">
-                        <circle class="node-circle" cx="320" cy="380" r="18" fill="#00f0ff" stroke="#fff" stroke-width="3" filter="url(#neonGlow)" />
-                        <text class="node-text" x="320" y="384" style="fill: #000; font-weight:900;">2</text>
-                        <text class="location-title" x="320" y="415" style="fill: #00f0ff; font-weight: bold;">Green Valley</text>
+                    <g id="node-2" class="node-group" onclick="selectLevel(2, 'Green Valley')">
+                        <circle class="node-circle" cx="320" cy="380" r="17" />
+                        <text class="node-text" x="320" y="384">2</text>
+                        <text class="location-title" x="320" y="415">Green Valley</text>
                     </g>
 
-                    <g class="node-group" onclick="lockedLevel()">
-                        <circle class="node-circle" cx="480" cy="220" r="15" fill="#151525" stroke="#475569" stroke-width="2" />
-                        <text class="node-text" x="480" y="224" style="fill: #64748b;">3</text>
+                    <g id="node-3" class="node-group" onclick="selectLevel(3, 'Stonehelm Town')">
+                        <circle class="node-circle" cx="480" cy="220" r="16" />
+                        <text class="node-text" x="480" y="224">3</text>
                         <text class="location-title" x="480" y="250">Stonehelm Town</text>
                     </g>
 
-                    <g class="node-group" onclick="lockedLevel()">
-                        <circle class="node-circle" cx="650" cy="200" r="15" fill="#111" stroke="#222" stroke-width="2" />
-                        <text class="node-text" x="650" y="204" style="fill: #333;">4</text>
-                        <text class="location-title" x="650" y="225">Ancient Library</text>
+                    <g id="node-4" class="node-group" onclick="selectLevel(4, 'Ancient Library')">
+                        <circle class="node-circle" cx="650" cy="200" r="16" />
+                        <text class="node-text" x="650" y="204">4</text>
+                        <text class="location-title" x="650" y="230">Ancient Library</text>
                     </g>
 
-                    <g class="node-group" onclick="lockedLevel()">
-                        <circle class="node-circle" cx="740" cy="420" r="15" fill="#111" stroke="#222" stroke-width="2" />
-                        <text class="node-text" x="740" y="424" style="fill: #333;">5</text>
-                        <text class="location-title" x="740" y="445">Crystal Caverns</text>
+                    <g id="node-5" class="node-group" onclick="selectLevel(5, 'Crystal Caverns')">
+                        <circle class="node-circle" cx="740" cy="420" r="16" />
+                        <text class="node-text" x="740" y="424">5</text>
+                        <text class="location-title" x="740" y="450">Crystal Caverns</text>
                     </g>
 
-                    <g class="node-group" onclick="lockedLevel()">
-                        <circle class="node-circle" cx="860" cy="300" r="18" fill="#111" stroke="#222" stroke-width="2" />
-                        <text class="node-text" x="860" y="304" style="fill: #333;">👑</text>
+                    <g id="node-6" class="node-group" onclick="selectLevel(6, 'Sky Academy')">
+                        <circle class="node-circle" cx="860" cy="300" r="19" />
+                        <text class="node-text" x="860" y="304">👑</text>
                         <text class="location-title" x="860" y="330">Sky Academy</text>
                     </g>
                 </g>
 
-                <text x="700" y="260" fill="rgba(255,255,255,0.04)" font-size="24" font-weight="900" letter-spacing="5" pointer-events="none">TERRA INCOGNITA</text>
-                <text x="730" y="285" fill="rgba(0,240,255,0.02)" font-size="12" font-weight="700" letter-spacing="2" pointer-events="none">(Учурда кулпуланган аймак)</text>
+                <g id="terra-incognita">
+                    <text x="680" y="280" fill="rgba(255,255,255,0.03)" font-size="22" font-weight="900" letter-spacing="5" pointer-events="none">TERRA INCOGNITA</text>
+                </g>
             </svg>
         </div>
     </div>
@@ -185,36 +197,105 @@
         <div class="progress-section">
             <div class="progress-label">ЖАЛПЫ ПРОГРЕСС:</div>
             <div class="progress-track">
-                <div class="progress-fill"></div>
+                <div class="progress-fill" id="main-progress-bar"></div>
             </div>
         </div>
         <div class="rewards-chests">
-            <div class="chest unlocked" onclick="openChest(1)">🎁</div>
-            <div class="chest" onclick="alert('Бул сандык туман ичинде катылган! Изилдөөнү улантыңыз.')">🔒</div>
-            <div class="chest" onclick="alert('Аралдын финалдык супер сандыгы!')">👑</div>
+            <div class="chest unlocked" id="chest-1" onclick="openChest(1)">🎁</div>
+            <div class="chest" id="chest-2" onclick="openChest(2)">🔒</div>
+            <div class="chest" id="chest-3" onclick="openChest(3)">👑</div>
         </div>
     </div>
 
     <script>
+        // Оюндун учурдагы абалын сактоочу өзгөрмө (Азырынча тест үчүн кол менен 2 деп койдук)
+        // Иш жүзүндө муну окуучу тестти тапшырганда LocalStorage'ге жазып турат
+        let currentLevel = parseInt(localStorage.getItem('bilimal_current_level')) || 2;
+
         document.addEventListener('DOMContentLoaded', () => {
             const savedEmail = localStorage.getItem('bilimal_user_email');
             if (savedEmail) {
                 document.getElementById('user-email-display').innerText = savedEmail;
             }
+            updateMapState();
         });
 
-        function loadLevel(levelNum, levelName) {
-            alert(`Сиз "${levelName}" аймагына кирип жатасыз. Тапшырмалар жүктөлүүдө... 🚀`);
+        function updateMapState() {
+            // Прогресс бардын пайызын эсептөө
+            let progressPercent = ((currentLevel - 1) / 5) * 100;
+            document.getElementById('main-progress-bar').style.width = `${progressPercent}%`;
+
+            // Жогорку бейджди өзгөртүү
+            document.getElementById('user-level-badge').innerText = `LEVEL ${currentLevel} (Изилдөөчү)`;
+
+            // Картадагы тумандарды жана чекиттерди деңгээлге жараша ачуу
+            for (let i = 1; i <= 6; i++) {
+                let node = document.getElementById(`node-${i}`);
+                let fog = document.getElementById(`fog-lock-${i}`);
+                let path = document.getElementById(`path-${i - 1}`);
+
+                if (i < currentLevel) {
+                    // Өтүлгөн деңгээлдер
+                    node.className.baseVal = "node-group completed";
+                    if (fog) fog.setAttribute('r', '130');
+                    if (path) path.className.baseVal = "quest-path active";
+                } else if (i === currentLevel) {
+                    // Учурда турган активдүү деңгээл
+                    node.className.baseVal = "node-group active";
+                    if (fog) fog.setAttribute('r', '140'); // Учурдагы жерди чоңураак жарык кылат
+                    if (path) path.className.baseVal = "quest-path active";
+                } else {
+                    // Али ачыла элек деңгээлдер (Туман астында)
+                    node.className.baseVal = "node-group locked";
+                    if (fog) {
+                        // Эгер кийинки эле баскыч болсо, туманы кичине көрүнүп турсун (сырдуулук үчүн)
+                        if (i === currentLevel + 1) {
+                            fog.setAttribute('r', '60');
+                        } else {
+                            fog.setAttribute('r', '0');
+                        }
+                    }
+                }
+            }
+
+            // Эгер акыркы баскычтарга жетсе, Terra Incognita жазуусун өчүрүү
+            if (currentLevel >= 4) {
+                document.getElementById('terra-incognita').style.opacity = '0.1';
+            }
+            if (currentLevel >= 3) {
+                document.getElementById('chest-2').className = "chest unlocked";
+                document.getElementById('chest-2').innerText = "🎁";
+            }
+        }
+
+        function selectLevel(levelNum, levelName) {
+            if (levelNum > currentLevel) {
+                alert('Бул аймак туман астында жана кулпуланган! 🌫️\nАлдыга жылуу үчүн учурдагы баскычты аткарыңыз.');
+                return;
+            }
+            
+            alert(`Сиз "${levelName}" квестине кирип жатасыз. Ийгилик! 🚀`);
+            // Бул жерде окуучуну тест баракчасына багыттайбыз
             window.location.href = 'tests.html';
         }
 
-        function lockedLevel() {
-            alert('Бул аймак туман астында жана кулпуланган! 🌫️\nАлдыга жылуу үчүн мурунку тапшырмаларды аткарып, картаны изилдеңиз.');
+        function openChest(id) {
+            if (id === 1 || (id === 2 && currentLevel >= 3)) {
+                alert('Куттуктайбыз! Сандыктан кошумча XP жана Кристаллдар чыкты! 🎉');
+            } else {
+                alert('Бул сандык азырынча кулпуланган! Жолду улантыңыз.');
+            }
         }
 
-        function openChest(id) {
-            alert('Биринчи сыйлык сандыгы ачылды! +50 XP алдыңыз.');
-            document.getElementById('xp-count').innerText = "200";
+        // ТЕСТТӨӨ ҮЧҮН ФУНКЦИЯ (Муну кийин алып салсаңыз болот же текшерүүгө ыңгайлуу)
+        // Консолдон же иштеп жатканда кийинки баскычты ачууну симуляция кылат
+        function cheatToNextLevel() {
+            if (currentLevel < 6) {
+                currentLevel++;
+                localStorage.setItem('bilimal_current_level', currentLevel);
+                updateMapState();
+                alert(`Жаңы деңгээл ачылды! Учурдагы баскыч: ${currentLevel}`);
+            }
         }
     </script>
 </body>
