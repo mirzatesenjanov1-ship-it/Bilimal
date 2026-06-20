@@ -3,122 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BilimAl — Физика Квест Картасы</title>
+    <title>The Island of Knowledge — Карта</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background: #0b0f19; color: #fff; min-height: 100vh; overflow-x: hidden; }
+        body { 
+            background: #0b0f19; 
+            color: #fff; 
+            min-height: 100vh; 
+            display: flex;
+            flex-direction: column;
+        }
         
-        .header { text-align: center; padding: 40px 20px; background: linear-gradient(to bottom, #111827, #0b0f19); }
-        .header h1 { font-size: 2.5rem; color: #eab308; text-transform: uppercase; letter-spacing: 2px; }
-        .header p { color: #94a3b8; margin-top: 8px; }
+        /* Жогорку панель (Сиздин скриншоттогудай стиль) */
+        .top-navbar {
+            background: #090d16;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .user-profile { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 35px; height: 35px; border-radius: 50%; background: #a855f7; border: 2px solid #eab308; }
+        .user-email { font-size: 0.85rem; color: #f3f4f6; font-weight: bold; }
+        .brand-title { font-size: 1.4rem; font-weight: 900; color: #00f0ff; letter-spacing: 2px; text-transform: uppercase; }
+        .stats-box { display: flex; gap: 15px; }
+        .stat-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; }
 
-        .map-container { max-width: 900px; margin: 40px auto; padding: 20px; position: relative; }
-        
-        /* Прогресс сызыгы */
-        .progress-track { position: absolute; top: 0; bottom: 0; left: 50%; width: 6px; background: #1e293b; transform: translateX(-50%); z-index: 1; }
-        .progress-bar-fill { position: absolute; top: 0; left: 0; width: 100%; background: linear-gradient(to bottom, #eab308, #3b82f6); height: 0%; transition: height 0.5s ease; }
+        /* Картанын контейнери */
+        .map-wrapper {
+            flex: 1;
+            max-width: 1000px;
+            width: 100%;
+            margin: 30px auto;
+            padding: 20px;
+            background: rgba(17, 24, 39, 0.4);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
 
-        .level-node { position: relative; display: flex; justify-content: flex-start; width: 100%; margin-bottom: 60px; z-index: 2; text-decoration: none; }
-        .level-node:nth-child(even) { justify-content: flex-end; }
+        .nodes-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            position: relative;
+        }
 
-        .node-content { background: #1e293b; border: 2px solid #334155; padding: 20px; border-radius: 12px; width: 45%; transition: 0.3s; position: relative; }
-        .level-node.completed .node-content { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
-        .level-node.active .node-content { border-color: #eab308; background: rgba(234, 179, 8, 0.1); box-shadow: 0 0 20px rgba(234, 179, 8, 0.2); }
-        .level-node.locked .node-content { border-color: #475569; background: #0f172a; opacity: 0.5; pointer-events: none; }
+        /* Деңгээлдердин тизмеги */
+        .level-link {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            padding: 20px;
+            border-radius: 12px;
+            background: #111827;
+            border: 2px solid #1f2937;
+            transition: 0.3s all ease;
+        }
 
-        .node-badge { position: absolute; top: -15px; background: #334155; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .completed .node-badge { background: #22c55e; color: #000; }
-        .active .node-badge { background: #eab308; color: #000; }
+        /* Ар бир деңгээлдин абалы */
+        .level-link.completed {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.05);
+        }
+        .level-link.active {
+            border-color: #00f0ff;
+            background: rgba(0, 240, 255, 0.05);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+        .level-link.locked {
+            opacity: 0.4;
+            pointer-events: none;
+            background: #090d16;
+        }
 
-        .node-title { font-size: 1.2rem; font-weight: bold; color: #fff; margin-top: 10px; display: block; }
-        .node-desc { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; }
-        .lock-icon { float: right; font-size: 1.2rem; }
+        .node-number {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-right: 20px;
+            border: 2px solid #374151;
+            color: #94a3b8;
+        }
+        .active .node-number { background: #00f0ff; color: #000; border-color: #00f0ff; }
+        .completed .node-number { background: #22c55e; color: #000; border-color: #22c55e; }
+
+        .node-text-side { flex: 1; }
+        .node-name { font-size: 1.15rem; font-weight: bold; color: #fff; }
+        .node-tag { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+        .status-icon { font-size: 1.2rem; color: #64748b; }
+        .completed .status-icon { color: #22c55e; }
+        .active .status-icon { color: #00f0ff; }
+
+        /* Төмөнкү прогресс бар */
+        .bottom-progress-panel {
+            background: #090d16;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .progress-line-container { flex: 1; max-width: 600px; height: 10px; background: #1f2937; border-radius: 5px; overflow: hidden; margin: 0 20px; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #00f0ff); transition: width 0.5s ease; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h1>🌌 ИЛИМДИН КАРТАСЫ</h1>
-        <p>Физиканын сырдуу ааламдарын багындыруу саякаты</p>
+    <div class="top-navbar">
+        <div class="user-profile">
+            <div class="avatar"></div>
+            <span class="user-email">mirzatesenjanov1@gmail.com</span>
+        </div>
+        <div class="brand-title">The Island of Knowledge</div>
+        <div class="stats-box">
+            <div class="stat-item" style="color: #00f0ff;">🔷 150 XP</div>
+            <div class="stat-item" style="color: #eab308;">🔮 <span id="crystal-count">10</span> Кристалл</div>
+        </div>
     </div>
 
-    <div class="map-container">
-        <div class="progress-track">
-            <div class="progress-bar-fill" id="map-progress"></div>
+    <div class="map-wrapper">
+        <div class="nodes-container">
+            
+            <a href="quest-mission-1.html" class="level-link locked" id="lvl-1">
+                <div class="node-number">1</div>
+                <div class="node-text-side">
+                    <div class="node-name">🚗 Механика негиздери</div>
+                    <div class="node-tag">Кыймыл, ылдамдык жана кинематика</div>
+                </div>
+                <div class="status-icon" id="ico-1">🔒</div>
+            </a>
+
+            <a href="quest-mission-2.html" class="level-link locked" id="lvl-2">
+                <div class="node-number">2</div>
+                <div class="node-text-side">
+                    <div class="node-name">🔥 Жашыл Өрөөн: Термодинамика</div>
+                    <div class="node-tag">Жылуулук балансы жана молекулалар</div>
+                </div>
+                <div class="status-icon" id="ico-2">🔒</div>
+            </a>
+
+            <a href="quest-mission-3.html" class="level-link locked" id="lvl-3">
+                <div class="node-number">3</div>
+                <div class="node-text-side">
+                    <div class="node-name">⚡ Алтын Төбө: Электродинамика</div>
+                    <div class="node-tag">Ток күчү, чынжырлар жана Ом мыйзамы</div>
+                </div>
+                <div class="status-icon" id="ico-3">🔒</div>
+            </a>
+
+            <a href="quest-mission-4.html" class="level-link locked" id="lvl-4">
+                <div class="node-number">4</div>
+                <div class="node-text-side">
+                    <div class="node-name">👁️ Байыркы Китепкана: Оптика</div>
+                    <div class="node-tag">Жарыктын сынуусу жана линзалар</div>
+                </div>
+                <div class="status-icon" id="ico-4">🔒</div>
+            </a>
+
+            <a href="quest-mission-5.html" class="level-link locked" id="lvl-5">
+                <div class="node-number">5</div>
+                <div class="node-text-side">
+                    <div class="node-name">⚛️ Кристалл Үңкүрү: Кванттык Физика</div>
+                    <div class="node-tag">Фотоэффект жана фотондордун энергиясы</div>
+                </div>
+                <div class="status-icon" id="ico-5">🔒</div>
+            </a>
+
+            <a href="quest-mission-6.html" class="level-link locked" id="lvl-6">
+                <div class="node-number">6</div>
+                <div class="node-text-side">
+                    <div class="node-name">🚀 Илим Академиясы: Астрофизика</div>
+                    <div class="node-tag">Космостук ылдамдыктар жана орбиталар</div>
+                </div>
+                <div class="status-icon" id="ico-6">🔒</div>
+            </a>
+
+            <a href="kyz-kuumay.html" class="level-link locked" id="lvl-7">
+                <div class="node-number">7</div>
+                <div class="node-text-side">
+                    <div class="node-name">🏇 Асман Сепили: Кыз Куумай (Финал)</div>
+                    <div class="node-tag">Улуттук оюндун негизиндеги баллистикалык симуляция</div>
+                </div>
+                <div class="status-icon" id="ico-7">👑</div>
+            </a>
+
         </div>
+    </div>
 
-        <div id="nodes-wrapper">
-            <!-- 1-ДЕҢГЕЭЛ -->
-            <a href="sections/quest-mission-1.html" class="level-node locked" id="node-1">
-                <div class="node-content">
-                    <span class="node-badge">1-БӨЛҮМ</span>
-                    <span class="node-title">🚗 Механика</span>
-                    <p class="node-desc">Ылдамдык, тездетүү жана Ньютондун мыйзамдары.</p>
-                </div>
-            </a>
-
-            <!-- 2-ДЕҢГЕЭЛ -->
-            <a href="sections/quest-mission-2.html" class="level-node locked" id="node-2">
-                <div class="node-content">
-                    <span class="node-badge">2-БӨЛҮМ</span>
-                    <span class="node-title">🔥 Термодинамика</span>
-                    <p class="node-desc">Молекулалык кыймыл жана жылуулук балансы.</p>
-                </div>
-            </a>
-
-            <!-- 3-ДЕҢГЕЭЛ -->
-            <a href="sections/quest-mission-3.html" class="level-node locked" id="node-3">
-                <div class="node-content">
-                    <span class="node-badge">3-БӨЛҮМ</span>
-                    <span class="node-title">⚡ Электродинамика</span>
-                    <p class="node-desc">Ток күчү, Ом мыйзамы жана конденсаторлор.</p>
-                </div>
-            </a>
-
-            <!-- 4-ДЕҢГЕЭЛ -->
-            <a href="sections/quest-mission-4.html" class="level-node locked" id="node-4">
-                <div class="node-content">
-                    <span class="node-badge">4-БӨЛҮМ</span>
-                    <span class="node-title">👁️ Оптика</span>
-                    <p class="node-desc">Жарыктын сынуусу жана линзалардын фокусу.</p>
-                </div>
-            </a>
-
-            <!-- 5-ДЕҢГЕЭЛ -->
-            <a href="sections/quest-mission-5.html" class="level-node locked" id="node-5">
-                <div class="node-content">
-                    <span class="node-badge">5-БӨЛҮМ</span>
-                    <span class="node-title">⚛️ Кванттык Физика</span>
-                    <p class="node-desc">Фотоэффект, фотон энергиясы жана Атом ядросу.</p>
-                </div>
-            </a>
+    <div class="bottom-progress-panel">
+        <span style="font-size: 0.85rem; font-weight: bold; color: #a855f7;">ЖАЛПЫ ПРОГРЕСС:</span>
+        <div class="progress-line-container">
+            <div class="progress-fill" id="main-progress-bar"></div>
         </div>
+        <span style="font-size: 0.9rem; font-weight: bold;" id="progress-text">0%</span>
     </div>
 
     <script>
-        // Колдонуучунун прогрессин жүктөө (демейки боюнча 1-деңгээл ачык)
+        // Жөнөкөй логика: localStorage аркылуу деңгээлдерди активдештирүү
         let currentLevel = parseInt(localStorage.getItem('bilimal_current_level')) || 1;
-        const totalLevels = 5;
+        let totalLevels = 7;
 
-        function renderMap() {
+        function buildMapProgress() {
             for (let i = 1; i <= totalLevels; i++) {
-                let node = document.getElementById(`node-${i}`);
-                if (!node) continue;
+                let element = document.getElementById(`lvl-${i}`);
+                let icon = document.getElementById(`ico-${i}`);
+                if (!element) continue;
 
                 if (i < currentLevel) {
-                    node.className = "level-node completed";
+                    element.className = "level-link completed";
+                    if(icon) icon.innerText = "✅";
                 } else if (i === currentLevel) {
-                    node.className = "level-node active";
+                    element.className = "level-link active";
+                    if(icon) icon.innerText = "🎯";
                 } else {
-                    node.className = "level-node locked";
+                    element.className = "level-link locked";
+                    if(icon && i !== 7) icon.innerText = "🔒";
                 }
             }
-            // Прогресс сызыгынын бийиктиги
-            let progressPercent = ((currentLevel - 1) / (totalLevels - 1)) * 100;
-            document.getElementById('map-progress').style.height = `${progressPercent}%`;
+
+            // Прогресс пайызын эсептөө
+            let percent = Math.round(((currentLevel - 1) / totalLevels) * 100);
+            document.getElementById('main-progress-bar').style.width = percent + "%";
+            document.getElementById('progress-text').innerText = percent + "%";
+            document.getElementById('crystal-count').innerText = localStorage.getItem('bilimal_user_crystals') || 10;
         }
 
-        renderMap();
+        buildMapProgress();
     </script>
 </body>
 </html>
