@@ -3,146 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BilimAl — Билим Аралдары</title>
+    <title>BilimAl — Физика Квест Картасы</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background: #050516; color: #fff; min-height: 100vh; display: flex; }
-
-        /* Капталдагы меню */
-        .sidebar { width: 100px; background: #0a0a23; border-right: 1px solid rgba(0,240,255,0.1); display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 25px; }
-        .logo-b { font-size: 2rem; font-weight: 900; color: #00f0ff; text-shadow: 0 0 10px #00f0ff; margin-bottom: 20px; }
-        .nav-btn { width: 70px; height: 70px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #64748b; cursor: pointer; transition: 0.3s; font-size: 0.7rem; gap: 5px; text-decoration: none; }
-        .nav-btn.active, .nav-btn:hover { color: #00f0ff; border-color: #00f0ff; background: rgba(0,240,255,0.05); box-shadow: 0 0 15px rgba(0,240,255,0.1); }
-        .nav-btn span { font-size: 1.4rem; }
-
-        /* Негизги мазмун */
-        .main-content { flex: 1; display: flex; flex-direction: column; }
-
-        /* Үстүнкү панель */
-        .top-bar { background: #0a0a23; padding: 15px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,240,255,0.1); }
-        .user-info { display: flex; align-items: center; gap: 15px; }
-        .avatar { width: 45px; height: 45px; background: linear-gradient(45deg, #00f0ff, #ff00ff); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; border: 2px solid #fff; }
-        .user-meta h4 { font-size: 0.95rem; color: #fff; }
-        .user-meta span { font-size: 0.75rem; color: #ff00ff; background: rgba(255,0,255,0.1); padding: 2px 8px; border-radius: 10px; font-weight: bold; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #0b0f19; color: #fff; min-height: 100vh; overflow-x: hidden; }
         
-        .stats-display { display: flex; gap: 20px; }
-        .stat-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); padding: 8px 20px; border-radius: 20px; font-weight: bold; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+        .header { text-align: center; padding: 40px 20px; background: linear-gradient(to bottom, #111827, #0b0f19); }
+        .header h1 { font-size: 2.5rem; color: #eab308; text-transform: uppercase; letter-spacing: 2px; }
+        .header p { color: #94a3b8; margin-top: 8px; }
 
-        /* Карта аренасы */
-        .map-container { flex: 1; background: radial-gradient(circle at center, #1a1a3a 0%, #050516 100%); display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; }
-        .map-title { position: absolute; top: 30px; font-size: 1.8rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; background: linear-gradient(to right, #00f0ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        /* Квест чекиттери */
-        .map-path { display: flex; gap: 120px; position: relative; z-index: 2; padding: 0 50px; }
-        .level-node { width: 90px; height: 90px; border-radius: 50%; background: #1e1e38; border: 4px solid #475569; display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: bold; cursor: not-allowed; position: relative; transition: 0.4s; color: #64748b; text-decoration: none; }
+        .map-container { max-width: 900px; margin: 40px auto; padding: 20px; position: relative; }
         
-        .level-node.active { border-color: #00f0ff; background: radial-gradient(circle, #00f0ff 0%, #0066cc 100%); color: #fff; cursor: pointer; box-shadow: 0 0 30px #00f0ff; }
-        .level-node.completed { border-color: #22c55e; background: radial-gradient(circle, #22c55e 0%, #15803d 100%); color: #fff; cursor: pointer; box-shadow: 0 0 20px rgba(34,197,94,0.4); }
-        
-        .node-number { font-size: 1.6rem; font-weight: 900; }
-        .node-title { position: absolute; top: 105px; width: 160px; text-align: center; font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
-        .level-node.active .node-title { color: #00f0ff; font-weight: bold; }
+        /* Прогресс сызыгы */
+        .progress-track { position: absolute; top: 0; bottom: 0; left: 50%; width: 6px; background: #1e293b; transform: translateX(-50%); z-index: 1; }
+        .progress-bar-fill { position: absolute; top: 0; left: 0; width: 100%; background: linear-gradient(to bottom, #eab308, #3b82f6); height: 0%; transition: height 0.5s ease; }
 
-        /* Төмөнкү Прогресс Бар */
-        .bottom-bar { background: #0a0a23; padding: 20px 40px; border-top: 1px solid rgba(0,240,255,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .progress-section { display: flex; align-items: center; gap: 15px; width: 60%; }
-        .progress-label { font-size: 0.8rem; font-weight: bold; color: #94a3b8; letter-spacing: 1px; min-width: 130px; }
-        .progress-bg { flex: 1; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-        .progress-fill { height: 100%; width: 15%; background: linear-gradient(90deg, #00f0ff, #ff00ff); transition: width 0.5s ease; }
+        .level-node { position: relative; display: flex; justify-content: flex-start; width: 100%; margin-bottom: 60px; z-index: 2; text-decoration: none; }
+        .level-node:nth-child(even) { justify-content: flex-end; }
+
+        .node-content { background: #1e293b; border: 2px solid #334155; padding: 20px; border-radius: 12px; width: 45%; transition: 0.3s; position: relative; }
+        .level-node.completed .node-content { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+        .level-node.active .node-content { border-color: #eab308; background: rgba(234, 179, 8, 0.1); box-shadow: 0 0 20px rgba(234, 179, 8, 0.2); }
+        .level-node.locked .node-content { border-color: #475569; background: #0f172a; opacity: 0.5; pointer-events: none; }
+
+        .node-badge { position: absolute; top: -15px; background: #334155; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .completed .node-badge { background: #22c55e; color: #000; }
+        .active .node-badge { background: #eab308; color: #000; }
+
+        .node-title { font-size: 1.2rem; font-weight: bold; color: #fff; margin-top: 10px; display: block; }
+        .node-desc { font-size: 0.9rem; color: #94a3b8; margin-top: 5px; }
+        .lock-icon { float: right; font-size: 1.2rem; }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <div class="logo-b">B</div>
-        <a href="quest-map.html" class="nav-btn active"><span>🗺️</span>КАРТА</a>
-        <div class="nav-btn"><span>📜</span>КВЕСТ</div>
-        <div class="nav-btn"><span>🎒</span>БАГАЖ</div>
-        <div class="nav-btn"><span>🏆</span>РЕЙТИНГ</div>
+    <div class="header">
+        <h1>🌌 ИЛИМДИН КАРТАСЫ</h1>
+        <p>Физиканын сырдуу ааламдарын багындыруу саякаты</p>
     </div>
 
-    <div class="main-content">
-        <div class="top-bar">
-            <div class="user-info">
-                <div class="avatar">M</div>
-                <div class="user-meta">
-                    <h4 id="user-email">user@bilimal.org</h4>
-                    <span>LEVEL 1 (Изилдөөчү)</span>
-                </div>
-            </div>
-            <div class="stats-display">
-                <div class="stat-box" style="color: #ff3366;">❤️ Өмүр: <span id="map-hearts">3</span>/3</div>
-                <div class="stat-box" style="color: #ff00ff;">🔮 Кристалл: <span id="map-crystals">10</span></div>
-            </div>
+    <div class="map-container">
+        <div class="progress-track">
+            <div class="progress-bar-fill" id="map-progress"></div>
         </div>
 
-        <div class="map-container">
-            <h2 class="map-title">The Island of Knowledge</h2>
-            
-            <div class="map-path">
-                <a href="sections/quest-mission-1.html" class="level-node" id="node-1">
-                    <span class="node-number">1</span>
-                    <span class="node-title">⚙️ Механика Квести</span>
-                </a>
+        <div id="nodes-wrapper">
+            <!-- 1-ДЕҢГЕЭЛ -->
+            <a href="sections/quest-mission-1.html" class="level-node locked" id="node-1">
+                <div class="node-content">
+                    <span class="node-badge">1-БӨЛҮМ</span>
+                    <span class="node-title">🚗 Механика</span>
+                    <p class="node-desc">Ылдамдык, тездетүү жана Ньютондун мыйзамдары.</p>
+                </div>
+            </a>
 
-                <a href="sections/quest-mission-2.html" class="level-node" id="node-2">
-                    <span class="node-number">2</span>
-                    <span class="node-title">🌡️ Молекулалык Физика</span>
-                </a>
+            <!-- 2-ДЕҢГЕЭЛ -->
+            <a href="sections/quest-mission-2.html" class="level-node locked" id="node-2">
+                <div class="node-content">
+                    <span class="node-badge">2-БӨЛҮМ</span>
+                    <span class="node-title">🔥 Термодинамика</span>
+                    <p class="node-desc">Молекулалык кыймыл жана жылуулук балансы.</p>
+                </div>
+            </a>
 
-                <div class="level-node" id="node-3">
-                    <span class="node-number">🔒</span>
+            <!-- 3-ДЕҢГЕЭЛ -->
+            <a href="sections/quest-mission-3.html" class="level-node locked" id="node-3">
+                <div class="node-content">
+                    <span class="node-badge">3-БӨЛҮМ</span>
                     <span class="node-title">⚡ Электродинамика</span>
+                    <p class="node-desc">Ток күчү, Ом мыйзамы жана конденсаторлор.</p>
                 </div>
-            </div>
-        </div>
+            </a>
 
-        <div class="bottom-bar">
-            <div class="progress-section">
-                <div class="progress-label">ЖАЛПЫ ПРОГРЕСС:</div>
-                <div class="progress-bg">
-                    <div class="progress-fill" id="main-progress-bar"></div>
+            <!-- 4-ДЕҢГЕЭЛ -->
+            <a href="sections/quest-mission-4.html" class="level-node locked" id="node-4">
+                <div class="node-content">
+                    <span class="node-badge">4-БӨЛҮМ</span>
+                    <span class="node-title">👁️ Оптика</span>
+                    <p class="node-desc">Жарыктын сынуусу жана линзалардын фокусу.</p>
                 </div>
-            </div>
-            <div style="font-size: 1.2rem;">👑</div>
+            </a>
+
+            <!-- 5-ДЕҢГЕЭЛ -->
+            <a href="sections/quest-mission-5.html" class="level-node locked" id="node-5">
+                <div class="node-content">
+                    <span class="node-badge">5-БӨЛҮМ</span>
+                    <span class="node-title">⚛️ Кванттык Физика</span>
+                    <p class="node-desc">Фотоэффект, фотон энергиясы жана Атом ядросу.</p>
+                </div>
+            </a>
         </div>
     </div>
 
     <script>
-        // Картадагы маалыматтарды жаңылоо жана текшерүү
-        function loadMapProgress() {
-            let currentLevel = parseInt(localStorage.getItem('bilimal_current_level')) || 1;
-            let hearts = parseInt(localStorage.getItem('bilimal_user_hearts'));
-            let crystals = parseInt(localStorage.getItem('bilimal_user_crystals'));
+        // Колдонуучунун прогрессин жүктөө (демейки боюнча 1-деңгээл ачык)
+        let currentLevel = parseInt(localStorage.getItem('bilimal_current_level')) || 1;
+        const totalLevels = 5;
 
-            // Эгер баштапкы баалуулуктар жок болсо, дефолт орнотуу
-            if (isNaN(hearts)) { hearts = 3; localStorage.setItem('bilimal_user_hearts', 3); }
-            if (isNaN(crystals)) { crystals = 10; localStorage.setItem('bilimal_user_crystals', 10); }
+        function renderMap() {
+            for (let i = 1; i <= totalLevels; i++) {
+                let node = document.getElementById(`node-${i}`);
+                if (!node) continue;
 
-            document.getElementById('map-hearts').innerText = hearts;
-            document.getElementById('map-crystals').innerText = crystals;
-
-            let node1 = document.getElementById('node-1');
-            let node2 = document.getElementById('node-2');
-            let progressBar = document.getElementById('main-progress-bar');
-
-            if (currentLevel === 1) {
-                node1.className = 'level-node active';
-                node2.className = 'level-node';
-                progressBar.style.width = '15%';
-            } else if (currentLevel === 2) {
-                node1.className = 'level-node completed';
-                node2.className = 'level-node active';
-                progressBar.style.width = '50%';
-            } else if (currentLevel > 2) {
-                node1.className = 'level-node completed';
-                node2.className = 'level-node completed';
-                progressBar.style.width = '100%';
+                if (i < currentLevel) {
+                    node.className = "level-node completed";
+                } else if (i === currentLevel) {
+                    node.className = "level-node active";
+                } else {
+                    node.className = "level-node locked";
+                }
             }
+            // Прогресс сызыгынын бийиктиги
+            let progressPercent = ((currentLevel - 1) / (totalLevels - 1)) * 100;
+            document.getElementById('map-progress').style.height = `${progressPercent}%`;
         }
 
-        // Барак ачылганда иштетүү
-        window.onload = loadMapProgress;
+        renderMap();
     </script>
 </body>
 </html>
