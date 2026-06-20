@@ -3,10 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚙️ LEVEL 1: Механика Квести</title>
+    <title>⚙️ МЕХАНИКА: Изилдөө Миссиясы</title>
+    
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    </script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background: #050510; color: #fff; min-height: 100vh; overflow-x: hidden; }
+        body { background: #050510; color: #fff; min-height: 100vh; }
 
         /* Жогорку оюн панели */
         .quest-header { background: rgba(10, 10, 30, 0.9); padding: 15px 30px; border-bottom: 2px solid #00f0ff; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
@@ -17,179 +28,141 @@
         .stat-badge { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9rem; }
         .stat-hearts { color: #ff3366; border-color: rgba(255,51,102,0.3); }
         .stat-crystals { color: #ff00ff; border-color: rgba(255,0,255,0.3); }
-        .timer-box { color: #eab308; border-color: rgba(234,179,8,0.3); }
 
-        /* Негизги мазмун */
-        .quest-container { max-width: 800px; margin: 40px auto; padding: 20px; }
-        .level-title { text-align: center; font-size: 2rem; font-weight: 900; letter-spacing: 1px; margin-bottom: 10px; background: linear-gradient(to right, #00f0ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .level-subtitle { text-align: center; color: #94a3b8; font-size: 0.95rem; margin-bottom: 30px; }
+        /* Контейнер */
+        .quest-container { max-width: 850px; margin: 40px auto; padding: 20px; }
+        .level-title { text-align: center; font-size: 2.2rem; font-weight: 900; background: linear-gradient(to right, #00f0ff, #ff00ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
+        .level-subtitle { text-align: center; color: #94a3b8; margin-bottom: 35px; font-size: 1rem; }
 
-        /* Жардам куралдар панели */
-        .helper-panel { background: rgba(20, 20, 45, 0.6); border: 1px dashed #00f0ff; padding: 15px; border-radius: 12px; margin-bottom: 30px; display: flex; justify-content: space-around; align-items: center; }
-        .helper-btn { background: #0f172a; border: 1px solid #ff00ff; color: #fff; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 0.85rem; }
-        .helper-btn:hover { background: #ff00ff; color: #fff; box-shadow: 0 0 15px #ff00ff; }
+        /* Арсенал */
+        .helper-panel { background: rgba(20, 20, 45, 0.6); border: 1px dashed #00f0ff; padding: 15px; border-radius: 12px; margin-bottom: 35px; display: flex; justify-content: space-around; align-items: center; }
+        .helper-btn { background: #0f172a; border: 1px solid #ff00ff; color: #fff; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .helper-btn:hover { background: #ff00ff; box-shadow: 0 0 15px #ff00ff; }
 
         /* Тапшырмалардын карталары */
-        .task-card { background: rgba(15, 15, 35, 0.7); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid #00f0ff; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; }
-        .category-tag { display: inline-block; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; padding: 3px 10px; border-radius: 4px; margin-bottom: 15px; letter-spacing: 1px; }
-        .tag-kinematics { background: #00f0ff; color: #000; }
-        .tag-dynamics { background: #ff00ff; color: #fff; }
-        .tag-statics { background: #eab308; color: #000; }
-        .tag-impulse { background: #a855f7; color: #fff; }
-        .tag-energy { background: #22c55e; color: #fff; }
-        .tag-fluids { background: #3b82f6; color: #fff; }
+        .task-card { background: rgba(15, 15, 35, 0.8); border: 1px solid rgba(255,255,255,0.05); border-left: 5px solid #00f0ff; border-radius: 12px; padding: 25px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .task-card.research-mode { border-left-color: #eab308; } /* Изилдөө режими үчүн сары чети */
 
-        .question-text { font-size: 1.1rem; line-height: 1.6; margin-bottom: 20px; font-weight: 500; }
+        .category-tag { display: inline-block; font-size: 0.75rem; font-weight: 900; text-transform: uppercase; padding: 4px 12px; border-radius: 4px; margin-bottom: 15px; letter-spacing: 1px; }
+        .tag-research { background: #eab308; color: #000; }
+        .tag-3d { background: #a855f7; color: #fff; }
+
+        .question-text { font-size: 1.15rem; line-height: 1.6; margin-bottom: 20px; color: #e2e8f0; }
+
+        /* Илимий визуалдык блок (3D же Диаграмма симуляциясы үчүн орун) */
+        .visual-simulation-box { width: 100%; background: radial-gradient(circle, #151535 0%, #0a0a20 100%); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; margin: 20px 0; padding: 15px; text-align: center; position: relative; overflow: hidden; }
+        .simulation-canvas-mock { min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #00f0ff; font-weight: 500; font-size: 0.95rem; border: 1px dashed rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); }
         
-        /* Жооп варианттары */
-        .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-        .option-label { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 14px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; font-size: 0.95rem; }
+        /* Варианттар */
+        .options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 15px; }
+        .option-label { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); padding: 16px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: 0.2s; font-size: 1rem; }
         .option-label:hover { background: rgba(0, 240, 255, 0.05); border-color: #00f0ff; }
-        .option-label.fade-out { opacity: 0.2; pointer-events: none; text-decoration: line-through; }
         .option-label input { accent-color: #00f0ff; width: 18px; height: 18px; }
+        .option-label.fade-out { opacity: 0.2; pointer-events: none; text-decoration: line-through; }
 
-        /* Google AdSense Жарнама Блогу */
-        .ad-container { margin: 30px 0; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 15px; text-align: center; }
-        .ad-title { font-size: 0.7rem; color: #64748b; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
-        .ad-reward-btn { background: linear-gradient(90deg, #eab308, #ca8a04); border: none; padding: 8px 16px; border-radius: 20px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.85rem; margin-top: 10px; display: inline-flex; align-items: center; gap: 5px; transition: 0.3s; }
-        .ad-reward-btn:hover { transform: scale(1.05); box-shadow: 0 0 15px rgba(234, 179, 8, 0.4); }
+        /* Жарнамалык блок */
+        .ad-container { margin: 35px 0; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px; padding: 20px; text-align: center; }
+        .ad-title { font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
+        .ad-reward-btn { background: linear-gradient(90deg, #eab308, #ca8a04); border: none; padding: 10px 22px; border-radius: 25px; color: #000; font-weight: bold; cursor: pointer; font-size: 0.9rem; margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; transition: 0.3s; }
+        .ad-reward-btn:hover { transform: scale(1.03); box-shadow: 0 0 15px rgba(234, 179, 8, 0.3); }
 
-        /* Жыйынтык баскычы */
-        .submit-section { text-align: center; margin-top: 40px; margin-bottom: 100px; }
-        .btn-submit { background: linear-gradient(90deg, #00f0ff, #ff00ff); border: none; padding: 15px 40px; border-radius: 30px; font-size: 1.1rem; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 0 20px rgba(0,240,255,0.4); transition: 0.3s; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 0 30px rgba(255,0,255,0.6); }
-
-        /* Anti-Cheat Эскертүү стили */
-        #cheat-warning { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,0,0,0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; color: #ff0055; text-align: center; padding: 20px; }
-        #cheat-warning h1 { font-size: 3rem; margin-bottom: 20px; font-weight: 900; text-shadow: 0 0 20px #ff0055; }
+        /* Аяктоо баскычы */
+        .submit-section { text-align: center; margin: 50px 0 100px 0; }
+        .btn-submit { background: linear-gradient(90deg, #00f0ff, #ff00ff); border: none; padding: 16px 50px; border-radius: 30px; font-size: 1.15rem; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 0 25px rgba(0,240,255,0.3); transition: 0.3s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 0 35px rgba(255,0,255,0.5); }
     </style>
 </head>
 <body>
 
-    <!-- Жогорку панель -->
     <div class="quest-header">
         <a href="quest-map.html" class="back-btn">⬅️ Картага кайтуу</a>
         <div class="game-stats">
             <div class="stat-badge stat-hearts">❤️ Өмүр: <span id="hearts-hud">3</span>/3</div>
-            <div class="stat-badge stat-crystals">🔮 <span id="crystals-hud">10</span></div>
-            <div class="stat-badge timer-box">⏱️ <span id="timer">15:00</span></div>
+            <div class="stat-badge stat-crystals">🔮 Кристалл: <span id="crystals-hud">10</span></div>
+            <div class="stat-badge" style="color: #ca8a04; border-color: rgba(202,138,4,0.3);">⏱️ Экспедиция убактысы</div>
         </div>
     </div>
 
     <div class="quest-container">
-        <h1 class="level-title">⚙️ МЕХАНИКА КВЕСТИ</h1>
-        <p class="level-subtitle">Туура жооп берип алдыга жылыңыз. Катуу ката кетсе, ❤️ өмүрүңүз азаят!</p>
+        <h1 class="level-title">⚙️ ИЗИЛДӨӨ МИССИЯСЫ: ТАБЫШМАКТУУ ТЕЗДЕТҮҮ</h1>
+        <p class="level-subtitle">Бул жерде жөнөкөй тесттер жок. Ар бир маселе — терең илимий анализди талап кылат.</p>
 
-        <!-- ЖАРДАМ КУРАЛДАРЫ (ШОП) -->
         <div class="helper-panel">
-            <span style="font-size: 0.9rem; font-weight: bold; color: #94a3b8;">Арсенал:</span>
-            <button class="helper-btn" onclick="useFiftyFifty()">🔮 50/50 Куралы (Баасы: 3 Кристалл)</button>
-            <button class="helper-btn" onclick="buyHeart()">❤️ Өмүр сатып алуу (Баасы: 5 Кристалл)</button>
+            <span style="font-size: 0.95rem; font-weight: bold; color: #94a3b8;">Изилдөөчү куралдары:</span>
+            <button class="helper-btn" onclick="useFiftyFifty()">🔮 50/50 Сканери (3 Кристалл)</button>
+            <button class="helper-btn" onclick="buyHeart()">❤️ Энергия толтуруу (5 Кристалл)</button>
         </div>
 
         <form id="quiz-form">
             
-            <!-- 1. КИНЕМАТИКА -->
-            <div class="task-card" id="card-q1">
-                <span class="category-tag tag-kinematics">1. Кинематика</span>
-                <p class="question-text">Автомобиль түз сызыктуу кыймылда жолдун биринчи жарымын 40 км/саат ылдамдык менен, ал эми экинчи жарымын 60 км/саат ылдамдык менен өттү. Автомобилдин бүткүл жолдогу орточо ылдамдыгы кандай?</p>
+            <div class="task-card research-mode" id="card-q1">
+                <span class="category-tag tag-research">Изилдөө №1: Графикалык Анализ (PISA форматы)</span>
+                <p class="question-text">Төмөнкү вектордук симуляциялык моделде лабораториялык арабачанын кыймылынын ылдамдык графиги көрсөтүлгөн. Эксперименттин $t_1 = 2 \text{ с}$ жана $t_2 = 5 \text{ с}$ убакыт аралыгындагы арабачанын ылдамдануусунун маанисин аныктаңыз.</p>
+                
+                <div class="visual-simulation-box">
+                    <div class="simulation-canvas-mock">
+                        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 10px;">ДИНАМИКАЛЫК ИЗИЛДӨӨ ГРАФИГИ [v(t) функциясы]</div>
+                        <svg width="300" height="120" style="border-left: 2px solid #fff; border-bottom: 2px solid #fff;">
+                            <path d="M 0 100 L 60 70 L 150 70 L 250 20" fill="none" stroke="#00f0ff" stroke-width="3" />
+                            <circle cx="60" cy="70" r="4" fill="#ff00ff" />
+                            <circle cx="150" cy="70" r="4" fill="#ff00ff" />
+                            <text x="50" y="90" fill="#fff" font-size="10">$t_1=2\text{с}$</text>
+                            <text x="140" y="90" fill="#fff" font-size="10">$t_2=5\text{с}$</text>
+                            <text x="280" y="115" fill="#64748b" font-size="10">t</text>
+                            <text x="5" y="15" fill="#64748b" font-size="10">v</text>
+                        </svg>
+                    </div>
+                </div>
+
                 <div class="options-grid">
-                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="A"> A) 50 км/саат</label>
-                    <label class="option-label q1-opt" data-correct="true"><input type="radio" name="q1" value="B"> B) 48 км/саат</label>
-                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="C"> C) 45 км/саат</label>
-                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="D"> D) 52 км/саат</label>
+                    <label class="option-label q1-opt" data-correct="true"><input type="radio" name="q1" value="A"> A) $a = 0 \text{ м/с}^2$ (Ылдамдык туруктуу калат)</label>
+                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="B"> B) $a = 2 \text;{ м/с}^2$</label>
+                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="C"> C) $a = -1.5 \text{ м/с}^2$</label>
+                    <label class="option-label q1-opt" data-wrong="true"><input type="radio" name="q1" value="D"> D) Берилгендер жетишсиз</label>
                 </div>
             </div>
 
-            <!-- GOOGLE ADSENSE ЖАРНАМА БЛОГУ (Бул жерге сиздин AdSense кодуңуз кирет) -->
             <div class="ad-container">
-                <div class="ad-title">Реклама / Демилгечилик блок</div>
-                <!-- Google AdSense Скрипт Интеграциясынын үлгүсү -->
-                <div style="background: rgba(0,0,0,0.3); height: 90px; display: flex; justify-content: center; align-items: center; border: 1px solid rgba(255,255,255,0.05); color: #475569; font-size: 0.9rem;">
-                    [Google AdSense Баннердик Жарнама]
+                <div class="ad-title">Рекламалык Монетизация Блогу</div>
+                <div style="background: rgba(0,0,0,0.4); height: 90px; display: flex; justify-content: center; align-items: center; border: 1px dashed rgba(0,240,255,0.1); color: #475569; font-size: 0.9rem; border-radius: 6px;">
+                    [Google AdSense / Яндекс РСЯ Скрипти ушул жерге коюлат]
                 </div>
-                <button type="button" class="ad-reward-btn" onclick="watchAdReward()">📺 Жарнама көрүү (+2 🔮 Кристалл алуу)</button>
+                <button type="button" class="ad-reward-btn" onclick="watchAdReward()">📺 Видео Жарнама Көрүү (+2 🔮 Кристалл алуу)</button>
             </div>
 
-            <!-- 2. ДИНАМИКА -->
             <div class="task-card" id="card-q2">
-                <span class="category-tag tag-dynamics">2. Динамика</span>
-                <p class="question-text">Космос кемеси ачык космосто (тартылуу күчү жок жерде) кыймылдаткычын өчүрүп бара жатат. Эгер ага эч кандай сырткы күч таасир этпесе, анда кеменин кыймылы кандай болот?</p>
+                <span class="category-tag tag-3d">Кейс №2: Кыймылдаткычтардын Динамикасы</span>
+                <p class="question-text">Космос станциясы Жердин орбитасында айланып жүрөт. Борборго умтулуучу күчтү эсептөө үчүн колдонулуучу $F = m \cdot \frac{v^2}{R}$ формуласындагы радиусту $2$ эсе чоңойтсок, ал эми ылдамдыкты өзгөртпөсөк, күч кандай өзгөрөт?</p>
+                
                 <div class="options-grid">
-                    <label class="option-label q2-opt" data-correct="true"><input type="radio" name="q2" value="A"> A) Түз сызыктуу бир калыпта кыймылын уланта берет</label>
-                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="B"> B) Ылдамдыгы акырындап азайып, токтоп калат</label>
-                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="C"> C) Кыймыл багытын дароо өзгөртөт</label>
-                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="D"> D) Дароо ордунда токтойт</label>
+                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="A"> A) $2$ эсе чоңоюп, орбита туруксуз болот</label>
+                    <label class="option-label q2-opt" data-correct="true"><input type="radio" name="q2" value="B"> B) $2$ эсе азаят</label>
+                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="C"> C) $4$ эсе азаят</label>
+                    <label class="option-label q2-opt" data-wrong="true"><input type="radio" name="q2" value="D"> D) Өзгөрүүсүз калат</label>
                 </div>
             </div>
 
-            <!-- 3. СТАТИКА -->
-            <div class="task-card" id="card-q3">
-                <span class="category-tag tag-statics">3. Статика</span>
-                <p class="question-text">Узундугу 2 метр болгон жеңил рычагдын сол учуна 30 Н күч таасир этет. Рычаг тең салмактуулукта болуусу үчүн, анын оң учуна (таяныч чекитинен 0.5 м алыстыкта) кандай күч жумшоо керек? (Таяныч чекити так ортосунда).</p>
+            <div class="task-card research-mode" id="card-q3">
+                <span class="category-tag tag-research">Изилдөө №3: Потенциалдык жана Кинетикалык энергия</span>
+                <p class="question-text">Массасы $2 \text{ кг}$ болгон таш $5 \text{ м}$ бийиктиктен эркин кулап жатат. Ал Жерге жетерине так бир көз ирмем калгандагы анын максималдуу кинетикалык энергиясы $E_k$ канчага барабар болот? ($g = 10 \text{ м/с}^2$, абанын каршылыгы эсепке алынбайт).</p>
+                
                 <div class="options-grid">
-                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="A"> A) 30 Н</label>
-                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="B"> B) 60 Н</label>
-                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="C"> C) 15 Н</label>
-                    <label class="option-label q3-opt" data-correct="true"><input type="radio" name="q3" value="D"> D) 120 Н</label>
-                </div>
-            </div>
-
-            <!-- 4. ИМПУЛЬС -->
-            <div class="task-card" id="card-q4">
-                <span class="category-tag tag-impulse">4. Импульс</span>
-                <p class="question-text">Массасы 2 кг болгон шар 5 м/с ылдамдык менен тоголонуп келип, тынч турган дал ушундай массадагы башка шарга урунуп, экөө жабышып бирге кыймылдап калышты. Алардын соккудан кийинки жалпы ылдамдыгы канча болот?</p>
-                <div class="options-grid">
-                    <label class="option-label q4-opt" data-wrong="true"><input type="radio" name="q4" value="A"> A) 5 м/с</label>
-                    <label class="option-label q4-opt" data-correct="true"><input type="radio" name="q4" value="B"> B) 2.5 м/с</label>
-                    <label class="option-label q4-opt" data-wrong="true"><input type="radio" name="q4" value="C"> C) 0 м/с</label>
-                    <label class="option-label q4-opt" data-wrong="true"><input type="radio" name="q4" value="D"> D) 1.25 м/с</label>
-                </div>
-            </div>
-
-            <!-- 5. ИШ ЖАНА ЭНЕРГИЯ -->
-            <div class="task-card" id="card-q5">
-                <span class="category-tag tag-energy">5. Иш жана Энергия</span>
-                <p class="question-text">Жерден 5 метр бийиктикте турган массасы 2 кг таштын потенциалдык энергиясы канчага барабар? ($g = 10 \text{ м/с}^2$).</p>
-                <div class="options-grid">
-                    <label class="option-label q5-opt" data-wrong="true"><input type="radio" name="q5" value="A"> A) 10 Дж</label>
-                    <label class="option-label q5-opt" data-wrong="true"><input type="radio" name="q5" value="B"> B) 50 Дж</label>
-                    <label class="option-label q5-opt" data-correct="true"><input type="radio" name="q5" value="C"> C) 100 Дж</label>
-                    <label class="option-label q5-opt" data-wrong="true"><input type="radio" name="q5" value="D"> D) 20 Дж</label>
-                </div>
-            </div>
-
-            <!-- 6. СУЮКТУКТАР ЖАНА ГАЗДАР -->
-            <div class="task-card" id="card-q6">
-                <span class="category-tag tag-fluids">6. Суюктуктар жана Газдар</span>
-                <p class="question-text">Эмне үчүн чоң океан лайнерлери (кемелери) темирден жасалса дагы сууга чөгүп кетпейт?</p>
-                <div class="options-grid">
-                    <label class="option-label q6-opt" data-correct="true"><input type="radio" name="q6" value="A"> A) Кеменин ичиндеги аба анын орточо тыгыздыгын суунун тыгыздыгынан кичине кылат</label>
-                    <label class="option-label q6-opt" data-wrong="true"><input type="radio" name="q6" value="B"> B) Океан суусу абдан тыгыз болгондуктан чөгөрбөйт</label>
-                    <label class="option-label q6-opt" data-wrong="true"><input type="radio" name="q6" value="C"> C) Кеменин моторлору аны дайыма өйдө түртүп турат</label>
-                    <label class="option-label q6-opt" data-wrong="true"><input type="radio" name="q6" value="D"> D) Суу темирди түртүүчү өзгөчө химиялык касиетке ээ</label>
+                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="A"> A) $10 \text{ Дж}$</label>
+                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="B"> B) $50 \text{ Дж}$</label>
+                    <label class="option-label q3-opt" data-correct="true"><input type="radio" name="q3" value="C"> C) $100 \text{ Дж}$</label>
+                    <label class="option-label q3-opt" data-wrong="true"><input type="radio" name="q3" value="D"> D) $20 \text{ Дж}$</label>
                 </div>
             </div>
 
             <div class="submit-section">
-                <button type="button" class="btn-submit" onclick="checkFinalAnswers()">Миссияны Аяктоо 🚀</button>
+                <button type="button" class="btn-submit" onclick="checkFinalAnswers()">Кийинки Изилдөөгө Өтүү 🚀</button>
             </div>
         </form>
     </div>
 
-    <!-- 🚫 Anti-Cheat Экран -->
-    <div id="cheat-warning">
-        <h1>СИСТЕМА БУЗУЛДУ! 🚨</h1>
-        <p>Башка өтмөккө (табка) которулууга тыюу салынган!<br>Ар бир эреже бузуу өмүрдү азайтышы мүмкүн.</p>
-        <br>
-        <button onclick="closeCheatScreen()" style="background: #fff; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Тестке кайтуу</button>
-    </div>
-
     <script>
-        // Глобалдык оюн өзгөрмөлөрү (LocalStorage аркылуу карта менен байланышкан)
         let hearts = parseInt(localStorage.getItem('bilimal_user_hearts')) || 3;
         let crystals = parseInt(localStorage.getItem('bilimal_user_crystals')) || 10;
-        let usedFiftyFiftyCount = 0;
 
         function updateHUD() {
             document.getElementById('hearts-hud').innerText = hearts;
@@ -198,132 +171,59 @@
             localStorage.setItem('bilimal_user_crystals', crystals);
         }
 
-        // Баштапкы абалды экранга чыгаруу
         updateHUD();
 
-        // ⏱️ ТАЙМЕР ЛОГИКАСЫ (15 мүнөт)
-        let timeInSeconds = 15 * 60;
-        const timerElement = document.getElementById('timer');
-        const countdown = setInterval(() => {
-            let minutes = Math.floor(timeInSeconds / 60);
-            let seconds = timeInSeconds % 60;
-            seconds = seconds < 10 ? '0' + seconds : seconds;
-            timerElement.innerText = `${minutes}:${seconds}`;
-            if (timeInSeconds <= 0) {
-                clearInterval(countdown);
-                alert('Убакыт бүттү!');
-                checkFinalAnswers();
-            }
-            timeInSeconds--;
-        }, 1000);
-
-        // 🛡️ ANTI-CHEAT: ТАБДЫ АЛМАШТЫРУУ ЖАНА ӨМҮРДҮ КЕСҮҮ
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                document.getElementById('cheat-warning').style.display = 'flex';
-                if (hearts > 0) {
-                    hearts--;
-                    updateHUD();
-                    if(hearts <= 0) {
-                        alert("❤️ Өмүрүңүз толугу менен түгөндү! Картага кайтарыласыз.");
-                        window.location.href = 'quest-map.html';
-                    }
-                }
-            }
-        });
-
-        function closeCheatScreen() {
-            document.getElementById('cheat-warning').style.display = 'none';
-        }
-        document.addEventListener('copy', (e) => e.preventDefault());
-        document.addEventListener('paste', (e) => e.preventDefault());
-
-
-        // 🔮 ОЮН МЕХАНИКАСЫ: 50/50 КУРАЛЫ (Туура эмес 2 жоопту өчүрүү)
         function useFiftyFifty() {
             if (crystals < 3) {
-                alert("🔮 Жардам куралын колдонуу үчүн кристалл жетишсиз!");
+                alert("🔮 Сканерди иштетүү үчүн кристалл жетишсиз!");
                 return;
             }
-            
-            // Кайсы суроого колдонгусу келгенин суроо
-            let targetQuestion = prompt("Кайсы суроого 50/50 колдонгуңуз келет? (1ден 6га чейин сан жазыңыз):");
-            if (!targetQuestion || targetQuestion < 1 || targetQuestion > 6) {
-                alert("Ката сан киргизилди!");
-                return;
-            }
+            let targetQuestion = prompt("Кайсы изилдөөгө 50/50 сканерин колдоносуз? (1, 2 же 3 сан жазыңыз):");
+            if (!targetQuestion || targetQuestion < 1 || targetQuestion > 3) return;
 
             let wrongOptions = document.querySelectorAll(`.q${targetQuestion}-opt[data-wrong="true"]`);
             if (wrongOptions.length >= 2) {
-                // Туура эмес варианттардын биринчи экөөсүн жаап коюу
                 wrongOptions[0].classList.add('fade-out');
                 wrongOptions[1].classList.add('fade-out');
                 crystals -= 3;
                 updateHUD();
-                alert(`🔮 Суроо №${targetQuestion} үчүн 50/50 куралы иштетилди! 2 туура эмес жооп чийилди.`);
-            } else {
-                alert("Бул суроого курал буга чейин колдонулган же мүмкүн эмес.");
             }
         }
 
-        // ❤️ ӨМҮР САТЫП АЛУУ
         function buyHeart() {
-            if (hearts >= 3) {
-                alert("Өмүрүңүз толук! Сатып алуунун кереги жок.");
-                return;
-            }
-            if (crystals < 5) {
-                alert("🔮 Өмүр сатып алуу үчүн кристалл жетишсиз!");
-                return;
-            }
-            crystals -= 5;
-            hearts++;
-            updateHUD();
-            alert("❤️ 1 Өмүр ийгиликтүү кошулду!");
+            if (hearts >= 3) { ealert("Энергияңыз толук!"); return; }
+            if (crystals < 5) { alert("🔮 Кристалл жетишсиз!"); return; }
+            crystals -= 5; hearts++; updateHUD();
         }
 
-        // 📺 ЖАРНАМА КӨРҮҮ МЕНЕН КРИСТАЛЛ АЛУУ (AdSense үлгүсү)
         function watchAdReward() {
-            alert("Жарнама жүктөлүүдө... Сураныч, 5 секунд күтө туруңуз. 📺");
-            
-            // Бул жерде реалдуу AdSense видео ачылгандан кийин сыйлык берүү таймери иштейт
+            alert("Жарнама жүктөлүүдө... Сыйлык 5 секунддан кийин берилет. 📺");
             setTimeout(() => {
                 crystals += 2;
                 updateHUD();
-                alert("Рахмат! Жарнаманы көргөнүңүз үчүн +2 🔮 Кристалл берилди!");
+                alert("Рахмат! Изилдөө фондуна +2 🔮 Кристалл кошулду!");
             }, 5000);
         }
 
-        // ЖИЙИНТЫКТЫ ТЕКШЕРҮҮ ЖАНА КАРТА АЧУУ
         function checkFinalAnswers() {
-            if (hearts <= 0) {
-                alert("❤️ Өмүрүңүз калбагандыктан миссияны аяктай албайсыз. Башынан баштаңыз же өмүр сатып алыңыз.");
-                return;
-            }
-
-            const correctAnswers = { q1: "B", q2: "A", q3: "D", q4: "B", q5: "C", q6: "A" };
+            const correctAnswers = { q1: "A", q2: "B", q3: "C" };
             let score = 0;
             const form = document.getElementById('quiz-form');
             const formData = new FormData(form);
 
             for (let key in correctAnswers) {
-                if (formData.get(key) === correctAnswers[key]) {
-                    score++;
-                }
+                if (formData.get(key) === correctAnswers[key]) score++;
             }
 
-            // Эгер окуучу өтө аз упай алса, кошумча жаза иретинде өмүр кесилет
-            if (score >= 4) {
-                alert(`УРАА! Сиз Механика квестин талкаладыңыз!\nЖыйынтык: ${score}/6 туура жооп.\nЭми кийинки аймакка жол ачылды! 🎉`);
-                localStorage.setItem('bilimal_current_level', 2); // Кийинки баскычты ачуу
+            if (score === 3) {
+                alert("Ура! Бул этаптын изилдөө иштери ийгиликтүү аяктады! Кийинки Санарип Лабораторияга жол ачылды. 🎉");
+                localStorage.setItem('bilimal_current_level', 2);
                 window.location.href = 'quest-map.html';
             } else {
-                hearts--; // Ката үчүн өмүр кесилет
+                hearts--;
                 updateHUD();
-                alert(`Миссия ийгиликсиз аяктады.\nЖыйынтык: ${score}/6 туура.\nКата кетиргениңиз үчүн 1 ❤️ Өмүрүңүз кесилди! Кайра аракет кылып көрүңүз.`);
-                if (hearts <= 0) {
-                    window.location.href = 'quest-map.html';
-                }
+                alert(`Изилдөө ката аяктады. Туура жооп: ${score}/3. Сиз 1 ❤️ өмүр жоготтуңуз.`);
+                if (hearts <= 0) window.location.href = 'quest-map.html';
             }
         }
     </script>
