@@ -312,7 +312,7 @@
                 </ul>
             </div>
             <div>
-                <button class="play-btn" style="border-color:#facc15; color:#facc15;">⭐ Упай: 10</button>
+                <button class="play-btn" id="score-btn" style="border-color:#facc15; color:#facc15;">⭐ Упай: 10</button>
             </div>
         </div>
 
@@ -335,36 +335,90 @@
     </div>
 
     <script>
+        let currentScore = 10;
+
+        function updateScore(points) {
+            currentScore += points;
+            const scoreBtn = document.getElementById('score-btn');
+            if (scoreBtn) {
+                scoreBtn.innerText = "⭐ Упай: " + currentScore;
+            }
+        }
+
         function toggleBox(id) {
             const box = document.getElementById(id);
             box.style.display = box.style.display === 'block' ? 'none' : 'block';
         }
+        
         function checkCount() {
-            if(document.getElementById('count-input').value == '5') alert("🎉 Азаматсың! ⭐ +10 упай!");
-            else alert("Кайрадан санап көр? 😊");
+            if(document.getElementById('count-input').value == '5') {
+                alert("🎉 Азаматсың! ⭐ +10 упай!");
+                updateScore(10);
+            } else {
+                alert("Кайрадан санап көр? 😊");
+            }
         }
+        
         function changeBg(color, name) {
             document.getElementById('color-text').innerText = "Бул " + name + " түс! 🎈";
             document.getElementById('colors').style.backgroundColor = color + "22";
         }
+        
         function roarLion() { alert("🦁 Арстан күркүрөйт: Ррррр!"); }
 
         let snowInterval;
+        let isSnowing = false;
+        
         function toggleSnow() {
             const canvas = document.getElementById('snow-canvas');
-            if(canvas.style.display === 'block') { canvas.style.display = 'none'; clearInterval(snowInterval); return; }
-            canvas.style.display = 'block';
-            const ctx = canvas.getContext('2d');
-            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-            let flakes = [];
-            for(let i=0; i<100; i++) flakes.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: Math.random()*3+1, d: Math.random()*1 });
-            function drawFlakes() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = "white"; ctx.beginPath();
-                for(let i=0; i<100; i++) { let f = flakes[i]; ctx.moveTo(f.x, f.y); ctx.arc(f.x, f.y, f.r, 0, Math.PI*2, true); }
-                ctx.fill(); moveFlakes();
+            if(isSnowing) { 
+                canvas.style.display = 'none'; 
+                clearInterval(snowInterval); 
+                isSnowing = false;
+                return; 
             }
+            canvas.style.display = 'block';
+            isSnowing = true;
+            const ctx = canvas.getContext('2d');
+            
+            function resizeCanvas() {
+                canvas.width = window.innerWidth; 
+                canvas.height = window.innerHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            let flakes = [];
+            for(let i=0; i<100; i++) {
+                flakes.push({ 
+                    x: Math.random()*window.innerWidth, 
+                    y: Math.random()*window.innerHeight, 
+                    r: Math.random()*3+1, 
+                    d: Math.random()*1 
+                });
+            }
+            
+            function drawFlakes() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); 
+                ctx.fillStyle = "white"; 
+                ctx.beginPath();
+                for(let i=0; i<100; i++) { 
+                    let f = flakes[i]; 
+                    ctx.moveTo(f.x, f.y); 
+                    ctx.arc(f.x, f.y, f.r, 0, Math.PI*2, true); 
+                }
+                ctx.fill(); 
+                moveFlakes();
+            }
+            
             function moveFlakes() {
-                for(let i=0; i<100; i++) { let f = flakes[i]; f.y += Math.cos(f.d) + 1 + f.r/2; if(f.y > canvas.height) flakes[i] = { x: Math.random()*canvas.width, y: 0, r: f.r, d: f.d }; }
+                for(let i=0; i<100; i++) { 
+                    let f = flakes[i]; 
+                    f.y += Math.cos(f.d) + 1 + f.r/2; 
+                    if(f.y > canvas.height) {
+                        flakes[i] = { x: Math.random()*canvas.width, y: 0, r: f.r, d: f.d }; 
+                    }
+                }
             }
             snowInterval = setInterval(drawFlakes, 25);
         }
