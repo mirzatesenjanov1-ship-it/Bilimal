@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Убакыт Саякаты: Тарых Дүйнөсү — BiliMal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #050510; color: #fff; min-height: 100vh; padding: 30px 4%; overflow-x: hidden; }
+
+        /* Эффектүү башкы аталыш */
+        .header-area { text-align: center; margin-bottom: 40px; position: relative; }
+        .header-area h1 { font-size: 2.5rem; text-shadow: 0 0 20px rgba(255, 170, 0, 0.4); color: #ffaa00; }
+        .header-area span { color: #00f0ff; }
+        .subtitle { color: #94a3b8; margin-top: 10px; font-size: 1.1rem; }
+
+        /* Статистика панели */
+        .stats-panel { display: flex; justify-content: center; gap: 30px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 170, 0, 0.2); padding: 15px 30px; border-radius: 50px; width: fit-content; margin: 0 auto 40px auto; backdrop-filter: blur(10px); }
+        .stat-item { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: bold; }
+        .stat-item span.value { color: #ffaa00; }
+
+        /* Квест Картасынын Сеткасы */
+        .quest-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; margin-bottom: 50px; }
+        
+        .zone-card { background: rgba(15, 15, 35, 0.8); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 20px; padding: 25px; position: relative; transition: 0.4s; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; cursor: pointer; }
+        .zone-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #ffaa00; }
+        .zone-card:hover { transform: translateY(-8px); box-shadow: 0 12px 30px rgba(255, 170, 0, 0.2); border-color: rgba(255, 170, 0, 0.4); }
+        
+        /* Кулпуланган зоналар үчүн стиль */
+        .zone-card.locked { opacity: 0.6; cursor: not-allowed; }
+        .zone-card.locked::before { background: #64748b; }
+        .zone-card.locked:hover { transform: none; box-shadow: none; border-color: rgba(255, 255, 255, 0.05); }
+        
+        .lock-badge { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 12px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; color: #cbd5e1; }
+
+        .zone-title { font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .zone-desc { color: #94a3b8; font-size: 0.95rem; line-height: 1.4; margin-bottom: 20px; }
+        
+        .action-btn { background: linear-gradient(135deg, #ffaa00, #ff6600); color: #000; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; width: 100%; transition: 0.3s; cursor: pointer; text-align: center; }
+        .action-btn:hover { box-shadow: 0 0 15px rgba(255, 170, 0, 0.5); transform: scale(1.02); }
+        .locked .action-btn { background: #334155; color: #94a3b8; cursor: not-allowed; }
+
+        /* Мугалимдердин панел баскычы */
+        .teacher-box { background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(168, 85, 247, 0.1)); border: 1px solid #00f0ff; border-radius: 20px; padding: 30px; text-align: center; margin-top: 40px; }
+        .teacher-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .teacher-card-btn { background: rgba(0,0,0,0.4); border: 1px solid rgba(0,240,255,0.2); padding: 15px; border-radius: 12px; color: #fff; cursor: pointer; transition: 0.3s; text-decoration: none; display: block; }
+        .teacher-card-btn:hover { background: #00f0ff; color: #000; font-weight: bold; box-shadow: 0 0 15px rgba(0,240,255,0.3); }
+
+        /* Квест Модал терезеси */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 8, 0.95); z-index: 10000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: #0f0f23; border: 2px solid #ffaa00; border-radius: 24px; max-width: 650px; width: 100%; padding: 35px; box-shadow: 0 0 40px rgba(255, 170, 0, 0.3); animation: slideIn 0.3s ease; position: relative; }
+        @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .close-modal { position: absolute; top: 20px; right: 20px; font-size: 1.8rem; color: #94a3b8; cursor: pointer; transition: 0.3s; }
+        .close-modal:hover { color: #fff; }
+        
+        .quest-options { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .option-btn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); padding: 14px 20px; border-radius: 10px; color: #fff; text-align: left; font-size: 1rem; cursor: pointer; transition: 0.2s; }
+        .option-btn:hover { background: rgba(255, 170, 0, 0.1); border-color: #ffaa00; padding-left: 25px; }
+
+        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; transition: 0.3s; }
+        .back-btn:hover { background: #fff; color: #000; }
+    </style>
+</head>
+<body>
+
+    <a href="school-subjects.html" class="back-btn">← Предметтерге кайт</a>
+
+    <div class="header-area">
+        <h1>⏳ Убакыт Саякатчысы: <span>Тарых Дүйнөсү</span></h1>
+        <p class="subtitle">Ар бир доорго саякат жасап, сырдуу тапшырмаларды аткарыңыз жана артефакттарды табыңыз!</p>
+    </div>
+
+    <!-- Жигердүү Игрофикация Спидометри -->
+    <div class="stats-panel">
+        <div class="stat-item">⭐ Жылдыздар: <span class="value" id="star-count">0</span></div>
+        <div class="stat-item">🏺 Артефакттар: <span class="value" id="artifact-count">0/10</span></div>
+        <div class="stat-item">🏆 Наам: <span class="value" id="player-rank">Жаңы Саякатчы</span></div>
+    </div>
+
+    <!-- Квест Картасы (10 Зона) -->
+    <div class="quest-map">
+
+        <!-- 1. Убакыт дарбазасы -->
+        <div class="zone-card" onclick="openQuest(1)">
+            <div class="zone-title">🚪 1. Убакыт дарбазасы</div>
+            <p class="zone-desc">Тарых илимине киришүү, хронология жана археологиялык табышмактар.</p>
+            <button class="action-btn">Дарбазаны ачуу 🔓</button>
+        </div>
+
+        <!-- 2. Байыркы цивилизациялар өрөөнү -->
+        <div class="zone-card" onclick="openQuest(2)">
+            <div class="zone-title">🏺 2. Байыркы цивилизациялар</div>
+            <p class="zone-desc">Байыркы Мисир пирамидалары, Рим Империясы жана Грециянын сырлары.</p>
+            <button class="action-btn">Өрөөнгө кирүү 🔓</button>
+        </div>
+
+        <!-- 3. Орто кылымдар сепили -->
+        <div class="zone-card locked" id="zone-3" onclick="openQuest(3)">
+            <div class="lock-badge">🔒 1 жулдыз керек</div>
+            <div class="zone-title">⚔️ 3. Орто кылымдар сепили</div>
+            <p class="zone-desc">Феодалдык коомдор, эр жүрөк рыцарлар жана сепил коргоо салгылашуулары.</p>
+            <button class="action-btn">Сепилди изилдөө</button>
+        </div>
+
+        <!-- 4. Империялар дүйнөсү -->
+        <div class="zone-card locked" id="zone-4" onclick="openQuest(4)">
+            <div class="lock-badge">🔒 2 жулдыз керек</div>
+            <div class="zone-title">👑 4. Империялар дүйнөсү</div>
+            <p class="zone-desc">Улуу империялар, тарыхый инсандар жана мамлекеттердин өнүгүү жолдору.</p>
+            <button class="action-btn">Империяларга өтүү</button>
+        </div>
+
+        <!-- 5. Кыргыз тарыхы өрөөнү -->
+        <div class="zone-card" onclick="openQuest(5)">
+            <div class="zone-title">🦅 5. Кыргыз тарыхы өрөөнү</div>
+            <p class="zone-desc">Улуу Кыргыз Каганаты, көчмөндөр маданияты жана Эгемендүүлүк доору.</p>
+            <button class="action-btn">Улуттук Квестти баштоо 🇰🇬</button>
+        </div>
+
+        <!-- 6. Дүйнөлүк тарых шаары -->
+        <div class="zone-card locked" id="zone-6" onclick="openQuest(6)">
+            <div class="lock-badge">🔒 3 жулдыз керек</div>
+            <div class="zone-title">🌍 6. Дүйнөлүк тарых шаары</div>
+            <p class="zone-desc">Улуу географиялык ачылыштар, деңиз саякаттары жана илимий революциялар.</p>
+            <button class="action-btn">Шаарды кыдыруу</button>
+        </div>
+
+        <!-- 7. Маданият жана мурас музейи -->
+        <div class="zone-card locked" id="zone-7" onclick="openQuest(7)">
+            <div class="lock-badge">🔒 4 жулдыз керек</div>
+            <div class="zone-title">🏛 7. Маданият жана мурас музейи</div>
+            <p class="zone-desc">Дүйнөлүк архитектуралык эстеликтер, искусство шедеврлери жана диндер тарыхы.</p>
+            <button class="action-btn">Музейге кирүү</button>
+        </div>
+
+        <!-- 8. Тарыхый документтер китепканасы -->
+        <div class="zone-card locked" id="zone-8" onclick="openQuest(8)">
+            <div class="lock-badge">🔒 5 жулдыз керек</div>
+            <div class="zone-title">📜 8. Документтер китепканасы</div>
+            <p class="zone-desc">Байыркы мыйзамдар, расмий келишимдер жана табышмактуу тарыхый каттар.</p>
+            <button class="action-btn">Китепкананы ачуу</button>
+        </div>
+
+        <!-- 9. Согуштар жана революциялар аянты -->
+        <div class="zone-card locked" id="zone-9" onclick="openQuest(9)">
+            <div class="lock-badge">🔒 6 жулдыз керек</div>
+            <div class="zone-title">⚔️ 9. Согуштар жана революциялар</div>
+            <p class="zone-desc">Дүйнөнү өзгөрткөн ири кагылышуулар, революциялар жана аскердик карталар.</p>
+            <button class="action-btn">Аянтка кирүү</button>
+        </div>
+
+        <!-- 10. Азыркы заман лабораториясы -->
+        <div class="zone-card locked" id="zone-10" onclick="openQuest(10)">
+            <div class="lock-badge">🔒 7 жулдыз керек</div>
+            <div class="zone-title">🚀 10. Азыркы заман лабораториясы</div>
+            <p class="zone-desc">XX-XXI кылымдардын технологиялык өнүгүүсү жана азыркы глобалдык дүйнө.</p>
+            <button class="action-btn">Лабораторияга кирүү</button>
+        </div>
+
+    </div>
+
+    <!-- 👨‍🏫 МУГАЛИМДЕР ҮЧҮН МЕТОДИКАЛЫК БӨЛҮМ -->
+    <div class="teacher-box">
+        <h2>👨‍🏫 Мугалимдер үчүн Усулдук Санарип Кабинет</h2>
+        <p style="color: #cbd5e1; margin-top: 5px;">Окуучулардын жетишкендиктерин көзөмөлдөө жана сабакка керектүү материалдар топтому</p>
+        <div class="teacher-grid">
+            <div class="teacher-card-btn" onclick="alert('5-11 класс боюнча КТП жана Презентациялар жакында жүктөлөт!')">📚 Класстар боюнча КТП</div>
+            <div class="teacher-card-btn" onclick="alert('PISA үлгүсүндөгү тарыхый логикалык тесттер даярдалууда!')">🧪 PISA тапшырмалары</div>
+            <div class="teacher-card-btn" onclick="alert('Сиз өзүңүздүн жеке квестиңизди кура аласыз!')">🎮 Интерактивдүү оюн түзүү</div>
+            <div class="teacher-card-btn" onclick="alert('Окуучулардын алган баалары жана топтогон жылдыздары бул жерде көрүнөт.')">📊 Мониторинг & Натыйжалар</div>
+        </div>
+    </div>
+
+    <!-- Квест Интерактивдүү Терезе (Modal) -->
+    <div class="modal" id="quest-modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeQuest()">&times;</span>
+            <h2 id="modal-title" style="color: #ffaa00; margin-bottom: 15px;">Квест аталышы</h2>
+            <div id="modal-body" style="line-height: 1.6; color: #e2e8f0;">Теманын тексти...</div>
+            <div class="quest-options" id="modal-options">
+                <!-- Суроолордун варианттары JS аркылуу кошулат -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Оюндун абалын сактоочу өзгөрмөлөр
+        let stars = 0;
+        let artifacts = 0;
+        const unlockedZones = [1, 2, 5]; // Башында ачык турган зоналар
+
+        // 10 Зона үчүн даяр суроолор жана материалдар
+        const questData = {
+            1: {
+                title: "⏳ Убакыт дарбазасы — Археология Квести",
+                text: "Сиз археологиялык казуу учурунда жер алдынан байыркы жазуулары бар кумган таап алдыңыз. Сиздин биринчи милдетиңиз — тарых илиминде **жер астындагы материалдык булактарды изилдеген** тармакты туура аныктоо!",
+                options: [
+                    { text: "Этнография", correct: false },
+                    { text: "Археология", correct: true, feedback: "Керемет! Сиз байыркы кумган артефактын таптыңыз! 🏺 +1 Жулдыз" },
+                    { text: "Нумизматика", correct: false },
+                    { text: "Хронология", correct: false }
+                ]
+            },
+            2: {
+                title: "🏺 Байыркы цивилизациялар — Пирамида сыры",
+                text: "Сиз биздин заманга чейинки 2500-жылдарга, Байыркы Мисирге (Египетке) туш келдиңиз. Гизза платосунда эң улуу архитектуралык эстелик курулуп жатат. Бул дүйнөнүн керемети кимдин урматына курулган?",
+                options: [
+                    { text: "Юлий Цезарь", correct: false },
+                    { text: "Хеопс (Хуфу) фараону", correct: true, feedback: "Туура! Сиз Папирус кол жазмасын таптыңыз! 📜 +1 Жулдыз" },
+                    { text: "Тутанхамон", correct: false },
+                    { text: "Хамурапи", correct: false }
+                ]
+            },
+            3: {
+                title: "⚔️ Орто кылымдар сепили — Рыцарь сыноосу",
+                text: "Сепилдин ичинде Барон сизге рыцардык наам берүү үчүн суроо узатты: 'Орто кылымдардагы жер ээси жана коргоочулар катмары кандай аталган?'",
+                options: [
+                    { text: "Феодалдар", correct: true, feedback: "Туура жооп! Сизге Алтын калкан ыйгарылды! 🛡️ +1 Жулдыз" },
+                    { text: "Дыйкандар", correct: false },
+                    { text: "Кулдар", correct: false }
+                ]
+            },
+            4: {
+                title: "👑 Империялар дүйнөсү — Башкаруучунун тагдыры",
+                text: "Бул зона улуу башкаруучуларга арналган. Биздин заманга чейинки IV кылымда Батыштан Чыгышка чейин созулган эбегейсиз зор империяны ким курган?",
+                options: [
+                    { text: "Чыңгызхан", correct: false },
+                    { text: "Александр Македонский", correct: true, feedback: "Азаматсыз! Империянын тыйынын алдыңыз! 🪙 +1 Жулдыз" },
+                    { text: "Наполеон Бонапарт", correct: false }
+                ]
+            },
+            5: {
+                title: "🦅 Улуу Кыргыз Каганаты — Көчмөндөр аманаты",
+                text: "Сиз тарыхтын эң жаркын барагына келдиңиз — **Улуу Кыргыз Каганатынын доору (IX кылым)**. Тарыхчы В.В. Бартольд бул доорду кандай деп атаган?",
+                options: [
+                    { text: "Орто Азиянын алтын кылымы", correct: false },
+                    { text: "Улуу Кыргыз Тил Доору", correct: false },
+                    { text: "Кыргыз улуу дөөлөтү (Великодержавие)", correct: true, feedback: "Ура! Сиз Күмүш Илбирс мөөрүн таптыңыз! 🦅 +1 Жулдыз" }
+                ]
+            },
+            6: {
+                title: "🚢 Дүйнөлүк тарых — Улуу ачылыштар",
+                text: "1492-жылы Испаниядан чыккан экспедиция Атлантика океанын кесип өтүп, жаңы материкти ачкан, бирок өзү аны Индия деп ойлогон. Бул саякатчы ким?",
+                options: [
+                    { text: "Васко да Гама", correct: false },
+                    { text: "Христофор Колумб", correct: true, feedback: "Мыкты! Сиз байыркы деңиз компасын таптыңыз! 🧭 +1 Жулдыз" },
+                    { text: "Фернан Магеллан", correct: false }
+                ]
+            },
+            7: {
+                title: "🏛 Маданият жана мурас музейи — Искусство таануу",
+                text: "Кайраттуу саякатчы, Музейде дүйнөнүн эң белгилүү сулуусу 'Мона Лиза' (Джоконда) сүрөтү турат. Анын автору ким?",
+                options: [
+                    { text: "Микеланджело", correct: false },
+                    { text: "Леонардо да Винчи", correct: true, feedback: "Керемет! Сиз өчпөс маданият мурасын ачтыңыз! 🎨 +1 Жулдыз" },
+                    { text: "Рафаэль Санти", correct: false }
+                ]
+            },
+            8: {
+                title: "📜 Тарыхый документтер китепканасы — Мыйзамдар",
+                text: "Дүйнөдөгү эң алгачкы ташка чегилип жазылган жана 'Көз ирет көз, тиш ирет тиш' принцибине негизделген мыйзамдар жыйнагы кайсы башкаруучуга таандык?",
+                options: [
+                    { text: "Хамурапи мыйзамдары", correct: true, feedback: "Куттуктайм! Сиз мыйзамдар жазылган таш стеланы чечмеледиңиз! 📜 +1 Жулдыз" },
+                    { text: "Солондун мыйзамдары", correct: false },
+                    { text: "Юстиниан кодекси", correct: false }
+                ]
+            },
+            9: {
+                title: "⚔️ Согуштар жана революциялар — Жаңы Доор",
+                text: "1914-жылдан 1918-жылга чейин созулган, дүйнөнүн эң ири империяларынын кыйрашына алып келген биринчи глобалдык кагылышуу кандай аталат?",
+                options: [
+                    { text: "Наполеондук согуштар", correct: false },
+                    { text: "Биринчи Дүйнөлүк согуш", correct: true, feedback: "Туура! Сиз тынчтык келишимин кол койдуңуз! 🕊️ +1 Жулдыз" },
+                    { text: "Экинчи Дүйнөлүк согуш", correct: false }
+                ]
+            },
+            10: {
+                title: "🚀 Азыркы заман лабораториясы — Санарип Доор",
+                text: "Азыркы заманда БУУ (ООН) эл аралык уюму глобалдык коопсуздукту сактоодо негизги ролду ойнойт. Бул уюм Экинчи дүйнөлүк согуштан кийин кайсы жылы түзүлгөн?",
+                options: [
+                    { text: "1919-жылы", correct: false },
+                    { text: "1945-жылы", correct: true, feedback: "Ура! Сиз акыркы деңгээлди аяктап, Убакыттын Кожоюну болдуңуз! 👑 +1 Жулдыз" },
+                    { text: "1991-жылы", correct: false }
+                ]
+            }
+        };
+
+        function openQuest(zoneId) {
+            // Эгер зона кулпуланган болсо киргизбейт
+            if (!unlockedZones.includes(zoneId)) {
+                alert("Бул доор азырынча кулпуланган! Мурдагы квесттерди аткарып, жетиштүү жылдыз топтоңуз.");
+                return;
+            }
+
+            const currentQuest = questData[zoneId];
+            document.getElementById('modal-title').innerText = currentQuest.title;
+            document.getElementById('modal-body').innerHTML = currentQuest.text;
+
+            const optionsContainer = document.getElementById('modal-options');
+            optionsContainer.innerHTML = '';
+
+            currentQuest.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt.text;
+                btn.onclick = () => checkAnswer(opt, zoneId);
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('quest-modal').style.display = 'flex';
+        }
+
+        function checkAnswer(option, zoneId) {
+            if (option.correct) {
+                alert(option.feedback);
+                stars += 1;
+                artifacts += 1;
+                
+                // Жаңы жулдыздын санына жараша кезектеги зоналарды ачуу
+                if (stars >= 1 && !unlockedZones.includes(3)) unlockZone(3);
+                if (stars >= 2 && !unlockedZones.includes(4)) unlockZone(4);
+                if (stars >= 3 && !unlockedZones.includes(6)) unlockZone(6);
+                if (stars >= 4 && !unlockedZones.includes(7)) unlockZone(7);
+                if (stars >= 5 && !unlockedZones.includes(8)) unlockZone(8);
+                if (stars >= 6 && !unlockedZones.includes(9)) unlockZone(9);
+                if (stars >= 7 && !unlockedZones.includes(10)) unlockZone(10);
+
+                updateStats();
+                closeQuest();
+            } else {
+                alert("❌ Туура эмес жооп! Башка вариантты тандап көрүңүз, убакыт машинасы артка кайтты.");
+            }
+        }
+
+        function unlockZone(id) {
+            unlockedZones.push(id);
+            const card = document.getElementById(`zone-${id}`);
+            if (card) {
+                card.classList.remove('locked');
+                const badge = card.querySelector('.lock-badge');
+                if (badge) badge.innerHTML = "🔓 Ачылды";
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('star-count').innerText = stars;
+            document.getElementById('artifact-count').innerText = `${artifacts}/10`;
+            
+            // Окуучунун рейтингин жаңыртуу
+            let rank = "Жаңы Саякатчы";
+            if (stars >= 3) rank = "Тарых Изилдөөчүсү 🔍";
+            if (stars >= 6) rank = "Доорлордун Баатыры ⚔️";
+            if (stars >= 9) rank = "Убакыттын Кожоюну 👑";
+            document.getElementById('player-rank').innerText = rank;
+        }
+
+        function closeQuest() {
+            document.getElementById('quest-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
