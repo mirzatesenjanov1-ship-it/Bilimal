@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кыргыз тили жана Адабияты дүйнөсү — BiliMal</title>
+    
+    <!-- Google AdSense расмий коду -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5636365922849544" crossorigin="anonymous"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: #090d16; color: #f8fafc; min-height: 100vh; padding: 30px 4%; }
+
+        /* Навигация */
+        .back-link { display: inline-block; padding: 10px 22px; background: rgba(168, 85, 247, 0.1); color: #a855f7; border: 1px solid #a855f7; border-radius: 30px; text-decoration: none; font-weight: 600; margin-bottom: 30px; transition: 0.3s; }
+        .back-link:hover { background: #a855f7; color: #fff; box-shadow: 0 0 20px rgba(168,85,247,0.4); }
+
+        header { text-align: center; margin-bottom: 50px; }
+        header h1 { font-size: 2.8rem; color: #c084fc; text-shadow: 0 0 25px rgba(192,132,252,0.3); margin-bottom: 12px; }
+        header p { color: #94a3b8; font-size: 1.2rem; }
+
+        /* Негизги макет (3D Квест Карта курамы) */
+        .grid-layout { display: grid; grid-template-columns: 2.5fr 1fr; gap: 35px; }
+
+        /* Квест картасынын аймактары */
+        .quest-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; }
+        .quest-node { background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255,255,255,0.06); border-radius: 24px; padding: 30px; display: flex; flex-direction: column; justify-content: space-between; transition: 0.3s ease; position: relative; overflow: hidden; }
+        .quest-node:hover { transform: translateY(-5px); border-color: #a855f7; box-shadow: 0 12px 30px rgba(168, 85, 247, 0.2); }
+        .quest-node::before { content: ''; position: absolute; top: 0; left: 0; width: 5px; height: 100%; background: linear-gradient(#a855f7, #6366f1); }
+
+        .node-header { display: flex; align-items: center; gap: 18px; margin-bottom: 20px; }
+        .node-icon { font-size: 2.8rem; filter: drop-shadow(0 0 10px rgba(168,85,247,0.4)); }
+        .node-title { font-size: 1.3rem; font-weight: bold; color: #f1f5f9; }
+        
+        /* Ар бир бөлүмдүн ичиндеги даяр маалыматтык мазмун */
+        .node-content { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.02); }
+        .node-content strong { color: #e2e8f0; display: block; margin-bottom: 5px; }
+
+        .action-btn { background: linear-gradient(135deg, #a855f7, #6366f1); color: white; border: none; padding: 14px; border-radius: 14px; font-weight: bold; cursor: pointer; transition: 0.2s; width: 100%; text-align: center; }
+        .action-btn:hover { opacity: 0.95; transform: scale(1.02); }
+
+        /* 👨‍🏫 МУГАЛИМДЕР ҮЧҮН АТАЙЫН БӨЛҮМ ПАНЕЛИ */
+        .teacher-sidebar { background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9)); border: 2px dashed #10b981; border-radius: 28px; padding: 30px; height: fit-content; box-shadow: 0 10px 35px rgba(16,185,129,0.1); }
+        .teacher-sidebar h3 { color: #10b981; font-size: 1.4rem; margin-bottom: 15px; display: flex; align-items: center; gap: 12px; }
+        .teacher-sidebar p { color: #94a3b8; font-size: 0.95rem; line-height: 1.5; margin-bottom: 25px; }
+        
+        .panel-item { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; margin-bottom: 15px; cursor: pointer; transition: 0.2s; }
+        .panel-item:hover { background: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+        .panel-title { font-weight: 600; color: #e2e8f0; margin-bottom: 4px; font-size: 0.95rem; }
+        .panel-desc { color: #64748b; font-size: 0.85rem; }
+
+        /* 🎮 ИНТЕРАКТИВДҮҮ ТЕРЕЗЕ (MODAL) */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-box { background: #0f172a; border: 2px solid #a855f7; border-radius: 24px; width: 90%; max-width: 650px; padding: 35px; text-align: center; position: relative; box-shadow: 0 25px 60px rgba(168, 85, 247, 0.3); }
+        .close-btn { position: absolute; top: 15px; right: 22px; font-size: 2rem; color: #94a3b8; cursor: pointer; transition: 0.2s; }
+        .close-btn:hover { color: #fff; }
+        
+        .game-area { margin: 25px 0; min-height: 120px; font-size: 1.25rem; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 15px; }
+        .interactive-title { font-size: 2rem; color: #e2e8f0; font-weight: bold; }
+
+        .btn-container { display: flex; justify-content: center; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
+        .choice-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 15px 25px; border-radius: 14px; color: white; font-size: 1.05rem; cursor: pointer; transition: 0.2s; min-width: 140px; }
+        .choice-item:hover { background: rgba(168, 85, 247, 0.15); border-color: #a855f7; }
+
+        @media (max-width: 1024px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <a href="school-subjects.html" class="back-link">← Сабактар бөлүмүнө кайт</a>
+
+    <header>
+        <h1>🏛️ Кыргыз тили жана Адабияты дүйнөсү</h1>
+        <p>3D квест картасы аркылуу эне тилибизди жана адабий мурастарыбызды терең үйрөнүңүз</p>
+    </header>
+
+    <div class="grid-layout">
+        
+        <!-- 🗺️ 3D КВЕСТ АЙМАКТАРЫ -->
+        <div class="quest-map">
+            
+            <!-- 1. Тил сарайы (Фонетика) -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🏰</span>
+                        <div class="node-title">1. Тил сарайы (Фонетика)</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Кыргыз тилинде 36 тамга, 39 тыбыш бар. Үндүү тыбыштар 12 (анын ичинен 6 созулма), үнсүз тыбыштар 22.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('phonetics')">Талдоо оюнун баштоо</button>
+            </div>
+
+            <!-- 2. Сөз казынасы (Лексика) -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🌳</span>
+                        <div class="node-title">2. Сөз казынасы (Лексика)</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Тилдеги сөздөрдүн жалпы жыйындысы лексика деп аталат. Мында синоним (маанилеш), антоним (карама-каршы), омоним (тыбышташ) сөздөр камтылат.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('lexics')">Жупташтыруу оюну</button>
+            </div>
+
+            <!-- 3. Сөз куруучу устакана -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🔧</span>
+                        <div class="node-title">3. Сөз куруучу устакана</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Сөздөр уңгудан жана мүчөдөн турат. Мүчөлөр экиге бөлүнөт: сөз өзгөртүүчү жана сөз жасоочу (жаңы маани берүүчү).
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('builder')">Сөз куруу</button>
+            </div>
+
+            <!-- 4. Грамматика сепили (Морфология) -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">📐</span>
+                        <div class="node-title">4. Грамматика сепили</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Кыргыз тилинде 12 сөз түркүмү бар. Алар өз алдынча (зат, сын, сан, ат атооч, этиш, тактооч), кызматчы жана өзгөчө сөз түркүмдөрү болуп бөлүнөт.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('morphology')">Сөз түркүмүн тап</button>
+            </div>
+
+            <!-- 5. Сүйлөмдөр шаары (Синтаксис) -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🏘️</span>
+                        <div class="node-title">5. Сүйлөмдөр шаары</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Сүйлөмдүн баш мүчөлөрү: ээ жана баяндооч. Айтылыш максатына карай: жайылма, суроолуу, буйрукту жана илептүү сүйлөмдөр болот.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('syntax')">Сүйлөм куруу</button>
+            </div>
+
+            <!-- 6. Жомоктор өрөөнү -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">📜</span>
+                        <div class="node-title">6. Жомоктор өрөөнү</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Эл оозеки чыгармачылыгынын эң кеңири тараган түрү — жомоктор. Алар айбанаттар жөнүндө, сыйкырдуу жана турмуш-тиричилик жомоктору болуп бөлүнөт.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('tales')">Каарманды тап</button>
+            </div>
+
+            <!-- 7. “Манас” дүйнөсү -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🦅</span>
+                        <div class="node-title">7. “Манас” дүйнөсү</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        "Манас" эпосу — кыргыз элинин улуу баатырдык дастаны, дүйнөдөгү эң чоң поэма. Ал үчилтиктен турат: Манас, Семетей, Сейтек.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('manas')">Баатырды тааны</button>
+            </div>
+
+            <!-- 8. Акын-жазуучулар багы -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">📚</span>
+                        <div class="node-title">8. Акын-жазуучулар багы</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Кыргыз адабиятынын алптары: Токтогул, Тоголок Молдо, Алыкул Осмонов, Чыңгыз Айтматов ж.б. Алардын чыгармалары улуттук сыймыгыбыз.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('authors')">Авторду байланыштыр</button>
+            </div>
+
+            <!-- 9. Интеллектуалдык тест борбору -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🏆</span>
+                        <div class="node-title">9. PISA жана Тест борбору</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Окуу сабаттуулугун өнүктүрүү үчүн PISA стилиндеги логикалык суроолор жана текст менен иштөө тапшырмалары.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('pisa')">Тестти ачуу</button>
+            </div>
+
+            <!-- 10. Сүйлөө өнөрү борбору -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">🎤</span>
+                        <div class="node-title">10. Сүйлөө өнөрү борбору</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Ойду так, көркөм, логикалык ырааттуулукта жеткирүү, чечендик өнөрдүн жана көркөм окуунун эрежелерин өздөштүрүү.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('speech')">🎙️ Үн жаздырууну ачуу</button>
+            </div>
+
+            <!-- 11. Чыгармачылык лабораториясы -->
+            <div class="quest-node">
+                <div>
+                    <div class="node-header">
+                        <span class="node-icon">✍️</span>
+                        <div class="node-title">11. Чыгармачылык лабораториясы</div>
+                    </div>
+                    <div class="node-content">
+                        <strong>📖 Негизги маалымат:</strong>
+                        Эссе, дил баян жазуу жана өз алдынча чыгарма жаратуу аймагы. AI сизге каталарды оңдоого жардам берет.
+                    </div>
+                </div>
+                <button class="action-btn" onclick="launchQuest('creative')">Лабораторияга кирүү</button>
+            </div>
+
+        </div>
+
+        <!-- 👨‍🏫 МУГАЛИМДЕР ҮЧҮН АТАЙЫН БӨЛҮМ -->
+        <div class="teacher-sidebar">
+            <h3>10. Мугалимдер үчүн колдонмо</h3>
+            <p>Сабакты натыйжалуу өтүү үчүн даяр улуттук методикалык материалдар жана санариптик куралдар комплекси:</p>
+            
+            <div class="panel-item" onclick="alert('Календарлык-тематикалык пландар (КТП) жүктөлдү!')">
+                <div class="panel-title">📋 Сабак пландары (КТП)</div>
+                <div class="panel-desc">5-11-класстар үчүн жаңы стандартка ылайык даяр конспекттер.</div>
+            </div>
+
+            <div class="panel-item" onclick="alert('Баалоо критерийлеринин үлгүлөрү ачылды!')">
+                <div class="panel-title">📊 Баалоо критерийлери</div>
+                <div class="panel-desc">Калыптандыруучу жана суммативдик баалоонун заманбап үлгүлөрү.</div>
+            </div>
+
+            <div class="panel-item" onclick="alert('Чоң чейректик даяр тесттер базасы ачылды!')">
+                <div class="panel-title">📝 Даяр тесттер жана диктанттар</div>
+                <div class="panel-desc">Текшерүү иштери үчүн суроолордун жана диктанттардын жыйнагы.</div>
+            </div>
+
+            <div class="panel-item" onclick="alert('Интерактивдүү оюн конструктору ишке кирди!')">
+                <div class="panel-title">🎮 Оюн түзүү куралы</div>
+                <div class="panel-desc">Мугалим өзү каалаган сөздөрдү кошуп, класс үчүн викторина түзө алат.</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 🎮 ИНТЕРАКТИВДҮҮ МОДАЛДЫК ТЕРЕЗЕ -->
+    <div class="modal-overlay" id="questModal">
+        <div class="modal-box">
+            <span class="close-btn" onclick="closeQuest()">&times;</span>
+            <h2 id="questTitle">Квест тапшырмасы</h2>
+            
+            <div class="game-area" id="questDynamicArea">
+                <div class="interactive-title" id="questTarget">🎯</div>
+            </div>
+            
+            <div class="btn-container" id="questChoices"></div>
+        </div>
+    </div>
+
+    <script>
+        function launchQuest(type) {
+            const modal = document.getElementById('questModal');
+            const title = document.getElementById('questTitle');
+            const target = document.getElementById('questTarget');
+            const choices = document.getElementById('questChoices');
+            const area = document.getElementById('questDynamicArea');
+            
+            modal.style.display = 'flex';
+            choices.innerHTML = '';
+            area.innerHTML = `<div class="interactive-title" id="questTarget">🎯</div>`;
+            const currentTarget = document.getElementById('questTarget');
+
+            if (type === 'phonetics') {
+                title.innerText = "Фонетика бөлмөсү";
+                currentTarget.innerText = "Сөздү муундарга бөл: 'Кыргызстан'";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Туура! Кыр-гыз-стан (3 муун) ⭐'); closeQuest();">Кыр-гыз-стан</button>
+                    <button class="choice-item" onclick="alert('Кайра ойлонуп көрүңүз!')">Кыргыз-стан</button>
+                `;
+            }
+            else if (type === 'lexics') {
+                title.innerText = "Сөз казынасы (Лексика)";
+                currentTarget.innerText = "'Түндүк' сөзүнүн антонимин тап:";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Азаматсың! Түндүк — Түштүк ⭐'); closeQuest();">Түштүк</button>
+                    <button class="choice-item" onclick="alert('Бул синоними болушу мүмкүн эмес!')">Батыш</button>
+                `;
+            }
+            else if (type === 'builder') {
+                title.innerText = "Сөз куруучу устакана";
+                currentTarget.innerText = "'Билимдүү' сөзүнүн мүчөсүн аныктаңыз:";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Туура! -дүү — сөз жасоочу мүчө 🔧'); closeQuest();">-дүү (сөз жасоочу)</button>
+                    <button class="choice-item" onclick="alert('Жок, бул сөз өзгөртүүчү эмес')">-дүү (сөз өзгөртүүчү)</button>
+                `;
+            }
+            else if (type === 'morphology') {
+                title.innerText = "Грамматика сепили";
+                currentTarget.innerText = "'Керемет' деген сөз кайсы сөз түркүмүнө кирет?";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Азаматсың! Бул сын атооч! 📐'); closeQuest();">Сын атооч</button>
+                    <button class="choice-item" onclick="alert('Жок, заттын атын билдирбейт')">Зат атооч</button>
+                `;
+            }
+            else if (type === 'syntax') {
+                title.innerText = "Сүйлөмдөр шаары";
+                currentTarget.innerText = "'Мугалим классска кирди.' — сүйлөмдүн ээсин тап:";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Туура! Ким кирди? — Мугалим 🏘️'); closeQuest();">Мугалим</button>
+                    <button class="choice-item" onclick="alert('Бул баяндооч!')">Кирди</button>
+                `;
+            }
+            else if (type === 'tales') {
+                title.innerText = "Жомоктор өрөөнү";
+                currentTarget.innerText = "Уча турган сыйкырдуу килем кайсы жомокто кездешет?";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Туура жооп! Сыйкырдуу жомокторго кирет 📜'); closeQuest();">Сыйкырдуу жомоктор</button>
+                    <button class="choice-item" onclick="alert('Жок, бул айбанаттар жөнүндө эмес')">Айбанаттар жөнүндө</button>
+                `;
+            }
+            else if (type === 'manas') {
+                title.innerText = "“Манас” дүйнөсү";
+                currentTarget.innerText = "Манас баатырдын эң жакын ишенимдүү чоросу жана досу ким?";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Улуу достук! Бул — Алмамбет! 🦅'); closeQuest();">Алмамбет</button>
+                    <button class="choice-item" onclick="alert('Коңурбай — бул душман каарман!')">Коңурбай</button>
+                `;
+            }
+            else if (type === 'authors') {
+                title.innerText = "Акын-жазуучулар багы";
+                currentTarget.innerText = "'Ашуудан берген отчет' поэмасынын автору ким?";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Туура! Лирик акын Алыкул Осмонов 📚'); closeQuest();">Алыкул Осмонов</button>
+                    <button class="choice-item" onclick="alert('Айтматов улуу прозаик!')">Чыңгыз Айтматов</button>
+                `;
+            }
+            else if (type === 'pisa') {
+                title.innerText = "PISA Логикалык Тест";
+                currentTarget.innerText = "Текстти кунт коюп окуп, автордун негизги идеясын аныктаңыз:";
+                choices.innerHTML = `
+                    <button class="choice-item" onclick="alert('Логикалык ой жүгүртүүңүз абдан жогору! ⭐'); closeQuest();">Тестти аяктоо</button>
+                `;
+            }
+            else if (type === 'speech') {
+                title.innerText = "Сүйлөө өнөрү борбору 🎤";
+                area.innerHTML = `<p>Микрофонду күйгүзүп, берилген ырды көркөм окуңуз:</p><button class="action-btn" style="margin-top:15px; background:#ef4444;" onclick="alert('Үнүңүз ийгиликтүү жазылды! AI баалоодо...')">🎙️ Жаздырууну баштоо</button>`;
+            }
+            else if (type === 'creative') {
+                title.innerText = "Чыгармачылык лабораториясы ✍️";
+                area.innerHTML = `<p>Төмөнкү кутучага эссеңизди жазыңыз. AI катасын текшерет:</p><textarea style="width:100%; height:80px; background:#1e293b; color:#fff; border-radius:10px; padding:10px; margin-top:15px;" placeholder="Бул жерге жазыңыз..."></textarea>`;
+                choices.innerHTML = `<button class="choice-item" onclick="alert('AI эссени текшерди: Грамматикалык ката жок! Керемет!'); closeQuest();">Катаны текшерүү</button>`;
+            }
+        }
+
+        function closeQuest() {
+            document.getElementById('questModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
