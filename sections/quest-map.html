@@ -3,369 +3,547 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BilimAl — Deep Space Galaxy Map</title>
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+    <title>BilimAl — Саякат Картасы</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        
-        body { 
-            background: #010103; 
-            color: #fff; 
-            min-height: 100vh; 
-            display: flex; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #0d1117;
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         /* Жогорку Панель */
         .top-bar {
-            background: rgba(3, 4, 9, 0.8);
-            backdrop-filter: blur(25px);
-            -webkit-backdrop-filter: blur(25px);
-            border-bottom: 1px solid rgba(0, 240, 255, 0.15);
-            padding: 12px 30px;
+            background: rgba(22, 27, 34, 0.95);
+            padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 2px solid #30363d;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #00d2ff, #0045ff);
+            border: 2px solid #58a6ff;
+        }
+
+        .user-details h4 {
+            font-size: 14px;
+            color: #e6edf3;
+        }
+
+        .user-details span {
+            font-size: 11px;
+            color: #f0883e;
+            font-weight: bold;
+        }
+
+        .brand-title {
+            font-size: 24px;
+            font-weight: 900;
+            color: #58a6ff;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
+        }
+
+        .stats-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: #1f242c;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            border: 1px solid #30363d;
+        }
+
+        .stat-box.xp { color: #58a6ff; border-color: rgba(88, 166, 255, 0.3); }
+        .stat-box.hearts { color: #ff4a5a; border-color: rgba(255, 74, 90, 0.3); }
+        .stat-box.crystals { color: #bd39fa; border-color: rgba(189, 57, 250, 0.3); }
+
+        /* Негизги Түзүлүш */
+        .main-wrapper {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+
+        /* Каптал Меню */
+        .sidebar {
+            width: 80px;
+            background: #161b22;
+            border-right: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            gap: 25px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #8b949e;
+            text-decoration: none;
+            font-size: 11px;
+            gap: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+            width: 100%;
+            padding: 10px 0;
+        }
+
+        .nav-item i { font-size: 20px; }
+        .nav-item:hover, .nav-item.active {
+            color: #58a6ff;
+            background: rgba(88, 166, 255, 0.1);
+            border-left: 3px solid #58a6ff;
+        }
+
+        /* Карта Аянтчасы */
+        .map-container {
+            flex: 1;
+            background: radial-gradient(circle, #111b27 0%, #070a0f 100%);
+            position: relative;
+            min-height: 600px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Космос Жылдыздары (Симуляция) */
+        .stars-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px);
+            background-size: 200px 200px;
+            opacity: 0.3;
+        }
+
+        /* Картадагы Саякат Жолу */
+        .quest-path {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 5;
+        }
+
+        .node {
+            width: 70px;
+            height: 70px;
+            background: #21262d;
+            border: 3px solid #30363d;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            transition: 0.4s;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            text-decoration: none;
+            color: white;
+            font-weight: bold;
+        }
+
+        .node:hover {
+            transform: scale(1.15);
+            border-color: #58a6ff;
+            box-shadow: 0 0 25px rgba(88, 166, 255, 0.6);
+        }
+
+        .node.active {
+            background: linear-gradient(135deg, #1f6feb, #00d2ff);
+            border-color: #58a6ff;
+            animation: pulse 2s infinite;
+        }
+
+        .node-title {
+            position: absolute;
+            bottom: -25px;
+            white-space: nowrap;
+            font-size: 12px;
+            color: #c9d1d9;
+            background: rgba(13, 17, 23, 0.8);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(88, 166, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(88, 166, 255, 0); }
+        }
+
+        /* Оң капталдагы Панель (Дүкөн жана Иш-аракеттер) */
+        .right-panel {
+            width: 280px;
+            background: #161b22;
+            border-left: 1px solid #30363d;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .panel-card {
+            background: #1f242c;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        .panel-card h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-card p {
+            font-size: 12px;
+            color: #8b949e;
+            margin-bottom: 12px;
+            line-height: 1.4;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+
+        .btn-gold {
+            background: linear-gradient(45deg, #ff9900, #ffcc00);
+            color: #000;
+        }
+        .btn-gold:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        .btn-pink {
+            background: linear-gradient(45deg, #ff4a5a, #ff7b88);
+            color: white;
+        }
+        .btn-pink:hover { opacity: 0.9; transform: translateY(-2px); }
+
+        /* Модалдык Терезе (Видео Көрүү үчүн) */
+        .modal {
+            display: none;
             position: fixed;
-            top: 0; left: 0; width: 100%; z-index: 100;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
-        .user-info { display: flex; align-items: center; gap: 12px; }
-        .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #a855f7, #00f0ff); border: 2px solid #eab308; }
-        .user-meta { display: flex; flex-direction: column; }
-        .user-email { font-size: 0.85rem; font-weight: bold; color: #f3f4f6; }
-        .user-badge { font-size: 0.7rem; color: #eab308; background: rgba(234, 179, 8, 0.2); padding: 1px 6px; border-radius: 4px; width: fit-content; margin-top: 2px; }
-        .game-logo { font-size: 1.3rem; font-weight: 900; color: #00f0ff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 15px rgba(0, 240, 255, 0.5); }
-        .currency-panel { display: flex; gap: 15px; align-items: center; }
-        .currency-item { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; display: flex; align-items: center; gap: 6px; backdrop-filter: blur(5px); }
 
-        /* Негизги Түзүм */
-        .main-layout { display: flex; margin-top: 63px; flex: 1; min-height: calc(100vh - 63px); }
-        
-        /* Сол каптал меню */
-        .side-nav { width: 80px; background: rgba(3, 4, 9, 0.75); border-right: 1px solid rgba(255,255,255,0.03); display: flex; flex-direction: column; align-items: center; padding-top: 30px; gap: 25px; position: fixed; left: 0; top: 63px; bottom: 0; z-index: 90; backdrop-filter: blur(15px); }
-        .nav-btn { width: 65px; height: 55px; border: none; background: none; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #64748b; text-decoration: none; font-size: 0.7rem; gap: 4px; transition: 0.3s; cursor: pointer; }
-        .nav-btn span { font-size: 1.3rem; }
-        .nav-btn:hover, .nav-btn.active { color: #00f0ff; background: rgba(0, 240, 255, 0.08); box-shadow: 0 0 10px rgba(0, 240, 255, 0.15); }
-
-        /* Оң капталдагы Меню */
-        .right-sidebar { width: 280px; background: rgba(3, 4, 9, 0.75); border-left: 1px solid rgba(255,255,255,0.03); padding: 20px; display: flex; flex-direction: column; gap: 20px; position: fixed; right: 0; top: 63px; bottom: 0; z-index: 90; overflow-y: auto; backdrop-filter: blur(15px); }
-        .ad-banner-box { width: 100%; min-height: 180px; background: rgba(255,255,255,0.01); border: 1px dashed rgba(0, 240, 255, 0.15); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 15px; font-size: 0.8rem; color: #64748b; }
-        .monetization-card { background: rgba(15, 23, 42, 0.3); border: 1px solid rgba(234, 179, 8, 0.1); border-radius: 12px; padding: 15px; transition: 0.3s; }
-        .monetization-card h4 { font-size: 0.9rem; color: #eab308; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .monetization-card p { font-size: 0.75rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.4; }
-        .action-btn { width: 100%; background: linear-gradient(90deg, #eab308, #ca8a04); border: none; padding: 10px; border-radius: 6px; color: #000; font-weight: bold; font-size: 0.8rem; cursor: pointer; transition: 0.3s; }
-        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(234,179,8,0.3); }
-
-        /* КАРТА КОНТЕЙНЕРИ */
-        .map-container { 
-            flex: 1; 
-            margin-left: 80px; 
-            margin-right: 280px; 
-            position: relative; 
-            overflow-y: auto; 
-            padding: 40px; 
-            padding-bottom: 110px; 
-            height: calc(100vh - 63px); 
+        .modal-content {
+            background: #161b22;
+            padding: 30px;
+            border-radius: 16px;
+            border: 2px solid #30363d;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
         }
-        
-        #galaxy-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 1800px; pointer-events: none; z-index: 0; }
-        .map-svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 1800px; pointer-events: none; z-index: 1; }
-        .quest-nodes-layer { position: relative; width: 100%; height: 1700px; z-index: 2; }
-        
-        /* Квест түйүндөрүнүн стили */
-        .map-node { position: absolute; display: flex; flex-direction: column; align-items: center; cursor: pointer; text-decoration: none; transition: all 0.3s ease; }
-        .node-circle { width: 54px; height: 54px; border-radius: 50%; background: rgba(5, 8, 18, 0.7); border: 2px solid rgba(148, 163, 184, 0.3); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.1rem; color: #e2e8f0; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
-        .node-label { position: absolute; top: 60px; white-space: nowrap; background: rgba(3, 4, 9, 0.85); padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; color: #cbd5e1; border: 1px solid rgba(255,255,255,0.06); text-align: center; backdrop-filter: blur(5px); }
 
-        .sub-node .node-circle { width: 40px; height: 40px; font-size: 0.85rem; }
-        .sub-node .node-label { top: 46px; font-size: 0.7rem; }
+        .video-loader {
+            width: 60px;
+            height: 60px;
+            border: 5px solid #30363d;
+            border-top: 5px solid #bd39fa;
+            border-radius: 50%;
+            margin: 20px auto;
+            animation: spin 1s linear infinite;
+        }
 
-        .map-node.completed .node-circle { border-color: #00ff87; background: rgba(2, 44, 34, 0.6); color: #00ff87; box-shadow: 0 0 15px rgba(0, 255, 135, 0.4); }
-        .map-node.completed .node-label { color: #00ff87; border-color: rgba(0, 255, 135, 0.2); }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-        .map-node.active .node-circle { border-color: #00f0ff; background: rgba(12, 74, 110, 0.6); color: #fff; box-shadow: 0 0 25px #00f0ff, inset 0 0 10px rgba(0, 240, 255, 0.5); animation: nodePulse 2s infinite alternate; }
-        .map-node.active .node-label { color: #00f0ff; border-color: rgba(0, 240, 255, 0.4); }
+        /* Прогресс тилкеси */
+        .progress-wrapper {
+            position: absolute;
+            bottom: 15px;
+            left: 20px;
+            background: rgba(22, 27, 34, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
 
-        .map-node.locked { opacity: 0.18; pointer-events: none; filter: grayscale(70%); }
-        
-        /* КАРТАДАГЫ ОЮНЧУЛАРДЫН ТУМАРЛАРЫ (MULTIPLAYER VISIBILITY) */
-        .player-pointer { position: absolute; top: -26px; background: #ff007f; color: #fff; font-size: 0.6rem; font-weight: bold; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; box-shadow: 0 0 12px #ff007f; animation: floatArrow 0.8s infinite alternate; letter-spacing: 1px; z-index: 10; }
-        .other-player-pointer { position: absolute; top: 58px; background: rgba(168, 85, 247, 0.9); color: #fff; font-size: 0.55rem; padding: 2px 6px; border-radius: 4px; white-space: nowrap; border: 1px solid #c084fc; box-shadow: 0 0 8px rgba(168, 85, 247, 0.6); opacity: 0.85; z-index: 9; }
+        .progress-bar-bg {
+            width: 150px;
+            height: 10px;
+            background: #21262d;
+            border-radius: 5px;
+            overflow: hidden;
+        }
 
-        @keyframes nodePulse { 0% { transform: scale(1); } 100% { transform: scale(1.05); } }
-        @keyframes floatArrow { 0% { transform: translateY(0); } 100% { transform: translateY(-4px); } }
-
-        /* Төмөнкү Прогресс Панели */
-        .bottom-progress-bar { position: fixed; bottom: 0; left: 80px; right: 280px; background: rgba(3, 4, 9, 0.9); border-top: 1px solid rgba(0, 240, 255, 0.12); padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; z-index: 100; backdrop-filter: blur(20px); }
-        .progress-track { flex: 1; margin: 0 20px; height: 10px; background: #07090e; border-radius: 5px; overflow: hidden; border: 1px solid rgba(255,255,255,0.03); }
-        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00f0ff, #a855f7); box-shadow: 0 0 15px #00f0ff; transition: width 0.6s ease; }
-
-        /* МОДАЛДЫК ТЕРЕЗЕ: ЧОҢ ЖАРЫЛУУ КВЕСТИ */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(1, 1, 4, 0.85); backdrop-filter: blur(10px); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
-        .quest-modal { background: #070a13; border: 2px solid #00f0ff; box-shadow: 0 0 40px rgba(0, 240, 255, 0.25); max-width: 650px; width: 100%; border-radius: 16px; padding: 30px; position: relative; animation: modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .close-modal { position: absolute; top: 15px; right: 20px; background: none; border: none; color: #64748b; font-size: 1.5rem; cursor: pointer; transition: 0.2s; }
-        .close-modal:hover { color: #ff3366; }
-        .modal-title { font-size: 1.4rem; font-weight: 900; color: #00f0ff; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
-        .modal-body { font-size: 0.95rem; color: #94a3b8; line-height: 1.6; max-height: 400px; overflow-y: auto; padding-right: 10px; }
-        .modal-body p { margin-bottom: 15px; }
-        .highlight-text { color: #eab308; font-weight: bold; }
-        .start-btn { display: inline-block; width: 100%; text-align: center; background: linear-gradient(90deg, #00f0ff, #a855f7); border: none; padding: 14px; border-radius: 8px; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 15px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.2); transition: 0.3s; }
-        .start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4); }
-
-        @keyframes modalEnter { 0% { opacity: 0; transform: scale(0.95) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+        .progress-bar-fill {
+            width: 7%; /* Баштапкы прогресс */
+            height: 100%;
+            background: linear-gradient(90deg, #58a6ff, #bd39fa);
+            transition: width 0.5s;
+        }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
         <div class="user-info">
-            <div class="user-avatar"></div>
-            <div class="user-meta">
-                <span class="user-email">mirzatesenjanov1@gmail.com</span>
-                <span class="user-badge" id="level-badge">LEVEL 1</span>
+            <div class="avatar"></div>
+            <div class="user-details">
+                <h4 id="user-email">Колдонуучу</h4>
+                <span>LEVEL 1 (Механика)</span>
             </div>
         </div>
-        <div class="game-logo">BilimAl</div>
-        <div class="currency-panel">
-            <div class="currency-item" style="color: #00f0ff;">🔷 <span id="xp-count">150</span> XP</div>
-            <div class="currency-item" style="color: #ff3366;">❤️ <span id="health-count">3</span> / 3</div>
-            <div class="currency-item" style="color: #eab308;">🔮 <span id="crystal-count">14</span> Кристалл</div>
+        <div class="brand-title">BILIMAL</div>
+        <div class="stats-container">
+            <div class="stat-box xp"><i class="fa-solid fa-bolt"></i> <span id="xp-count">0</span> XP</div>
+            <div class="stat-box hearts"><i class="fa-solid fa-heart"></i> <span id="heart-count">3/3</span></div>
+            <div class="stat-box crystals"><i class="fa-solid fa-gem"></i> <span id="crystal-count">0</span> Кристалл</div>
         </div>
     </div>
 
-    <div class="main-layout">
-        <div class="side-nav">
-            <button class="nav-btn active" onclick="location.reload()"><span>🗺️</span>Карта</button>
-            <button class="nav-btn" onclick="openQuestModal()"><span>📜</span>Квест</button>
-            <button class="nav-btn"><span>🎒</span>Багаж</button>
-            <button class="nav-btn"><span>🏆</span>Рейтинг</button>
+    <div class="main-wrapper">
+        
+        <div class="sidebar">
+            <a class="nav-item active"><i class="fa-solid fa-map"></i>Карта</a>
+            <a class="nav-item"><i class="fa-solid fa-scroll"></i>Квест</a>
+            <a class="nav-item"><i class="fa-solid fa-bag-shopping"></i>Багаж</a>
+            <a class="nav-item"><i class="fa-solid fa-trophy"></i>Рейтинг</a>
         </div>
 
-        <div class="map-container" id="mapCanvasContainer">
-            <canvas id="galaxy-canvas"></canvas>
+        <div class="map-container">
+            <div class="stars-bg"></div>
+            
+            <div class="quest-path">
+                <a href="physics-mechanics.html" class="node active">
+                    1
+                    <div class="node-title">1. Механика</div>
+                </a>
+                <a href="physics-molecular.html" class="node">
+                    2
+                    <div class="node-title">2. Молекулалык Физика</div>
+                </a>
+                <a href="physics-electrodynamics.html" class="node">
+                    3
+                    <div class="node-title">3. Ом мыйзамы</div>
+                </a>
+                <a href="physics-optics.html" class="node">
+                    4
+                    <div class="node-title">4. Оптика</div>
+                </a>
+                <a href="physics-astrophysics.html" class="node">
+                    5
+                    <div class="node-title">5. Кванттык Физика</div>
+                </a>
+            </div>
 
-            <svg class="map-svg-layer">
-                <path id="map-path" d="" fill="none" stroke="rgba(0, 240, 255, 0.07)" stroke-width="2.5" stroke-dasharray="8,6" />
-                <path id="active-path" d="" fill="none" stroke="#00f0ff" stroke-width="3.5" stroke-linecap="round" filter="drop-shadow(0px 0px 8px #00f0ff)" />
-            </svg>
-
-            <div class="quest-nodes-layer">
-                <a href="quest-mission-1.html" class="map-node" id="node1" style="left: 15%; top: 92%;">
-                    <div class="node-circle">1</div>
-                    <div class="node-label">🚗 1. Механика негиздери</div>
-                </a>
-                <a href="quest-mission-1.html" class="map-node sub-node" id="node2" style="left: 32%; top: 84%;">
-                    <div class="node-circle">1.1</div>
-                    <div class="node-label">Кинематика жана Ылдамдык</div>
-                </a>
-                <a href="quest-mission-1.html" class="map-node sub-node" id="node3" style="left: 20%; top: 75%;">
-                    <div class="node-circle">1.2</div>
-                    <div class="node-label">Ньютондун мыйзамдары</div>
-                </a>
-                <a href="quest-mission-2.html" class="map-node" id="node4" style="left: 38%; top: 66%;">
-                    <div class="node-circle">2</div>
-                    <div class="node-label">🔥 2. Термодинамика</div>
-                </a>
-                <a href="quest-mission-2.html" class="map-node sub-node" id="node5" style="left: 56%; top: 60%;">
-                    <div class="node-circle">2.1</div>
-                    <div class="node-label">Газ мыйзамдары</div>
-                </a>
-                <a href="quest-mission-3.html" class="map-node" id="node6" style="left: 42%; top: 48%;">
-                    <div class="node-circle">3</div>
-                    <div class="node-label">⚡ 3. Электродинамика</div>
-                </a>
-                <a href="quest-mission-3.html" class="map-node sub-node" id="node7" style="left: 24%; top: 42%;">
-                    <div class="node-circle">3.1</div>
-                    <div class="node-label">Ом мыйзамы</div>
-                </a>
-                <a href="quest-mission-4.html" class="map-node" id="node8" style="left: 45%; top: 30%;">
-                    <div class="node-circle">4</div>
-                    <div class="node-label">👁️ 4. Оптика</div>
-                </a>
-                <a href="quest-mission-4.html" class="map-node sub-node" id="node9" style="left: 64%; top: 24%;">
-                    <div class="node-circle">4.1</div>
-                    <div class="node-label">Линзалар жана Сынуу</div>
-                </a>
-                <a href="quest-mission-5.html" class="map-node" id="node10" style="left: 72%; top: 38%;">
-                    <div class="node-circle">5</div>
-                    <div class="node-label">⚛️ 5. Кванттык Физика</div>
-                </a>
-                <a href="quest-mission-5.html" class="map-node sub-node" id="node11" style="left: 86%; top: 50%;">
-                    <div class="node-circle">5.1</div>
-                    <div class="node-label">Фотоэффект</div>
-                </a>
-                <a href="quest-mission-6.html" class="map-node" id="node12" style="left: 74%; top: 68%;">
-                    <div class="node-circle">6</div>
-                    <div class="node-label">🚀 6. Астрофизика</div>
-                </a>
-                <a href="quest-mission-6.html" class="map-node sub-node" id="node13" style="left: 88%; top: 80%;">
-                    <div class="node-circle">6.1</div>
-                    <div class="node-label">Космостук ылдамдыктар</div>
-                </a>
-                <a href="kyz-kuumay.html" class="map-node" id="node14" style="left: 78%; top: 10%;">
-                    <div class="node-circle">👑</div>
-                    <div class="node-label">🏇 Кыз Куумай (Финалдык сыноо)</div>
-                </a>
+            <div class="progress-wrapper">
+                <span style="font-size: 12px; font-weight: bold; color: #8b949e;">КВЕСТ ПРОГРЕССИ:</span>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progress-fill"></div>
+                </div>
+                <span style="font-size: 12px; font-weight: bold; color: #58a6ff;" id="progress-text">7%</span>
             </div>
         </div>
 
-        <div class="right-sidebar">
-            <div class="monetization-card">
-                <h4>📺 Бекер Кристалл алуу</h4>
-                <p>Кыска видео көрүп, балансыңызга 2 🔮 Кристалл кошуңуз.</p>
-                <button class="action-btn" onclick="watchVideoAd()">Видео көрүү (+2 🔮)</button>
-            </div>
-            <div class="monetization-card" style="border-color: rgba(255, 51, 102, 0.2);">
-                <h4 style="color: #ff3366;">❤️ Жан толтуруу</h4>
-                <button class="action-btn" style="background: linear-gradient(90deg, #ff3366, #e11d48); color: #fff;" onclick="buyHealth()">Өмүр алуу (5 🔮)</button>
+        <div class="right-panel">
+            <div class="panel-card">
+                <h3><i class="fa-solid fa-tv" style="color: #ffcc00;"></i> Бекер Кристалл алуу</h3>
+                <p>Кыска видео көрүп, балансыңызга 2 💎 Кристалл кошуңуз.</p>
+                <button class="btn-action btn-gold" onclick="watchVideoAd()">
+                    Видео көрүү (+2 💎)
+                </button>
             </div>
 
-            <div class="ad-banner-box">
-                <ins class="adsbygoogle" style="display:block; width:100%; height:140px;" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto"></ins>
-                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-                <p style="margin-top: 5px; font-size:0.65rem;">Google AdSense Жарнамасы</p>
+            <div class="panel-card">
+                <h3><i class="fa-solid fa-heart-pulse" style="color: #ff4a5a;"></i> Жан толтуруу</h3>
+                <p>Өмүрүңүздү калыбына келтириңиз. 1 Жан = 5 💎 Кристалл.</p>
+                <button class="btn-action btn-pink" onclick="buyHeart()">
+                    Өмүр алуу (5 💎)
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="bottom-progress-bar">
-        <span style="font-size: 0.8rem; font-weight: bold; color: #a855f7;">КВЕСТ ПРОГРЕССИ:</span>
-        <div class="progress-track"><div class="progress-fill" id="main-progress"></div></div>
-        <span style="font-size: 0.9rem; font-weight: 900; color: #00f0ff;" id="progress-percent">0%</span>
-    </div>
-
-    <div class="modal-overlay" id="questModal">
-        <div class="quest-modal">
-            <button class="close-modal" onclick="closeQuestModal()">&times;</button>
-            <div class="modal-title">🌌 Ааламдын Башталышы: Чоң Жарылуу</div>
-            <div class="modal-body">
-                <p>Мындан туура <span class="highlight-text">13.8 миллиард жыл мурун</span> убакыт, мейкиндик жана материя жок болчу. Бүткүл Аалам чексиз тыгыздыкка жана жылуулукка ээ болгон бир гана чекитке — <span class="highlight-text">Сингулярдуулукка</span> кысылып турган.</p>
-                <p>Андан соң, бир көз ирмемде <span class="highlight-text">"Чоң Жарылуу" (Big Bang)</span> орун алып, Аалам укмуштуудай ылдамдыкта кеңейе баштаган. Биринчи атомдор, микро-бөлүкчөлөр пайда болуп, миллиондогон жылдар бою муздап отуруп, алгачкы жылдыздарды жана биз көрүп турган кооз галактикаларды жараткан.</p>
-                <p>Бирок бул улуу кубулуш кандай мыйзамдар менен башкарылат? Эмне үчүн кометалар белгилүү бир траекторияда учат? Эмне үчүн жылдыздар энергия бөлүп чыгарат?</p>
-                <p>Бул суроолордун жообу бир гана илимде — <span class="highlight-text">ФИЗИКАДА!</span> Сиз Квест картасындагы ар бир бөлүмдү (Механика, Термодинамика, Оптика) өткөн сайын, Чоң Жарылуудан калган улуу сырлардын кодун жандырасыз. Ааламдын Кожоюну болууга даярсызбы?</p>
-            </div>
-            <button class="start-btn" onclick="closeQuestModal()">Квестти улантуу 🚀</button>
+    <div id="video-modal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #bd39fa;"><i class="fa-solid fa-play"></i> Жарнамалык видео аткарылууда...</h3>
+            <p style="margin-top: 10px; color: #8b949e;">Сураныч, кристалл алуу үчүн күтө туруңуз.</p>
+            <div class="video-loader"></div>
+            <p id="video-timer" style="font-weight: bold; color: #ffcc00;">Катылган убакыт: 5 сек</p>
         </div>
     </div>
 
     <script>
-        let currentLevel = parseInt(localStorage.getItem('bilimal_current_level')) || 2; 
-        let crystals = parseInt(localStorage.getItem('bilimal_user_crystals')) || 14;
-        let health = parseInt(localStorage.getItem('bilimal_user_health')) || 3;
-        const totalNodes = 14;
+        // БУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН FIREBASE КАНФИГУРАЦИЯҢЫЗДЫ КОЮҢУЗ
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        // Модалдык терезени башкаруу функциялары
-        function openQuestModal() { document.getElementById('questModal').style.display = 'flex'; }
-        function closeQuestModal() { document.getElementById('questModal').style.opacity = '0'; setTimeout(() => { document.getElementById('questModal').style.display = 'none'; document.getElementById('questModal').style.opacity = '1'; }, 200); }
+        // Firebase'ди демилгелөө
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
 
-        const canvas = document.getElementById('galaxy-canvas');
-        const ctx = canvas.getContext('2d');
+        // Учурдагы колдонуучунун маалыматтарынын өзгөрмөлөрү
+        let currentUserId = null;
+        let userStats = {
+            xp: 150,
+            crystals: 14,
+            hearts: 3
+        };
 
-        function resizeCanvas() { canvas.width = canvas.parentElement.clientWidth; canvas.height = 1800; }
-        resizeCanvas();
-
-        // Фондогу жылдыздар
-        const bgStars = [];
-        for (let i = 0; i < 250; i++) {
-            bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 1.5 + 0.3, alpha: Math.random(), speed: Math.random() * 0.02 + 0.005 });
-        }
-
-        // Спираль Галактика бөлүкчөлөрү
-        const galaxyParticles = [];
-        const numParticles = 1200;
-        const centerX = canvas.width * 0.52;
-        const centerY = canvas.height * 0.48;
-
-        for (let i = 0; i < numParticles; i++) {
-            let armAngle = Math.random() > 0.5 ? 0 : Math.PI;
-            let distance = Math.pow(Math.random(), 2.5) * 650 + 15;
-            let angle = armAngle + (distance * 0.0065) + (Math.random() * 0.4);
-            let colorType = Math.random();
-            let color = 'rgba(255, 255, 255,';
-            if (distance < 120) color = 'rgba(253, 224, 71,';
-            else if (colorType > 0.6) color = 'rgba(0, 240, 255,';
-            else if (colorType > 0.3) color = 'rgba(168, 85, 247,';
-
-            galaxyParticles.push({ distance: distance, angle: angle, size: Math.random() * 1.8 + 0.3, speed: 0.0004 + (1.5 / (distance + 10)) * 0.02, color: color, alpha: Math.random() * 0.6 + 0.4 });
-        }
-
-        function drawDeepSpace() {
-            ctx.fillStyle = "#010104"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            bgStars.forEach(star => {
-                star.alpha += star.speed; if (star.alpha > 1 || star.alpha < 0.1) star.speed = -star.speed;
-                ctx.fillStyle = `rgba(255, 255, 255, ${Math.abs(star.alpha)})`; ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
-            });
-            galaxyParticles.forEach(p => {
-                p.angle += p.speed;
-                let x = centerX + Math.cos(p.angle) * p.distance;
-                let y = centerY + Math.sin(p.angle) * p.distance * 0.52;
-                ctx.fillStyle = p.color + p.alpha + ')'; ctx.beginPath(); ctx.arc(x, y, p.size, 0, Math.PI * 2); ctx.fill();
-            });
-            requestAnimationFrame(drawDeepSpace);
-        }
-        drawDeepSpace();
-
-        function updateStatsDisplay() {
-            document.getElementById('crystal-count').innerText = crystals; document.getElementById('health-count').innerText = health;
-            localStorage.setItem('bilimal_user_crystals', crystals); localStorage.setItem('bilimal_user_health', health);
-            let badge = document.getElementById('level-badge');
-            if(currentLevel <= 3) badge.innerText = "LEVEL 1 (Механик)";
-            else if(currentLevel <= 5) badge.innerText = "LEVEL 2 (Термист)";
-            else badge.innerText = "LEVEL 3 (Астрофизик)";
-        }
-
-        // БАШКА ОЮНЧУЛАРДЫН КАРТАДАГЫ ОРДУ (Оюн маалыматтарынын симуляциясы)
-        const otherPlayers = [
-            { name: "Асан (Ньютон)", node: 3 },
-            { name: "Айпери ⚡", node: 6 },
-            { name: "Бексултан 🚀", node: 12 }
-        ];
-
-        function renderMapSystem() {
-            resizeCanvas(); let pathD = ""; let activePathD = "";
-
-            for (let i = 1; i <= totalNodes; i++) {
-                let node = document.getElementById(`node${i}`); if (!node) continue;
-                let x = node.offsetLeft + (node.classList.contains('sub-node') ? 20 : 27);
-                let y = node.offsetTop + (node.classList.contains('sub-node') ? 20 : 27);
-
-                if (i === 1) { pathD += `M ${x} ${y}`; if(i <= currentLevel) activePathD += `M ${x} ${y}`; } 
-                else { pathD += ` L ${x} ${y}`; if(i <= currentLevel) activePathD += ` L ${x} ${y}`; }
-
-                if (i < currentLevel) {
-                    node.className = node.classList.contains('sub-node') ? "map-node sub-node completed" : "map-node completed";
-                    node.querySelector('.node-circle').innerText = "✓";
-                } else if (i === currentLevel) {
-                    node.className = node.classList.contains('sub-node') ? "map-node sub-node active" : "map-node active";
-                    if(!node.querySelector('.player-pointer')) {
-                        let pointer = document.createElement('div'); pointer.className = 'player-pointer'; pointer.innerText = 'Сиз'; node.appendChild(pointer);
-                    }
-                } else { node.className = node.classList.contains('sub-node') ? "map-node sub-node locked" : "map-node locked"; }
-
-                // Башка оюнчуларды тиешелүү деңгээлге жайгаштыруу
-                otherPlayers.forEach(p => {
-                    if (p.node === i) {
-                        let opPointer = document.createElement('div');
-                        opPointer.className = 'other-player-pointer';
-                        opPointer.innerText = p.name;
-                        node.appendChild(opPointer);
-                    }
-                });
+        // Аутентификацияны көзөмөлдөө
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUserId = user.uid;
+                document.getElementById('user-email').innerText = user.email;
+                loadUserStats(user.uid);
+            } else {
+                // Эгер кирбеген болсо симуляция үчүн демейки маанилер иштейт
+                console.log("Колдонуучу катталган эмес, симуляция режими.");
+                updateUI();
             }
-            document.getElementById('map-path').setAttribute('d', pathD); document.getElementById('active-path').setAttribute('d', activePathD);
-            let percent = Math.round(((currentLevel - 1) / totalNodes) * 100);
-            document.getElementById('main-progress').style.width = percent + "%"; document.getElementById('progress-percent').innerText = percent + "%";
+        });
+
+        // Firebase'ден маалыматтарды окуу
+        function loadUserStats(uid) {
+            database.ref('users/' + uid).on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    userStats.xp = data.xp || 0;
+                    userStats.crystals = data.crystals || 0;
+                    userStats.hearts = data.hearts || 3;
+                    updateUI();
+                }
+            });
         }
 
-        function watchVideoAd() { alert("Жарнама жүктөлүүдө..."); setTimeout(() => { crystals += 2; updateStatsDisplay(); alert("Бекер 2 🔮 Кристалл кошулду!"); }, 1000); }
-        function buyHealth() {
-            if (health >= 3) return alert("Жаныңыз толук!");
-            if (crystals >= 5) { crystals -= 5; health = 3; updateStatsDisplay(); alert("Өмүр калыбына келтирилди!"); } else alert("Кристалл жетишсиз!");
+        // Интерфейсти жаңылоо
+        function updateUI() {
+            document.getElementById('xp-count').innerText = userStats.xp;
+            document.getElementById('crystal-count').innerText = userStats.crystals;
+            document.getElementById('heart-count').innerText = userStats.hearts + "/3";
+            
+            // Прогрессти эсептөө (мисалы XP'ге жараша)
+            let progressPercent = Math.min(Math.floor((userStats.xp / 2000) * 100), 100);
+            if(progressPercent < 7) progressPercent = 7; // Минималдуу көрсөткүч
+            document.getElementById('progress-fill').style.width = progressPercent + '%';
+            document.getElementById('progress-text').innerText = progressPercent + '%';
         }
 
-        window.onload = () => { updateStatsDisplay(); renderMapSystem(); };
-        window.onresize = renderMapSystem;
+        // Маалыматтарды Firebase'ге сактоо
+        function saveStats() {
+            if (currentUserId) {
+                database.ref('users/' + currentUserId).update(userStats);
+            } else {
+                updateUI();
+            }
+        }
+
+        // Видео көрүү симуляциясы
+        function watchVideoAd() {
+            const modal = document.getElementById('video-modal');
+            const timerText = document.getElementById('video-timer');
+            modal.style.display = 'flex';
+            
+            let timeLeft = 5;
+            const interval = setInterval(() => {
+                timeLeft--;
+                timerText.innerText = `Катылган убакыт: ${timeLeft} сек`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(interval);
+                    modal.style.display = 'none';
+                    
+                    // Кристалл кошуу
+                    userStats.crystals += 2;
+                    saveStats();
+                    alert("Куттуктайбыз! Сиз 2 акысыз кристалл алдыңыз! 💎");
+                }
+            }, 1000);
+        }
+
+        // Жан (Өмүр) сатып алуу
+        function buyHeart() {
+            if (userStats.hearts >= 3) {
+                alert("Сиздин өмүрүңүз толук! (3/3)");
+                return;
+            }
+            
+            if (userStats.crystals >= 5) {
+                userStats.crystals -= 5;
+                userStats.hearts += 1;
+                saveStats();
+                alert("1 Өмүр ийгиликтүү кошулду! ❤️");
+            } else {
+                alert("Кристаллдар жетишсиз! Бекер кристалл алуу бөлүмүн колдонуңуз.");
+            }
+        }
     </script>
 </body>
 </html>
