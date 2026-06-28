@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html lang="ky">
+<head><!DOCTYPE html>
+<html lang="ky">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -15,7 +17,202 @@
         canvas { display: block; max-width: 100%; height: auto; background: #000; }
         .mobile-controls { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 840px; margin-top: 15px; }
         .d-pad { display: grid; grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(3, 55px); gap: 5px; }
-        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; font-size: 22px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; font-size: 22px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .control-btn:active { background: #059669; }
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 3; }
+        .fire-btn { width: 80px; height: 80px; color: white; font-size: 16px; font-weight: bold; border-radius: 50%; border: none; background: #ff0055; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="index.html" class="back-btn">✕ Менюго кайт</a>
+        <div class="stats">
+            <div class="stat-item">Упай: <span id="score-val">0</span></div>
+            <div class="stat-item">Өмүр: <span id="lives-val">3</span></div>
+            <div class="stat-item">Раунд: <span id="level-val">1</span></div>
+            <div class="stat-item">Танк: <span id="tank-lvl-val">Lvl 1</span></div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="gameCanvas" width="840" height="560"></canvas>
+    </div>
+
+    <div class="mobile-controls">
+        <div class="d-pad">
+            <button class="control-btn btn-up" id="pad-up">▲</button>
+            <button class="control-btn btn-left" id="pad-left">◀</button>
+            <button class="control-btn btn-right" id="pad-right">▶</button>
+            <button class="control-btn btn-down" id="pad-down">▼</button>
+        </div>
+        <button class="fire-btn" id="pad-fire">FIRE</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const TILE_SIZE = 40; const COLS = 21; const ROWS = 14;
+
+        let gameState = { score: 0, lives: 3, level: 1, maxEnemies: 5, enemiesDefeated: 0 };
+        let keys = {}; let activeTouchDir = null; let enemies = []; let bullets = []; let enemyTimer = 0; let player;
+
+        let map = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,4,4,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0]
+        ];
+
+        class Tank {
+            constructor(x, y, side) {
+                this.x = x; this.y = y; this.w = 34; this.h = 34; this.dir = "up"; this.side = side;
+                this.speed = 3; this.lastShot = 0;
+            }
+            draw() {
+                ctx.fillStyle = this.side === "friendly" ? "#10b981" : "#ef4444";
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = "#fff";
+                if(this.dir === "up") ctx.fillRect(this.x+14, this.y-6, 6, 8);
+                if(this.dir === "down") ctx.fillRect(this.x+14, this.y+34, 6, 8);
+                if(this.dir === "left") ctx.fillRect(this.x-6, this.y+14, 8, 6);
+                if(this.dir === "right") ctx.fillRect(this.x+34, this.y+14, 8, 6);
+            }
+            move() {
+                let nx = this.x, ny = this.y;
+                if (this.dir === "up") ny -= this.speed; if (this.dir === "down") ny += this.speed;
+                if (this.dir === "left") nx -= this.speed; if (this.dir === "right") nx += this.speed;
+                if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
+                else if (this.side === "enemy") { const dirs = ["up", "down", "left", "right"]; this.dir = dirs[Math.floor(Math.random()*4)]; }
+            }
+            checkCollision(nx, ny) {
+                if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
+                let pts = [{x:nx, y:ny}, {x:nx+this.w, y:ny}, {x:nx, y:ny+this.h}, {x:nx+this.w, y:ny+this.h}];
+                for (let p of pts) {
+                    let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
+                    if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS && [1,2,3,9].includes(map[cy][cx])) return true;
+                }
+                return false;
+            }
+            shoot() {
+                let now = Date.now();
+                if (now - this.lastShot > 300) { bullets.push(new Bullet(this.x+17, this.y+17, this.dir, this.side)); this.lastShot = now; }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, dir, side) { this.x = x; this.y = y; this.dir = dir; this.side = side; this.speed = 6; this.active = true; }
+            draw() { ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; ctx.beginPath(); ctx.arc(this.x, this.y, 3, 0, Math.PI*2); ctx.fill(); }
+            update() {
+                if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
+                if (this.dir === "left") this.x -= this.speed; if (this.dir === "right") this.x += this.speed;
+                if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
+                let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
+                if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
+                    if (map[cy][cx] === 1) { map[cy][cx] = 0; this.active = false; }
+                    else if (map[cy][cx] === 2) { this.active = false; }
+                    else if (map[cy][cx] === 9) { map[cy][cx] = 0; this.active = false; alert("Чеп талкаланды! Оюн Бүттү!"); location.reload(); }
+                }
+            }
+        }
+
+        player = new Tank(6*TILE_SIZE+3, 13*TILE_SIZE+3, "friendly");
+
+        function spawnEnemy() {
+            if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
+            enemies.push(new Tank(Math.random()>0.5?0:20*TILE_SIZE, 2, "enemy"));
+        }
+
+        // Клавиатураны угуу (Кыргызча/Англисче баары иштейт)
+        window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+        // Телефонго жана Чычканга бирдей иштеген функция
+        const setupBtn = (id, dir) => {
+            const btn = document.getElementById(id);
+            const startAction = (e) => { e.preventDefault(); activeTouchDir = dir; };
+            const stopAction = (e) => { e.preventDefault(); activeTouchDir = null; };
+            
+            btn.addEventListener("touchstart", startAction);
+            btn.addEventListener("touchend", stopAction);
+            btn.addEventListener("mousedown", startAction);
+            btn.addEventListener("mouseup", stopAction);
+            btn.addEventListener("mouseleave", stopAction);
+        };
+        
+        setupBtn("pad-up", "up"); setupBtn("pad-down", "down"); setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
+        
+        const fireBtn = document.getElementById("pad-fire");
+        fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); player.shoot(); });
+        fireBtn.addEventListener("mousedown", (e) => { e.preventDefault(); player.shoot(); });
+
+        function update() {
+            if (activeTouchDir) { player.dir = activeTouchDir; player.move(); }
+            else {
+                // Англисче W,A,S,D жана Кыргызча Ц,Ф,Ы,В + Жебелер (Стрелки) кошулду
+                if (keys["w"] || keys["ц"] || keys["arrowup"]) { player.dir = "up"; player.move(); }
+                else if (keys["s"] || keys["ы"] || keys["arrowdown"]) { player.dir = "down"; player.move(); }
+                else if (keys["a"] || keys["ф"] || keys["arrowleft"]) { player.dir = "left"; player.move(); }
+                else if (keys["d"] || keys["в"] || keys["arrowright"]) { player.dir = "right"; player.move(); }
+                
+                if (keys["f"] || keys["а"] || keys[" "]) player.shoot();
+            }
+
+            enemyTimer++; if(enemyTimer > 120) { spawnEnemy(); enemyTimer = 0; }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update();
+                if (!bullets[i].active) { bullets.splice(i, 1); continue; }
+                if (bullets[i].side === "friendly") {
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        if (bullets[i].x > enemies[j].x && bullets[i].x < enemies[j].x+34 && bullets[i].y > enemies[j].y && bullets[i].y < enemies[j].y+34) {
+                            enemies.splice(j, 1); bullets.splice(i, 1); gameState.score += 10; gameState.enemiesDefeated++; break;
+                        }
+                    }
+                } else {
+                    if (bullets[i].x > player.x && bullets[i].x < player.x+34 && bullets[i].y > player.y && bullets[i].y < player.y+34) {
+                        gameState.lives--; bullets.splice(i, 1); if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
+                    }
+                }
+            }
+
+            for (let e of enemies) { e.move(); if(Math.random()<0.02) e.shoot(); }
+            if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) { gameState.level++; gameState.enemiesDefeated = 0; gameState.maxEnemies += 2; }
+            document.getElementById("score-val").innerText = gameState.score;
+            document.getElementById("lives-val").innerText = gameState.lives;
+            document.getElementById("level-val").innerText = gameState.level;
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS; c++) {
+                    if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
+                }
+            }
+            player.draw(); for(let e of enemies) e.draw(); for(let b of bullets) b.draw();
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>151; color: white; font-size: 22px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
         .control-btn:active { background: #059669; }
         .btn-up { grid-column: 2; grid-row: 1; }
         .btn-left { grid-column: 1; grid-row: 2; }
