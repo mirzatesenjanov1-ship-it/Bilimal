@@ -59,30 +59,37 @@
         let keys = {}; let activeTouchDir = null; let enemies = []; let bullets = []; let particles = []; let bonuses = []; let enemyTimer = 0; let player;
         let map = [];
 
-        // Картаны туш келди (динамикалык) жаратуу функциясы
+        // Чеп ордунда туруктуу сакталышы үчүн карта генерациясын оңдоо
         function generateRandomMap() {
             let newMap = [];
             for (let r = 0; r < ROWS; r++) {
                 let row = [];
                 for (let c = 0; c < COLS; c++) {
-                    // Баштапкы чектерди жана танктар чыга турган коопсуз зоналарды бош калтыруу
+                    // Сырткы дубалдар жана чектер
                     if (r === 0 || r === 13 || c === 0 || c === 20) {
                         row.push(0); continue;
                     }
-                    // Танк базасы (Бүркүт/Чеп коргоосу) жайгашкан жерди бекитүү
-                    if (r === 12 && [9,10,11].includes(c)) { row.push(1); continue; }
-                    if (r === 13 && c === 10) { row.push(9); continue; } // База
-                    if (r === 13 && [9,11].includes(c)) { row.push(0); continue; }
+
+                    // ЧЕПТИ КАЙРА КОШУУ ЖАНА КОРГОО (13-саптын 10-колонкасы)
+                    if (r === 13 && c === 10) { row.push(9); continue; } // Бул жерде чеп (сары тегерек) болот
+                    // Чептин тегерегиндеги коргоочу кирпичтер (П-тамгасы сыяктуу курчоо)
+                    if (r === 12 && [9, 10, 11].includes(c)) { row.push(1); continue; }
+                    if (r === 13 && [9, 11].includes(c)) { row.push(1); continue; }
+
+                    // Оюнчу туулган жер (коопсуз зона)
+                    if (r === 13 && [5, 6, 7].includes(c)) { row.push(0); continue; }
+                    if (r === 12 && [5, 6, 7].includes(c)) { row.push(0); continue; }
                     
                     // Душмандар чыга турган жогорку чекиттерди бош калтыруу
                     if (r === 1 && [1, 2, 9, 10, 18, 19].includes(c)) { row.push(0); continue; }
+                    if (r === 2 && [1, 2, 9, 10, 18, 19].includes(c)) { row.push(0); continue; }
 
                     // Жайгашуу кокустугу
                     let rand = Math.random();
                     if (rand < 0.18) {
-                        row.push(1); // Кирпич дубал
+                        row.push(1); // Кирпич
                     } else if (rand < 0.25) {
-                        row.push(2); // Цемент (боз) дубал
+                        row.push(2); // Цемент
                     } else {
                         row.push(0); // Бош жер
                     }
@@ -97,12 +104,11 @@
                 this.x = x; this.y = y; this.w = 34; this.h = 34; this.dir = "up"; this.side = side;
                 this.speed = side === "friendly" ? 3 : 2; this.lastShot = 0; this.level = 1;
                 this.hue = 0;
-                // Душмандын соороту (Бронясы): Раунд жогорулаганда брондолгондор пайда болот
                 this.hp = 1; 
                 if (side === "enemy") {
-                    let armorChance = Math.min(gameState.level * 0.15, 0.6); // Раунд жогорулаган сайын шанс өсөт
+                    let armorChance = Math.min(gameState.level * 0.15, 0.6); 
                     if (Math.random() < armorChance) {
-                        this.hp = Math.random() < 0.4 ? 3 : 2; // 2 же 3 өмүрлүү брондолгон танктар
+                        this.hp = Math.random() < 0.4 ? 3 : 2; 
                     }
                 }
             }
@@ -122,15 +128,13 @@
                         this.hue = (this.hue + 2) % 360;
                         ctx.fillStyle = `hsl(${this.hue}, 90%, 50%)`;
                     } else {
-                        // 11+ ДЕҢГЕЕЛ: АЛТЫН ЖАЛТЫРАК КУБУЛМА ТҮС (ЦЕМЕНТ ТЕШҮҮЧҮ КҮЧ)
-                        this.hue = (this.hue + 1) % 40 + 45; // Сары-алтын спектри
+                        this.hue = (this.hue + 1) % 40 + 45; 
                         ctx.fillStyle = `hsl(${this.hue}, 100%, 50%)`;
                     }
                 } else {
-                    // Душмандын түсү бронясына жараша өзгөрөт
-                    if (this.hp === 3) ctx.fillStyle = "#78350f"; // Кочкул күрөң супер брондолгон
-                    else if (this.hp === 2) ctx.fillStyle = "#b91c1c"; // Орто брондолгон кызыл
-                    else ctx.fillStyle = "#ef4444"; // Жөнөкөй душман
+                    if (this.hp === 3) ctx.fillStyle = "#78350f"; 
+                    else if (this.hp === 2) ctx.fillStyle = "#b91c1c"; 
+                    else ctx.fillStyle = "#ef4444"; 
                 }
                 
                 ctx.fillRect(this.x, this.y, this.w, this.h);
@@ -213,10 +217,9 @@
                 let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
                 if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
                     if (map[cy][cx] === 1) { 
-                        map[cy][cx] = 0; this.active = false; // Кирпич баарына эле талкаланат
+                        map[cy][cx] = 0; this.active = false; 
                     }
                     else if (map[cy][cx] === 2) { 
-                        // ЭГЕРДЕР ТАНК 11+ ДЕҢГЕЕЛ БОЛСО, ЦЕМЕНТ ДУБАЛДЫ ДА ТАЛКАЛАЙТ
                         if (this.side === "friendly" && this.lvl >= 11) {
                             map[cy][cx] = 0;
                         }
@@ -263,7 +266,6 @@
             update() { this.life--; }
         }
 
-        // Биринчи раунддун картасын жаратуу
         map = generateRandomMap();
         player = new Tank(6*TILE_SIZE+3, 13*TILE_SIZE+3, "friendly");
 
@@ -317,7 +319,7 @@
                     gameState.level++;
                     gameState.enemiesDefeated = 0;
                     gameState.maxEnemies += 2;
-                    map = generateRandomMap(); // РАУНД АЛМАШКАНДА ЖАҢЫ КАРТА ГЕНЕРАЦИЯЛАНАТ!
+                    map = generateRandomMap(); 
                     player.x = 6*TILE_SIZE+3; player.y = 13*TILE_SIZE+3; player.dir = "up";
                 }
                 return;
@@ -338,7 +340,7 @@
                 let b = bonuses[i];
                 let dist = Math.hypot((player.x + 17) - b.x, (player.y + 17) - b.y);
                 if (dist < 25) {
-                    if (player.level < 15) player.level++; // Деңгээл 11ден ашып кете берет
+                    if (player.level < 15) player.level++; 
                     gameState.score += 50;
                     bonuses.splice(i, 1);
                 }
@@ -369,11 +371,10 @@
                 if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (b.x > enemies[j].x && b.x < enemies[j].x+34 && b.y > enemies[j].y && b.y < enemies[j].y+34) {
-                            
-                            enemies[j].hp--; // Душмандын сооротун азайтуу
+                            enemies[j].hp--; 
                             b.active = false;
 
-                            if (enemies[j].hp <= 0) { // Бронясы түгөнүп өлгөндө гана өчүрүлөт
+                            if (enemies[j].hp <= 0) { 
                                 particles.push(new Particle(enemies[j].x + 17, enemies[j].y + 17));
                                 if (Math.random() < 0.35) {
                                     bonuses.push(new Bonus(enemies[j].x + 17, enemies[j].y + 17));
@@ -386,11 +387,18 @@
                         }
                     }
                 } else {
+                    // ОЮНЧУГА ОК ТИЙГЕНДЕГИ ЖАҢЫ ЛОГИКА
                     if (b.x > player.x && b.x < player.x+34 && b.y > player.y && b.y < player.y+34) {
-                        gameState.lives--; 
                         b.active = false; 
-                        if (player.level > 1) player.level--; 
-                        if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
+                        
+                        if (player.level > 1) {
+                            // Эгер деңгээл 1ден өйдө болсо, бир кадамга ылдыйлайт
+                            player.level--; 
+                        } else {
+                            // Эгер 1-деңгээлде болсо гана өмүрү кетет
+                            gameState.lives--; 
+                            if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
+                        }
                     }
                 }
             }
@@ -415,6 +423,7 @@
                 for (let c=0; c<COLS; c++) {
                     if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                     if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    // ЧЕПТИ СҮРӨТТӨӨ (Сары тегерек)
                     if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
                 }
             }
