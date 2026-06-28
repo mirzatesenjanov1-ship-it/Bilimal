@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <title>Co-op Mode - Tank Battle</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background-color: #0c0f12; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; }
+        .top-bar { width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #131920; border-radius: 10px 10px 0 0; border: 1px solid #1f2937; }
+        .back-btn { background: #ef4444; color: #fff; padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; }
+        .stat-item span { color: #00e5ff; }
+        .game-container { background: #050709; border: 4px solid #3b82f6; border-radius: 0 0 10px 10px; }
+        canvas { display: block; max-width: 100%; height: auto; background: #000; }
+        .info-controls { margin-top: 15px; background: #1f2937; padding: 10px 20px; border-radius: 10px; font-size: 14px; text-align: center; color: #9ca3af; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="index.html" class="back-btn">✕ Менюго кайт</a>
+        <div class="stats">
+            <div class="stat-item">Биргелешкен Упай: <span id="score-val">0</span></div>
+            <div class="stat-item">Командалык Өмүр: <span id="lives-val">4</span></div>
+            <div class="stat-item">Деңгээл: <span id="level-val">1</span></div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="gameCanvas" width="840" height="560"></canvas>
+    </div>
+
+    <div class="info-controls">
+        🎮 <b>Башкаруу:</b> Оюнчу 1: W, A, S, D (Атуу: F) | Оюнчу 2: Жебелер ⬆⬇⬅➡ (Атуу: Space/Пробел)
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const TILE_SIZE = 40; const COLS = 21; const ROWS = 14;
+
+        let gameState = { score: 0, lives: 4, level: 1, maxEnemies: 6, enemiesDefeated: 0 };
+        let keys = {}; let enemies = []; let bullets = []; let enemyTimer = 0;
+        let p1, p2;
+
+        let map = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,4,4,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0]
+        ];
+
+        class Tank {
+            constructor(x, y, color, side) {
+                this.x = x; this.y = y; this.w = 36; this.h = 36; this.dir = "up"; this.speed = 3; this.color = color; this.side = side; this.lastShot = 0;
+            }
+            draw() {
+                ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = "#fff";
+                if(this.dir === "up") ctx.fillRect(this.x+15, this.y-6, 6, 8);
+                if(this.dir === "down") ctx.fillRect(this.x+15, this.y+36, 6, 8);
+                if(this.dir === "left") ctx.fillRect(this.x-6, this.y+15, 8, 6);
+                if(this.dir === "right") ctx.fillRect(this.x+36, this.y+15, 8, 6);
+            }
+            move() {
+                let nx = this.x, ny = this.y;
+                if (this.dir === "up") ny -= this.speed; if (this.dir === "down") ny += this.speed;
+                if (this.dir === "left") nx -= this.speed; if (this.dir === "right") nx += this.speed;
+                if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
+                else if (this.side === "enemy") { const dirs = ["up", "down", "left", "right"]; this.dir = dirs[Math.floor(Math.random()*4)]; }
+            }
+            checkCollision(nx, ny) {
+                if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
+                let pts = [{x:nx, y:ny}, {x:nx+this.w, y:ny}, {x:nx, y:ny+this.h}, {x:nx+this.w, y:ny+this.h}];
+                for (let p of pts) {
+                    let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
+                    if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS && [1,2,3,9].includes(map[cy][cx])) return true;
+                }
+                return false;
+            }
+            shoot() {
+                let now = Date.now();
+                if (now - this.lastShot > 350) { bullets.push(new Bullet(this.x+18, this.y+18, this.dir, this.side)); this.lastShot = now; }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, dir, side) { this.x = x; this.y = y; this.dir = dir; this.side = side; this.speed = 6; this.active = true; }
+            draw() { ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; ctx.beginPath(); ctx.arc(this.x, this.y, 3, 0, Math.PI*2); ctx.fill(); }
+            update() {
+                if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
+                if (this.dir === "left") this.x -= this.speed; if (this.dir === "right") this.x += this.speed;
+                if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
+                let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
+                if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
+                    if (map[cy][cx] === 1) { map[cy][cx] = 0; this.active = false; }
+                    else if (map[cy][cx] === 2) { this.active = false; }
+                    else if (map[cy][cx] === 9) { map[cy][cx] = 0; this.active = false; alert("Чеп кыйрады! Команда утулду!"); location.reload(); }
+                }
+            }
+        }
+
+        p1 = new Tank(5*TILE_SIZE+2, 13*TILE_SIZE+2, "#10b981", "friendly");
+        p2 = new Tank(15*TILE_SIZE+2, 13*TILE_SIZE+2, "#3b82f6", "friendly");
+
+        function spawnEnemy() {
+            if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
+            enemies.push(new Tank(Math.random()>0.5?0:20*TILE_SIZE, 2, "#ef4444", "enemy"));
+        }
+
+        window.addEventListener("keydown", e => keys[e.key] = true);
+        window.addEventListener("keyup", e => keys[e.key] = false);
+
+        function handleInput() {
+            if (keys["w"] || keys["W"]) { p1.dir = "up"; p1.move(); }
+            else if (keys["s"] || keys["S"]) { p1.dir = "down"; p1.move(); }
+            else if (keys["a"] || keys["A"]) { p1.dir = "left"; p1.move(); }
+            else if (keys["d"] || keys["D"]) { p1.dir = "right"; p1.move(); }
+            if (keys["f"] || keys["F"]) { p1.shoot(); keys["f"] = false; keys["F"] = false; }
+
+            if (keys["ArrowUp"]) { p2.dir = "up"; p2.move(); }
+            else if (keys["ArrowDown"]) { p2.dir = "down"; p2.move(); }
+            else if (keys["ArrowLeft"]) { p2.dir = "left"; p2.move(); }
+            else if (keys["ArrowRight"]) { p2.dir = "right"; p2.move(); }
+            if (keys[" "]) { p2.shoot(); keys[" "] = false; }
+        }
+
+        function update() {
+            handleInput();
+            enemyTimer++; if(enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update();
+                if (!bullets[i].active) { bullets.splice(i, 1); continue; }
+                if (bullets[i].side === "friendly") {
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        if (bullets[i].x > enemies[j].x && bullets[i].x < enemies[j].x+36 && bullets[i].y > enemies[j].y && bullets[i].y < enemies[j].y+36) {
+                            enemies.splice(j, 1); bullets.splice(i, 1); gameState.score += 10; gameState.enemiesDefeated++; break;
+                        }
+                    }
+                } else {
+                    if ((bullets[i].x > p1.x && bullets[i].x < p1.x+36 && bullets[i].y > p1.y && bullets[i].y < p1.y+36) || 
+                        (bullets[i].x > p2.x && bullets[i].x < p2.x+36 && bullets[i].y > p2.y && bullets[i].y < p2.y+36)) {
+                        gameState.lives--; bullets.splice(i, 1); if(gameState.lives <= 0) { alert("Бардык өмүрлөр түгөндү!"); location.reload(); }
+                    }
+                }
+            }
+
+            for (let e of enemies) { e.move(); if(Math.random()<0.02) e.shoot(); }
+            if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) { gameState.level++; gameState.enemiesDefeated = 0; gameState.maxEnemies += 2; }
+            document.getElementById("score-val").innerText = gameState.score;
+            document.getElementById("lives-val").innerText = gameState.lives;
+            document.getElementById("level-val").innerText = gameState.level;
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS; c++) {
+                    if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
+                }
+            }
+            p1.draw(); p2.draw(); for(let e of enemies) e.draw(); for(let b of bullets) b.draw();
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
