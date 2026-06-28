@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <title>1v1 PvP Duel - Tank Battle</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { background-color: #0c0f12; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; }
+        .top-bar { width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #131920; border-radius: 10px 10px 0 0; border: 1px solid #1f2937; }
+        .back-btn { background: #ef4444; color: #fff; padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 14px; }
+        .stats { display: flex; gap: 25px; font-size: 16px; font-weight: bold; }
+        .p1-score { color: #10b981; }
+        .p2-score { color: #3b82f6; }
+        .game-container { background: #050709; border: 4px solid #f43f5e; border-radius: 0 0 10px 10px; }
+        canvas { display: block; max-width: 100%; height: auto; background: #000; }
+        .info-controls { margin-top: 15px; background: #1f2937; padding: 10px 20px; border-radius: 10px; font-size: 14px; text-align: center; color: #9ca3af; }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <a href="index.html" class="back-btn">✕ Менюго кайт</a>
+        <div class="stats">
+            <div class="p1-score">Оюнчу 1 (Жашыл): <span id="p1-hp">3 HP</span></div>
+            <div style="color: #6b7280;">VS</div>
+            <div class="p2-score">Оюнчу 2 (Көк): <span id="p2-hp">3 HP</span></div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <canvas id="gameCanvas" width="840" height="560"></canvas>
+    </div>
+
+    <div class="info-controls">
+        ⚔️ <b>Максат:</b> Дубалдарды талкалап өтүп, каршылашыңды 3 жолу ат! Ортодогу чепти атсаңар экөөң тең утуласыңар!
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const TILE_SIZE = 40; const COLS = 21; const ROWS = 14;
+
+        let keys = {}; let bullets = [];
+        let p1, p2;
+
+        let map = [
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
+            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+            [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
+            [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0]
+        ];
+
+        class Tank {
+            constructor(x, y, color, id) {
+                this.x = x; this.y = y; this.w = 36; this.h = 36; this.dir = "up"; this.speed = 4; this.color = color; this.id = id; this.hp = 3; this.lastShot = 0;
+            }
+            draw() {
+                ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = "#fff";
+                if(this.dir === "up") ctx.fillRect(this.x+15, this.y-6, 6, 8);
+                if(this.dir === "down") ctx.fillRect(this.x+15, this.y+36, 6, 8);
+                if(this.dir === "left") ctx.fillRect(this.x-6, this.y+15, 8, 6);
+                if(this.dir === "right") ctx.fillRect(this.x+36, this.y+15, 8, 6);
+            }
+            move() {
+                let nx = this.x, ny = this.y;
+                if (this.dir === "up") ny -= this.speed; if (this.dir === "down") ny += this.speed;
+                if (this.dir === "left") nx -= this.speed; if (this.dir === "right") nx += this.speed;
+                if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
+            }
+            checkCollision(nx, ny) {
+                if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
+                let pts = [{x:nx, y:ny}, {x:nx+this.w, y:ny}, {x:nx, y:ny+this.h}, {x:nx+this.w, y:ny+this.h}];
+                for (let p of pts) {
+                    let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
+                    if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS && [1,2,3,9].includes(map[cy][cx])) return true;
+                }
+                return false;
+            }
+            shoot() {
+                let now = Date.now();
+                if (now - this.lastShot > 400) { bullets.push(new Bullet(this.x+18, this.y+18, this.dir, this.id)); this.lastShot = now; }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, dir, ownerId) { this.x = x; this.y = y; this.dir = dir; this.ownerId = ownerId; this.speed = 7; this.active = true; }
+            draw() { ctx.fillStyle = this.ownerId === "p1" ? "#10b981" : "#3b82f6"; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
+            update() {
+                if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
+                if (this.dir === "left") this.x -= this.speed; if (this.dir === "right") this.x += this.speed;
+                if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
+                let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
+                if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
+                    if (map[cy][cx] === 1) { map[cy][cx] = 0; this.active = false; }
+                    else if (map[cy][cx] === 2) { this.active = false; }
+                    else if (map[cy][cx] === 9) { map[cy][cx] = 0; this.active = false; alert("Чеп талкаланды! Экөөң тең утулдуңар!"); location.reload(); }
+                }
+            }
+        }
+
+        p1 = new Tank(2*TILE_SIZE, 2*TILE_SIZE, "#10b981", "p1");
+        p2 = new Tank(18*TILE_SIZE, 12*TILE_SIZE, "#3b82f6", "p2");
+
+        window.addEventListener("keydown", e => keys[e.key] = true);
+        window.addEventListener("keyup", e => keys[e.key] = false);
+
+        function handleInput() {
+            if (keys["w"] || keys["W"]) { p1.dir = "up"; p1.move(); }
+            else if (keys["s"] || keys["S"]) { p1.dir = "down"; p1.move(); }
+            else if (keys["a"] || keys["A"]) { p1.dir = "left"; p1.move(); }
+            else if (keys["d"] || keys["D"]) { p1.dir = "right"; p1.move(); }
+            if (keys["f"] || keys["F"]) { p1.shoot(); keys["f"] = false; keys["F"] = false; }
+
+            if (keys["ArrowUp"]) { p2.dir = "up"; p2.move(); }
+            else if (keys["ArrowDown"]) { p2.dir = "down"; p2.move(); }
+            else if (keys["ArrowLeft"]) { p2.dir = "left"; p2.move(); }
+            else if (keys["ArrowRight"]) { p2.dir = "right"; p2.move(); }
+            if (keys[" "]) { p2.shoot(); keys[" "] = false; }
+        }
+
+        function update() {
+            handleInput();
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].update();
+                if (!bullets[i].active) { bullets.splice(i, 1); continue; }
+
+                if (bullets[i].ownerId === "p1") {
+                    if (bullets[i].x > p2.x && bullets[i].x < p2.x+36 && bullets[i].y > p2.y && bullets[i].y < p2.y+36) {
+                        p2.hp--; bullets.splice(i, 1); if(p2.hp <= 0) { alert("Оюнчу 1 ЖЕҢДИ!"); location.reload(); } break;
+                    }
+                } else if (bullets[i].ownerId === "p2") {
+                    if (bullets[i].x > p1.x && bullets[i].x < p1.x+36 && bullets[i].y > p1.y && bullets[i].y < p1.y+36) {
+                        p1.hp--; bullets.splice(i, 1); if(p1.hp <= 0) { alert("Оюнчу 2 ЖЕҢДИ!"); location.reload(); } break;
+                    }
+                }
+            }
+            document.getElementById("p1-hp").innerText = `${p1.hp} HP`;
+            document.getElementById("p2-hp").innerText = `${p2.hp} HP`;
+        }
+
+        function draw() {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            for (let r=0; r<ROWS; r++) {
+                for (let c=0; c<COLS; c++) {
+                    if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
+                }
+            }
+            p1.draw(); p2.draw(); for(let b of bullets) b.draw();
+        }
+
+        function loop() { update(); draw(); requestAnimationFrame(loop); }
+        loop();
+    </script>
+</body>
+</html>
