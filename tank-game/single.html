@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank Battle 2D - Advanced Singleplayer</title>
+    <title>Tank Battle 2D - BilimAl Edition</title>
     <style>
         * {
             box-sizing: border-box;
@@ -184,9 +184,9 @@
         const MAX_ENEMIES_ON_SCREEN = 4;
         let totalEnemiesThisRound = 10; let enemiesSpawned = 0; let lastEnemySpawn = 0;
 
-        // Раунд аралык билдирүү таймери (3 секунд)
+        // Пауза логикасы оңдолду (катып калбоо үчүн)
         let roundTransition = true;
-        let transitionTimer = 180; // 60fps * 3 = 180 кадр
+        let transitionTimer = 180; 
         let transitionText = "РАУНД 1";
 
         function initMap() {
@@ -206,7 +206,6 @@
                 }
             }
 
-            // Бүркүттүн кирпич чеби
             map[12][5] = TILE_BRICK; map[11][5] = TILE_BRICK; map[11][6] = TILE_BRICK; 
             map[11][7] = TILE_BRICK; map[12][7] = TILE_BRICK; 
             map[12][6] = TILE_BASE;
@@ -215,7 +214,7 @@
         const player = {
             x: 4 * TILE_SIZE + 3, y: 12 * TILE_SIZE + 3,
             size: 26, speed: 2, dir: 'up', moving: false,
-            lastFire: 0, fireCooldown: 400, spawnProtected: 0 // Кайра жаралгандагы коргоо убактысы
+            lastFire: 0, fireCooldown: 400, spawnProtected: 0 
         };
 
         function startTransition(text) {
@@ -228,7 +227,7 @@
             player.x = 4 * TILE_SIZE + 3;
             player.y = 12 * TILE_SIZE + 3;
             player.dir = 'up';
-            player.spawnProtected = 120; // 2 секунддук калкан
+            player.spawnProtected = 120; 
         }
 
         function createExplosion(x, y, color = '#ff4757', count = 12) {
@@ -243,14 +242,41 @@
         }
 
         function spawnBonus(x, y) {
-            if (Math.random() < 0.3) { // 30% мүмкүнчүлүк менен бонус түшөт
-                const types = ['star', 'shield']; // star - танк lvl өстүрөт, shield - өмүр берет
+            if (Math.random() < 0.4) { // 40% мүмкүнчүлүк менен бонус
+                const types = ['star', 'shield']; 
                 const type = types[Math.floor(Math.random() * types.length)];
-                bonuses.push({ x: x, y: y, size: 20, type: type, pulse: 0 });
+                bonuses.push({ x: x, y: y, size: 22, type: type, pulse: 0 });
             }
         }
 
-        // Башкаруу баскычтары
+        // Жылдызча ⭐ тартуу функциясы
+        function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+            let rot = Math.PI / 2 * 3;
+            let x = cx;
+            let y = cy;
+            let step = Math.PI / spikes;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy - outerRadius);
+            for (let i = 0; i < spikes; i++) {
+                x = cx + Math.cos(rot) * outerRadius;
+                y = cy + Math.sin(rot) * outerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+
+                x = cx + Math.cos(rot) * innerRadius;
+                y = cy + Math.sin(rot) * innerRadius;
+                ctx.lineTo(x, y);
+                rot += step;
+            }
+            ctx.lineTo(cx, cy - outerRadius);
+            ctx.closePath();
+            ctx.fillStyle = '#ffcc00';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.stroke();
+        }
+
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
@@ -323,17 +349,17 @@
         function update() {
             if (gameOver) return;
 
-            // 3 секунддук тыныгууну иштетүү
+            // Катып калбаш үчүн цикл ар дайым иштейт, болгону кыймыл токтоп турат
             if (roundTransition) {
                 transitionTimer--;
                 if (player.spawnProtected > 0) player.spawnProtected--;
                 if (transitionTimer <= 0) { roundTransition = false; }
-                return;
+                return; 
             }
 
             if (player.spawnProtected > 0) player.spawnProtected--;
 
-            // Оюнчунун кыймылы
+            // Оюнчу кыймылы
             let nextX = player.x; let nextY = player.y; player.moving = false;
             if (keys['ArrowUp'] || activeTouchDir === 'up') { player.dir = 'up'; nextY -= player.speed; player.moving = true; }
             else if (keys['ArrowDown'] || activeTouchDir === 'down') { player.dir = 'down'; nextY += player.speed; player.moving = true; }
@@ -343,13 +369,13 @@
             if (keys['Space']) playerFire();
             if (player.moving && !checkWallCollision(nextX, nextY, player.size)) { player.x = nextX; player.y = nextY; }
 
-            // Бонустарды чогултуу эффекти
+            // Бонустарды текшерүү
             bonuses.forEach((bonus, index) => {
-                bonus.pulse += 0.1;
+                bonus.pulse += 0.08;
                 if (player.x < bonus.x + bonus.size && player.x + player.size > bonus.x &&
                     player.y < bonus.y + bonus.size && player.y + player.size > bonus.y) {
                     
-                    createExplosion(bonus.x + bonus.size/2, bonus.y + bonus.size/2, '#00a8ff', 20);
+                    createExplosion(bonus.x + bonus.size/2, bonus.y + bonus.size/2, '#ffa500', 20);
                     if (bonus.type === 'star') {
                         score += 200;
                         if (tankLevel < 3) {
@@ -399,7 +425,7 @@
                 if (p.alpha <= 0) particles.splice(i, 1);
             }
 
-            // Октордун учушу
+            // Октор
             for (let bIdx = bullets.length - 1; bIdx >= 0; bIdx--) {
                 let b = bullets[bIdx]; b.x += b.vx; b.y += b.vy;
 
@@ -431,7 +457,7 @@
                         let enemy = enemies[eIdx];
                         if (b.x + b.w > enemy.x && b.x < enemy.x + enemy.size && b.y + b.h > enemy.y && b.y < enemy.y + enemy.size) {
                             createExplosion(enemy.x + enemy.size/2, enemy.y + enemy.size/2, '#ff4757', 20);
-                            spawnBonus(enemy.x, enemy.y); // Өлгөн танктын ордуна бонус таштоо
+                            spawnBonus(enemy.x, enemy.y); 
                             enemies.splice(eIdx, 1); hitEnemy = true; score += 100;
                             document.getElementById('score-val').innerText = score;
 
@@ -447,14 +473,13 @@
                     }
                     if (hitEnemy) { bullets.splice(bIdx, 1); continue; }
                 } else {
-                    // Душмандын огу оюнчуга тийсе (Коргоо калканы жок учурда гана)
                     if (player.spawnProtected <= 0 && b.x + b.w > player.x && b.x < player.x + player.size && b.y + b.h > player.y && b.y < player.y + player.size) {
                         createExplosion(player.x + player.size/2, player.y + player.size/2, '#2ed573', 25);
                         bullets.splice(bIdx, 1); lives--;
                         document.getElementById('lives-val').innerText = lives;
 
                         if (lives <= 0) { gameOver = true; alert("Танкыңыз талкаланды! Оюн бүттү."); } 
-                        else { startTransition("ТАНК ЖАРАЛДЫ!"); } // Өз ордунда 3 сек күтүп, калкан менен жаралат
+                        else { startTransition("ТАНК ЖАРАЛДЫ!"); } 
                         continue;
                     }
                 }
@@ -493,13 +518,25 @@
                 }
             }
 
-            // Бонустарды тартуу
+            // БОНУСТАРДЫ ТАРТУУ (ЖЫЛДЫЗЧА ⭐ ЖАНА КОРГОО)
             bonuses.forEach(bonus => {
                 ctx.save();
-                ctx.shadowBlur = Math.sin(bonus.pulse) * 8 + 8;
-                ctx.shadowColor = bonus.type === 'star' ? '#ffa500' : '#00a8ff';
-                ctx.fillStyle = bonus.type === 'star' ? '#ffcc00' : '#00a8ff';
-                ctx.fillRect(bonus.x, bonus.y, bonus.size, bonus.size);
+                let scale = 1 + Math.sin(bonus.pulse) * 0.1;
+                ctx.translate(bonus.x + bonus.size/2, bonus.y + bonus.size/2);
+                ctx.scale(scale, scale);
+
+                if (bonus.type === 'star') {
+                    // Кооз Алтын Жылдыз тартуу
+                    drawStar(0, 0, 5, bonus.size/2, bonus.size/4);
+                } else {
+                    // Калкан (Көк Коргоо)
+                    ctx.beginPath();
+                    ctx.arc(0, 0, bonus.size/2, 0, Math.PI*2);
+                    ctx.fillStyle = '#00a8ff'; ctx.fill();
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('🛡️', 0, 0);
+                }
                 ctx.restore();
             });
 
@@ -509,7 +546,7 @@
             if (tankLevel === 3) pColor = '#ffa500';
             drawTank(player.x, player.y, player.size, player.dir, pColor, '#fff');
 
-            // Оюнчунун коргоочу калканы (эффект)
+            // Оюнчунун калканы
             if (player.spawnProtected > 0) {
                 ctx.strokeStyle = '#00a8ff'; ctx.lineWidth = 3; ctx.beginPath();
                 ctx.arc(player.x + player.size/2, player.y + player.size/2, player.size - 2, 0, Math.PI*2);
@@ -529,7 +566,7 @@
                 ctx.fillRect(p.x, p.y, p.size, p.size); ctx.restore();
             });
 
-            // 3 СЕКУНДДУК ЭКРАН КҮТҮҮ ЖАЗУУСУ
+            // ЭКРАНДЫК КҮТҮҮ ТЕКСТИ
             if (roundTransition) {
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -542,7 +579,11 @@
             }
         }
 
-        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+        function gameLoop() { 
+            update(); 
+            draw(); 
+            requestAnimationFrame(gameLoop); // Бул жер дайыма иштейт, катып калбайт!
+        }
 
         initMap();
         startTransition("РАУНД 1");
