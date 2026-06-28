@@ -58,7 +58,6 @@
         let gameState = { score: 0, lives: 3, level: 1, maxEnemies: 5, enemiesDefeated: 0, isTransitioning: false, transitionTimer: 0 };
         let keys = {}; let activeTouchDir = null; let enemies = []; let bullets = []; let particles = []; let bonuses = []; let enemyTimer = 0; let player;
 
-        // Картаны туруктуу сактоо жана чептин (9) айланасындагы каталарды алдын алуу
         const initialMap = [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
@@ -84,29 +83,25 @@
             }
             draw() {
                 ctx.save();
-                // Деңгээлге жараша танктын түсү өзгөрөт
                 if (this.side === "friendly") {
-                    if (this.level === 1) ctx.fillStyle = "#10b981"; // Жашыл
-                    else if (this.level === 2) ctx.fillStyle = "#3b82f6"; // Көк
-                    else ctx.fillStyle = "#a855f7"; // Сүрмө (Фиолетовый)
+                    if (this.level === 1) ctx.fillStyle = "#10b981"; 
+                    else if (this.level === 2) ctx.fillStyle = "#3b82f6"; 
+                    else ctx.fillStyle = "#a855f7"; 
                 } else {
-                    ctx.fillStyle = "#ef4444"; // Душман дайым кызыл
+                    ctx.fillStyle = "#ef4444"; 
                 }
                 
-                // Танктын негизги корпусу
                 ctx.fillRect(this.x, this.y, this.w, this.h);
                 
-                // Деңгээлине жараша кооздоочу сызыктар (Броня эффекти)
                 if (this.level >= 2 && this.side === "friendly") {
                     ctx.strokeStyle = "#fff";
                     ctx.lineWidth = 2;
                     ctx.strokeRect(this.x + 4, this.y + 4, this.w - 8, this.h - 8);
                 }
 
-                // Танктын сопу (Пушкасы)
                 ctx.fillStyle = "#fff";
                 let pw = 6, ph = 12;
-                if (this.level === 3) { pw = 10; ph = 16; } // Кош пушка сыяктуу жоон болот
+                if (this.level === 3) { pw = 10; ph = 16; } 
 
                 if(this.dir === "up") ctx.fillRect(this.x + this.w/2 - pw/2, this.y - ph + 6, pw, ph);
                 if(this.dir === "down") ctx.fillRect(this.x + this.w/2 - pw/2, this.y + this.h - 6, pw, ph);
@@ -117,7 +112,7 @@
             move() {
                 if (gameState.isTransitioning) return;
                 let nx = this.x, ny = this.y;
-                let curSpeed = this.speed + (this.level * 0.5); // Деңгээли өскөндө ылдамыраак жүрөт
+                let curSpeed = this.speed + (this.level * 0.5); 
                 if (this.dir === "up") ny -= curSpeed; if (this.dir === "down") ny += curSpeed;
                 if (this.dir === "left") nx -= curSpeed; if (this.dir === "right") nx += curSpeed;
                 if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
@@ -137,7 +132,7 @@
             shoot() {
                 if (gameState.isTransitioning) return;
                 let now = Date.now();
-                let cd = 300 - (this.level * 50); // Деңгээл өскөндө бат-баттан атат
+                let cd = 300 - (this.level * 50); 
                 if (now - this.lastShot > cd) { 
                     bullets.push(new Bullet(this.x+17, this.y+17, this.dir, this.side, this.level)); 
                     this.lastShot = now; 
@@ -148,13 +143,13 @@
         class Bullet {
             constructor(x, y, dir, side, lvl = 1) { 
                 this.x = x; this.y = y; this.dir = dir; this.side = side; 
-                this.speed = 5 + (lvl * 2); // Октун ылдамдыгы деңгээлине жараша
+                this.speed = 5 + (lvl * 2); 
                 this.active = true; this.lvl = lvl;
             }
             draw() { 
                 ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; 
                 ctx.beginPath(); 
-                ctx.arc(this.x, this.y, 3 + this.lvl, 0, Math.PI*2); // Октун көлөмү да өзгөрөт
+                ctx.arc(this.x, this.y, 3 + this.lvl, 0, Math.PI*2); 
                 ctx.fill(); 
             }
             update() {
@@ -170,7 +165,6 @@
             }
         }
 
-        // Бонус жылдызча классы
         class Bonus {
             constructor(x, y) { this.x = x; this.y = y; this.w = 24; this.h = 24; this.pulse = 0; }
             draw() {
@@ -210,8 +204,15 @@
         function spawnEnemy() {
             if (gameState.isTransitioning) return;
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
-            // Катып калууну болтурбоо үчүн аянттын четине гана чыгаруу
-            enemies.push(new Tank(Math.random() > 0.5 ? TILE_SIZE : 19*TILE_SIZE, TILE_SIZE, "enemy"));
+            
+            // Душман коргоо дубалдарынын ичинде калып калбашы үчүн ачык бош жерлерге чыгаруу
+            let spawnPoints = [
+                {x: TILE_SIZE, y: TILE_SIZE},
+                {x: 10 * TILE_SIZE, y: TILE_SIZE},
+                {x: 19 * TILE_SIZE, y: TILE_SIZE}
+            ];
+            let pt = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            enemies.push(new Tank(pt.x + 3, pt.y + 3, "enemy"));
         }
 
         function startNextLevelTransition() {
@@ -251,7 +252,7 @@
                     gameState.level++;
                     gameState.enemiesDefeated = 0;
                     gameState.maxEnemies += 2;
-                    map = JSON.parse(JSON.stringify(initialMap)); // Картаны коопсуз жаңылоо
+                    map = JSON.parse(JSON.stringify(initialMap)); // Картаны толугу менен баштапкы абалына коопсуз кайтаруу
                     player.x = 6*TILE_SIZE+3; player.y = 13*TILE_SIZE+3; player.dir = "up";
                 }
                 return;
@@ -268,12 +269,11 @@
 
             enemyTimer++; if(enemyTimer > 120) { spawnEnemy(); enemyTimer = 0; }
 
-            // Бонустарды жегенди текшерүү
             for (let i = bonuses.length - 1; i >= 0; i--) {
                 let b = bonuses[i];
                 let dist = Math.hypot((player.x + 17) - b.x, (player.y + 17) - b.y);
                 if (dist < 25) {
-                    if (player.level < 3) player.level++; // Танктын деңгээлин көтөрүү
+                    if (player.level < 3) player.level++; 
                     gameState.score += 50;
                     bonuses.splice(i, 1);
                 }
@@ -301,7 +301,6 @@
                         if (bullets[i].x > enemies[j].x && bullets[i].x < enemies[j].x+34 && bullets[i].y > enemies[j].y && bullets[i].y < enemies[j].y+34) {
                             particles.push(new Particle(enemies[j].x + 17, enemies[j].y + 17));
                             
-                            // 30% пайыздык мүмкүнчүлүк менен Жылдыз бонусун түшүрүү
                             if (Math.random() < 0.3) {
                                 bonuses.push(new Bonus(enemies[j].x + 17, enemies[j].y + 17));
                             }
@@ -313,7 +312,7 @@
                     if (bullets[i].x > player.x && bullets[i].x < player.x+34 && bullets[i].y > player.y && bullets[i].y < player.y+34) {
                         gameState.lives--; 
                         bullets.splice(i, 1); 
-                        if (player.level > 1) player.level--; // Өлгөндө танктын күчү бир деңгээлге түшөт
+                        if (player.level > 1) player.level--; 
                         if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
                     }
                 }
@@ -322,6 +321,7 @@
             for (let e of enemies) { e.move(); if(Math.random()<0.015) e.shoot(); }
             for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if(particles[i].life <= 0) particles.splice(i, 1); }
 
+            // Раунддун аякташын текшерүүнү коопсуз кылуу
             if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0 && !gameState.isTransitioning) {
                 startNextLevelTransition();
             }
