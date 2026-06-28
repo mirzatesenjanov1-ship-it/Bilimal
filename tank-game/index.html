@@ -72,6 +72,38 @@
             background: #000;
         }
 
+        /* ДЕНГЭЭЛ БАШТАЛГАНДАГЫ ЭКРАНДЫН ОРТОСУНДАГЫ ЖАЗУУ */
+        .level-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(19, 25, 32, 0.95);
+            border: 3px solid #00e5ff;
+            padding: 20px 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.5);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+            pointer-events: none;
+            display: none;
+        }
+        .level-banner.show {
+            display: block;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .level-banner h2 {
+            color: #00e5ff;
+            font-size: 32px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+        }
+        .level-banner p {
+            color: #a7f3d0;
+            font-size: 16px;
+        }
+
         /* ТЕЛЕФОН ҮЧҮН БАШКАРУУ ПАНЕЛИ */
         .mobile-controls {
             display: flex;
@@ -98,7 +130,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            active-background: #374151;
         }
         .control-btn:active {
             background: #059669;
@@ -129,13 +160,6 @@
             background: #cc0044;
             transform: scale(0.95);
         }
-
-        /* Компьютерде телефондун баскычтарын жашырбоо, бирок адаптивдүү кылуу */
-        @media (min-width: 900px) {
-            .mobile-controls {
-                display: flex; /* Экранда дайыма турат */
-            }
-        }
     </style>
 </head>
 <body>
@@ -151,6 +175,10 @@
     </div>
 
     <div class="game-container">
+        <div class="level-banner" id="levelBanner">
+            <h2 id="banner-title">ДЕҢГЭЭЛ 1</h2>
+            <p>Даяр болуңуз! Душмандар чабуулга өтүүдө...</p>
+        </div>
         <canvas id="gameCanvas" width="840" height="560"></canvas>
     </div>
 
@@ -171,8 +199,8 @@
         const ctx = canvas.getContext("2d");
 
         const TILE_SIZE = 40; 
-        const COLS = 21; // 840 / 40
-        const ROWS = 14; // 560 / 40
+        const COLS = 21; 
+        const ROWS = 14; 
 
         let gameState = {
             score: 0,
@@ -180,12 +208,18 @@
             level: 1,
             maxEnemiesThisLevel: 5,
             enemiesDefeated: 0,
-            running: true
+            running: true,
+            isTransitioning: false // Деңгээл алмашып жаткандагы пауза үчүн флаг
         };
 
         let keys = {};
+        let activeTouchDir = null;
+        let particles = [];
+        let enemies = [];
+        let bullets = [];
+        let enemyTimer = 0;
 
-        // Классикалык туруктуу карта дизайны (Сүрөттөгүдөй курулат)
+        // Карта дизайны
         let map = [
             [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
             [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
@@ -200,35 +234,55 @@
             [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
             [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
             [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] // 9 - База
+            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0]
         ];
+
+        // Жарылуу бөлүкчөлөрү (Particles)
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 4;
+                this.vy = (Math.random() - 0.5) * 4;
+                this.radius = Math.random() * 3 + 1;
+                this.alpha = 1;
+                this.color = color;
+            }
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.alpha -= 0.03;
+            }
+        }
+
+        function createExplosion(x, y, color = "#ff5500", count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+            if (navigator.vibrate) navigator.vibrate(50);
+        }
 
         class Tank {
             constructor(x, y, type, side) {
-                this.x = x;
-                this.y = y;
-                this.w = TILE_SIZE - 4;
-                this.h = TILE_SIZE - 4;
-                this.dir = "up";
-                this.type = type;
-                this.side = side;
+                this.x = x; this.y = y;
+                this.w = TILE_SIZE - 4; this.h = TILE_SIZE - 4;
+                this.dir = "up"; this.type = type; this.side = side;
                 
                 if (type === "player") {
-                    this.speed = 3;
-                    this.hp = 1;
-                    this.color = "#10b981";
+                    this.speed = 3; this.hp = 1; this.color = "#10b981";
                 } else if (type === "fast") {
-                    this.speed = 4;
-                    this.hp = 1;
-                    this.color = "#f59e0b";
+                    this.speed = 4; this.hp = 1; this.color = "#f59e0b";
                 } else if (type === "heavy") {
-                    this.speed = 1.5;
-                    this.hp = 3;
-                    this.color = "#ef4444";
+                    this.speed = 1.5; this.hp = 3; this.color = "#ef4444";
                 } else {
-                    this.speed = 2;
-                    this.hp = 1;
-                    this.color = "#3b82f6";
+                    this.speed = 2; this.hp = 1; this.color = "#3b82f6";
                 }
                 this.shield = 60; 
                 this.lastShot = 0;
@@ -242,7 +296,6 @@
                     ctx.arc(this.x + this.w/2, this.y + this.h/2, TILE_SIZE/2, 0, Math.PI*2);
                     ctx.stroke();
                 }
-
                 ctx.fillStyle = this.color;
                 ctx.fillRect(this.x, this.y, this.w, this.h);
 
@@ -255,17 +308,15 @@
             }
 
             move() {
-                let nx = this.x;
-                let ny = this.y;
-
+                if (gameState.isTransitioning) return; // Деңгээл алмашып жатканда танктар жылбайт
+                let nx = this.x; let ny = this.y;
                 if (this.dir === "up") ny -= this.speed;
                 if (this.dir === "down") ny += this.speed;
                 if (this.dir === "left") nx -= this.speed;
                 if (this.dir === "right") nx += this.speed;
 
                 if (!this.checkCollision(nx, ny)) {
-                    this.x = nx;
-                    this.y = ny;
+                    this.x = nx; this.y = ny;
                 } else if (this.side === "enemy") {
                     const dirs = ["up", "down", "left", "right"];
                     this.dir = dirs[Math.floor(Math.random() * dirs.length)];
@@ -274,15 +325,9 @@
 
             checkCollision(nx, ny) {
                 if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
-
-                let points = [
-                    {x: nx, y: ny}, {x: nx + this.w, y: ny},
-                    {x: nx, y: ny + this.h}, {x: nx + this.w, y: ny + this.h}
-                ];
-
+                let points = [{x: nx, y: ny}, {x: nx + this.w, y: ny}, {x: nx, y: ny + this.h}, {x: nx + this.w, y: ny + this.h}];
                 for (let pt of points) {
-                    let cx = Math.floor(pt.x / TILE_SIZE);
-                    let cy = Math.floor(pt.y / TILE_SIZE);
+                    let cx = Math.floor(pt.x / TILE_SIZE); let cy = Math.floor(pt.y / TILE_SIZE);
                     if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) {
                         let b = map[cy][cx];
                         if (b === 1 || b === 2 || b === 3 || b === 9) return true;
@@ -292,24 +337,30 @@
             }
 
             shoot() {
+                if (gameState.isTransitioning) return; // Пауза учурунда ок атылбайт
                 let now = Date.now();
                 if (now - this.lastShot > (this.type === "player" ? 350 : 1500)) {
-                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side));
+                    let bulletPower = (this.side === "friendly") ? gameState.level : 1;
+                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side, bulletPower));
                     this.lastShot = now;
                 }
             }
         }
 
         class Bullet {
-            constructor(x, y, dir, side) {
+            constructor(x, y, dir, side, power = 1) {
                 this.x = x; this.y = y; this.dir = dir; this.side = side;
                 this.speed = 6; this.r = 3; this.active = true;
+                this.power = power; 
             }
             draw() {
                 ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055";
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); 
+                ctx.arc(this.x, this.y, this.r + (this.power > 1 ? 1 : 0), 0, Math.PI*2); 
+                ctx.fill();
             }
             update() {
+                if (gameState.isTransitioning) return; // Октор да токтоп турат
                 if (this.dir === "up") this.y -= this.speed;
                 if (this.dir === "down") this.y += this.speed;
                 if (this.dir === "left") this.x -= this.speed;
@@ -319,11 +370,13 @@
                     this.active = false; return;
                 }
 
-                let cx = Math.floor(this.x / TILE_SIZE);
-                let cy = Math.floor(this.y / TILE_SIZE);
+                let cx = Math.floor(this.x / TILE_SIZE); let cy = Math.floor(this.y / TILE_SIZE);
                 if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) {
                     let b = map[cy][cx];
-                    if (b === 1) { map[cy][cx] = 0; this.active = false; }
+                    if (b === 1) { 
+                        map[cy][cx] = 0; this.active = false; 
+                        createExplosion(this.x, this.y, "#b45309", 6);
+                    }
                     else if (b === 2) { this.active = false; }
                     else if (b === 9) { map[cy][cx] = 0; this.active = false; gameOver(); }
                 }
@@ -331,11 +384,35 @@
         }
 
         let player = new Tank(6 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "friendly");
-        let enemies = [];
-        let bullets = [];
-        let enemyTimer = 0;
+
+        // 2 СЕКУНДА ТОКТОП, КИЙИНКИ ДЕҢГЭЭЛГЕ ӨТҮҮ ФУНКЦИЯСЫ
+        function startNextLevel() {
+            gameState.isTransitioning = true;
+            bullets = []; // Экрандагы эски окторду тазалоо
+            
+            // Баннерди экранга чыгаруу
+            const banner = document.getElementById("levelBanner");
+            document.getElementById("banner-title").innerText = `ДЕҢГЭЭЛ ${gameState.level}`;
+            banner.classList.add("show");
+
+            // Ортодо салют эффект чачыратуу
+            createExplosion(canvas.width/2, canvas.height/2, "#00e5ff", 25);
+
+            // 2 секунддан кийин оюнду кайра баштоо
+            setTimeout(() => {
+                banner.classList.remove("show");
+                gameState.isTransitioning = false;
+                gameState.enemiesDefeated = 0;
+                gameState.maxEnemiesThisLevel = 5 + (gameState.level * 2); // Кийинки деңгээлде душмандар көбөйөт
+                player.x = 6 * TILE_SIZE + 2;
+                player.y = 13 * TILE_SIZE + 2;
+                player.shield = 80; // Жаңы деңгээлде коргоо калканы берилет
+                spawnEnemy();
+            }, 2000); // 2000 миллисекунд = 2 секунд
+        }
 
         function spawnEnemy() {
+            if (gameState.isTransitioning) return;
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemiesThisLevel) return;
             const pts = [{x:0, y:0}, {x:10*TILE_SIZE, y:0}, {x:20*TILE_SIZE, y:0}];
             let p = pts[Math.floor(Math.random() * pts.length)];
@@ -343,33 +420,27 @@
             enemies.push(new Tank(p.x+2, p.y+2, type, "enemy"));
         }
 
-        // КЛАВИАТУРА АРКЫЛУУ БАШКАРУУ (ПК)
         window.addEventListener("keydown", e => { keys[e.key] = true; });
         window.addEventListener("keyup", e => { keys[e.key] = false; });
 
-        // ТЕЛЕФОНДО СЕНСОРДУК БАШКАРУУ
-        let activeTouchDir = null;
         function setupMobileControls() {
             const setupBtn = (id, dir) => {
                 const btn = document.getElementById(id);
                 btn.addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
                 btn.addEventListener("touchend", (e) => { e.preventDefault(); if(activeTouchDir === dir) activeTouchDir = null; });
             };
-            setupBtn("pad-up", "up");
-            setupBtn("pad-down", "down");
-            setupBtn("pad-left", "left");
-            setupBtn("pad-right", "right");
+            setupBtn("pad-up", "up"); setupBtn("pad-down", "down");
+            setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
 
             document.getElementById("pad-fire").addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                player.shoot();
+                e.preventDefault(); player.shoot();
             });
         }
 
         function handleInput() {
+            if (gameState.isTransitioning) return;
             if (activeTouchDir) {
-                player.dir = activeTouchDir;
-                player.move();
+                player.dir = activeTouchDir; player.move();
             } else {
                 if (keys["ArrowUp"] || keys["w"]) { player.dir = "up"; player.move(); }
                 else if (keys["ArrowDown"] || keys["s"]) { player.dir = "down"; player.move(); }
@@ -388,6 +459,31 @@
             handleInput();
             if (player.shield > 0) player.shield--;
 
+            // Бөлүкчөлөрдү жаңыртуу (пауза убагында да сулуу көрүнүп турушу үчүн)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                if (particles[i].alpha <= 0) particles.splice(i, 1);
+            }
+
+            if (gameState.isTransitioning) return; // Эгер деңгээл алмашып жатса, төмөнкү логика иштебейт
+
+            // ОКТОРДУН КАГЫЛЫШУУСУ
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (i !== j && bullets[i] && bullets[j] && bullets[i].side !== bullets[j].side) {
+                        let b1 = bullets[i]; let b2 = bullets[j];
+                        let dist = Math.hypot(b1.x - b2.x, b1.y - b2.y);
+                        if (dist < (b1.r + b2.r + 4)) {
+                            createExplosion((b1.x + b2.x)/2, (b1.y + b2.y)/2, "#ffff00", 5);
+                            if (b1.power === b2.power) { b1.active = false; b2.active = false; } 
+                            else if (b1.power > b2.power) { b2.active = false; b1.power -= b2.power; } 
+                            else { b1.active = false; b2.power -= b1.power; }
+                        }
+                    }
+                }
+            }
+
+            // Октордун танктарга тийүүсү
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i]; b.update();
                 if (!b.active) { bullets.splice(i, 1); continue; }
@@ -395,6 +491,7 @@
                 if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (rectCollision({x:b.x-b.r, y:b.y-b.r, w:b.r*2, h:b.r*2}, enemies[j])) {
+                            createExplosion(enemies[j].x + 18, enemies[j].y + 18, "#ff3300", 15);
                             enemies.splice(j, 1); b.active = false;
                             gameState.score += 10; gameState.enemiesDefeated++;
                             break;
@@ -402,6 +499,7 @@
                     }
                 } else {
                     if (rectCollision({x:b.x-b.r, y:b.y-b.r, w:b.r*2, h:b.r*2}, player) && player.shield <= 0) {
+                        createExplosion(player.x + 18, player.y + 18, "#ff0055", 20);
                         gameState.lives--; b.active = false;
                         if (gameState.lives <= 0) gameOver();
                         else { player.x = 6*TILE_SIZE+2; player.y = 13*TILE_SIZE+2; player.shield = 80; }
@@ -417,10 +515,11 @@
             enemyTimer++;
             if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
 
-            if (gameState.enemiesDefeated >= gameState.maxEnemiesThisLevel) {
+            // ДЕҢГЭЭЛ ТОЛУК СҮРҮЛГӨНДӨ
+            if (gameState.enemiesDefeated >= gameState.maxEnemiesThisLevel && enemies.length === 0) {
                 gameState.level++;
-                gameState.enemiesDefeated = 0;
                 enemies = [];
+                startNextLevel(); // 2 секунддук токтоону чакыруу
             }
             updateUI();
         }
@@ -440,13 +539,14 @@
             player.draw();
             for (let e of enemies) e.draw();
             for (let b of bullets) b.draw();
+            for (let p of particles) p.draw(); 
         }
 
         function updateUI() {
             document.getElementById("score-val").innerText = gameState.score;
             document.getElementById("lives-val").innerText = gameState.lives;
             document.getElementById("level-val").innerText = gameState.level;
-            document.getElementById("enemies-val").innerText = gameState.maxEnemiesThisLevel - gameState.enemiesDefeated;
+            document.getElementById("enemies-val").innerText = Math.max(0, gameState.maxEnemiesThisLevel - gameState.enemiesDefeated);
         }
 
         function gameOver() {
@@ -461,7 +561,9 @@
         }
 
         setupMobileControls();
-        spawnEnemy();
+        
+        // Оюнда биринчи деңгээлди да кооз баннер менен баштоо
+        startNextLevel(); 
         gameLoop();
     </script>
 </body>
