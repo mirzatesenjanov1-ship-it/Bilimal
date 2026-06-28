@@ -93,7 +93,7 @@
             font-size: 14px;
         }
 
-        /* ОЮН ЭКРАНЫ */
+        /* ОЮН АЯНТЧАСЫ */
         #game-wrapper {
             display: none;
             flex-direction: column;
@@ -170,7 +170,7 @@
             margin-bottom: 5px;
         }
 
-        /* БАШКАРУУ ПАНЕЛИ */
+        /* ТЕЛЕФОН ҮЧҮН БАШКАРУУ */
         .mobile-controls {
             display: flex;
             justify-content: space-between;
@@ -221,11 +221,11 @@
 
     <div id="menu-container">
         <h1>TANK BATTLE 2D</h1>
-        <p class="subtitle">Идея автору: BilimAl Санариптик Платформасы</p>
+        <p class="subtitle">Санариптик Билим Берүү Мейкиндиги — BilimAl</p>
 
         <button class="mode-btn" onclick="selectMode('single')">
             1. Жалгыз ойноо (Singleplayer)
-            <span>Чепти душмандардан коргоо, бонустар жана танк эволюциясы.</span>
+            <span>Чепти душмандардан коргоо, цемент бонустары жана танк эволюциясы.</span>
         </button>
 
         <button class="mode-btn" onclick="selectMode('coop')">
@@ -244,9 +244,9 @@
         </button>
 
         <div id="clan-panel">
-            <div class="clan-info"><strong>Кландан аты:</strong> <span id="clan-name">Кыргыз Хандыгы</span></div>
+            <div class="clan-info"><strong>Кландын аты:</strong> <span id="clan-name">Кыргыз Хандыгы</span></div>
             <div class="clan-info"><strong>Клан Деңгээли:</strong> <span id="clan-level">Lvl 1</span></div>
-            <div class="clan-info"><strong>Дубалдын деңгээли:</strong> <span id="clan-wall" style="color:#00e5ff">Жөнөкөй кыш</span></div>
+            <div class="clan-info"><strong>Коргонуу дубалы:</strong> <span id="clan-wall" style="color:#00e5ff">Жөнөкөй кыш</span></div>
             <button style="width:100%; padding:10px; background:#10b981; border:none; border-radius:5px; color:white; font-weight:bold; cursor:pointer; margin-top:5px;" onclick="startClanMatch()">Кландык Согушту Баштап Сыйлык Ал!</button>
         </div>
     </div>
@@ -258,7 +258,7 @@
                 <div class="stat-item">Упай: <span id="score-val">0</span></div>
                 <div class="stat-item">Өмүр: <span id="lives-val">3</span></div>
                 <div class="stat-item">Деңгээл/Раунд: <span id="level-val">1</span></div>
-                <div class="stat-item">Танк Күчү: <span id="tank-lvl-val">P1: Lvl 1</span></div>
+                <div class="stat-item">Танктар: <span id="tank-lvl-val">P1: Lvl 1</span></div>
             </div>
         </div>
 
@@ -294,6 +294,7 @@
 
         let currentMode = "single";
         let isGameRunning = false;
+        let gameLoopId = null;
 
         let gameState = {
             score: 0, lives: 3, level: 1,
@@ -301,7 +302,7 @@
             isTransitioning: false, cementTimer: 0
         };
 
-        // Клан маалыматтарын LocalStorage-до сактоо
+        // Кландык маалыматты сактоо
         let clanLevel = parseInt(localStorage.getItem("clan_lvl")) || 1;
         let clanScore = parseInt(localStorage.getItem("clan_score")) || 0;
 
@@ -314,7 +315,6 @@
         let enemyTimer = 0;
         let player1, player2;
 
-        // Базалык Карта түзүмү
         let map = [];
         function resetMap() {
             map = [
@@ -331,11 +331,12 @@
                 [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
                 [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
                 [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,1,9,1,0,1,9,1,0,0,0,0,0,0,0] // 9 - Чептердин орду
+                [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] // 9 - Бүркүт/Штаб
             ];
-            // Режимге жараша чептин дубалдарын ыңгайлаштыруу
+            
+            // Кландык согушта чептин деңгээлин жөндөө
             if(currentMode === "clan") {
-                let wallType = clanLevel >= 3 ? 2 : 1; // Клан 3 болгондо чеп дайыма бетон болот
+                let wallType = clanLevel >= 3 ? 2 : 1; 
                 map[12][7] = wallType; map[12][8] = wallType; map[12][9] = wallType;
                 map[13][7] = wallType;                        map[13][9] = wallType;
             } else {
@@ -495,8 +496,6 @@
 
             document.getElementById("menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
-            
-            // Башкаруу баскычтарын жөндөө
             document.getElementById("pad-fire2").style.display = (mode === "coop" || mode === "pvp") ? "block" : "none";
 
             isGameRunning = true;
@@ -513,6 +512,7 @@
 
         function exitToMenu() {
             isGameRunning = false;
+            if(gameLoopId) cancelAnimationFrame(gameLoopId);
             document.getElementById("game-wrapper").style.display = "none";
             document.getElementById("menu-container").style.display = "block";
         }
@@ -526,7 +526,7 @@
             if (currentMode === "coop") {
                 player2 = new Tank(14 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "friendly", "p2");
             } else if (currentMode === "pvp") {
-                player2 = new Tank(14 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "enemy", "p2"); // Дуэльде P2 душман болот
+                player2 = new Tank(14 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "enemy", "p2");
             } else {
                 player2 = null;
             }
@@ -544,7 +544,7 @@
         }
 
         function spawnEnemy() {
-            if (currentMode === "pvp") return; // Дуэльде боттор чыкпайт
+            if (currentMode === "pvp") return;
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
             const pts = [{x:0, y:0}, {x:10*TILE_SIZE, y:0}, {x:20*TILE_SIZE, y:0}];
             let p = pts[Math.floor(Math.random() * pts.length)];
@@ -555,7 +555,6 @@
         window.addEventListener("keyup", e => { keys[e.key] = false; });
 
         function setupControls() {
-            // Телефондук экран баскычтары (Player 1 үчүн)
             const setupBtn = (id, dir) => {
                 document.getElementById(id).addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
                 document.getElementById(id).addEventListener("touchend", (e) => { e.preventDefault(); if(activeTouchDir === dir) activeTouchDir = null; });
@@ -567,7 +566,6 @@
         }
 
         function handleInput() {
-            // PLAYER 1 (W, A, S, D + F же Телефон баскычтары)
             if (activeTouchDir) { player1.dir = activeTouchDir; player1.move(); } 
             else {
                 if (keys["w"] || keys["W"]) { player1.dir = "up"; player1.move(); }
@@ -577,7 +575,6 @@
                 if (keys["f"] || keys["F"]) player1.shoot();
             }
 
-            // PLAYER 2 (Жебелер + Space)
             if (player2) {
                 if (keys["ArrowUp"]) { player2.dir = "up"; player2.move(); }
                 else if (keys["ArrowDown"]) { player2.dir = "down"; player2.move(); }
@@ -603,7 +600,6 @@
                 if (gameState.cementTimer === 0) toggleBaseDefense(false);
             }
 
-            // Бонустарды жыйноо
             for (let i = bonuses.length - 1; i >= 0; i--) {
                 bonuses[i].timer--;
                 let takenBy = null;
@@ -621,12 +617,10 @@
                 if (bonuses[i].timer <= 0) bonuses.splice(i, 1);
             }
 
-            // Окторду текшерүү
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i]; b.update();
                 if (!b.active) { bullets.splice(i, 1); continue; }
 
-                // Дуэль режими (PvP) логикасы
                 if (currentMode === "pvp") {
                     if (b.owner === "p1" && rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, player2)) {
                         createExplosion(player2.x, player2.y, "#ff0000", 15);
@@ -639,7 +633,6 @@
                     continue;
                 }
 
-                // Кадимки жана Кландык режимдин логикасы
                 if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, enemies[j])) {
@@ -654,7 +647,6 @@
                         }
                     }
                 } else {
-                    // Душмандын огу оюнчуларга тийгенде
                     if (rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, player1) && player1.shield <= 0) {
                         gameState.lives--; b.active = false;
                         if (gameState.lives <= 0) gameOver();
@@ -666,7 +658,6 @@
                 }
             }
 
-            // Душмандарды жылдыруу
             for (let enemy of enemies) {
                 enemy.move();
                 if (Math.random() < 0.015) enemy.shoot();
@@ -676,7 +667,6 @@
                 enemyTimer++;
                 if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
 
-                // Раундду утуп кийинкиге өтүү
                 if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) {
                     gameState.level++;
                     gameState.enemiesDefeated = 0;
@@ -686,7 +676,7 @@
                         clanScore += 100;
                         if(clanScore >= 300) { clanLevel++; clanScore = 0; localStorage.setItem("clan_lvl", clanLevel); }
                         localStorage.setItem("clan_score", clanScore);
-                        triggerPopupBanner("КЛАНДЫК ЖЕҢИШ!", "Кланга сыйлык берилди жана дубал күчөдү!");
+                        triggerPopupBanner("КЛАНДЫК ЖЕҢИШ!", "Клан дубалы бекемделди!");
                     } else {
                         triggerPopupBanner(`РАУНД ${gameState.level}`, "Даяр болуңуз!");
                     }
@@ -731,7 +721,8 @@
         function gameOver() { isGameRunning = false; alert("Оюн Бүттү! Упайыңыз: " + gameState.score); exitToMenu(); }
 
         function gameLoop() {
-            update(); draw(); requestAnimationFrame(gameLoop);
+            if(isGameRunning) { update(); draw(); }
+            gameLoopId = requestAnimationFrame(gameLoop);
         }
 
         setupControls();
