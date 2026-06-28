@@ -6,7 +6,7 @@
     <title>Singleplayer - Tank Battle</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { background-color: #0c0f12; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; overflow: hidden; }
+        body { background-color: #0c0f12; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; overflow-y: auto; }
         .top-bar { width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #131920; border-radius: 10px 10px 0 0; border: 1px solid #1f2937; }
         .back-btn { background: #ef4444; color: #fff; padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; font-size: 14px; }
         .stats { display: flex; gap: 15px; font-size: 14px; font-weight: bold; }
@@ -22,7 +22,38 @@
         .btn-right { grid-column: 3; grid-row: 2; }
         .btn-down { grid-column: 2; grid-row: 3; }
         .fire-btn { width: 80px; height: 80px; color: white; font-size: 16px; font-weight: bold; border-radius: 50%; border: none; background: #ff0055; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); cursor: pointer; }
+
+        /* =========================================================
+           GOOGLE ADSENSE РЕКЛАМА БЛОГУ ҮЧҮН СТИЛЬ
+        ============================================================ */
+        .adsense-container {
+            width: 100%;
+            max-width: 840px;
+            margin-top: 20px;
+            padding: 10px;
+            background: #131920;
+            border: 1px dashed #374151;
+            border-radius: 8px;
+            text-align: center;
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .ads-label {
+            font-size: 11px;
+            color: #4b5563;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
     </style>
+
+    <!-- 
+      ЖАРНАМА: Бул жерге Google AdSense берген негизги скрипт кодун кошосуз:
+      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+    -->
 </head>
 <body>
 
@@ -50,6 +81,28 @@
         <button class="fire-btn" id="pad-fire">FIRE</button>
     </div>
 
+    <!-- =========================================================
+       GOOGLE ADSENSE РЕКЛАМА БЛОГУ (УШУЛ ЖЕРГЕ ЖАНЫ ОНЛАЙН РЕКЛАМА КҮЙӨТ)
+    ============================================================ */ -->
+    <div class="adsense-container">
+        <div class="ads-label">Жарнама / Реклама</div>
+        
+        <!-- Сиздин Google AdSense Дисплей кодуңуз ушул жерге коюлат: -->
+        <!-- 
+        <ins class="adsbygoogle"
+             style="display:block; min-width:300px; max-width:728px; width:100%; height:90px"
+             data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+             data-ad-slot="YYYYYYYYYY"
+             data-ad-format="horizontal"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script> 
+        -->
+        
+        <div style="color: #4b5563; font-size: 13px;">AdSense баннери ушул жерде көрүнөт</div>
+    </div>
+
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
@@ -59,39 +112,35 @@
         let keys = {}; let activeTouchDir = null; let enemies = []; let bullets = []; let particles = []; let bonuses = []; let enemyTimer = 0; let player;
         let map = [];
 
-        // Чеп ордунда туруктуу сакталышы үчүн карта генерациясын оңдоо
         function generateRandomMap() {
             let newMap = [];
             for (let r = 0; r < ROWS; r++) {
                 let row = [];
                 for (let c = 0; c < COLS; c++) {
-                    // Сырткы дубалдар жана чектер
                     if (r === 0 || r === 13 || c === 0 || c === 20) {
                         row.push(0); continue;
                     }
 
-                    // ЧЕПТИ КАЙРА КОШУУ ЖАНА КОРГОО (13-саптын 10-колонкасы)
-                    if (r === 13 && c === 10) { row.push(9); continue; } // Бул жерде чеп (сары тегерек) болот
-                    // Чептин тегерегиндеги коргоочу кирпичтер (П-тамгасы сыяктуу курчоо)
+                    // БҮРКҮТ (ЧЕП) ТУРА ТУРГАН ОРУН
+                    if (r === 13 && c === 10) { row.push(9); continue; } 
+                    
+                    // Бүркүттүн айланасындагы коргоочу кирпичтер
                     if (r === 12 && [9, 10, 11].includes(c)) { row.push(1); continue; }
                     if (r === 13 && [9, 11].includes(c)) { row.push(1); continue; }
 
-                    // Оюнчу туулган жер (коопсуз зона)
                     if (r === 13 && [5, 6, 7].includes(c)) { row.push(0); continue; }
                     if (r === 12 && [5, 6, 7].includes(c)) { row.push(0); continue; }
                     
-                    // Душмандар чыга турган жогорку чекиттерди бош калтыруу
                     if (r === 1 && [1, 2, 9, 10, 18, 19].includes(c)) { row.push(0); continue; }
                     if (r === 2 && [1, 2, 9, 10, 18, 19].includes(c)) { row.push(0); continue; }
 
-                    // Жайгашуу кокустугу
                     let rand = Math.random();
                     if (rand < 0.18) {
-                        row.push(1); // Кирпич
+                        row.push(1); 
                     } else if (rand < 0.25) {
-                        row.push(2); // Цемент
+                        row.push(2); 
                     } else {
-                        row.push(0); // Бош жер
+                        row.push(0); 
                     }
                 }
                 newMap.push(row);
@@ -103,13 +152,10 @@
             constructor(x, y, side) {
                 this.x = x; this.y = y; this.w = 34; this.h = 34; this.dir = "up"; this.side = side;
                 this.speed = side === "friendly" ? 3 : 2; this.lastShot = 0; this.level = 1;
-                this.hue = 0;
-                this.hp = 1; 
+                this.hue = 0; this.hp = 1; 
                 if (side === "enemy") {
                     let armorChance = Math.min(gameState.level * 0.15, 0.6); 
-                    if (Math.random() < armorChance) {
-                        this.hp = Math.random() < 0.4 ? 3 : 2; 
-                    }
+                    if (Math.random() < armorChance) { this.hp = Math.random() < 0.4 ? 3 : 2; }
                 }
             }
             draw() {
@@ -124,38 +170,22 @@
                     else if (this.level === 7) ctx.fillStyle = "#f97316"; 
                     else if (this.level === 8) ctx.fillStyle = "#e11d48"; 
                     else if (this.level === 9) ctx.fillStyle = "#ffffff"; 
-                    else if (this.level === 10) {
-                        this.hue = (this.hue + 2) % 360;
-                        ctx.fillStyle = `hsl(${this.hue}, 90%, 50%)`;
-                    } else {
-                        this.hue = (this.hue + 1) % 40 + 45; 
-                        ctx.fillStyle = `hsl(${this.hue}, 100%, 50%)`;
-                    }
+                    else { this.hue = (this.hue + 2) % 360; ctx.fillStyle = `hsl(${this.hue}, 90%, 50%)`; }
                 } else {
                     if (this.hp === 3) ctx.fillStyle = "#78350f"; 
                     else if (this.hp === 2) ctx.fillStyle = "#b91c1c"; 
                     else ctx.fillStyle = "#ef4444"; 
                 }
-                
                 ctx.fillRect(this.x, this.y, this.w, this.h);
                 
                 if (this.side === "enemy" && this.hp > 1) {
-                    ctx.strokeStyle = "#ffe4e6";
-                    ctx.lineWidth = this.hp;
-                    ctx.strokeRect(this.x + 4, this.y + 4, this.w - 8, this.h - 8);
+                    ctx.strokeStyle = "#ffe4e6"; ctx.lineWidth = this.hp; ctx.strokeRect(this.x + 4, this.y + 4, this.w - 8, this.h - 8);
                 }
-
                 if (this.level >= 2 && this.side === "friendly") {
-                    ctx.strokeStyle = this.level >= 11 ? "#facc15" : "#fff";
-                    ctx.lineWidth = this.level >= 6 ? 3 : 1.5;
-                    ctx.strokeRect(this.x + 3, this.y + 3, this.w - 6, this.h - 6);
+                    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.strokeRect(this.x + 3, this.y + 3, this.w - 6, this.h - 6);
                 }
-
                 ctx.fillStyle = "#fff";
-                let pw = 6 + Math.floor(this.level * 0.6); 
-                let ph = 12 + Math.floor(this.level * 0.4);
-                if (pw > 14) pw = 14; if (ph > 18) ph = 18;
-
+                let pw = 6, ph = 12;
                 if(this.dir === "up") ctx.fillRect(this.x + this.w/2 - pw/2, this.y - ph + 6, pw, ph);
                 if(this.dir === "down") ctx.fillRect(this.x + this.w/2 - pw/2, this.y + this.h - 6, pw, ph);
                 if(this.dir === "left") ctx.fillRect(this.x - ph + 6, this.y + this.h/2 - pw/2, ph, pw);
@@ -165,9 +195,7 @@
             move() {
                 if (gameState.isTransitioning) return;
                 let nx = this.x, ny = this.y;
-                let bonusSpeed = Math.min(this.level * 0.3, 2.5);
-                let curSpeed = this.speed + bonusSpeed; 
-                
+                let curSpeed = this.speed + Math.min(this.level * 0.2, 2); 
                 if (this.dir === "up") ny -= curSpeed; if (this.dir === "down") ny += curSpeed;
                 if (this.dir === "left") nx -= curSpeed; if (this.dir === "right") nx += curSpeed;
                 if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
@@ -179,7 +207,7 @@
                 for (let p of pts) {
                     let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
                     if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
-                        if ([1,2,3,9].includes(map[cy][cx])) return true;
+                        if ([1,2,9].includes(map[cy][cx])) return true;
                     }
                 }
                 return false;
@@ -187,28 +215,13 @@
             shoot() {
                 if (gameState.isTransitioning) return;
                 let now = Date.now();
-                let cd = Math.max(300 - (this.level * 25), 100); 
-                if (now - this.lastShot > cd) { 
-                    bullets.push(new Bullet(this.x+17, this.y+17, this.dir, this.side, this.level)); 
-                    this.lastShot = now; 
-                }
+                if (now - this.lastShot > 300) { bullets.push(new Bullet(this.x+17, this.y+17, this.dir, this.side, this.level)); this.lastShot = now; }
             }
         }
 
         class Bullet {
-            constructor(x, y, dir, side, lvl = 1) { 
-                this.x = x; this.y = y; this.dir = dir; this.side = side; 
-                this.speed = 5 + Math.min(lvl * 1, 9); 
-                this.active = true; this.lvl = lvl;
-            }
-            draw() { 
-                if (!this.active) return;
-                ctx.fillStyle = this.side === "friendly" ? (this.lvl >= 11 ? "#facc15" : "#00e5ff") : "#ff0055"; 
-                ctx.beginPath(); 
-                let radius = 3 + Math.min(this.lvl * 0.7, 8);
-                ctx.arc(this.x, this.y, radius, 0, Math.PI*2); 
-                ctx.fill(); 
-            }
+            constructor(x, y, dir, side, lvl = 1) { this.x = x; this.y = y; this.dir = dir; this.side = side; this.speed = 6; this.active = true; this.lvl = lvl; }
+            draw() { if (!this.active) return; ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill(); }
             update() {
                 if (!this.active) return;
                 if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
@@ -216,53 +229,25 @@
                 if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
                 let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
                 if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
-                    if (map[cy][cx] === 1) { 
-                        map[cy][cx] = 0; this.active = false; 
-                    }
-                    else if (map[cy][cx] === 2) { 
-                        if (this.side === "friendly" && this.lvl >= 11) {
-                            map[cy][cx] = 0;
-                        }
-                        this.active = false; 
-                    }
+                    if (map[cy][cx] === 1) { map[cy][cx] = 0; this.active = false; }
+                    else if (map[cy][cx] === 2) { this.active = false; }
                     else if (map[cy][cx] === 9) { 
-                        map[cy][cx] = 0; this.active = false; alert("Чеп талкаланды! Оюн Бүттү!"); location.reload(); 
+                        map[cy][cx] = 0; this.active = false; 
+                        alert("Катастрофа! Бүркүт талкаланды! Оюн бүттү!"); 
+                        location.reload(); 
                     }
                 }
             }
         }
 
         class Bonus {
-            constructor(x, y) { this.x = x; this.y = y; this.w = 24; this.h = 24; this.pulse = 0; }
-            draw() {
-                this.pulse += 0.1;
-                let sizeMod = Math.sin(this.pulse) * 3;
-                ctx.save();
-                ctx.fillStyle = "#eab308";
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = "#facc15";
-                ctx.font = `bold ${20 + sizeMod}px sans-serif`;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText("⭐", this.x, this.y);
-                ctx.restore();
-            }
+            constructor(x, y) { this.x = x; this.y = y; this.w = 24; this.h = 24; }
+            draw() { ctx.save(); ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("⭐", this.x, this.y); ctx.restore(); }
         }
 
         class Particle {
             constructor(x, y) { this.x = x; this.y = y; this.life = 15; }
-            draw() {
-                ctx.save();
-                ctx.fillStyle = "#facc15";
-                ctx.beginPath();
-                for (let i = 0; i < 5; i++) {
-                    ctx.lineTo(this.x + Math.cos((18+i*72)*Math.PI/180)*this.life, this.y + Math.sin((18+i*72)*Math.PI/180)*this.life);
-                    ctx.lineTo(this.x + Math.cos((54+i*72)*Math.PI/180)*(this.life/2), this.y + Math.sin((54+i*72)*Math.PI/180)*(this.life/2));
-                }
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-            }
+            draw() { ctx.fillStyle = "#ff5500"; ctx.fillRect(this.x - this.life/2, this.y - this.life/2, this.life, this.life); }
             update() { this.life--; }
         }
 
@@ -270,146 +255,73 @@
         player = new Tank(6*TILE_SIZE+3, 13*TILE_SIZE+3, "friendly");
 
         function spawnEnemy() {
-            if (gameState.isTransitioning) return;
-            if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
-            
-            let spawnPoints = [
-                {x: TILE_SIZE, y: TILE_SIZE},
-                {x: 10 * TILE_SIZE, y: TILE_SIZE},
-                {x: 19 * TILE_SIZE, y: TILE_SIZE}
-            ];
+            if (gameState.isTransitioning || enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
+            let spawnPoints = [{x: TILE_SIZE, y: TILE_SIZE}, {x: 10 * TILE_SIZE, y: TILE_SIZE}, {x: 19 * TILE_SIZE, y: TILE_SIZE}];
             let pt = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
             enemies.push(new Tank(pt.x + 3, pt.y + 3, "enemy"));
         }
 
-        function startNextLevelTransition() {
-            gameState.isTransitioning = true;
-            gameState.transitionTimer = 180; 
-            bullets = [];
-            enemies = [];
-            bonuses = [];
-        }
-
-        window.addEventListener("keydown", e => {
-            let key = e.key.toLowerCase();
-            keys[key] = true;
-            if([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key)) { e.preventDefault(); }
-        });
+        window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; if([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key)) e.preventDefault(); });
         window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
         const setupBtn = (id, dir) => {
             const btn = document.getElementById(id);
-            const startAction = (e) => { e.preventDefault(); activeTouchDir = dir; };
-            const stopAction = (e) => { e.preventDefault(); activeTouchDir = null; };
-            btn.addEventListener("touchstart", startAction); btn.addEventListener("touchend", stopAction);
-            btn.addEventListener("mousedown", startAction); btn.addEventListener("mouseup", stopAction);
-            btn.addEventListener("mouseleave", stopAction);
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
+            btn.addEventListener("touchend", (e) => { e.preventDefault(); activeTouchDir = null; });
         };
         setupBtn("pad-up", "up"); setupBtn("pad-down", "down"); setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
-        
-        const fireBtn = document.getElementById("pad-fire");
-        fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); player.shoot(); });
-        fireBtn.addEventListener("mousedown", (e) => { e.preventDefault(); player.shoot(); });
+        document.getElementById("pad-fire").addEventListener("touchstart", (e) => { e.preventDefault(); player.shoot(); });
 
         function update() {
             if (gameState.isTransitioning) {
                 gameState.transitionTimer--;
                 if (gameState.transitionTimer <= 0) {
-                    gameState.isTransitioning = false;
-                    gameState.level++;
-                    gameState.enemiesDefeated = 0;
-                    gameState.maxEnemies += 2;
-                    map = generateRandomMap(); 
-                    player.x = 6*TILE_SIZE+3; player.y = 13*TILE_SIZE+3; player.dir = "up";
+                    gameState.isTransitioning = false; gameState.level++; gameState.enemiesDefeated = 0; gameState.maxEnemies += 2;
+                    map = generateRandomMap(); player.x = 6*TILE_SIZE+3; player.y = 13*TILE_SIZE+3; player.dir = "up";
                 }
                 return;
             }
 
             if (activeTouchDir) { player.dir = activeTouchDir; player.move(); }
             else {
-                if (keys["w"] || keys["ц"] || keys["arrowup"]) { player.dir = "up"; player.move(); }
-                else if (keys["s"] || keys["ы"] || keys["arrowdown"]) { player.dir = "down"; player.move(); }
-                else if (keys["a"] || keys["ф"] || keys["arrowleft"]) { player.dir = "left"; player.move(); }
-                else if (keys["d"] || keys["в"] || keys["arrowright"]) { player.dir = "right"; player.move(); }
-                if (keys["f"] || keys["а"] || keys[" "]) player.shoot();
+                if (keys["w"] || keys["arrowup"]) { player.dir = "up"; player.move(); }
+                else if (keys["s"] || keys["arrowdown"]) { player.dir = "down"; player.move(); }
+                else if (keys["a"] || keys["arrowleft"]) { player.dir = "left"; player.move(); }
+                else if (keys["d"] || keys["arrowright"]) { player.dir = "right"; player.move(); }
+                if (keys["f"] || keys[" "]) player.shoot();
             }
 
             enemyTimer++; if(enemyTimer > 120) { spawnEnemy(); enemyTimer = 0; }
 
-            for (let i = bonuses.length - 1; i >= 0; i--) {
-                let b = bonuses[i];
-                let dist = Math.hypot((player.x + 17) - b.x, (player.y + 17) - b.y);
-                if (dist < 25) {
-                    if (player.level < 15) player.level++; 
-                    gameState.score += 50;
-                    bonuses.splice(i, 1);
-                }
-            }
-
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].update();
-                if (!bullets[i].active) { bullets.splice(i, 1); }
+                if (!bullets[i].active) bullets.splice(i, 1);
             }
-
-            for (let i = 0; i < bullets.length; i++) {
-                for (let j = i + 1; j < bullets.length; j++) {
-                    if (bullets[i].active && bullets[j].active && bullets[i].side !== bullets[j].side) {
-                        let dist = Math.hypot(bullets[i].x - bullets[j].x, bullets[i].y - bullets[j].y);
-                        if (dist < 12) { 
-                            bullets[i].active = false;
-                            bullets[j].active = false;
-                        }
-                    }
-                }
-            }
-            bullets = bullets.filter(b => b.active);
 
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i];
-                if (!b.active) continue;
-
                 if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (b.x > enemies[j].x && b.x < enemies[j].x+34 && b.y > enemies[j].y && b.y < enemies[j].y+34) {
-                            enemies[j].hp--; 
-                            b.active = false;
-
-                            if (enemies[j].hp <= 0) { 
+                            enemies[j].hp--; b.active = false;
+                            if (enemies[j].hp <= 0) {
                                 particles.push(new Particle(enemies[j].x + 17, enemies[j].y + 17));
-                                if (Math.random() < 0.35) {
-                                    bonuses.push(new Bonus(enemies[j].x + 17, enemies[j].y + 17));
-                                }
-                                enemies.splice(j, 1); 
-                                gameState.score += 10; 
-                                gameState.enemiesDefeated++;
+                                enemies.splice(j, 1); gameState.score += 10; gameState.enemiesDefeated++;
                             }
-                            break; 
+                            break;
                         }
                     }
                 } else {
-                    // ОЮНЧУГА ОК ТИЙГЕНДЕГИ ЖАҢЫ ЛОГИКА
                     if (b.x > player.x && b.x < player.x+34 && b.y > player.y && b.y < player.y+34) {
-                        b.active = false; 
-                        
-                        if (player.level > 1) {
-                            // Эгер деңгээл 1ден өйдө болсо, бир кадамга ылдыйлайт
-                            player.level--; 
-                        } else {
-                            // Эгер 1-деңгээлде болсо гана өмүрү кетет
-                            gameState.lives--; 
-                            if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
-                        }
+                        b.active = false;
+                        if (player.level > 1) { player.level--; } 
+                        else { gameState.lives--; if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); } }
                     }
                 }
             }
-            bullets = bullets.filter(b => b.active);
 
             for (let e of enemies) { e.move(); if(Math.random()<0.015) e.shoot(); }
-            for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if(particles[i].life <= 0) particles.splice(i, 1); }
-
-            if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0 && !gameState.isTransitioning) {
-                startNextLevelTransition();
-            }
+            if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) { gameState.isTransitioning = true; gameState.transitionTimer = 120; }
 
             document.getElementById("score-val").innerText = gameState.score;
             document.getElementById("lives-val").innerText = gameState.lives;
@@ -423,30 +335,39 @@
                 for (let c=0; c<COLS; c++) {
                     if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                     if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
-                    // ЧЕПТИ СҮРӨТТӨӨ (Сары тегерек)
-                    if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
+                    
+                    // =========================================================
+                    // КЛАССИКАЛЫК БҮРКҮТТҮ (КУШТУ) ПИКСЕЛЬ СТИЛИНДЕ ТАРТУУ
+                    // =========================================================
+                    if (map[r][c] === 9) { 
+                        let bx = c * TILE_SIZE;
+                        let by = r * TILE_SIZE;
+
+                        ctx.save();
+                        // Негизги тулку бою жана канаттары (Боз/Күмүш түс)
+                        ctx.fillStyle = "#94a3b8";
+                        ctx.fillRect(bx + 10, by + 12, 20, 16); // Күрмөсү
+                        ctx.fillRect(bx + 6, by + 14, 4, 10);   // Сол канат
+                        ctx.fillRect(bx + 30, by + 14, 4, 10);  // Оң канат
+                        
+                        // Куштун башы
+                        ctx.fillStyle = "#cbd5e1";
+                        ctx.fillRect(bx + 16, by + 4, 8, 8);
+                        
+                        // Куштун тумшугу (Сары пиксель)
+                        ctx.fillStyle = "#eab308";
+                        ctx.fillRect(bx + 18, by + 8, 4, 4);
+
+                        // Куштун таажысы же куйругунун деталдары (Кара/Ак сызыктар)
+                        ctx.fillStyle = "#1e293b";
+                        ctx.fillRect(bx + 14, by + 16, 2, 8);
+                        ctx.fillRect(bx + 24, by + 16, 2, 8);
+                        ctx.restore();
+                    }
                 }
             }
             
-            for(let b of bonuses) b.draw();
-            player.draw(); 
-            for(let e of enemies) e.draw(); 
-            for(let b of bullets) b.draw();
-            for(let p of particles) p.draw();
-
-            if (gameState.isTransitioning) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#00e5ff";
-                ctx.font = "bold 38px sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText("РАУНД ДАЯРДАЛУУДА...", canvas.width/2, canvas.height/2 - 20);
-                ctx.fillStyle = "#fff";
-                ctx.font = "26px sans-serif";
-                ctx.fillText("Жаңы деңгээл: " + (gameState.level + 1), canvas.width/2, canvas.height/2 + 20);
-                ctx.fillStyle = "#ef4444";
-                ctx.fillText("Башталышына: " + Math.ceil(gameState.transitionTimer/60) + " сек", canvas.width/2, canvas.height/2 + 60);
-            }
+            player.draw(); for(let e of enemies) e.draw(); for(let b of bullets) b.draw();
         }
 
         function loop() { update(); draw(); requestAnimationFrame(loop); }
