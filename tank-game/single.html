@@ -147,12 +147,14 @@
                 this.active = true; this.lvl = lvl;
             }
             draw() { 
+                if (!this.active) return;
                 ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; 
                 ctx.beginPath(); 
                 ctx.arc(this.x, this.y, 3 + this.lvl, 0, Math.PI*2); 
                 ctx.fill(); 
             }
             update() {
+                if (!this.active) return;
                 if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
                 if (this.dir === "left") this.x -= this.speed; if (this.dir === "right") this.x += this.speed;
                 if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
@@ -205,7 +207,6 @@
             if (gameState.isTransitioning) return;
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
             
-            // Душман коргоо дубалдарынын ичинде калып калбашы үчүн ачык бош жерлерге чыгаруу
             let spawnPoints = [
                 {x: TILE_SIZE, y: TILE_SIZE},
                 {x: 10 * TILE_SIZE, y: TILE_SIZE},
@@ -252,7 +253,7 @@
                     gameState.level++;
                     gameState.enemiesDefeated = 0;
                     gameState.maxEnemies += 2;
-                    map = JSON.parse(JSON.stringify(initialMap)); // Картаны толугу менен баштапкы абалына коопсуз кайтаруу
+                    map = JSON.parse(JSON.stringify(initialMap)); 
                     player.x = 6*TILE_SIZE+3; player.y = 13*TILE_SIZE+3; player.dir = "up";
                 }
                 return;
@@ -279,49 +280,61 @@
                 }
             }
 
+            // 1. Октордун ордун жаңыртуу жана дубалга тийгендерин өчүрүү
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].update();
-                if (!bullets[i].active) { bullets.splice(i, 1); continue; }
+                if (!bullets[i].active) { bullets.splice(i, 1); }
+            }
 
-                for (let j = bullets.length - 1; j >= 0; j--) {
-                    if (i !== j && bullets[i] && bullets[j] && bullets[i].side !== bullets[j].side) {
+            // 2. Ок менен Октун кагылышуусун коопсуз текшерүү (МАРКЕРЛӨӨ АРКЫЛУУ)
+            for (let i = 0; i < bullets.length; i++) {
+                for (let j = i + 1; j < bullets.length; j++) {
+                    if (bullets[i].active && bullets[j].active && bullets[i].side !== bullets[j].side) {
                         let dist = Math.hypot(bullets[i].x - bullets[j].x, bullets[i].y - bullets[j].y);
-                        if (dist < 10) {
-                            bullets.splice(Math.max(i, j), 1);
-                            bullets.splice(Math.min(i, j), 1);
-                            break;
+                        if (dist < 12) { 
+                            bullets[i].active = false;
+                            bullets[j].active = false;
                         }
                     }
                 }
+            }
+            // Кагылышкан окторду массивден коопсуз тазалоо
+            bullets = bullets.filter(b => b.active);
 
-                if (!bullets[i]) continue;
+            // 3. Ок менен Танктардын кагылышуусу
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                if (!b.active) continue;
 
-                if (bullets[i].side === "friendly") {
+                if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
-                        if (bullets[i].x > enemies[j].x && bullets[i].x < enemies[j].x+34 && bullets[i].y > enemies[j].y && bullets[i].y < enemies[j].y+34) {
+                        if (b.x > enemies[j].x && b.x < enemies[j].x+34 && b.y > enemies[j].y && b.y < enemies[j].y+34) {
                             particles.push(new Particle(enemies[j].x + 17, enemies[j].y + 17));
-                            
                             if (Math.random() < 0.3) {
                                 bonuses.push(new Bonus(enemies[j].x + 17, enemies[j].y + 17));
                             }
-
-                            enemies.splice(j, 1); bullets.splice(i, 1); gameState.score += 10; gameState.enemiesDefeated++; break;
+                            enemies.splice(j, 1); 
+                            b.active = false; 
+                            gameState.score += 10; 
+                            gameState.enemiesDefeated++; 
+                            break; 
                         }
                     }
                 } else {
-                    if (bullets[i].x > player.x && bullets[i].x < player.x+34 && bullets[i].y > player.y && bullets[i].y < player.y+34) {
+                    if (b.x > player.x && b.x < player.x+34 && b.y > player.y && b.y < player.y+34) {
                         gameState.lives--; 
-                        bullets.splice(i, 1); 
+                        b.active = false; 
                         if (player.level > 1) player.level--; 
                         if(gameState.lives <= 0) { alert("Оюн бүттү!"); location.reload(); }
                     }
                 }
             }
+            // Танкка тийген окторду акыркы ирет тазалоо
+            bullets = bullets.filter(b => b.active);
 
             for (let e of enemies) { e.move(); if(Math.random()<0.015) e.shoot(); }
             for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if(particles[i].life <= 0) particles.splice(i, 1); }
 
-            // Раунддун аякташын текшерүүнү коопсуз кылуу
             if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0 && !gameState.isTransitioning) {
                 startNextLevelTransition();
             }
