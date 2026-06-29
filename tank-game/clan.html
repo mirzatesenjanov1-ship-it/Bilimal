@@ -2,174 +2,540 @@
 <html lang="ky">
 <head>
     <meta charset="UTF-8">
-    <title>Clan Wars - Tank Battle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Танк Кландар Согушу - BilimAl</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
-        body { background-color: #0c0f12; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 10px; }
-        .top-bar { width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #111827; border-radius: 10px 10px 0 0; border: 2px solid #10b981; }
-        .back-btn { background: #ef4444; color: #fff; padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; font-weight: bold; font-size: 14px; }
-        .clan-status { display: flex; gap: 20px; font-size: 14px; font-weight: bold; }
-        .clan-title { color: #00e5ff; }
-        .game-container { background: #050709; border: 4px solid #10b981; border-radius: 0 0 10px 10px; }
-        canvas { display: block; max-width: 100%; height: auto; background: #000; }
-        .clan-footer { margin-top: 10px; font-size: 13px; color: #9ca3af; text-align: center; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Баракча меню убагында өйдө-ылдый эркин жылышы үчүн overflow-y: auto кылабыз */
+        body {
+            background-color: #0c0f12;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            padding: 20px 10px;
+            overflow-y: auto;
+        }
+        /* Бул класс оюн башталганда гана body'ни катыруу үчүн колдонулат */
+        body.game-mode {
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        /* Клан Системасынын Менюсу */
+        .clan-panel {
+            background: #111827;
+            padding: 25px;
+            border-radius: 15px;
+            border: 3px solid #3b82f6;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
+            display: block;
+            margin-bottom: 30px;
+        }
+        h1 { text-align: center; color: #f43f5e; font-size: 26px; margin-bottom: 15px; text-shadow: 0 0 10px rgba(244,63,94,0.3); }
+        .card { background: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #374151; margin-bottom: 15px; }
+        h3 { color: #00e5ff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        input {
+            width: 100%; padding: 11px; margin: 5px 0 10px;
+            background: #111827; border: 1px solid #4b5563;
+            color: white; border-radius: 6px; font-size: 14px;
+        }
+        button {
+            width: 100%; padding: 12px; background: #3b82f6; border: none;
+            color: white; font-weight: bold; border-radius: 8px; cursor: pointer;
+            transition: 0.2s; margin-top: 5px;
+        }
+        button:hover { background: #2563eb; }
+        .btn-upgrade { background: #10b981; margin-top: 8px; }
+        .btn-upgrade:hover { background: #059669; }
+        .btn-join { background: #8b5cf6; width: auto; padding: 6px 14px; margin: 0; border-radius: 6px; }
+        .btn-join:hover { background: #7c3aed; }
+        .btn-leave { background: #4b5563; width: auto; padding: 6px 14px; margin: 0; border-radius: 6px; }
+        .btn-leave:hover { background: #374151; }
+
+        /* Издөө (Matchmaking) Тизмеси */
+        .search-list { max-height: 220px; overflow-y: auto; margin-top: 10px; background: #111827; padding: 5px; border-radius: 6px; }
+        .search-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; background: #1f2937; margin: 5px 0; border-radius: 6px; border-left: 4px solid #ef4444;
+        }
+        .btn-fight { width: auto; padding: 6px 14px; background: #ef4444; margin: 0; font-weight: bold; }
+        .btn-fight:hover { background: #dc2626; }
+
+        /* Оюн экраны */
+        #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; touch-action: none; }
+        .top-bar {
+            width: 100%; max-width: 840px; display: flex; justify-content: space-between;
+            align-items: center; padding: 12px 15px; background: #131920;
+            border-radius: 10px 10px 0 0; border: 1px solid #1f2937;
+        }
+        .game-container { position: relative; background: #000; border: 4px solid #3b82f6; border-radius: 0 0 10px 10px; overflow: hidden; }
+        canvas { display: block; max-width: 100%; height: auto; }
+        
+        .level-banner {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            background: rgba(19, 25, 32, 0.95); border: 3px solid #f43f5e; padding: 25px 45px;
+            border-radius: 15px; text-align: center; transition: transform 0.4s ease; z-index: 10; display: none;
+        }
+        .level-banner.show { display: block; transform: translate(-50%, -50%) scale(1); }
+
+        /* Мобилдик башкаруу */
+        .mobile-controls-pvp { display: flex; justify-content: space-between; width: 100%; max-width: 840px; margin-top: 10px; touch-action: none; }
+        .player-pad { display: flex; gap: 8px; align-items: center; background: #111827; padding: 8px; border-radius: 10px; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 2px; }
+        .control-btn { background: #1f2937; border: 1px solid #374151; color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px;}
+        .control-btn:active { background: #3b82f6; }
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 3; }
+        .fire-btn { width: 55px; height: 55px; color: white; font-weight: bold; border-radius: 50%; border: none; background: #ff0055; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <div class="top-bar">
-        <a href="index.html" class="back-btn">✕ Менюго кайт</a>
-        <div class="clan-status">
-            <div class="clan-title">Клан: <span>Кыргыз Хандыгы</span></div>
-            <div>Деңгээл: <span id="clan-lvl-text" style="color: #eab308;">Lvl 1</span></div>
-            <div>Дубал коргоосу: <span id="clan-wall-text" style="color: #10b981;">Кадимки кыш</span></div>
+    <div class="clan-panel" id="main-menu">
+        <h1>⚔️ CLASH OF TANKS</h1>
+        
+        <div class="card" id="my-clan-section" style="display: none;">
+            <h3>
+                <span id="my-clan-title">Клан аты</span>
+                <span id="my-clan-crystals" style="color: #eab308;">💎 0</span>
+            </h3>
+            <div id="my-clan-stats" style="font-size: 14px; color: #9ca3af; line-height: 1.6; margin-bottom: 10px;"></div>
+            
+            <div id="clan-management-controls" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button class="btn-upgrade" onclick="upgradeClanFeature('tank')">🚀 Танк Lvl+ (5 💎)</button>
+                <button class="btn-upgrade" style="background:#b45309;" onclick="upgradeClanFeature('wall')">🧱 Дубал Lvl+ (5 💎)</button>
+            </div>
+            <button id="btn-simulate-member" class="btn-upgrade" style="background: #10b981; margin-top: 10px;" onclick="simulateAddMember()">👥 Катышуучу кошуу (+1)</button>
         </div>
+
+        <div class="card" id="create-clan-section">
+            <h3>🛡️ Жаңы клан негиздөө</h3>
+            <input type="text" id="clan-name-input" placeholder="Кландын уникалдуу атын жазыңыз...">
+            <button onclick="createNewClan()">Кланды түзүү</button>
+        </div>
+
+        <div class="card">
+            <h3>🌍 БАШКА АКТИВДҮҮ КЛАНДАРГА КИРҮҮ / КАТЫШУУ</h3>
+            <div class="search-list" id="all-clans-list"></div>
+        </div>
+
+        <div class="card" style="border-color: #ef4444;">
+            <h3>🔍 КАРШЫЛАШ КЛАНДАРДЫ ИЗДӨӨ ЖАНА ЧАБУУЛ</h3>
+            <button style="background: #ef4444;" onclick="searchOpponents()">АКТИВДҮҮ КЛАНДАРДЫ ИЗДӨӨ ⚔️</button>
+            <div class="search-list" id="opponent-list">
+                <p style="color:#9ca3af; text-align:center; font-size:13px; padding-top:10px;">Издөө баскычын басыңыз...</p>
+            </div>
+        </div>
+        
+        <center><a href="index.html" style="color: #9ca3af; text-decoration: none; font-size: 14px;">◀ Башкы менюга кайтуу</a></center>
     </div>
 
-    <div class="game-container">
-        <canvas id="gameCanvas" width="840" height="560"></canvas>
-    </div>
+    <div id="game-wrapper">
+        <div class="top-bar">
+            <button style="background:#ef4444; width:auto; padding:5px 15px;" onclick="exitGame()">✕ Чыгуу</button>
+            <div style="font-weight:bold; font-size:15px; display:flex; gap:30px;">
+                <span id="g-c1-name" style="color:#3b82f6;">Сиздин Клан</span>
+                <span style="color:#eab308;">VS</span>
+                <span id="g-c2-name" style="color:#ef4444;">Душман Клан</span>
+            </div>
+        </div>
 
-    <div class="clan-footer">
-        🏆 Ар бир жеңген раунд үчүн кланга тажрыйба кошулат. 3-деңгээлден баштап чептин дубалдары кыйрабас темир-бетонго айланат!
+        <div class="game-container">
+            <div class="level-banner" id="levelBanner">
+                <h2 id="banner-title" style="color:#ef4444;">ЧАБУУЛ БАШТАЛДЫ</h2>
+                <p id="banner-desc">Душмандын штабын кыйратыңыз!</p>
+            </div>
+            <canvas id="gameCanvas" width="840" height="560"></canvas>
+        </div>
+
+        <div class="mobile-controls-pvp">
+            <div class="player-pad">
+                <div class="d-pad"><button class="control-btn btn-up" id="p1-up">▲</button><button class="control-btn btn-left" id="p1-left">◀</button><button class="control-btn btn-right" id="p1-right">▶</button><button class="control-btn btn-down" id="p1-down">▼</button></div>
+                <button class="fire-btn" id="p1-fire">FIRE 1</button>
+            </div>
+            <div class="player-pad">
+                <button class="fire-btn" style="background:#ef4444;" id="p2-fire">FIRE 2</button>
+                <div class="d-pad"><button class="control-btn btn-up" id="p2-up">▲</button><button class="control-btn btn-left" id="p2-left">◀</button><button class="control-btn btn-right" id="p2-right">▶</button><button class="control-btn btn-down" id="p2-down">▼</button></div>
+            </div>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
-        const TILE_SIZE = 40; const COLS = 21; const ROWS = 14;
 
-        let clanLevel = parseInt(localStorage.getItem("clan_lvl_save")) || 1;
-        let clanScore = parseInt(localStorage.getItem("clan_exp_save")) || 0;
+        const TILE_SIZE = 40; const COLS = 21; const ROWS = 14; 
+        let isGameRunning = false; let keys = {}; let bullets = []; let map = [];
+        let player1 = null; let player2 = null;
 
-        let keys = {}; let enemies = []; let bullets = []; let enemyTimer = 0; let player;
-        let enemiesDefeated = 0; let maxEnemies = 5;
+        // Кландардын негизги маалымат базасы
+        let clans = JSON.parse(localStorage.getItem("single_clan_system")) || {
+            "Көк Жал": { name: "Көк Жал", crystals: 15, tankLevel: 2, wallLevel: 1, members: 12, creator: "system" },
+            "Кара Тулпар": { name: "Кара Тулпар", crystals: 10, tankLevel: 1, wallLevel: 2, members: 8, creator: "system" },
+            "Шумкарлар": { name: "Шумкарлар", crystals: 5, tankLevel: 1, wallLevel: 1, members: 45, creator: "system" }
+        };
 
-        let map = [
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
-            [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
-            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-            [0,1,1,0,1,1,0,1,1,0,4,4,0,1,1,0,1,1,0,1,1],
-            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
-            [0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,0,0],
-            [0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1],
-            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
-            [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
-            [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
-            [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-            [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
-            [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0]
-        ];
+        // Оюнчунун учурдагы абалы: кайсы кланда мүчө же башчы?
+        let myClanName = localStorage.getItem("my_clan_name") || ""; 
 
-        function applyClanUpgrades() {
-            let wallType = clanLevel >= 3 ? 2 : 1; 
-            map[12][7] = wallType; map[12][8] = wallType; map[12][9] = wallType;
-            map[13][7] = wallType;                        map[13][9] = wallType;
+        let p1TouchDir = null, p2TouchDir = null;
+        let p1TouchFire = false, p2TouchFire = false;
+
+        function saveState() {
+            localStorage.setItem("single_clan_system", JSON.stringify(clans));
+            localStorage.setItem("my_clan_name", myClanName);
+        }
+
+        function renderClanMenu() {
+            // Эгер оюнчу кандайдыр бир кланда бар болсо (өзү ачкан же кошулган)
+            if (myClanName && clans[myClanName]) {
+                document.getElementById("create-clan-section").style.display = "none";
+                document.getElementById("my-clan-section").style.display = "block";
+                
+                let c = clans[myClanName];
+                let isCreator = (c.creator === "player");
+                
+                document.getElementById("my-clan-title").innerText = `🛡️ Клан: ${c.name} ${isCreator ? '(Сиздики)' : '(Мүчөсүз)'}`;
+                document.getElementById("my-clan-crystals").innerText = `💎 ${c.crystals}`;
+                document.getElementById("my-clan-stats").innerHTML = `
+                    • Кландык Танк Деңгээли: <b>Lvl ${c.tankLevel}</b><br>
+                    • Кландык Коргонуу Дубалы: <b>Lvl ${c.wallLevel}</b><br>
+                    • Мүчөлөрдүн Саны: <b>${c.members} / 50</b> Оюнчу
+                `;
+
+                // Башкаруу баскычтарын ээсине гана көрсөтүү же чектөө
+                if (isCreator) {
+                    document.getElementById("clan-management-controls").style.display = "grid";
+                    document.getElementById("btn-simulate-member").style.display = "block";
+                } else {
+                    document.getElementById("clan-management-controls").style.display = "none";
+                    document.getElementById("btn-simulate-member").style.display = "none";
+                }
+            } else {
+                // Оюнчу эркин режимде болсо — жаңы клан ача алат
+                document.getElementById("create-clan-section").style.display = "block";
+                document.getElementById("my-clan-section").style.display = "none";
+            }
+            renderAllClansList();
+        }
+
+        function createNewClan() {
+            let input = document.getElementById("clan-name-input");
+            let name = input.value.trim();
+            if (!name) return alert("Кландын атын жазыңыз!");
+            if (clans[name]) return alert("Бул аталыштагы клан буга чейин катталган!");
+
+            // Оюнчу өзү ачкан кландын ээси (creator: player) болот
+            clans[name] = { name: name, crystals: 10, tankLevel: 1, wallLevel: 1, members: 1, creator: "player" };
+            myClanName = name;
+            input.value = "";
+            saveState();
+            renderClanMenu();
+        }
+
+        function renderAllClansList() {
+            let list = document.getElementById("all-clans-list");
+            list.innerHTML = "";
+            Object.keys(clans).forEach(k => {
+                let isMine = (k === myClanName);
+                let c = clans[k];
+                
+                list.innerHTML += `<div class="search-item" style="border-left-color: ${isMine ? '#3b82f6' : '#8b5cf6'}">
+                    <span><b>${k}</b> (${c.members}/50 мүчө) ${isMine ? ' <i style="color:#3b82f6; font-size:12px;">(Сиз ушундасыз)</i>' : ''}</span>
+                    ${isMine ? 
+                        `<button class="btn-leave" onclick="leaveCurrentClan('${k}')">Чыгуу</button>` : 
+                        (!myClanName ? `<button class="btn-join" onclick="joinToOtherClan('${k}')">Кошулуу</button>` : '')
+                    }
+                </div>`;
+            });
+        }
+
+        function joinToOtherClan(name) {
+            if (clans[name].members >= 50) return alert("Бул кланда орун калган жок (Максимум 50 оюнчу)!");
+            clans[name].members++;
+            myClanName = name;
+            saveState();
+            renderClanMenu();
+            alert(`Сиз ийгиликтүү "${name}" кланына кошулдуңуз!`);
+        }
+
+        function leaveCurrentClan(name) {
+            if (clans[name].creator === "player") {
+                if(!confirm("Эгер өзүңүздүн кланыңыздан чыксаңыз, ал толугу менен өчүрүлөт. Макулсузбу?")) return;
+                delete clans[name];
+            } else {
+                clans[name].members--;
+            }
+            myClanName = "";
+            saveState();
+            renderClanMenu();
+        }
+
+        function simulateAddMember() {
+            if (!myClanName || !clans[myClanName]) return;
+            if (clans[myClanName].members >= 50) return alert("Клан толду! Максимум 50 мүчө кире алат.");
+            clans[myClanName].members++;
+            saveState();
+            renderClanMenu();
+        }
+
+        function upgradeClanFeature(type) {
+            if (!myClanName || !clans[myClanName]) return;
+            let c = clans[myClanName];
+            if (c.crystals < 5) return alert("Кристалл жетишсиз! Согуштан утуп кристалл чогултуңуз.");
+
+            if (type === 'tank') {
+                if (c.tankLevel >= 11) return alert("Максималдуу деңгээлге жеттиңиз!");
+                c.tankLevel++;
+            } else {
+                if (c.wallLevel >= 5) return alert("Максималдуу деңгээлге жеттиңиз!");
+                c.wallLevel++;
+            }
+            c.crystals -= 5;
+            saveState();
+            renderClanMenu();
+        }
+
+        function searchOpponents() {
+            if (!myClanName) return alert("Адегенде өзүңүзгө клан тандаңыз же түзүңүз!");
+            let listDiv = document.getElementById("opponent-list");
+            listDiv.innerHTML = "";
             
-            document.getElementById("clan-lvl-text").innerText = `Lvl ${clanLevel} (${clanScore}/300 XP)`;
-            document.getElementById("clan-wall-text").innerText = clanLevel >= 3 ? "Болат Бетон 🧱" : "Кадимки кыш 🧱";
+            let targets = Object.keys(clans).filter(k => k !== myClanName);
+            if (targets.length === 0) {
+                listDiv.innerHTML = `<p style='color:#9ca3af; text-align:center; font-size:13px;'>Издөөдө башка активдүү кландар табылган жок...</p>`;
+                return;
+            }
+
+            targets.forEach(k => {
+                listDiv.innerHTML += `<div class="search-item">
+                    <span><b>${clans[k].name}</b> (Танк: Lvl ${clans[k].tankLevel}, Дубал: Lvl ${clans[k].wallLevel})</span>
+                    <button class="btn-fight" onclick="startClanBattle('${k}')">ЧАБУУЛ ⚔️</button>
+                </div>`;
+            });
+        }
+
+        function startClanBattle(enemyName) {
+            targetEnemyClan = enemyName;
+            
+            // Оюн башталганда скроллду катырабыз
+            document.body.classList.add("game-mode");
+            document.getElementById("main-menu").style.display = "none";
+            document.getElementById("game-wrapper").style.display = "flex";
+
+            document.getElementById("g-c1-name").innerText = `${myClanName} (Lvl ${clans[myClanName].tankLevel})`;
+            document.getElementById("g-c2-name").innerText = `${clans[targetEnemyClan].name} (Lvl ${clans[targetEnemyClan].tankLevel})`;
+
+            isGameRunning = true;
+            initMap();
+
+            player1 = new Tank("p1", 2 * TILE_SIZE, 6 * TILE_SIZE, "clan1", clans[myClanName].tankLevel);
+            player2 = new Tank("p2", 18 * TILE_SIZE, 6 * TILE_SIZE, "clan2", clans[targetEnemyClan].tankLevel);
+
+            triggerPopupBanner("КЛАНДЫК ЧАБУУЛ!", "Душман штабын талкалаңыз!");
+        }
+
+        function initMap() {
+            map = [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,1,1,0,1,1,0,2,2,0,0,0,0,2,2,0,1,1,0,1,1],
+                [0,1,8,1,0,0,0,2,2,0,1,1,0,2,2,0,0,0,1,9,1], 
+                [0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1],
+                [0,0,0,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,0,0],
+                [0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1],
+                [0,1,1,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,0,1,1],
+                [0,2,2,0,1,1,0,0,0,0,2,2,0,0,0,0,1,1,0,2,2],
+                [0,2,2,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,2,2],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,1,1,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,1,1],
+                [0,1,1,1,0,0,0,2,2,0,1,1,0,2,2,0,0,0,1,1,1],
+                [0,1,1,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,1,1],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ];
         }
 
         class Tank {
-            constructor(x, y, side) {
-                this.x = x; this.y = y; this.w = 36; this.h = 36; this.dir = "up"; this.side = side;
-                this.speed = 3; this.lastShot = 0;
+            constructor(id, x, y, side, lvl) {
+                this.id = id; this.x = x; this.y = y;
+                this.w = TILE_SIZE - 6; this.h = TILE_SIZE - 6;
+                this.dir = side === "clan1" ? "right" : "left";
+                this.side = side; this.tankLevel = lvl;
+                this.speed = 2.5; this.lastShot = 0;
             }
             draw() {
-                ctx.fillStyle = this.side === "friendly" ? "#10b981" : "#ef4444";
-                ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.save();
+                ctx.translate(this.x + this.w/2, this.y + this.h/2);
+                if(this.dir === "down") ctx.rotate(Math.PI);
+                if(this.dir === "left") ctx.rotate(-Math.PI/2);
+                if(this.dir === "right") ctx.rotate(Math.PI/2);
+
+                ctx.fillStyle = this.side === "clan1" ? "#3b82f6" : "#ef4444";
+                ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
                 ctx.fillStyle = "#fff";
-                if(this.dir === "up") ctx.fillRect(this.x+15, this.y-6, 6, 8);
-                if(this.dir === "down") ctx.fillRect(this.x+15, this.y+36, 6, 8);
+                ctx.fillRect(-3, -this.h/2 - 4, 6, this.h/2);
+                ctx.restore();
             }
             move() {
                 let nx = this.x, ny = this.y;
-                if (this.dir === "up") ny -= this.speed; if (this.dir === "down") ny += this.speed;
-                if (!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
-                else if (this.side === "enemy") { this.dir = Math.random()>0.5?"up":"down"; }
+                if(this.dir === "up") ny -= this.speed;
+                if(this.dir === "down") ny += this.speed;
+                if(this.dir === "left") nx -= this.speed;
+                if(this.dir === "right") nx += this.speed;
+
+                if(!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
             }
             checkCollision(nx, ny) {
-                if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
+                if(nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
                 let pts = [{x:nx, y:ny}, {x:nx+this.w, y:ny}, {x:nx, y:ny+this.h}, {x:nx+this.w, y:ny+this.h}];
-                for (let p of pts) {
+                for(let p of pts) {
                     let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
-                    if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS && [1,2,3,9].includes(map[cy][cx])) return true;
+                    if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
+                        if(map[cy][cx] === 1 || map[cy][cx] === 2 || map[cy][cx] === 8 || map[cy][cx] === 9) return true;
+                    }
                 }
                 return false;
             }
             shoot() {
                 let now = Date.now();
-                if (now - this.lastShot > 400) { bullets.push(new Bullet(this.x+18, this.y+18, this.dir, this.side)); this.lastShot = now; }
+                if(now - this.lastShot > 300) {
+                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side, this.tankLevel));
+                    this.lastShot = now;
+                }
             }
         }
 
         class Bullet {
-            constructor(x, y, dir, side) { this.x = x; this.y = y; this.dir = dir; this.side = side; this.speed = 6; this.active = true; }
-            draw() { ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055"; ctx.beginPath(); ctx.arc(this.x, this.y, 3, 0, Math.PI*2); ctx.fill(); }
+            constructor(x, y, dir, side, power) {
+                this.x = x; this.y = y; this.dir = dir; this.side = side; this.power = power;
+                this.speed = 6; this.active = true;
+            }
+            draw() {
+                ctx.fillStyle = this.side === "clan1" ? "#3b82f6" : "#ef4444";
+                ctx.beginPath(); ctx.arc(this.x, this.y, 4, 0, Math.PI*2); ctx.fill();
+            }
             update() {
-                if (this.dir === "up") this.y -= this.speed; if (this.dir === "down") this.y += this.speed;
-                if (this.x<0 || this.x>canvas.width || this.y<0 || this.y>canvas.height) { this.active = false; return; }
+                if(this.dir === "up") this.y -= this.speed;
+                if(this.dir === "down") this.y += this.speed;
+                if(this.dir === "left") this.x -= this.speed;
+                if(this.dir === "right") this.x += this.speed;
+
                 let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
-                if (cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
-                    if (map[cy][cx] === 1) { map[cy][cx] = 0; this.active = false; }
-                    else if (map[cy][cx] === 2) { this.active = false; }
-                    else if (map[cy][cx] === 9) { map[cy][cx] = 0; this.active = false; alert("Кландык штаб кыйрады!"); location.reload(); }
+                if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
+                    let block = map[cy][cx];
+                    if(block === 1) { map[cy][cx] = 0; this.active = false; }
+                    else if(block === 2) {
+                        if(this.power >= 11) map[cy][cx] = 0;
+                        this.active = false;
+                    }
+                    else if(block === 8) { this.active = false; endBattle("clan2"); }
+                    else if(block === 9) { this.active = false; endBattle("clan1"); }
                 }
             }
         }
 
-        player = new Tank(6*TILE_SIZE+2, 13*TILE_SIZE+2, "friendly");
-        applyClanUpgrades();
+        function endBattle(winnerSide) {
+            isGameRunning = false;
+            if (winnerSide === "clan1") {
+                clans[myClanName].crystals += 10;
+                alert(`🏆 ЖЕҢИШ! \n\nСиздин "${myClanName}" кланыңыз утуп алды жана 10 даана 💎 Кристалл тапты!`);
+            } else {
+                alert(`❌ ЖЕҢИЛҮҮ! \n\nТилекке каршы, душман сиздин базаны кыйратып кетти.`);
+            }
+            saveState();
+            exitGame();
+        }
 
-        window.addEventListener("keydown", e => keys[e.key] = true);
-        window.addEventListener("keyup", e => keys[e.key] = false);
+        function exitGame() { 
+            isGameRunning = false; 
+            // Оюн бүткөндө кайра менюда скроллду ачабыз
+            document.body.classList.remove("game-mode");
+            document.getElementById("game-wrapper").style.display = "none"; 
+            document.getElementById("main-menu").style.display = "block"; 
+            renderClanMenu(); 
+        }
 
-        function update() {
-            if (keys["w"] || keys["W"]) { player.dir = "up"; player.move(); }
-            else if (keys["s"] || keys["S"]) { player.dir = "down"; player.move(); }
-            if (keys["f"] || keys["F"]) player.shoot();
+        window.addEventListener("keydown", e => { keys[e.key] = true; });
+        window.addEventListener("keyup", e => { keys[e.key] = false; });
 
-            enemyTimer++; if(enemyTimer > 120 && enemies.length + enemiesDefeated < maxEnemies) { enemies.push(new Tank(10*TILE_SIZE, 2, "enemy")); enemyTimer=0; }
+        function handleInput() {
+            if(player1) {
+                if(p1TouchDir) { player1.dir = p1TouchDir; player1.move(); }
+                else if(keys["w"]) { player1.dir = "up"; player1.move(); }
+                else if(keys["s"]) { player1.dir = "down"; player1.move(); }
+                else if(keys["a"]) { player1.dir = "left"; player1.move(); }
+                else if(keys["d"]) { player1.dir = "right"; player1.move(); }
+                if(keys[" "] || p1TouchFire) player1.shoot();
+            }
+            if(player2) {
+                if(p2TouchDir) { player2.dir = p2TouchDir; player2.move(); }
+                else if(keys["ArrowUp"]) { player2.dir = "up"; player2.move(); }
+                else if(keys["ArrowDown"]) { player2.dir = "down"; player2.move(); }
+                else if(keys["ArrowLeft"]) { player2.dir = "left"; player2.move(); }
+                else if(keys["ArrowRight"]) { player2.dir = "right"; player2.move(); }
+                if(keys["Enter"] || p2TouchFire) player2.shoot();
+            }
+        }
 
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].update();
-                if (!bullets[i].active) { bullets.splice(i, 1); continue; }
-                if (bullets[i].side === "friendly") {
-                    for (let j = enemies.length - 1; j >= 0; j--) {
-                        if (bullets[i].x > enemies[j].x && bullets[i].x < enemies[j].x+36 && bullets[i].y > enemies[j].y && bullets[i].y < enemies[j].y+36) {
-                            enemies.splice(j, 1); bullets.splice(i, 1); enemiesDefeated++; break;
-                        }
+        function setupControls() {
+            const bind = (id, side, dir) => {
+                document.getElementById(id).addEventListener("touchstart", (e) => { e.preventDefault(); if(side===1) p1TouchDir=dir; else p2TouchDir=dir; });
+                document.getElementById(id).addEventListener("touchend", (e) => { e.preventDefault(); if(side===1) p1TouchDir=null; else p2TouchDir=null; });
+            };
+            bind("p1-up",1,"up"); bind("p1-down",1,"down"); bind("p1-left",1,"left"); bind("p1-right",1,"right");
+            bind("p2-up",2,"up"); bind("p2-down",2,"down"); bind("p2-left",2,"left"); bind("p2-right",2,"right");
+            
+            document.getElementById("p1-fire").addEventListener("touchstart", (e)=>{e.preventDefault(); p1TouchFire=true;});
+            document.getElementById("p1-fire").addEventListener("touchend", (e)=>{e.preventDefault(); p1TouchFire=false;});
+            document.getElementById("p2-fire").addEventListener("touchstart", (e)=>{e.preventDefault(); p2TouchFire=true;});
+            document.getElementById("p2-fire").addEventListener("touchend", (e)=>{e.preventDefault(); p2TouchFire=false;});
+        }
+
+        function triggerPopupBanner(title, desc) {
+            const b = document.getElementById("levelBanner");
+            document.getElementById("banner-title").innerText = title;
+            document.getElementById("banner-desc").innerText = desc;
+            b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2000);
+        }
+
+        function gameLoop() {
+            if(isGameRunning) {
+                handleInput();
+                for(let i=bullets.length-1; i>=0; i--) {
+                    bullets[i].update(); if(!bullets[i].active) bullets.splice(i,1);
+                }
+                
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                for(let r=0; r<ROWS; r++) {
+                    for(let c=0; c<COLS; c++) {
+                        let b = map[r][c];
+                        if(b===1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                        if(b===2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                        if(b===8) { ctx.fillStyle = "#3b82f6"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); ctx.fillStyle="#fff"; ctx.font="12px Arial"; ctx.fillText("🐺", c*TILE_SIZE+13, r*TILE_SIZE+24); }
+                        if(b===9) { ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); ctx.fillStyle="#fff"; ctx.font="12px Arial"; ctx.fillText("🦅", c*TILE_SIZE+13, r*TILE_SIZE+24); }
                     }
                 }
+                if(player1) player1.draw();
+                if(player2) player2.draw();
+                bullets.forEach(b => b.draw());
             }
-
-            for (let e of enemies) { e.move(); if(Math.random()<0.02) e.shoot(); }
-
-            if (enemiesDefeated >= maxEnemies && enemies.length === 0) {
-                clanScore += 100;
-                if (clanScore >= 300) { clanLevel++; clanScore = 0; alert("КЛАНДЫН ДЕҢГЕЛИ КӨТӨРҮЛДҮ!"); }
-                localStorage.setItem("clan_lvl_save", clanLevel);
-                localStorage.setItem("clan_exp_save", clanScore);
-                alert("Раунд Жеңиш менен аяктады! Кланга +100 XP берилди.");
-                location.reload();
-            }
+            requestAnimationFrame(gameLoop);
         }
 
-        function draw() {
-            ctx.clearRect(0,0,canvas.width,canvas.height);
-            for (let r=0; r<ROWS; r++) {
-                for (let c=0; c<COLS; c++) {
-                    if (map[r][c] === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
-                    if (map[r][c] === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
-                    if (map[r][c] === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
-                }
-            }
-            player.draw(); for(let e of enemies) e.draw(); for(let b of bullets) b.draw();
-        }
-
-        function loop() { update(); draw(); requestAnimationFrame(loop); }
-        loop();
+        renderClanMenu(); setupControls(); gameLoop();
     </script>
 </body>
 </html>
