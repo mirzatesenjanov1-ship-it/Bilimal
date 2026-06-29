@@ -25,7 +25,6 @@
             overflow-y: auto;
         }
 
-        /* ИЧКИ МЕНЮ КОНТЕЙНЕРИ */
         #single-menu-container {
             text-align: center;
             max-width: 600px;
@@ -35,7 +34,7 @@
             border-radius: 20px;
             border: 3px solid #10b981;
             box-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
-            display: block; /* Башында ачык болот */
+            display: block;
         }
         #single-menu-container h1 {
             font-size: 32px;
@@ -76,11 +75,8 @@
             font-size: 15px;
             transition: color 0.2s;
         }
-        .back-to-main-btn:hover {
-            color: #ef4444;
-        }
+        .back-to-main-btn:hover { color: #ef4444; }
 
-        /* ОЮНДУН ЭКРАНЫ (БАШЫНДА ЖАШЫРУУН - DISPLAY: NONE) */
         #game-wrapper {
             display: none; 
             flex-direction: column;
@@ -161,7 +157,6 @@
             margin-bottom: 5px;
         }
 
-        /* МОБИЛДИК БАШКАРУУ ПАНЕЛИ */
         .mobile-controls {
             display: flex;
             justify-content: space-between;
@@ -222,7 +217,6 @@
     <div id="single-menu-container">
         <h1>ЖАЛГЫЗ ОЙНОО</h1>
         <p class="subtitle">Чепти душмандардан коргоо, бонустар жана танк эволюциясы</p>
-
         <button class="start-game-btn" onclick="pressStartGame()">ОЮНДУ БАШТОО 🚀</button>
         <br>
         <a href="index.html" class="back-to-main-btn">◀ Башкы менюга кайтуу</a>
@@ -273,7 +267,6 @@
         const ROWS = 14; 
 
         let isGameRunning = false; 
-        let gameLoopId = null;
 
         let gameState = {
             score: 0, lives: 3, level: 1,
@@ -305,9 +298,10 @@
                 [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
                 [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
                 [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
-                [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
+                [0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
                 [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] 
             ];
+            if (gameState.cementTimer > 0) toggleBaseDefense(true);
         }
 
         class Particle {
@@ -334,7 +328,7 @@
         class Bonus {
             constructor(x, y, type) {
                 this.x = x; this.y = y; this.w = 26; this.h = 26;
-                this.type = type; this.timer = 400; 
+                this.type = type; this.timer = 500; 
             }
             draw() {
                 ctx.save();
@@ -351,25 +345,61 @@
         }
 
         class Tank {
-            constructor(x, y, type, side, controlSet = "p1") {
+            constructor(x, y, type, side) {
                 this.x = x; this.y = y; this.w = TILE_SIZE - 4; this.h = TILE_SIZE - 4;
-                this.dir = "up"; this.type = type; this.side = side; this.controlSet = controlSet;
-                this.tankLevel = 1; this.speed = type === "fast" ? 4 : 3;
-                this.shield = 120; this.lastShot = 0;
-                this.color = side === "friendly" ? "#10b981" : "#ef4444";
+                this.dir = "up"; this.type = type; this.side = side;
+                this.tankLevel = 1; this.shield = 120; this.lastShot = 0;
+
+                // Балансталган ылдамдыктар жана өмүрлөр (HP)
+                if (side === "friendly") {
+                    this.speed = 2.0; 
+                    this.hp = 1;
+                    this.color = "#10b981";
+                } else {
+                    if (type === "light") {
+                        this.speed = 1.5; 
+                        this.hp = 1; 
+                        this.color = "#f87171"; // Ачык кызыл
+                    } else if (type === "heavy") {
+                        this.speed = 0.9; 
+                        this.hp = 3; 
+                        this.color = "#7f1d1d"; // Кочкул брондолгон кызыл
+                    } else if (type === "bonus") {
+                        this.speed = 1.3; 
+                        this.hp = 1; 
+                        this.color = "#ff0055"; // Өзгөчө ачык кызыл
+                    }
+                }
             }
 
             draw() {
                 if (this.side === "friendly") {
                     if (this.tankLevel === 2) this.color = "#0d9488";
                     if (this.tankLevel >= 3) this.color = "#eab308";
+                } else {
+                    // Оор танканын сооту азайган сайын түсүн бир аз өзгөртөбүз
+                    if (this.type === "heavy") {
+                        if (this.hp === 2) this.color = "#a16207";
+                        if (this.hp === 1) this.color = "#ca8a04";
+                    }
                 }
+
                 if (this.shield > 0) {
                     ctx.save(); ctx.strokeStyle = "#00e5ff"; ctx.lineWidth = 3;
                     ctx.beginPath(); ctx.arc(this.x + this.w/2, this.y + this.h/2, TILE_SIZE/2 + 2, 0, Math.PI*2);
                     ctx.stroke(); ctx.restore();
                 }
-                ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h);
+
+                ctx.fillStyle = this.color; 
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                
+                // Танканын капкагы (Түрүнө жараша кооздоо)
+                ctx.fillStyle = "#fff"; 
+                if (this.type === "heavy") ctx.fillStyle = "#374151";
+                if (this.type === "bonus") ctx.fillStyle = "#eab308";
+                ctx.fillRect(this.x + this.w/4, this.y + this.h/4, this.w/2, this.h/2);
+
+                // Огунун найы
                 ctx.fillStyle = "#fff"; let bs = 6;
                 if (this.dir === "up") ctx.fillRect(this.x + this.w/2 - bs/2, this.y - 6, bs, 8);
                 if (this.dir === "down") ctx.fillRect(this.x + this.w/2 - bs/2, this.y + this.h, bs, 8);
@@ -408,21 +438,21 @@
 
             shoot() {
                 let now = Date.now();
-                if (now - this.lastShot > 300) {
-                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side, this.tankLevel, this.controlSet));
+                if (now - this.lastShot > 350) {
+                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side, this.tankLevel));
                     this.lastShot = now;
                 }
             }
         }
 
         class Bullet {
-            constructor(x, y, dir, side, power, owner) {
+            constructor(x, y, dir, side, power) {
                 this.x = x; this.y = y; this.dir = dir; this.side = side;
-                this.speed = 6; this.r = 3; this.active = true; this.power = power; this.owner = owner;
+                this.speed = 5; this.r = 3; this.active = true; this.power = power;
             }
             draw() {
                 ctx.fillStyle = this.side === "friendly" ? "#00e5ff" : "#ff0055";
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.r + (this.power > 1 ? 1.5 : 0), 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r + (this.power > 1 ? 1 : 0), 0, Math.PI*2); ctx.fill();
             }
             update() {
                 if (this.dir === "up") this.y -= this.speed;
@@ -435,20 +465,24 @@
                 let cx = Math.floor(this.x / TILE_SIZE); let cy = Math.floor(this.y / TILE_SIZE);
                 if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) {
                     let b = map[cy][cx];
-                    if (b === 1) { map[cy][cx] = 0; this.active = false; createExplosion(this.x, this.y, "#b45309", 6); }
-                    else if (b === 2) { this.active = false; }
+                    if (b === 1) { 
+                        map[cy][cx] = 0; this.active = false; 
+                        createExplosion(this.x, this.y, "#b45309", 6); 
+                    }
+                    else if (b === 2) { this.active = false; createExplosion(this.x, this.y, "#94a3b8", 3); }
                     else if (b === 9) { map[cy][cx] = 0; this.active = false; gameOver(); }
                 }
             }
         }
 
+        // Штабтын айланасын коргоо (Цемент куюу механикасы)
         function toggleBaseDefense(isCement) {
             let blockType = isCement ? 2 : 1;
-            map[12][7] = blockType; map[12][8] = blockType; map[12][9] = blockType;
-            map[13][7] = blockType;                         map[13][9] = blockType;
+            // Сары тегеректин (9) айланасындагы коопсуздук дубалдары
+            map[12][9] = blockType;  map[12][10] = blockType; map[12][11] = blockType;
+            map[13][9] = blockType;                           map[13][11] = blockType;
         }
 
-        /* МЕНЮ МЕНЕН ОЮНДУН АБАЛДАРЫН АЛМАШТЫРУУ */
         function pressStartGame() {
             document.getElementById("single-menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
@@ -463,14 +497,14 @@
 
         function startNewGame() {
             gameState.score = 0; gameState.lives = 3; gameState.level = 1;
-            gameState.enemiesDefeated = 0; enemies = []; bullets = []; bonuses = [];
+            gameState.enemiesDefeated = 0; gameState.cementTimer = 0;
+            enemies = []; bullets = []; bonuses = [];
             resetMap();
 
-            player1 = new Tank(6 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "friendly", "p1");
+            player1 = new Tank(6 * TILE_SIZE + 2, 13 * TILE_SIZE + 2, "player", "friendly");
             
-            triggerPopupBanner(`РАУНД ${gameState.level}`, "Чепти коргогула!");
+            triggerPopupBanner(`РАУНД ${gameState.level}`, "Чепти жана Кушту коргогула!");
             spawnEnemy();
-            
             isGameRunning = true;
         }
 
@@ -484,9 +518,19 @@
 
         function spawnEnemy() {
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
-            const pts = [{x:0, y:0}, {x:10*TILE_SIZE, y:0}, {x:20*TILE_SIZE, y:0}];
-            let p = pts[Math.floor(Math.random() * pts.length)];
-            enemies.push(new Tank(p.x+2, p.y+2, Math.random() > 0.5 ? "fast" : "normal", "enemy", "bot"));
+            const spawnPoints = [{x:0, y:0}, {x:10*TILE_SIZE, y:0}, {x:20*TILE_SIZE, y:0}];
+            let p = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            
+            // Танкалардын түрлөрүн кокустук менен тандап чыгаруу
+            let rand = Math.random();
+            let eType = "light";
+            if (rand < 0.25) {
+                eType = "heavy"; // Брондолгон оор танк
+            } else if (rand < 0.50) {
+                eType = "bonus"; // Сөзсүз бонус берүүчү кызыл танк
+            }
+            
+            enemies.push(new Tank(p.x + 2, p.y + 2, eType, "enemy"));
         }
 
         window.addEventListener("keydown", e => { keys[e.key] = true; });
@@ -527,6 +571,7 @@
 
             if (player1 && player1.shield > 0) player1.shield--;
 
+            // Цемент дубалдын таймерин жөнгө салуу
             if (gameState.cementTimer > 0) {
                 gameState.cementTimer--;
                 if (gameState.cementTimer === 0) toggleBaseDefense(false);
@@ -536,9 +581,12 @@
                 bonuses[i].timer--;
                 if (player1 && rectCollision(player1, bonuses[i])) {
                     if (bonuses[i].type === "star") player1.tankLevel++;
-                    if (bonuses[i].type === "shield") player1.shield = 300;
+                    if (bonuses[i].type === "shield") player1.shield = 400;
                     if (bonuses[i].type === "heart") gameState.lives++;
-                    if (bonuses[i].type === "cement") { gameState.cementTimer = 400; toggleBaseDefense(true); }
+                    if (bonuses[i].type === "cement") { 
+                        gameState.cementTimer = 500; 
+                        toggleBaseDefense(true); 
+                    }
                     bonuses.splice(i, 1);
                     continue;
                 }
@@ -552,19 +600,34 @@
                 if (b.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, enemies[j])) {
-                            createExplosion(enemies[j].x, enemies[j].y, "#ffaa00", 12);
-                            if (Math.random() < 0.35) {
-                                let types = ["star", "shield", "heart", "cement"];
-                                bonuses.push(new Bonus(enemies[j].x, enemies[j].y, types[Math.floor(Math.random()*types.length)]));
+                            b.active = false;
+                            
+                            // Ок тийгенде HP (соотту) азайтуу механикасы
+                            enemies[j].hp -= b.power; 
+                            createExplosion(b.x, b.y, "#ffffff", 4);
+
+                            if (enemies[j].hp <= 0) {
+                                createExplosion(enemies[j].x, enemies[j].y, "#ffaa00", 15);
+                                
+                                // Кызыл танктан сөзсүз бонус чыгат, калганында 15% кокустук
+                                if (enemies[j].type === "bonus" || Math.random() < 0.15) {
+                                    let types = ["star", "shield", "heart", "cement"];
+                                    bonuses.push(new Bonus(enemies[j].x, enemies[j].y, types[Math.floor(Math.random()*types.length)]));
+                                }
+                                
+                                enemies.splice(j, 1);
+                                gameState.score += 10; 
+                                gameState.enemiesDefeated++;
                             }
-                            enemies.splice(j, 1); b.active = false;
-                            gameState.score += 10; gameState.enemiesDefeated++;
                             break;
                         }
                     }
                 } else {
                     if (player1 && rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, player1) && player1.shield <= 0) {
                         gameState.lives--; b.active = false;
+                        createExplosion(player1.x, player1.y, "#ef4444", 15);
+                        player1.x = 6 * TILE_SIZE + 2; player1.y = 13 * TILE_SIZE + 2;
+                        player1.shield = 150;
                         if (gameState.lives <= 0) gameOver();
                     }
                 }
@@ -572,18 +635,19 @@
 
             for (let enemy of enemies) {
                 enemy.move();
-                if (Math.random() < 0.015) enemy.shoot();
+                if (Math.random() < 0.012) enemy.shoot();
             }
 
             enemyTimer++;
-            if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
+            if (enemyTimer > 120) { spawnEnemy(); enemyTimer = 0; }
 
             if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) {
                 gameState.level++;
                 gameState.enemiesDefeated = 0;
                 gameState.maxEnemies += 2;
-                triggerPopupBanner(`РАУНД ${gameState.level}`, "Даяр болуңуз!");
-                resetMap(); spawnEnemy();
+                triggerPopupBanner(`РАУНД ${gameState.level}`, "Душмандар күчөдү!");
+                resetMap(); 
+                spawnEnemy();
             }
 
             for (let i = particles.length - 1; i >= 0; i--) {
@@ -604,7 +668,7 @@
                     if (b === 9) { 
                         ctx.fillStyle = "#eab308"; ctx.beginPath(); 
                         ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 16, 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = "#050709"; ctx.font = "14px Arial"; ctx.fillText("⭐", c*TILE_SIZE+13, r*TILE_SIZE+25);
+                        ctx.fillStyle = "#050709"; ctx.font = "14px Arial"; ctx.fillText("👑", c*TILE_SIZE+12, r*TILE_SIZE+25);
                     }
                 }
             }
@@ -622,7 +686,11 @@
             if(player1) document.getElementById("tank-lvl-val").innerText = `Lvl ${player1.tankLevel}`;
         }
 
-        function gameOver() { isGameRunning = false; alert("Оюн Бүттү! Упайыңыз: " + gameState.score); exitToSingleMenu(); }
+        function gameOver() { 
+            isGameRunning = false; 
+            alert("Оюн Бүттү! Коргонуу талкаланды. Топтолгон упай: " + gameState.score); 
+            exitToSingleMenu(); 
+        }
 
         function gameLoop() {
             update(); draw();
