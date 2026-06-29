@@ -235,13 +235,13 @@
         const ROWS = 14; 
 
         let isGameRunning = false; 
-        let isRoundTransition = false; // Раунддар аралык күтүү логикасы
+        let isRoundTransition = false; 
         let gameState = { score: 0, lives: 3, level: 1, maxEnemies: 4, enemiesDefeated: 0, cementTimer: 0 };
         let keys = {};
         let activeTouchDir = null;
         let isTouchFiring = false;
         let particles = [];
-        let textEffects = []; // Калкып чыгуучу упай тексти
+        let textEffects = []; 
         let enemies = [];
         let bullets = [];
         let bonuses = []; 
@@ -249,7 +249,6 @@
         let player1 = null;
         let map = [];
 
-        // Спавн пульсар анимациясынын өзгөрмөлөрү
         let spawnPulsar = { x: 0, y: 0, radius: 5, growing: true, timer: 0, active: false };
 
         const LEVEL_COLORS = [
@@ -263,22 +262,23 @@
             { main: "#f43f5e", sec: "#be123c" }, // Lvl 8
             { main: "#f97316", sec: "#c2410c" }, // Lvl 9
             { main: "#eab308", sec: "#a16207" }, // Lvl 10
-            { main: "#ffffff", sec: "#9ca3af" }  // Lvl 11
+            { main: "#ffffff", sec: "#9ca3af" }  // Lvl 11 (Платина)
         ];
 
         function resetMap() {
+            // Картага кошумча цемент блоктору (2) жайгаштырылды
             map = [
                 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
-                [0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0,1,1],
+                [0,1,1,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,1,1],
+                [0,1,1,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,1,1],
                 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
-                [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+                [0,1,1,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,1,1],
+                [0,1,1,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,1,1],
                 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,1,1],
-                [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+                [0,2,2,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,2,2],
+                [0,2,2,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,2,2],
                 [0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0],
-                [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
+                [0,1,1,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,1,1],
                 [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
                 [0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
                 [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] 
@@ -403,11 +403,9 @@
                 if (!this.checkCollision(nx, ny)) {
                     this.x = nx; this.y = ny;
                 } else if (this.side === "enemy") {
-                    // Штабты же оюнчуну көздөй акылдуу бурулуу
                     if (Math.random() < 0.6) {
-                        let targetX = 10 * TILE_SIZE, targetY = 13 * TILE_SIZE; // Штабдын координаттары
+                        let targetX = 10 * TILE_SIZE, targetY = 13 * TILE_SIZE;
                         if (player1 && Math.random() < 0.5) { targetX = player1.x; targetY = player1.y; }
-                        
                         if (Math.random() < 0.5) {
                             this.dir = nx < targetX ? "right" : "left";
                         } else {
@@ -481,9 +479,18 @@
                     let b = map[cy][cx];
                     if (b === 1) { 
                         map[cy][cx] = 0; this.active = false; 
-                        createExplosion(this.x, this.y, "#b45309", 8); // Майда сыныктар эффекти
+                        createExplosion(this.x, this.y, "#b45309", 8); 
                     }
-                    else if (b === 2) { this.active = false; createExplosion(this.x, this.y, "#64748b", 3); }
+                    else if (b === 2) { 
+                        // МЕХАНИКА: Эгер танк 11-деңгээлде болсо, цементти да талкалайт!
+                        if (this.side === "friendly" && this.power === 11) {
+                            map[cy][cx] = 0;
+                            createExplosion(this.x, this.y, "#64748b", 12); // Цемент сыныктары
+                            addFloatingText(this.x, this.y, "CRUSH!");
+                        }
+                        this.active = false; 
+                        if (this.power < 11) createExplosion(this.x, this.y, "#64748b", 3); 
+                    }
                     else if (b === 9) { this.active = false; gameOver(); }
                 }
             }
@@ -497,12 +504,11 @@
             startRound();
         }
 
-        // Пульсациялуу жаралуу функциясы
         function triggerPlayerSpawn() {
             let sx = 4 * TILE_SIZE + TILE_SIZE/2;
             let sy = 13 * TILE_SIZE + TILE_SIZE/2;
             spawnPulsar = { x: sx, y: sy, radius: 4, growing: true, timer: 90, active: true };
-            player1 = null; // Пульсар учурунда танк көрүнбөйт
+            player1 = null; 
         }
 
         function startRound() {
@@ -512,9 +518,7 @@
             resetMap();
             isRoundTransition = false;
 
-            let carryLevel = player1 ? player1.tankLevel : 1;
             triggerPlayerSpawn();
-
             triggerPopupBanner(`РАУНД ${gameState.level}`, "Атака башталды!");
             spawnEnemy();
         }
@@ -522,13 +526,13 @@
         function nextRoundSequence() {
             if (isRoundTransition) return;
             isRoundTransition = true;
-            bullets = []; // Экрандагы окторду тазалоо
+            bullets = []; 
             triggerPopupBanner(`РАУНД ИЙГИЛИКТҮҮ СЫНДЫ!`, "Кийинки раунд 3 секундда ачылат...");
             
             setTimeout(() => {
                 gameState.level++;
                 startRound();
-            }, 3000); // 3 секунддук күтүү
+            }, 3000); 
         }
 
         function triggerPopupBanner(title, desc) {
@@ -589,7 +593,6 @@
         function update() {
             if (!isGameRunning) return;
 
-            // Спавн пульсар анимациясынын логикасы
             if (spawnPulsar.active) {
                 spawnPulsar.timer--;
                 if (spawnPulsar.growing) {
@@ -599,13 +602,11 @@
                 }
                 if (spawnPulsar.timer <= 0) {
                     spawnPulsar.active = false;
-                    // Пульсар бүткөндө танк толук жаралат
                     player1 = new Tank("player1", 4 * TILE_SIZE + 4, 13 * TILE_SIZE + 4, "player", "friendly");
                 }
             }
 
             if (isRoundTransition) {
-                // Раунд алмашып жатканда душмандар жана октор жылбайт, бирок анимациялар иштей берет
                 for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].alpha <= 0) particles.splice(i, 1); }
                 return;
             }
@@ -629,7 +630,6 @@
                 if (bonuses[i].timer <= 0) bonuses.splice(i, 1);
             }
 
-            // Октордун кагылышуусу
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b1 = bullets[i]; if (!b1.active) continue;
                 for (let j = bullets.length - 1; j >= 0; j--) {
@@ -643,7 +643,6 @@
                 }
             }
 
-            // Октордун кыймылы
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b = bullets[i]; if (!b.active) { bullets.splice(i, 1); continue; }
                 b.update(); if (!b.active) { bullets.splice(i, 1); continue; }
@@ -655,9 +654,12 @@
                             createExplosion(b.x, b.y, "#fff", 5);
                             if (enemies[j].hp <= 0) {
                                 createExplosion(enemies[j].x + 16, enemies[j].y + 16, "#f59e0b", 15);
-                                addFloatingText(enemies[j].x, enemies[j].y, "+100"); // Калкып чыгуучу упай эффекти
-                                if (enemies[j].type === "bonus" || Math.random() < 0.3) {
-                                    let types = ["star", "shield", "heart", "cement"];
+                                addFloatingText(enemies[j].x, enemies[j].y, "+100"); 
+                                
+                                // Жылдыздардын (бонустардын) чыгуу мүмкүнчүлүгү 30%дан 55%ке чейин көбөйтүлдү
+                                if (enemies[j].type === "bonus" || Math.random() < 0.55) {
+                                    // Жылдыз чыгуу ыктымалдуулугун дагы жогорулатуу
+                                    let types = ["star", "star", "shield", "heart", "cement"];
                                     bonuses.push(new Bonus(enemies[j].x, enemies[j].y, types[Math.floor(Math.random() * types.length)]));
                                 }
                                 enemies.splice(j, 1); gameState.score += 100; gameState.enemiesDefeated++;
@@ -685,15 +687,12 @@
             enemyTimer++;
             if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
 
-            // Раунд ийгиликтүү бүтсө, күтүү цикли башталат
             if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) {
                 nextRoundSequence();
             }
 
-            // Тексттик эффекттерди жаңылоо
             for (let i = textEffects.length - 1; i >= 0; i--) {
-                textEffects[i].y -= textEffects[i].speedY;
-                textEffects[i].alpha -= 0.02;
+                textEffects[i].y -= textEffects[i].speedY; textEffects[i].alpha -= 0.02;
                 if (textEffects[i].alpha <= 0) textEffects.splice(i, 1);
             }
 
@@ -720,7 +719,6 @@
                 }
             }
 
-            // Пульсарды чийүү анимациясы
             if (spawnPulsar.active) {
                 ctx.save();
                 let gradient = ctx.createRadialGradient(spawnPulsar.x, spawnPulsar.y, 2, spawnPulsar.x, spawnPulsar.y, spawnPulsar.radius);
@@ -738,7 +736,6 @@
             for (let b of bonuses) b.draw();
             for (let p of particles) p.draw();
 
-            // Тексттик эффекттерди чийүү
             for (let t of textEffects) {
                 ctx.save(); ctx.globalAlpha = t.alpha;
                 ctx.fillStyle = "#00e5ff"; ctx.font = "bold 16px Arial";
@@ -750,7 +747,7 @@
             document.getElementById("score-val").innerText = gameState.score;
             document.getElementById("lives-val").innerText = gameState.lives;
             document.getElementById("level-val").innerText = gameState.level;
-            let currentLvl = player1 ? player1.tankLevel : (LEVEL_COLORS.length ? "Spawn..." : 1);
+            let currentLvl = player1 ? player1.tankLevel : "Spawn...";
             document.getElementById("tank-lvl-val").innerText = typeof currentLvl === 'number' ? `Lvl ${currentLvl}` : currentLvl;
         }
 
