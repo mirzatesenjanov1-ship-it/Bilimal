@@ -249,6 +249,9 @@
         let player1 = null;
         let map = [];
 
+        // Оюнчунун деңгээлин глобалдык сактоо үчүн жаңы өзгөрмө
+        let savedPlayerLevel = 1; 
+
         let spawnPulsar = { x: 0, y: 0, radius: 5, growing: true, timer: 0, active: false };
 
         const LEVEL_COLORS = [
@@ -262,11 +265,10 @@
             { main: "#f43f5e", sec: "#be123c" }, // Lvl 8
             { main: "#f97316", sec: "#c2410c" }, // Lvl 9
             { main: "#eab308", sec: "#a16207" }, // Lvl 10
-            { main: "#ffffff", sec: "#9ca3af" }  // Lvl 11 (Платина)
+            { main: "#ffffff", sec: "#9ca3af" }  // Lvl 11
         ];
 
         function resetMap() {
-            // Картага кошумча цемент блоктору (2) жайгаштырылды
             map = [
                 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,1,1,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,1,1],
@@ -340,7 +342,10 @@
                 this.id = id; this.x = x; this.y = y;
                 this.w = TILE_SIZE - 8; this.h = TILE_SIZE - 8; 
                 this.dir = "up"; this.type = type; this.side = side;
-                this.tankLevel = (side === "friendly" && player1) ? player1.tankLevel : 1; 
+                
+                // Танк түзүлгөндө глобалдык сакталган деңгээлди алат
+                this.tankLevel = side === "friendly" ? savedPlayerLevel : 1; 
+                
                 this.shield = side === "friendly" ? 150 : 0; 
                 this.lastShot = 0;
                 this.speed = side === "friendly" ? 2.3 : (type === "heavy" ? 1.1 : 1.7);
@@ -482,10 +487,9 @@
                         createExplosion(this.x, this.y, "#b45309", 8); 
                     }
                     else if (b === 2) { 
-                        // МЕХАНИКА: Эгер танк 11-деңгээлде болсо, цементти да талкалайт!
                         if (this.side === "friendly" && this.power === 11) {
                             map[cy][cx] = 0;
-                            createExplosion(this.x, this.y, "#64748b", 12); // Цемент сыныктары
+                            createExplosion(this.x, this.y, "#64748b", 12); 
                             addFloatingText(this.x, this.y, "CRUSH!");
                         }
                         this.active = false; 
@@ -500,6 +504,7 @@
             document.getElementById("single-menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
             gameState.score = 0; gameState.lives = 3; gameState.level = 1;
+            savedPlayerLevel = 1; // Жаңы оюнда деңгээл 1ден башталат
             isGameRunning = true; isRoundTransition = false;
             startRound();
         }
@@ -525,9 +530,15 @@
 
         function nextRoundSequence() {
             if (isRoundTransition) return;
+            
+            // Раунд аяктаганда учурдагы танктын деңгээлин сактап калабыз!
+            if (player1) {
+                savedPlayerLevel = player1.tankLevel;
+            }
+
             isRoundTransition = true;
             bullets = []; 
-            triggerPopupBanner(`РАУНД ИЙГИЛИКТҮҮ СЫНДЫ!`, "Кийинки раунд 3 секундда ачылат...");
+            triggerPopupBanner(`РАУНД ИЙГИЛИКТҮҮ АЯКТАДЫ!`, "Кийинки раунд 3 секундда ачылат...");
             
             setTimeout(() => {
                 gameState.level++;
@@ -621,7 +632,10 @@
             for (let i = bonuses.length - 1; i >= 0; i--) {
                 bonuses[i].timer--;
                 if (player1 && rectCollision(player1, bonuses[i])) {
-                    if (bonuses[i].type === "star") player1.tankLevel = Math.min(11, player1.tankLevel + 1);
+                    if (bonuses[i].type === "star") {
+                        player1.tankLevel = Math.min(11, player1.tankLevel + 1);
+                        savedPlayerLevel = player1.tankLevel; // Деңгээл көтөрүлгөндө дароо сактайбыз
+                    }
                     if (bonuses[i].type === "shield") player1.shield = 350;
                     if (bonuses[i].type === "heart") gameState.lives++;
                     if (bonuses[i].type === "cement") { gameState.cementTimer = 400; toggleBaseDefense(true); }
@@ -656,9 +670,7 @@
                                 createExplosion(enemies[j].x + 16, enemies[j].y + 16, "#f59e0b", 15);
                                 addFloatingText(enemies[j].x, enemies[j].y, "+100"); 
                                 
-                                // Жылдыздардын (бонустардын) чыгуу мүмкүнчүлүгү 30%дан 55%ке чейин көбөйтүлдү
                                 if (enemies[j].type === "bonus" || Math.random() < 0.55) {
-                                    // Жылдыз чыгуу ыктымалдуулугун дагы жогорулатуу
                                     let types = ["star", "star", "shield", "heart", "cement"];
                                     bonuses.push(new Bonus(enemies[j].x, enemies[j].y, types[Math.floor(Math.random() * types.length)]));
                                 }
@@ -747,8 +759,10 @@
             document.getElementById("score-val").innerText = gameState.score;
             document.getElementById("lives-val").innerText = gameState.lives;
             document.getElementById("level-val").innerText = gameState.level;
-            let currentLvl = player1 ? player1.tankLevel : "Spawn...";
-            document.getElementById("tank-lvl-val").innerText = typeof currentLvl === 'number' ? `Lvl ${currentLvl}` : currentLvl;
+            
+            // UI дайыма туура деңгээлди көрсөтүүсү үчүн глобалдык өзгөрмөнү колдонобуз
+            let currentLvl = player1 ? player1.tankLevel : savedPlayerLevel;
+            document.getElementById("tank-lvl-val").innerText = `Lvl ${currentLvl}`;
         }
 
         function exitToSingleMenu() {
