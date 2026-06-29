@@ -11,7 +11,7 @@
             padding: 0;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none; /* Мобилдик экрандын чоңоюп-кичирейүүсүн жана жылуусун токтотот */
+            touch-action: none;
         }
         body {
             background-color: #0c0f12;
@@ -23,7 +23,7 @@
             justify-content: center;
             min-height: 100vh;
             padding: 15px 10px;
-            overflow: hidden; /* Сыртка чыгып кеткен элементтерди жашырып, экранды бекитет */
+            overflow: hidden;
         }
 
         #single-menu-container {
@@ -414,10 +414,8 @@
             }
 
             checkCollision(nx, ny) {
-                // 1. Картанын четтери менен кагылышуу
                 if (nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
                 
-                // 2. Блоктор (дубалдар) менен кагылышуу
                 let points = [{x: nx, y: ny}, {x: nx + this.w, y: ny}, {x: nx, y: ny + this.h}, {x: nx + this.w, y: ny + this.h}];
                 for (let pt of points) {
                     let cx = Math.floor(pt.x / TILE_SIZE); let cy = Math.floor(pt.y / TILE_SIZE);
@@ -427,16 +425,13 @@
                     }
                 }
 
-                // 3. ТАНКТАРДЫН БИРИ-БИРИ МЕНЕН КАГЫЛЫШУУСУ (ПРОЗРАЧНЫЙ ЭМЕС КЫЛУУ)
                 let selfRect = { x: nx, y: ny, w: this.w, h: this.h };
                 
-                // Оюнчу башка танктарды сүзсө
                 if (this.side === "friendly") {
                     for (let enemy of enemies) {
                         if (rectCollision(selfRect, enemy)) return true;
                     }
                 } 
-                // Душман танктары башка танктарды сүзсө
                 else if (this.side === "enemy") {
                     if (player1 && rectCollision(selfRect, player1)) return true;
                     for (let enemy of enemies) {
@@ -540,7 +535,6 @@
             enemies.push(new Tank("enemy_" + enemyIdCounter, p.x + 2, p.y + 2, eType, "enemy"));
         }
 
-        // ЭКРАНДЫН ӨЙДӨ-ЫЛДЫЙ ЖЫЛЫШЫН ТОКТОТУУ (SCROLL BLOCK)
         window.addEventListener("keydown", e => { 
             if(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
                 e.preventDefault(); 
@@ -590,7 +584,6 @@
                 if (gameState.cementTimer === 0) toggleBaseDefense(false);
             }
 
-            // Бонустарды текшерүү
             for (let i = bonuses.length - 1; i >= 0; i--) {
                 bonuses[i].timer--;
                 if (player1 && rectCollision(player1, bonuses[i])) {
@@ -604,18 +597,18 @@
                 if (bonuses[i].timer <= 0) bonuses.splice(i, 1);
             }
 
-            // ОКТОРДУН ӨЗ КАРШЫСЫНДАГЫ ОКТОР МЕНЕН КАГЫЛЫШУУСУ ЖАНА ТАНКТАРГА ТИЙҮҮСҮ
+            // ОКТОРДУН КАГЫЛЫШУУСУ - ТАКТАЛГАН ЖАНА ТҮЗӨТҮЛГӨН БӨЛҮМ
             for (let i = bullets.length - 1; i >= 0; i--) {
                 let b1 = bullets[i];
-                if (!b1.active) continue;
+                if (!b1 || !b1.active) continue;
 
-                // Октордун өз ара кагылышуусу (Деңгээл логикасы)
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     if (i === j) continue;
                     let b2 = bullets[j];
-                    if (!b2.active || b1.side === b2.side) constinue; // Достук октор кагылышпайт
+                    if (!b2 || !b2.active || b1.side === b2.side) {
+                        continue; // Туура жазылды: continue катасы жоюлду!
+                    }
 
-                    // Октор тийишкенде
                     let dist = Math.hypot(b1.x - b2.x, b1.y - b2.y);
                     if (dist < (b1.r + b2.r + 4)) {
                         createExplosion((b1.x + b2.x)/2, (b1.y + b2.y)/2, "#ffffff", 4);
@@ -634,7 +627,6 @@
                 b1.update();
                 if (!b1.active) { bullets.splice(i, 1); continue; }
 
-                // Танктарга тийүү логикасы
                 if (b1.side === "friendly") {
                     for (let j = enemies.length - 1; j >= 0; j--) {
                         if (rectCollision({x:b1.x-2, y:b1.y-2, w:4, h:4}, enemies[j])) {
