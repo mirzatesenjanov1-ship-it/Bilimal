@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tank Battle 2D - Singleplayer</title>
+    <title>Tank Battle 2D - BilimAl</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
             user-select: none;
+            -webkit-user-select: none;
         }
         body {
             background-color: #0c0f12;
@@ -23,11 +24,11 @@
         }
         .top-bar {
             width: 100%;
-            max-width: 800px;
+            max-width: 440px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(20, 25, 35, 0.8);
+            background: rgba(20, 25, 35, 0.9);
             padding: 10px 15px;
             border-radius: 8px;
             margin-bottom: 10px;
@@ -47,8 +48,9 @@
         }
         .stats {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             color: #4cd137;
+            font-size: 12px;
         }
         .stats span span {
             color: #00a8ff;
@@ -59,24 +61,26 @@
             border: 3px solid #2ed573;
             border-radius: 8px;
             box-shadow: 0 0 20px rgba(46, 213, 115, 0.3);
+            padding: 2px;
         }
         canvas {
             display: block;
+            border-radius: 4px;
         }
         .mobile-controls {
             margin-top: 15px;
             width: 100%;
-            max-width: 500px;
+            max-width: 440px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 0 20px;
+            padding: 0 10px;
         }
         .d-pad {
             display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(3, 60px);
-            gap: 8px;
+            grid-template-columns: repeat(3, 58px);
+            grid-template-rows: repeat(3, 58px);
+            gap: 6px;
         }
         .control-btn {
             background: #2f3542;
@@ -88,6 +92,7 @@
             color: white;
             font-size: 22px;
             cursor: pointer;
+            touch-action: none;
         }
         .control-btn:active, .control-btn.active {
             background: #059669;
@@ -108,6 +113,7 @@
             background: #ff0055;
             box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
             cursor: pointer;
+            touch-action: none;
         }
         .fire-btn:active {
             background: #cc0044;
@@ -116,7 +122,7 @@
         .adsense-container {
             margin-top: 20px;
             width: 100%;
-            max-width: 800px;
+            max-width: 440px;
             text-align: center;
             padding: 10px;
             border: 1px dashed #374151;
@@ -129,7 +135,7 @@
 <body>
 
     <div class="top-bar">
-        <button class="back-btn" onclick="location.href='index.html'">✕ Менюго кайт</button>
+        <button class="back-btn" onclick="location.href='index.html'">✕ Меню</button>
         <div class="stats">
             <span>Упай: <span id="score-val">0</span></span>
             <span>Өмүр: <span id="lives-val">3</span></span>
@@ -169,33 +175,28 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Картанын торчолору (Оригинал Танки 1990 өлчөмү: 13x13 блок)
         const COLS = 13;
         const ROWS = 13;
-        const TILE_SIZE = 32; // Ар бир блоктун пиксель өлчөмү
+        const TILE_SIZE = 32;
 
         canvas.width = COLS * TILE_SIZE;
         canvas.height = ROWS * TILE_SIZE;
 
-        // Оюндун глобалдык өзгөрмөлөрү
         let score = 0;
         let lives = 3;
         let round = 1;
         let tankLevel = 1;
         let gameOver = false;
 
-        // Блоктордун түрлөрү
         const TILE_EMPTY = 0;
-        const TILE_BRICK = 1;   // Кирпич (октон бузулат)
-        const TILE_STEEL = 2;   // Темир (кадимки октон бузулбайт)
-        const TILE_BASE = 9;    // Бүркүт (Штаб)
+        const TILE_BRICK = 1;   
+        const TILE_STEEL = 2;   
+        const TILE_BASE = 9;    
 
         let map = [];
 
-        // Картаны түзүү функциясы
         function initMap() {
             map = [];
-            // Бардык жерди бош кылып толтуруу
             for (let r = 0; r < ROWS; r++) {
                 map[r] = [];
                 for (let c = 0; c < COLS; c++) {
@@ -203,52 +204,44 @@
                 }
             }
 
-            // Рандомный тоскоолдуктарды жаратуу (бирок ортосуна жана штабка тийбейбиз)
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    // Танктар чыга турган жерлерди жана эң астынкы борборду бош калтыруу
-                    if ((r === 0 && (c === 0 || c === 6 || c === 12)) || (r === 12 && c === 4)) {
-                        continue;
-                    }
+            // Классикалык ретро вертикалдуу узун дубалдардын генерациясы
+            for (let c = 1; c < COLS; c += 2) {
+                for (let r = 1; r < ROWS - 1; r++) {
+                    if (r === 5 || r === 6) continue; // Ортоңку жолду ачык калтыруу
                     
-                    // Эң астынкы ортодогу Бүркүт жана анын коргоо чеби турган зонага тийбөө
-                    if (r >= 11 && c >= 5 && c <= 7) {
-                        continue;
-                    }
-
-                    // Башка жерлерге рандомный кирпич же темир коюу
-                    if (Math.random() < 0.25) {
+                    if (Math.random() < 0.75) {
                         map[r][c] = TILE_BRICK;
-                    } else if (Math.random() < 0.05) {
+                    } else if (Math.random() < 0.15) {
                         map[r][c] = TILE_STEEL;
                     }
                 }
             }
 
-            // === БҮРКҮТ КОРГООЧУ ЧЕБИН ОРНОТУУ (П-ТАМГАСЫ СЫЯКТУУ ТУРУКТУУ ДУБАЛ) ===
-            map[12][5] = TILE_BRICK; // Сол капталы
-            map[11][5] = TILE_BRICK; // Сол өйдөкү бурчу
-            map[11][6] = TILE_BRICK; // Үстүнкү чатыры
-            map[11][7] = TILE_BRICK; // Оң өйдөкү бурчу
-            map[12][7] = TILE_BRICK; // Оң капталы
+            // База жана танктар чыга турган жерлерди тазалоо
+            map[0][0] = TILE_EMPTY; map[0][6] = TILE_EMPTY; map[0][12] = TILE_EMPTY;
+            map[12][4] = TILE_EMPTY;
 
-            // ӨЗГӨРҮҮСҮЗ ТУРУКТУУ БҮРКҮТ (ШТАБ) — Картанын эң астынкы так ортосу
+            // Бүркүт чеби
+            map[12][5] = TILE_BRICK;
+            map[11][5] = TILE_BRICK;
+            map[11][6] = TILE_BRICK;
+            map[11][7] = TILE_BRICK;
+            map[12][7] = TILE_BRICK;
+
             map[12][6] = TILE_BASE;
         }
 
-        // Оюнчунун танкы
         const player = {
-            x: 4 * TILE_SIZE,
-            y: 12 * TILE_SIZE,
+            x: 4 * TILE_SIZE + 3,
+            y: 12 * TILE_SIZE + 3,
             size: 26,
             speed: 2,
             dir: 'up',
             moving: false,
             lastFire: 0,
-            fireCooldown: 500
+            fireCooldown: 400
         };
 
-        // Тизмелер
         let bullets = [];
         let enemies = [];
         const MAX_ENEMIES_ON_SCREEN = 4;
@@ -256,17 +249,18 @@
         let enemiesSpawned = 0;
         let lastEnemySpawn = 0;
 
-        // Клавиатураны угуу
+        // Клавиатура башкаруусу
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
             if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
                 e.preventDefault();
             }
+            if (e.code === 'Space') playerFire();
         });
         window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-        // Мобилдик башкаруу
+        // Сенсордук мобилдик башкаруу
         const controlBtns = document.querySelectorAll('.control-btn');
         let activeTouchDir = null;
 
@@ -275,16 +269,21 @@
                 e.preventDefault();
                 activeTouchDir = btn.getAttribute('data-dir');
                 btn.classList.add('active');
-            });
+            }, {passive: false});
             btn.addEventListener('touchend', e => {
                 e.preventDefault();
-                activeTouchDir = null;
+                if (activeTouchDir === btn.getAttribute('data-dir')) activeTouchDir = null;
                 btn.classList.remove('active');
-            });
+            }, {passive: false});
         });
 
-        document.getElementById('fireBtn').addEventListener('click', playerFire);
-        document.getElementById('fireBtn').addEventListener('touchstart', (e) => {
+        // Атуу баскычын оптималдаштыруу
+        const fireBtn = document.getElementById('fireBtn');
+        fireBtn.addEventListener('touchstart', e => {
+            e.preventDefault();
+            playerFire();
+        }, {passive: false});
+        fireBtn.addEventListener('click', e => {
             e.preventDefault();
             playerFire();
         });
@@ -292,20 +291,24 @@
         function playerFire() {
             const now = Date.now();
             if (now - player.lastFire > player.fireCooldown && !gameOver) {
-                createBullet(player.x + player.size/2, player.y + player.size/2, player.dir, true);
+                createBullet(player.x, player.y, player.size, player.dir, true);
                 player.lastFire = now;
             }
         }
 
-        function createBullet(cx, cy, dir, isPlayer) {
+        // ОКТУН ТУУРА ЖАНА ЖУМШАК УЧУУ АЛГОРИТМИ (Каталар толук оңдолду)
+        function createBullet(tx, ty, tSize, dir, isPlayer) {
+            let bx = tx + tSize / 2;
+            let by = ty + tSize / 2;
             let vx = 0, vy = 0;
-            const bSpeed = 5;
-            if (dir === 'up') vy = -bSpeed;
-            if (dir === 'down') vy = bSpeed;
-            if (dir === 'left') vx = -bSpeed;
-            if (dir === 'right') vx = bSpeed;
+            const bSpeed = 4; // Сүрөттөгүдөй жумшак учуу ылдамдыгы
 
-            bullets.push({ x: cx - 3, y: cx - 3, w: 6, h: 6, vx: vx, vy: vy, isPlayer: isPlayer });
+            if (dir === 'up')    { vy = -bSpeed; by = ty - 2; }
+            if (dir === 'down')  { vy = bSpeed;  by = ty + tSize + 2; }
+            if (dir === 'left')  { vx = -bSpeed; bx = tx - 2; }
+            if (dir === 'right') { vx = bSpeed;  bx = tx + tSize + 2; }
+
+            bullets.push({ x: bx - 2, y: by - 2, w: 4, h: 4, vx: vx, vy: vy, isPlayer: isPlayer });
         }
 
         function spawnEnemy() {
@@ -313,12 +316,12 @@
             const now = Date.now();
             if (now - lastEnemySpawn < 3000) return;
 
-            const spawnPoints = [0, 6 * TILE_SIZE, 12 * TILE_SIZE];
+            const spawnPoints = [4, 6 * TILE_SIZE + 3, 12 * TILE_SIZE - 30];
             const rx = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
             
             enemies.push({
                 x: rx,
-                y: 0,
+                y: 4,
                 size: 26,
                 speed: 1,
                 dir: 'down',
@@ -330,7 +333,6 @@
             lastEnemySpawn = now;
         }
 
-        // Кагылышууларды текшерүү (Стенкалар менен)
         function checkWallCollision(x, y, size) {
             if (x < 0 || x + size > canvas.width || y < 0 || y + size > canvas.height) return true;
 
@@ -349,11 +351,10 @@
             return false;
         }
 
-        // Жаңыртуу борбору
         function update() {
             if (gameOver) return;
 
-            // Оюнчунун кыймылы
+            // Оюнчу кыймылы
             let nextX = player.x;
             let nextY = player.y;
             player.moving = false;
@@ -368,22 +369,20 @@
                 player.dir = 'right'; nextX += player.speed; player.moving = true;
             }
 
-            if (keys['Space']) playerFire();
-
             if (player.moving && !checkWallCollision(nextX, nextY, player.size)) {
                 player.x = nextX;
                 player.y = nextY;
             }
 
-            // Душмандардын логикасы
+            // Душмандар логикасы
             spawnEnemy();
             const now = Date.now();
 
-            enemies.forEach((enemy, index) => {
+            enemies.forEach((enemy) => {
                 let ex = enemy.x;
                 let ey = enemy.y;
 
-                if (now - enemy.lastDirChange > 2000 || Math.random() < 0.02) {
+                if (now - enemy.lastDirChange > 2000 || Math.random() < 0.01) {
                     const dirs = ['up', 'down', 'left', 'right'];
                     enemy.dir = dirs[Math.floor(Math.random() * dirs.length)];
                     enemy.lastDirChange = now;
@@ -402,136 +401,131 @@
                     enemy.dir = dirs[Math.floor(Math.random() * dirs.length)];
                 }
 
-                if (now - enemy.lastFire > 1500 && Math.random() < 0.3) {
-                    createBullet(enemy.x + enemy.size/2, enemy.y + enemy.size/2, enemy.dir, false);
+                if (now - enemy.lastFire > 2000 && Math.random() < 0.2) {
+                    createBullet(enemy.x, enemy.y, enemy.size, enemy.dir, false);
                     enemy.lastFire = now;
                 }
             });
 
-            // Октордун кыймылы жана тийүүсү
-            bullets.forEach((b, bIdx) => {
+            // Октордун учушу жана тийүү логикасы
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
                 b.x += b.vx;
                 b.y += b.vy;
 
-                // Экрандан чыгып кетсе өчүрүү
                 if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
-                    bullets.splice(bIdx, 1);
-                    return;
+                    bullets.splice(i, 1);
+                    continue;
                 }
 
-                // Стенкаларга тийүүсү
-                const tileC = Math.floor(b.x / TILE_SIZE);
-                const tileR = Math.floor(b.y / TILE_SIZE);
+                const tileC = Math.floor((b.x + b.w/2) / TILE_SIZE);
+                const tileR = Math.floor((b.y + b.h/2) / TILE_SIZE);
 
                 if (tileR >= 0 && tileR < ROWS && tileC >= 0 && tileC < COLS) {
                     const tileType = map[tileR][tileC];
                     if (tileType === TILE_BRICK) {
-                        map[tileR][tileC] = TILE_EMPTY; // Кирпич бузулду
-                        bullets.splice(bIdx, 1);
-                        return;
+                        map[tileR][tileC] = TILE_EMPTY; 
+                        bullets.splice(i, 1);
+                        continue;
                     } else if (tileType === TILE_STEEL) {
-                        bullets.splice(bIdx, 1); // Темир бузулбайт
-                        return;
+                        bullets.splice(i, 1); 
+                        continue;
                     } else if (tileType === TILE_BASE) {
-                        // Бүркүт атылды! Оюн бүттү
                         map[tileR][tileC] = TILE_EMPTY;
                         gameOver = true;
-                        bullets.splice(bIdx, 1);
-                        alert("Штаб талкаланды! Оюн бүттү.");
+                        bullets.splice(i, 1);
+                        setTimeout(() => { alert("Штаб талкаланды! Оюн бүттү."); location.reload(); }, 100);
                         return;
                     }
                 }
 
-                // Октун танктарга тийүүсү
+                // Танктарга тийүү
                 if (b.isPlayer) {
-                    enemies.forEach((enemy, eIdx) => {
+                    let hitEnemy = false;
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        let enemy = enemies[j];
                         if (b.x > enemy.x && b.x < enemy.x + enemy.size && b.y > enemy.y && b.y < enemy.y + enemy.size) {
-                            enemies.splice(eIdx, 1);
-                            bullets.splice(bIdx, 1);
+                            enemies.splice(j, 1);
+                            hitEnemy = true;
                             score += 100;
                             document.getElementById('score-val').innerText = score;
 
-                            // Танк進化 (Эволюция) деңгээли упайга карап өсөт
-                            if (score >= 500 && tankLevel === 1) { tankLevel = 2; player.speed = 3; }
-                            if (score >= 1200 && tankLevel === 2) { tankLevel = 3; player.fireCooldown = 300; }
+                            if (score >= 500 && tankLevel === 1) { tankLevel = 2; player.speed = 2.5; }
+                            if (score >= 1200 && tankLevel === 2) { tankLevel = 3; player.fireCooldown = 250; }
                             document.getElementById('tank-lvl').innerText = "Lvl " + tankLevel;
 
-                            // Кийинки раундду текшерүү
                             if (enemies.length === 0 && enemiesSpawned >= totalEnemiesThisRound) {
                                 round++;
                                 document.getElementById('round-val').innerText = round;
-                                totalEnemiesThisRound += 5;
+                                totalEnemiesThisRound += 3;
                                 enemiesSpawned = 0;
                                 initMap();
                             }
+                            break;
                         }
-                    });
+                    }
+                    if (hitEnemy) {
+                        bullets.splice(i, 1);
+                        continue;
+                    }
                 } else {
-                    // Душмандын огу оюнчуга тийсе
                     if (b.x > player.x && b.x < player.x + player.size && b.y > player.y && b.y < player.y + player.size) {
-                        bullets.splice(bIdx, 1);
+                        bullets.splice(i, 1);
                         lives--;
                         document.getElementById('lives-val').innerText = lives;
                         if (lives <= 0) {
                             gameOver = true;
-                            alert("Танкыңыз талкаланды! Оюн бүттү.");
+                            setTimeout(() => { alert("Танкыңыз талкаланды! Оюн бүттү."); location.reload(); }, 100);
                         } else {
-                            // Кайра баштапкы ордуна коюу
-                            player.x = 4 * TILE_SIZE;
-                            player.y = 12 * TILE_SIZE;
+                            player.x = 4 * TILE_SIZE + 3;
+                            player.y = 12 * TILE_SIZE + 3;
                             player.dir = 'up';
                         }
                     }
                 }
-            });
+            }
         }
 
-        // Экранга тартуу борбору
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Картаны тартуу
+            // Карта
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     if (map[r][c] === TILE_BRICK) {
-                        ctx.fillStyle = '#b33939'; // Кирпич өңү
+                        ctx.fillStyle = '#b33939'; 
                         ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE - 1, TILE_SIZE - 1);
                         ctx.strokeStyle = '#2c3e50';
                         ctx.strokeRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     } else if (map[r][c] === TILE_STEEL) {
-                        ctx.fillStyle = '#747d8c'; // Темир өңү
+                        ctx.fillStyle = '#747d8c'; 
                         ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                         ctx.fillStyle = '#f1f2f6';
                         ctx.fillRect(c * TILE_SIZE + 4, r * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
                     } else if (map[r][c] === TILE_BASE) {
-                        // БҮРКҮТ (ШТАБ) — Алтын сары түстөгү тегерек
                         ctx.beginPath();
                         ctx.arc(c * TILE_SIZE + TILE_SIZE/2, r * TILE_SIZE + TILE_SIZE/2, TILE_SIZE/2 - 2, 0, Math.PI * 2);
-                        ctx.fillStyle = '#ffa500';
-                        ctx.fill();
-                        ctx.strokeStyle = '#fff';
-                        ctx.lineWidth = 2;
-                        ctx.stroke();
+                        ctx.fillStyle = '#ffa500'; ctx.fill();
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
                     }
                 }
             }
 
-            // Оюнчунун танкын тартуу
-            ctx.fillStyle = '#2ed573'; // Жашыл танк
-            if (tankLevel === 2) ctx.fillStyle = '#00a8ff'; // Көк танк
-            if (tankLevel === 3) ctx.fillStyle = '#eccc68'; // Алтын танк
+            // Оюнчу танк
+            ctx.fillStyle = '#2ed573'; 
+            if (tankLevel === 2) ctx.fillStyle = '#00a8ff'; 
+            if (tankLevel === 3) ctx.fillStyle = '#eccc68'; 
             ctx.fillRect(player.x, player.y, player.size, player.size);
 
-            // Танктын маңдайын (Ооз багытын) көрсөтүү
             ctx.fillStyle = '#ffffff';
             if (player.dir === 'up') ctx.fillRect(player.x + player.size/2 - 3, player.y - 4, 6, 8);
             if (player.dir === 'down') ctx.fillRect(player.x + player.size/2 - 3, player.y + player.size - 4, 6, 8);
             if (player.dir === 'left') ctx.fillRect(player.x - 4, player.y + player.size/2 - 3, 8, 6);
             if (player.dir === 'right') ctx.fillRect(player.x + player.size - 4, player.y + player.size/2 - 3, 8, 6);
 
-            // Душмандарды тартуу
+            // Душмандар
             enemies.forEach(enemy => {
-                ctx.fillStyle = '#ff4757'; // Кызыл душман танкы
+                ctx.fillStyle = '#ff4757'; 
                 ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
 
                 ctx.fillStyle = '#ffa500';
@@ -541,23 +535,21 @@
                 if (enemy.dir === 'right') ctx.fillRect(enemy.x + enemy.size - 4, enemy.y + enemy.size/2 - 3, 8, 6);
             });
 
-            // Окторду тартуу
+            // Октор
             ctx.fillStyle = '#ff3838';
             bullets.forEach(b => {
                 ctx.beginPath();
-                ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2, 0, Math.PI * 2);
+                ctx.arc(b.x + b.w/2, b.y + b.h/2, b.w/2 + 1, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
 
-        // Оюндун негизги цикли
         function gameLoop() {
             update();
             draw();
             requestAnimationFrame(gameLoop);
         }
 
-        // Баштоо
         initMap();
         gameLoop();
     </script>
