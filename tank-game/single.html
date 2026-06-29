@@ -25,25 +25,25 @@
             overflow-y: auto;
         }
 
-        /* 1-СҮРӨТТӨГҮДӨЙ ОЮНДУН ИЧКИ МЕНЮСУ (БАШЫНДА УШУЛ ГАНА КӨРҮНӨТ) */
+        /* ИЧКИ МЕНЮ КОНТЕЙНЕРИ */
         #single-menu-container {
             text-align: center;
             max-width: 600px;
             width: 100%;
             background: #111827;
-            padding: 30px;
+            padding: 35px 30px;
             border-radius: 20px;
             border: 3px solid #10b981;
             box-shadow: 0 0 40px rgba(16, 185, 129, 0.2);
-            display: block; /* Башында ушул блок ачык болот */
+            display: block; /* Башында ачык болот */
         }
-        h1 {
-            font-size: 34px;
+        #single-menu-container h1 {
+            font-size: 32px;
             color: #00e5ff;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             text-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
         }
-        .subtitle {
+        #single-menu-container .subtitle {
             color: #9ca3af;
             font-size: 14px;
             margin-bottom: 30px;
@@ -61,7 +61,6 @@
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.2s ease;
-            text-align: center;
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
         }
         .start-game-btn:hover {
@@ -81,9 +80,9 @@
             color: #ef4444;
         }
 
-        /* ОЮН ТАЛААСЫ ЖАНА БАШКАРУУ (БАШЫНДА ЖАШЫРУУН - DISPLAY: NONE) */
+        /* ОЮНДУН ЭКРАНЫ (БАШЫНДА ЖАШЫРУУН - DISPLAY: NONE) */
         #game-wrapper {
-            display: none; /* Жашыруун абал */
+            display: none; 
             flex-direction: column;
             align-items: center;
             width: 100%;
@@ -94,7 +93,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 15px;
+            padding: 12px 15px;
             background: #131920;
             border-radius: 10px 10px 0 0;
             border: 1px solid #1f2937;
@@ -104,13 +103,15 @@
         .back-btn {
             background: #ef4444;
             color: #fff;
-            padding: 6px 12px;
+            padding: 6px 14px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
             font-size: 14px;
+            transition: background 0.2s;
         }
+        .back-btn:hover { background: #dc2626; }
         .stats {
             display: flex;
             gap: 15px;
@@ -118,6 +119,7 @@
             font-weight: bold;
         }
         .stat-item span { color: #00e5ff; }
+        
         .game-container {
             position: relative;
             background: #050709;
@@ -159,7 +161,7 @@
             margin-bottom: 5px;
         }
 
-        /* МОБИЛДИК КӨРСӨТКҮЧТӨРҮ */
+        /* МОБИЛДИК БАШКАРУУ ПАНЕЛИ */
         .mobile-controls {
             display: flex;
             justify-content: space-between;
@@ -207,7 +209,6 @@
         }
         .fire-btn:active { background: #df004e; }
         
-        /* ЖАРНАМА КОНТЕЙНЕРИ */
         .adsense-container {
             margin-top: 20px;
             width: 100%;
@@ -223,7 +224,6 @@
         <p class="subtitle">Чепти душмандардан коргоо, бонустар жана танк эволюциясы</p>
 
         <button class="start-game-btn" onclick="pressStartGame()">ОЮНДУ БАШТОО 🚀</button>
-        
         <br>
         <a href="index.html" class="back-to-main-btn">◀ Башкы менюга кайтуу</a>
     </div>
@@ -272,7 +272,7 @@
         const COLS = 21; 
         const ROWS = 14; 
 
-        let isGameRunning = false; // БАШЫНДА ОЮН АКТИВДҮҮ ЭМЕС
+        let isGameRunning = false; 
         let gameLoopId = null;
 
         let gameState = {
@@ -448,7 +448,7 @@
             map[13][7] = blockType;                         map[13][9] = blockType;
         }
 
-        /* МЕНЮДОН ОЮНГА ӨТҮҮ ЛОГИКАСЫ */
+        /* МЕНЮ МЕНЕН ОЮНДУН АБАЛДАРЫН АЛМАШТЫРУУ */
         function pressStartGame() {
             document.getElementById("single-menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
@@ -506,6 +506,7 @@
         }
 
         function handleInput() {
+            if (!player1) return;
             if (activeTouchDir) { player1.dir = activeTouchDir; player1.move(); } 
             else {
                 if (keys["w"] || keys["W"] || keys["ArrowUp"]) { player1.dir = "up"; player1.move(); }
@@ -524,7 +525,7 @@
             if (!isGameRunning) return;
             handleInput();
 
-            if (player1.shield > 0) player1.shield--;
+            if (player1 && player1.shield > 0) player1.shield--;
 
             if (gameState.cementTimer > 0) {
                 gameState.cementTimer--;
@@ -533,7 +534,7 @@
 
             for (let i = bonuses.length - 1; i >= 0; i--) {
                 bonuses[i].timer--;
-                if (rectCollision(player1, bonuses[i])) {
+                if (player1 && rectCollision(player1, bonuses[i])) {
                     if (bonuses[i].type === "star") player1.tankLevel++;
                     if (bonuses[i].type === "shield") player1.shield = 300;
                     if (bonuses[i].type === "heart") gameState.lives++;
@@ -562,7 +563,7 @@
                         }
                     }
                 } else {
-                    if (rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, player1) && player1.shield <= 0) {
+                    if (player1 && rectCollision({x:b.x-2, y:b.y-2, w:4, h:4}, player1) && player1.shield <= 0) {
                         gameState.lives--; b.active = false;
                         if (gameState.lives <= 0) gameOver();
                     }
