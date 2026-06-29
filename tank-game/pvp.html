@@ -11,8 +11,8 @@
             padding: 0;
             user-select: none;
             -webkit-user-select: none;
-            touch-action: none;
         }
+        /* Баракча меню убагында өйдө-ылдый эркин жылышы үчүн overflow-y: auto кылабыз */
         body {
             background-color: #0c0f12;
             color: #fff;
@@ -20,10 +20,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             min-height: 100vh;
-            padding: 10px;
+            padding: 20px 10px;
+            overflow-y: auto;
+        }
+        /* Бул класс оюн башталганда гана body'ни катыруу үчүн колдонулат */
+        body.game-mode {
             overflow: hidden;
+            touch-action: none;
         }
 
         /* Клан Системасынын Менюсу */
@@ -36,6 +41,7 @@
             max-width: 600px;
             box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);
             display: block;
+            margin-bottom: 30px;
         }
         h1 { text-align: center; color: #f43f5e; font-size: 26px; margin-bottom: 15px; text-shadow: 0 0 10px rgba(244,63,94,0.3); }
         .card { background: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #374151; margin-bottom: 15px; }
@@ -53,11 +59,13 @@
         button:hover { background: #2563eb; }
         .btn-upgrade { background: #10b981; margin-top: 8px; }
         .btn-upgrade:hover { background: #059669; }
-        .btn-join { background: #8b5cf6; width: auto; padding: 5px 12px; margin: 0; }
+        .btn-join { background: #8b5cf6; width: auto; padding: 6px 14px; margin: 0; border-radius: 6px; }
         .btn-join:hover { background: #7c3aed; }
+        .btn-leave { background: #4b5563; width: auto; padding: 6px 14px; margin: 0; border-radius: 6px; }
+        .btn-leave:hover { background: #374151; }
 
         /* Издөө (Matchmaking) Тизмеси */
-        .search-list { max-height: 180px; overflow-y: auto; margin-top: 10px; background: #111827; padding: 5px; border-radius: 6px; }
+        .search-list { max-height: 220px; overflow-y: auto; margin-top: 10px; background: #111827; padding: 5px; border-radius: 6px; }
         .search-item {
             display: flex; justify-content: space-between; align-items: center;
             padding: 10px; background: #1f2937; margin: 5px 0; border-radius: 6px; border-left: 4px solid #ef4444;
@@ -66,7 +74,7 @@
         .btn-fight:hover { background: #dc2626; }
 
         /* Оюн экраны */
-        #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; }
+        #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; touch-action: none; }
         .top-bar {
             width: 100%; max-width: 840px; display: flex; justify-content: space-between;
             align-items: center; padding: 12px 15px; background: #131920;
@@ -83,7 +91,7 @@
         .level-banner.show { display: block; transform: translate(-50%, -50%) scale(1); }
 
         /* Мобилдик башкаруу */
-        .mobile-controls-pvp { display: flex; justify-content: space-between; width: 100%; max-width: 840px; margin-top: 10px; }
+        .mobile-controls-pvp { display: flex; justify-content: space-between; width: 100%; max-width: 840px; margin-top: 10px; touch-action: none; }
         .player-pad { display: flex; gap: 8px; align-items: center; background: #111827; padding: 8px; border-radius: 10px; }
         .d-pad { display: grid; grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px); gap: 2px; }
         .control-btn { background: #1f2937; border: 1px solid #374151; color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px;}
@@ -100,12 +108,6 @@
     <div class="clan-panel" id="main-menu">
         <h1>⚔️ CLASH OF TANKS</h1>
         
-        <div class="card" id="create-clan-section" style="display: none;">
-            <h3>🛡️ Өз кланыңызды түзүңүз</h3>
-            <input type="text" id="clan-name-input" placeholder="Кландын уникалдуу атын жазыңыз...">
-            <button onclick="createNewClan()">Кланды негиздөө (Каттоо)</button>
-        </div>
-
         <div class="card" id="my-clan-section" style="display: none;">
             <h3>
                 <span id="my-clan-title">Клан аты</span>
@@ -113,11 +115,17 @@
             </h3>
             <div id="my-clan-stats" style="font-size: 14px; color: #9ca3af; line-height: 1.6; margin-bottom: 10px;"></div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div id="clan-management-controls" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <button class="btn-upgrade" onclick="upgradeClanFeature('tank')">🚀 Танк Lvl+ (5 💎)</button>
                 <button class="btn-upgrade" style="background:#b45309;" onclick="upgradeClanFeature('wall')">🧱 Дубал Lvl+ (5 💎)</button>
             </div>
-            <button class="btn-upgrade" style="background: #10b981; margin-top: 10px;" onclick="simulateAddMember()">👥 Машыгуучу чакыруу (Кошулуу)</button>
+            <button id="btn-simulate-member" class="btn-upgrade" style="background: #10b981; margin-top: 10px;" onclick="simulateAddMember()">👥 Катышуучу кошуу (+1)</button>
+        </div>
+
+        <div class="card" id="create-clan-section">
+            <h3>🛡️ Жаңы клан негиздөө</h3>
+            <input type="text" id="clan-name-input" placeholder="Кландын уникалдуу атын жазыңыз...">
+            <button onclick="createNewClan()">Кланды түзүү</button>
         </div>
 
         <div class="card">
@@ -140,7 +148,7 @@
         <div class="top-bar">
             <button style="background:#ef4444; width:auto; padding:5px 15px;" onclick="exitGame()">✕ Чыгуу</button>
             <div style="font-weight:bold; font-size:15px; display:flex; gap:30px;">
-                <span id="g-c1-name" style="color:#3b82f6;">Өз Клан</span>
+                <span id="g-c1-name" style="color:#3b82f6;">Сиздин Клан</span>
                 <span style="color:#eab308;">VS</span>
                 <span id="g-c2-name" style="color:#ef4444;">Душман Клан</span>
             </div>
@@ -174,16 +182,15 @@
         let isGameRunning = false; let keys = {}; let bullets = []; let map = [];
         let player1 = null; let player2 = null;
 
-        // Клан базасынын симуляциясы (Local Storage)
+        // Кландардын негизги маалымат базасы
         let clans = JSON.parse(localStorage.getItem("single_clan_system")) || {
-            "Көк Жал": { name: "Көк Жал", crystals: 15, tankLevel: 2, wallLevel: 1, members: 12 },
-            "Кара Тулпар": { name: "Кара Тулпар", crystals: 10, tankLevel: 1, wallLevel: 2, members: 8 },
-            "Шумкарлар": { name: "Шумкарлар", crystals: 5, tankLevel: 1, wallLevel: 1, members: 45 }
+            "Көк Жал": { name: "Көк Жал", crystals: 15, tankLevel: 2, wallLevel: 1, members: 12, creator: "system" },
+            "Кара Тулпар": { name: "Кара Тулпар", crystals: 10, tankLevel: 1, wallLevel: 2, members: 8, creator: "system" },
+            "Шумкарлар": { name: "Шумкарлар", crystals: 5, tankLevel: 1, wallLevel: 1, members: 45, creator: "system" }
         };
 
-        // Оюнчунун учурдагы кланынын аты (Эгер жок болсо башында бош болот)
-        let myClanName = localStorage.getItem("my_clan_name") || "Көк Жал";
-        let targetEnemyClan = "";
+        // Оюнчунун учурдагы абалы: кайсы кланда мүчө же башчы?
+        let myClanName = localStorage.getItem("my_clan_name") || ""; 
 
         let p1TouchDir = null, p2TouchDir = null;
         let p1TouchFire = false, p2TouchFire = false;
@@ -194,19 +201,32 @@
         }
 
         function renderClanMenu() {
+            // Эгер оюнчу кандайдыр бир кланда бар болсо (өзү ачкан же кошулган)
             if (myClanName && clans[myClanName]) {
                 document.getElementById("create-clan-section").style.display = "none";
                 document.getElementById("my-clan-section").style.display = "block";
                 
                 let c = clans[myClanName];
-                document.getElementById("my-clan-title").innerText = `🛡️ Клан: ${c.name}`;
+                let isCreator = (c.creator === "player");
+                
+                document.getElementById("my-clan-title").innerText = `🛡️ Клан: ${c.name} ${isCreator ? '(Сиздики)' : '(Мүчөсүз)'}`;
                 document.getElementById("my-clan-crystals").innerText = `💎 ${c.crystals}`;
                 document.getElementById("my-clan-stats").innerHTML = `
                     • Кландык Танк Деңгээли: <b>Lvl ${c.tankLevel}</b><br>
                     • Кландык Коргонуу Дубалы: <b>Lvl ${c.wallLevel}</b><br>
                     • Мүчөлөрдүн Саны: <b>${c.members} / 50</b> Оюнчу
                 `;
+
+                // Башкаруу баскычтарын ээсине гана көрсөтүү же чектөө
+                if (isCreator) {
+                    document.getElementById("clan-management-controls").style.display = "grid";
+                    document.getElementById("btn-simulate-member").style.display = "block";
+                } else {
+                    document.getElementById("clan-management-controls").style.display = "none";
+                    document.getElementById("btn-simulate-member").style.display = "none";
+                }
             } else {
+                // Оюнчу эркин режимде болсо — жаңы клан ача алат
                 document.getElementById("create-clan-section").style.display = "block";
                 document.getElementById("my-clan-section").style.display = "none";
             }
@@ -219,7 +239,8 @@
             if (!name) return alert("Кландын атын жазыңыз!");
             if (clans[name]) return alert("Бул аталыштагы клан буга чейин катталган!");
 
-            clans[name] = { name: name, crystals: 10, tankLevel: 1, wallLevel: 1, members: 1 };
+            // Оюнчу өзү ачкан кландын ээси (creator: player) болот
+            clans[name] = { name: name, crystals: 10, tankLevel: 1, wallLevel: 1, members: 1, creator: "player" };
             myClanName = name;
             input.value = "";
             saveState();
@@ -231,9 +252,14 @@
             list.innerHTML = "";
             Object.keys(clans).forEach(k => {
                 let isMine = (k === myClanName);
+                let c = clans[k];
+                
                 list.innerHTML += `<div class="search-item" style="border-left-color: ${isMine ? '#3b82f6' : '#8b5cf6'}">
-                    <span><b>${k}</b> (${clans[k].members}/50 мүчө) ${isMine ? ' <i style="color:#3b82f6;">(Сиздин Клан)</i>' : ''}</span>
-                    ${!isMine ? `<button class="btn-join" onclick="joinToOtherClan('${k}')">Кошулуу</button>` : ''}
+                    <span><b>${k}</b> (${c.members}/50 мүчө) ${isMine ? ' <i style="color:#3b82f6; font-size:12px;">(Сиз ушундасыз)</i>' : ''}</span>
+                    ${isMine ? 
+                        `<button class="btn-leave" onclick="leaveCurrentClan('${k}')">Чыгуу</button>` : 
+                        (!myClanName ? `<button class="btn-join" onclick="joinToOtherClan('${k}')">Кошулуу</button>` : '')
+                    }
                 </div>`;
             });
         }
@@ -245,6 +271,18 @@
             saveState();
             renderClanMenu();
             alert(`Сиз ийгиликтүү "${name}" кланына кошулдуңуз!`);
+        }
+
+        function leaveCurrentClan(name) {
+            if (clans[name].creator === "player") {
+                if(!confirm("Эгер өзүңүздүн кланыңыздан чыксаңыз, ал толугу менен өчүрүлөт. Макулсузбу?")) return;
+                delete clans[name];
+            } else {
+                clans[name].members--;
+            }
+            myClanName = "";
+            saveState();
+            renderClanMenu();
         }
 
         function simulateAddMember() {
@@ -293,6 +331,9 @@
 
         function startClanBattle(enemyName) {
             targetEnemyClan = enemyName;
+            
+            // Оюн башталганда скроллду катырабыз
+            document.body.classList.add("game-mode");
             document.getElementById("main-menu").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
 
@@ -312,7 +353,7 @@
             map = [
                 [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
                 [0,1,1,0,1,1,0,2,2,0,0,0,0,2,2,0,1,1,0,1,1],
-                [0,1,8,1,0,0,0,2,2,0,1,1,0,2,2,0,0,0,1,9,1], // 8 - Сиздин штаб, 9 - Атаандаш штаб
+                [0,1,8,1,0,0,0,2,2,0,1,1,0,2,2,0,0,0,1,9,1], 
                 [0,1,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,1],
                 [0,0,0,0,2,2,0,1,1,0,0,0,0,1,1,0,2,2,0,0,0],
                 [0,1,1,0,2,2,0,1,1,0,2,2,0,1,1,0,2,2,0,1,1],
@@ -420,6 +461,8 @@
 
         function exitGame() { 
             isGameRunning = false; 
+            // Оюн бүткөндө кайра менюда скроллду ачабыз
+            document.body.classList.remove("game-mode");
             document.getElementById("game-wrapper").style.display = "none"; 
             document.getElementById("main-menu").style.display = "block"; 
             renderClanMenu(); 
