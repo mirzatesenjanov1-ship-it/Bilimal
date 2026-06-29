@@ -302,7 +302,6 @@
             isTransitioning: false, cementTimer: 0
         };
 
-        // Кландык маалыматты сактоо
         let clanLevel = parseInt(localStorage.getItem("clan_lvl")) || 1;
         let clanScore = parseInt(localStorage.getItem("clan_score")) || 0;
 
@@ -331,14 +330,13 @@
                 [0,1,1,0,1,1,0,1,1,0,0,0,0,1,1,0,1,1,0,1,1],
                 [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],
                 [0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0],
-                [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] // 9 - Бүркүт/Штаб
+                [0,0,0,0,0,0,0,1,0,0,9,0,0,1,0,0,0,0,0,0,0] 
             ];
             
-            // Кландык согушта чептин деңгээлин жөндөө
             if(currentMode === "clan") {
                 let wallType = clanLevel >= 3 ? 2 : 1; 
                 map[12][7] = wallType; map[12][8] = wallType; map[12][9] = wallType;
-                map[13][7] = wallType;                        map[13][9] = wallType;
+                map[13][7] = wallType;                         map[13][9] = wallType;
             } else {
                 map[12][7] = 1; map[12][8] = 1; map[12][9] = 1;
                 map[13][7] = 1;                 map[13][9] = 1;
@@ -480,7 +478,7 @@
         function toggleBaseDefense(isCement) {
             let blockType = isCement ? 2 : 1;
             map[12][7] = blockType; map[12][8] = blockType; map[12][9] = blockType;
-            map[13][7] = blockType;                        map[13][9] = blockType;
+            map[13][7] = blockType;                         map[13][9] = blockType;
         }
 
         function selectMode(mode) {
@@ -498,7 +496,6 @@
             document.getElementById("game-wrapper").style.display = "flex";
             document.getElementById("pad-fire2").style.display = (mode === "coop" || mode === "pvp") ? "block" : "none";
 
-            isGameRunning = true;
             startNewGame();
         }
 
@@ -506,7 +503,6 @@
             currentMode = "clan";
             document.getElementById("menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
-            isGameRunning = true;
             startNewGame();
         }
 
@@ -533,6 +529,8 @@
             
             triggerPopupBanner(`РАУНД ${gameState.level}`, "Атака башталды!");
             if (currentMode !== "pvp") spawnEnemy();
+            
+            isGameRunning = true;
         }
 
         function triggerPopupBanner(title, desc) {
@@ -556,13 +554,20 @@
 
         function setupControls() {
             const setupBtn = (id, dir) => {
-                document.getElementById(id).addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
-                document.getElementById(id).addEventListener("touchend", (e) => { e.preventDefault(); if(activeTouchDir === dir) activeTouchDir = null; });
+                document.getElementById(id).addEventListener("touchstart", (e) => { 
+                    e.preventDefault(); 
+                    activeTouchDir = dir; 
+                }, { passive: false });
+                
+                document.getElementById(id).addEventListener("touchend", (e) => { 
+                    e.preventDefault(); 
+                    if(activeTouchDir === dir) activeTouchDir = null; 
+                }, { passive: false });
             };
             setupBtn("pad-up", "up"); setupBtn("pad-down", "down"); setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
 
-            document.getElementById("pad-fire1").addEventListener("touchstart", (e) => { e.preventDefault(); player1.shoot(); });
-            document.getElementById("pad-fire2").addEventListener("touchstart", (e) => { e.preventDefault(); if(player2) player2.shoot(); });
+            document.getElementById("pad-fire1").addEventListener("touchstart", (e) => { e.preventDefault(); player1.shoot(); }, { passive: false });
+            document.getElementById("pad-fire2").addEventListener("touchstart", (e) => { e.preventDefault(); if(player2) player2.shoot(); }, { passive: false });
         }
 
         function handleInput() {
@@ -699,7 +704,15 @@
                     if (b === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                     if (b === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                     if (b === 4) { ctx.fillStyle = "#16a34a"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE, TILE_SIZE); }
-                    if (b === 9) { ctx.fillStyle = "#eab308"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 15, 0, Math.PI*2); ctx.fill(); }
+                    if (b === 9) { 
+                        ctx.fillStyle = "#eab308"; 
+                        ctx.beginPath(); 
+                        ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 16, 0, Math.PI*2); 
+                        ctx.fill();
+                        ctx.fillStyle = "#050709";
+                        ctx.font = "14px Arial";
+                        ctx.fillText("⭐", c*TILE_SIZE+13, r*TILE_SIZE+25);
+                    }
                 }
             }
             player1.draw();
