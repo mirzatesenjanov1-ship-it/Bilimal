@@ -82,12 +82,12 @@
 
         <div class="card" style="border-color: #ef4444;">
             <h3>🔍 ОНЛАЙН КАРШЫЛАШ ИЗДӨӨ</h3>
-            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Экинчи компьютерде же телефондо издөө басылса, согуш реалдуу убакытта дароо башталат.</p>
+            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Эскертүү: Эки телефондогу же ноутбуктагы кландын аттары <b>АР БАШКА</b> болушу шарт!</p>
             <button id="search-btn" style="background: #ef4444;" onclick="toggleMatchmaking()">КАРШЫЛАШТЫ ИЗДӨӨ ⚔️</button>
             
             <div class="matchmaking-status" id="match-status-box" style="display: none;">
                 <div class="spinner"></div>
-                <span id="match-status-text" style="color: #eab308; font-weight: bold;">Башка кландар изделүүдө...</span>
+                <span id="match-status-text" style="color: #eab308; font-weight: bold;">Каршылаш изделүүдө...</span>
             </div>
         </div>
     </div>
@@ -239,7 +239,7 @@
         function goToBattle(roomId, role) {
             isSearching = false;
             currentRoomId = roomId;
-            playerRole = role;
+            playerRole = role; // Роль ушул жерде бекитилет ("p1" же "p2")
             if (matchmakingListener) database.ref('matchmaking').off('value', matchmakingListener);
             database.ref('matchmaking/' + myClanName).remove();
             document.getElementById("match-status-box").style.display = "none";
@@ -254,7 +254,6 @@
             document.getElementById("main-menu").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
             
-            // Мобилдик түзмөктөрдө гана экрандык баскычтарды көрсөтүү
             if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
                 document.getElementById("mobile-control-pad").style.display = "flex";
             }
@@ -277,17 +276,26 @@
                 if (!data) return;
                 roomData = data; 
                 
+                // Эгер Сиз р1 (Көк) болсоңуз, Сиздин танк базадан келген маалыматка байланбайт (секирүүнү алдын алуу)
                 if (data.p1_pos) {
-                    player1.x = data.p1_pos.x; player1.y = data.p1_pos.y;
-                    player1.dir = data.p1_pos.dir; player1.hp = data.p1_pos.hp;
+                    if (playerRole !== "p1") {
+                        player1.x = data.p1_pos.x; player1.y = data.p1_pos.y;
+                        player1.dir = data.p1_pos.dir;
+                    }
+                    player1.hp = data.p1_pos.hp;
                     if (data.p1_pos.shootTrigger && data.p1_pos.shootTrigger !== player1.lastShot) {
                         bullets.push(new Bullet(player1.x + player1.w/2, player1.y + player1.h/2, data.p1_pos.dir, "clan1", "p1"));
                         player1.lastShot = data.p1_pos.shootTrigger;
                     }
                 }
+                
+                // Эгер Сиз р2 (Кызыл) болсоңуз, Сиздин танк базадан келген маалыматка байланбайт
                 if (data.p2_pos) {
-                    player2.x = data.p2_pos.x; player2.y = data.p2_pos.y;
-                    player2.dir = data.p2_pos.dir; player2.hp = data.p2_pos.hp;
+                    if (playerRole !== "p2") {
+                        player2.x = data.p2_pos.x; player2.y = data.p2_pos.y;
+                        player2.dir = data.p2_pos.dir;
+                    }
+                    player2.hp = data.p2_pos.hp;
                     if (data.p2_pos.shootTrigger && data.p2_pos.shootTrigger !== player2.lastShot) {
                         bullets.push(new Bullet(player2.x + player2.w/2, player2.y + player2.h/2, data.p2_pos.dir, "clan2", "p2"));
                         player2.lastShot = data.p2_pos.shootTrigger;
@@ -346,7 +354,8 @@
                 if(!this.checkCollision(nx, ny)) {
                     this.x = nx; this.y = ny;
                 }
-                // Бурулганда же жылганда багыт менен координатаны базага дароо жаңыртуу
+                
+                // Реалдуу убакытта өзүнүн координаталарын базага синхронизациялоо
                 database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({
                     x: this.x, y: this.y, dir: this.dir
                 });
@@ -355,7 +364,7 @@
                 if(nx < 2 || nx + this.w > canvas.width - 2 || ny < 2 || ny + this.h > canvas.height - 2) return true;
                 let other = (this.id === "p1") ? player2 : player1;
                 if (other && nx < other.x + other.w && nx + this.w > other.x && ny < other.y + other.h && ny + this.h > other.y) return true;
-                let pts = [{x:nx+3, y:ny+3}, {x:nx+this.w-3, y:ny+3}, {x:nx+3, y:ny+this.h-3}, {x:nx+this.w-3, y:ny+this.h-3}];
+                let pts = [{x:nx+4, y:ny+4}, {x:nx+this.w-4, y:ny+4}, {x:nx+4, y:ny+this.h-4}, {x:nx+this.w-4, y:ny+this.h-4}];
                 for(let p of pts) {
                     let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
                     if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
@@ -368,7 +377,7 @@
                 let token = Date.now();
                 database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({ 
                     shootTrigger: token,
-                    dir: this.dir // Ок чыгаарда танктын багытын кошо бекитип кетүү
+                    dir: this.dir // Багытты ок чыгаарда кошо бекитүү
                 });
             }
         }
@@ -414,7 +423,6 @@
             let me = (playerRole === "p1") ? player1 : player2;
             if (!me || !isGameRunning) return;
 
-            // Клавиатура же Сенсордук баскычтардын бири иштесе танкты жылдыруу
             let currentDir = touchDir;
             if (!currentDir) {
                 if (activeKeys["KeyW"] || activeKeys["ArrowUp"]) currentDir = "up";
