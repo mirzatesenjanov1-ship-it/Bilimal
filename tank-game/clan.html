@@ -82,7 +82,7 @@
 
         <div class="card" style="border-color: #ef4444;">
             <h3>🔍 ОНЛАЙН КАРШЫЛАШ ИЗДӨӨ</h3>
-            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Эскертүү: Эки түзмөктөгү клан аты эки башка болушу шарт!</p>
+            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Эскертүү: Ноутбук менен телефондогу клан аттары ар башка болуусу шарт!</p>
             <button id="search-btn" style="background: #ef4444;" onclick="toggleMatchmaking()">КАРШЫЛАШТЫ ИЗДӨӨ ⚔️</button>
             
             <div class="matchmaking-status" id="match-status-box" style="display: none;">
@@ -94,8 +94,8 @@
 
     <div id="game-wrapper">
         <div class="top-bar">
-            <button style="background:#ef4444; border:none; color:white; padding:5px 12px; border-radius:5px; font-weight: bold;" onclick="exitBattle()">✕ Баш тартуу</button>
-            <div style="font-weight:bold; font-size:16px;" id="game-role-title">Аныкталууда...</div>
+            <button style="background:#ef4444; border:none; color:white; padding:5px 12px; border-radius:5px; font-weight: bold;" onclick="exitBattle()">✕ Чыгуу</button>
+            <div style="font-weight:bold; font-size:16px;" id="game-role-title">Роль аныкталууда...</div>
         </div>
         <div class="game-container">
             <canvas id="gameCanvas" width="840" height="560"></canvas>
@@ -212,7 +212,8 @@
                     }
                 }
 
-                if (opponent) {
+                // Эки жакта тең бөлмө жазылып аралашпаш үчүн, бөлмөнү бир гана тарап түзөт
+                if (opponent && myClanName > opponent.clanName) {
                     let roomId = "room_" + Math.min(myClanName.hashCode(), opponent.clanName.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponent.clanName.hashCode());
                     
                     database.ref('rooms/' + roomId).set({
@@ -220,10 +221,10 @@
                         p1_pos: { x: 2 * TILE_SIZE, y: 6 * TILE_SIZE, dir: "right", hp: 3, lastShot: 0 },
                         p2_pos: { x: 18 * TILE_SIZE, y: 6 * TILE_SIZE, dir: "left", hp: 3, lastShot: 0 },
                         status: "playing"
+                    }).then(() => {
+                        database.ref('matchmaking/' + opponent.clanName).update({ status: "matched", roomId: roomId, role: "p1" });
+                        database.ref('matchmaking/' + myClanName).update({ status: "matched", roomId: roomId, role: "p2" });
                     });
-
-                    database.ref('matchmaking/' + opponent.clanName).update({ status: "matched", roomId: roomId, role: "p1" });
-                    database.ref('matchmaking/' + myClanName).update({ status: "matched", roomId: roomId, role: "p2" });
                 }
             });
         }
@@ -271,12 +272,13 @@
             setupMobileControls();
             setupKeyboardControls();
 
+            // СИНХРОНИЗАЦИЯНЫН ЭҢ БАШКЫ ОҢДОЛГОН ОРДУ:
             database.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 let data = snapshot.val();
                 if (!data) return;
                 roomData = data; 
                 
-                // Тек гана КАРШЫЛАШТЫН координаталарын жаңыртуу (Өзүбүздүн танк секирбеши керек)
+                // Эгер Сиз p1 (Көк) болсоңуз, базадан Көктүн координаталарын ОКУБАЙСЫЗ (өзүңүз локалдык жылдырасыз)
                 if (data.p1_pos) {
                     if (playerRole !== "p1") {
                         player1.x = data.p1_pos.x; 
@@ -290,6 +292,7 @@
                     }
                 }
                 
+                // Эгер Сиз p2 (Кызыл) болсоңуз, базадан Кызылдын координаталарын ОКУБАЙСЫЗ
                 if (data.p2_pos) {
                     if (playerRole !== "p2") {
                         player2.x = data.p2_pos.x; 
@@ -329,7 +332,7 @@
                 this.id = id; this.x = x; this.y = y;
                 this.w = TILE_SIZE - 4; this.h = TILE_SIZE - 4;
                 this.dir = side === "clan1" ? "right" : "left";
-                this.side = side; this.hp = hp; this.speed = 3; this.lastShot = 0;
+                this.side = side; this.hp = hp; this.speed = 4; this.lastShot = 0;
             }
             draw() {
                 ctx.save(); ctx.translate(this.x + this.w/2, this.y + this.h/2);
@@ -354,12 +357,12 @@
                 
                 if(!this.checkCollision(nx, ny)) {
                     this.x = nx; this.y = ny;
+                    
+                    // Өз ордун базага заматта жазуу
+                    database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({
+                        x: this.x, y: this.y, dir: this.dir
+                    });
                 }
-                
-                // Тек гана өзүнүн танкынын координаталарын Firebase'ге жөнөтүү
-                database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({
-                    x: this.x, y: this.y, dir: this.dir
-                });
             }
             checkCollision(nx, ny) {
                 if(nx < 2 || nx + this.w > canvas.width - 2 || ny < 2 || ny + this.h > canvas.height - 2) return true;
@@ -423,7 +426,7 @@
         function handleInput() {
             if (!isGameRunning) return;
             
-            // Катуу бөгөттөө: оюнчу p1 болсо - p1ди гана, p2 болсо - p2ни гана башкарат!
+            // СИЗ КИМ БОЛСОҢУЗ, ОШОЛ ТАНКТЫ ГАНА ЛОКАЛДЫК БАШКАРАСЫЗ
             let me = (playerRole === "p1") ? player1 : player2;
             if (!me) return;
 
