@@ -51,15 +51,15 @@
         .mobile-controls-container {
             display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 840px; margin-top: 15px; padding: 10px;
         }
-        .joystick-box { display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 5px; }
-        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; }
+        .joystick-box { display: grid; grid-template-columns: repeat(3, 65px); grid-template-rows: repeat(3, 65px); gap: 5px; }
+        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; }
         .control-btn:active { background: #3b82f6; border-color: #60a5fa; }
         .btn-up { grid-column: 2; grid-row: 1; }
         .btn-left { grid-column: 1; grid-row: 2; }
         .btn-right { grid-column: 3; grid-row: 2; }
         .btn-down { grid-column: 2; grid-row: 3; }
         .fire-box { display: flex; align-items: center; justify-content: center; padding-right: 20px; }
-        .fire-btn { width: 90px; height: 90px; color: white; font-weight: bold; border-radius: 50%; border: 4px solid #f43f5e; background: #e11d48; font-size: 18px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4); }
+        .fire-btn { width: 95px; height: 95px; color: white; font-weight: bold; border-radius: 50%; border: 4px solid #f43f5e; background: #e11d48; font-size: 20px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4); }
         .fire-btn:active { background: #be123c; transform: scale(0.95); }
     </style>
 </head>
@@ -133,6 +133,7 @@
         let currentRoomId = null;
         let isSearching = false;
         let matchmakingListener = null;
+        let roomData = null;
 
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
@@ -263,10 +264,10 @@
             player2 = new Tank("p2", 18 * TILE_SIZE, 6 * TILE_SIZE, "clan2", 3);
             setupMobileControls();
 
-            // ЭКИ ТАРАПТЫ ТЕҢ СИНХРОНДУУ ОКУУ ЖАНА ЧИЙҮҮ БӨЛҮМҮ
             database.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 let data = snapshot.val();
                 if (!data) return;
+                roomData = data; 
                 
                 if (data.p1_pos) {
                     player1.x = data.p1_pos.x; player1.y = data.p1_pos.y;
@@ -309,7 +310,7 @@
         class Tank {
             constructor(id, x, y, side, hp) {
                 this.id = id; this.x = x; this.y = y;
-                this.w = TILE_SIZE - 6; this.h = TILE_SIZE - 6;
+                this.w = TILE_SIZE - 2; this.h = TILE_SIZE - 2;
                 this.dir = side === "clan1" ? "right" : "left";
                 this.side = side; this.hp = hp; this.speed = 3; this.lastShot = 0;
             }
@@ -345,7 +346,7 @@
                 if(nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
                 let other = (this.id === "p1") ? player2 : player1;
                 if (other && nx < other.x + other.w && nx + this.w > other.x && ny < other.y + other.h && ny + this.h > other.y) return true;
-                let pts = [{x:nx, y:ny}, {x:nx+this.w, y:ny}, {x:nx, y:ny+this.h}, {x:nx+this.w, y:ny+this.h}];
+                let pts = [{x:nx+2, y:ny+2}, {x:nx+this.w-2, y:ny+2}, {x:nx+2, y:ny+this.h-2}, {x:nx+this.w-2, y:ny+this.h-2}];
                 for(let p of pts) {
                     let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
                     if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
@@ -380,7 +381,7 @@
                     this.active = false;
                     if (playerRole === this.ownerId) {
                         database.ref('rooms/' + currentRoomId + '/' + (this.ownerId === "p1" ? "p2" : "p1") + '_pos').update({ hp: target.hp - 1 });
-                        if(target.hp - 1 <= 0) endBattle(this.ownerId === "p1" ? "clan1" : "clan2");
+                        if(target.hp - 1 <= 0) endBattle(this.ownerId === "p1" ? "p2" : "p1"); 
                     }
                     return;
                 }
@@ -390,8 +391,8 @@
                     let block = map[cy][cx];
                     if(block === 1) { map[cy][cx] = 0; this.active = false; }
                     else if(block === 2) { this.active = false; }
-                    else if(block === 8) { this.active = false; endBattle("clan2"); }
-                    else if(block === 9) { this.active = false; endBattle("clan1"); }
+                    else if(block === 8) { this.active = false; endBattle("p2"); }
+                    else if(block === 9) { this.active = false; endBattle("p1"); }
                 }
                 if(this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.active = false;
             }
@@ -405,22 +406,38 @@
         function setupMobileControls() {
             const bind = (id, dir) => {
                 let el = document.getElementById(id);
-                el.addEventListener("touchstart", (e) => { e.preventDefault(); touchDir = dir; });
-                el.addEventListener("touchend", (e) => { e.preventDefault(); touchDir = null; });
+                if(!el) return;
+                
+                el.addEventListener("touchstart", (e) => { e.preventDefault(); touchDir = dir; }, {passive: false});
+                el.addEventListener("touchend", (e) => { e.preventDefault(); touchDir = null; }, {passive: false});
+                el.addEventListener("mousedown", () => { touchDir = dir; });
+                el.addEventListener("mouseup", () => { touchDir = null; });
             };
             bind("btn-up-1", "up"); bind("btn-down-1", "down");
             bind("btn-left-1", "left"); bind("btn-right-1", "right");
 
-            document.getElementById("btn-fire-main").addEventListener("touchstart", (e) => {
-                e.preventDefault();
-                let me = (playerRole === "p1") ? player1 : player2;
-                if (me && isGameRunning) me.shoot();
-            });
+            let fireBtn = document.getElementById("btn-fire-main");
+            if(fireBtn) {
+                const doShoot = (e) => {
+                    if(e) e.preventDefault();
+                    let me = (playerRole === "p1") ? player1 : player2;
+                    if (me && isGameRunning) me.shoot();
+                };
+                fireBtn.addEventListener("touchstart", doShoot, {passive: false});
+                fireBtn.addEventListener("mousedown", doShoot);
+            }
         }
 
-        function endBattle(winnerSide) {
+        function endBattle(loserId) {
+            if (!isGameRunning) return;
             isGameRunning = false;
-            alert(winnerSide === "clan1" ? "🏆 КӨК ЖАЛ КЛАНЫ УТТУ!" : "🏆 КАРА ТУЛПАР КЛАНЫ УТТУ!");
+            
+            let winnerName = "Атаандаш";
+            if (roomData) {
+                winnerName = (loserId === "p2") ? roomData.p1 : roomData.p2;
+            }
+            
+            alert(`🏆 ${winnerName.toUpperCase()} КЛАНЫ УТТУ!`);
             exitBattle();
         }
 
