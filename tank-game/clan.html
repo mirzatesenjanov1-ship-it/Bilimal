@@ -40,23 +40,29 @@
             border-top-color: #eab308; animation: spin 1s ease-in-out infinite; margin-right: 10px; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Оюн интерфейси */
         #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; }
         .top-bar {
             width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #131920; border-radius: 10px 10px 0 0;
         }
         .game-container { position: relative; background: #000; border: 4px solid #3b82f6; border-radius: 0 0 10px 10px; overflow: hidden; width: 100%; max-width: 840px; }
         canvas { display: block; width: 100%; height: auto; }
-        .mobile-joystick {
-            display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 500px; margin-top: 15px; padding: 10px; background: #111827; border-radius: 15px;
+        
+        /* Мобилдик башкаруу пульттары */
+        .mobile-controls-container {
+            display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 840px; margin-top: 15px; padding: 10px;
         }
-        .d-pad { display: grid; grid-template-columns: repeat(3, 55px); grid-template-rows: repeat(3, 55px); gap: 4px; }
-        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-        .control-btn:active { background: #3b82f6; }
+        .joystick-box { display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 5px; }
+        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; }
+        .control-btn:active { background: #3b82f6; border-color: #60a5fa; }
         .btn-up { grid-column: 2; grid-row: 1; }
         .btn-left { grid-column: 1; grid-row: 2; }
         .btn-right { grid-column: 3; grid-row: 2; }
         .btn-down { grid-column: 2; grid-row: 3; }
-        .fire-btn { width: 80px; height: 80px; color: white; font-weight: bold; border-radius: 50%; border: 4px solid #f43f5e; background: #e11d48; font-size: 16px; }
+        .fire-box { display: flex; align-items: center; justify-content: center; padding-right: 20px; }
+        .fire-btn { width: 90px; height: 90px; color: white; font-weight: bold; border-radius: 50%; border: 4px solid #f43f5e; background: #e11d48; font-size: 18px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4); }
+        .fire-btn:active { background: #be123c; transform: scale(0.95); }
     </style>
 </head>
 <body>
@@ -71,14 +77,14 @@
         </div>
 
         <div class="card" id="my-clan-section" style="display:none; border-color: #10b981;">
-            <h3>Статус: <span id="clan-status-text" style="color:#10b981;">Даяр</span></h3>
+            <h3>Абалы: <span id="clan-status-text" style="color:#10b981;">Клан Даяр</span></h3>
             <p id="my-clan-info" style="font-size:14px; color:#9ca3af; margin-bottom: 10px;"></p>
             <button style="background: #4b5563; padding: 6px; font-size: 12px; width: auto;" onclick="resetClan()">Клан атын бошотуу</button>
         </div>
 
         <div class="card" style="border-color: #ef4444;">
             <h3>🔍 ОНЛАЙН КАРШЫЛАШ ИЗДӨӨ</h3>
-            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Эки телефондо клан аттары ар башка болуп, издөө бир убакта басылышы керек.</p>
+            <p style="font-size: 13px; color:#9ca3af; margin-bottom: 10px;">Башка телефондо дагы издөө басылса, согуш автоматтык түрдө реалдуу убакытта башталат.</p>
             <button id="search-btn" style="background: #ef4444;" onclick="toggleMatchmaking()">КАРШЫЛАШТЫ ИЗДӨӨ ⚔️</button>
             
             <div class="matchmaking-status" id="match-status-box" style="display: none;">
@@ -90,26 +96,36 @@
 
     <div id="game-wrapper">
         <div class="top-bar">
-            <button style="background:#ef4444; border:none; color:white; padding:5px 12px; border-radius:5px;" onclick="exitBattle()">✕ Чыгуу</button>
-            <div style="font-weight:bold; font-size:15px; color:#eab308;" id="game-role-title">Аныкталууда...</div>
+            <button style="background:#ef4444; border:none; color:white; padding:5px 12px; border-radius:5px; font-weight: bold;" onclick="exitBattle()">✕ Баш тартуу</button>
+            <div style="font-weight:bold; font-size:16px;" id="game-role-title">Аныкталууда...</div>
         </div>
         <div class="game-container">
             <canvas id="gameCanvas" width="840" height="560"></canvas>
         </div>
-        <div class="mobile-joystick" id="mobile-control-pad">
-            <div class="d-pad">
-                <button class="control-btn btn-up" id="btn-move-up">▲</button>
-                <button class="control-btn btn-left" id="btn-move-left">◀</button>
-                <button class="control-btn btn-right" id="btn-move-right">▶</button>
-                <button class="control-btn btn-down" id="btn-move-down">▼</button>
+        
+        <div class="mobile-controls-container" id="mobile-control-pad">
+            <div class="joystick-box">
+                <button class="control-btn btn-up" id="btn-up-1">▲</button>
+                <button class="control-btn btn-left" id="btn-left-1">◀</button>
+                <button class="control-btn btn-right" id="btn-right-1">▶</button>
+                <button class="control-btn btn-down" id="btn-down-1">▼</button>
             </div>
-            <div class="fire-wrapper"><button class="fire-btn" id="btn-action-fire">FIRE</button></div>
+            <div class="fire-box">
+                <button class="fire-btn" id="btn-fire-main">FIRE</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // Сиздин базаңыздын дарегине толук туураланды
         const firebaseConfig = {
-            databaseURL: "https://bilimal-tank-default-rtdb.firebaseio.com" 
+            apiKey: "AIzaSyD-Бул_жерге_өзүңүздүн_apiKey_коюңуз", 
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app/", // Сиздин чыныгы дарек
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.appspot.com",
+            messagingSenderId: "367351239854", 
+            appId: "1:367351239854:web:уникалдуу_код" 
         };
         
         firebase.initializeApp(firebaseConfig);
@@ -138,48 +154,41 @@
             }
         }
 
-        // Клан түзүү жана АТТЫ ЭЭЛЕП (ЗАНЯТ) КОЮУ
+        // КЛАНДЫН АТЫН ЭЭЛЕП (ЗАНЯТ) КЫЛУУ ЛОГИКАСЫ
         function createClan() {
             let input = document.getElementById("clan-name-input");
-            let name = input.value.trim().replace(/[\.\$\#\[\]]/g, ""); // Firebase тыюу салган символдорду тазалоо
+            let name = input.value.trim().replace(/[\.\$\#\[\]]/g, ""); 
             if (!name) return alert("Кландын атын жазыңыз!");
 
-            // Базадан бул аттын бар-жогун текшерүү
             database.ref('registered_clans/' + name).once('value', snapshot => {
                 if (snapshot.exists()) {
                     alert("Бул кландын аты бош эмес! Башка ат тандаңыз.");
                 } else {
-                    // Эгер бош болсо базага жазып, бекитип коёбуз
                     database.ref('registered_clans/' + name).set({
-                        createdAt: Date.now()
+                        registeredAt: Date.now()
                     }).then(() => {
                         myClanName = name;
                         localStorage.setItem("tank_my_clan", name);
                         checkClanState();
                     }).catch(err => {
-                        alert("Каттоо катасы же бул атты башка бирөө азыр эле ээледи!");
+                        alert("Ката кетти, кайра аракет кылыңыз.");
                     });
                 }
             });
         }
 
         function resetClan() {
-            if(confirm("Бул кландан чыгууну каалайсызбы?")) {
+            if(confirm("Бул кландан чыгууну каалайсызбы? Башкалар бул атты ээлеп алышы мүмкүн.")) {
                 localStorage.removeItem("tank_my_clan");
                 myClanName = "";
                 checkClanState();
             }
         }
 
-        // --- РЕАЛДУУ УБАҚЫТТАГЫ МАТЧМЕЙКИНГ СИСТЕМАСЫ ---
+        // МАТЧМЕЙКИНГ СИСТЕМАСЫ
         function toggleMatchmaking() {
-            if (!myClanName) return alert("Адегенде клан түзүңүз же катталыңыз!");
-            
-            if (isSearching) {
-                stopSearch();
-            } else {
-                startSearch();
-            }
+            if (!myClanName) return alert("Адегенде клан түзүңүз!");
+            if (isSearching) { stopSearch(); } else { startSearch(); }
         }
 
         function startSearch() {
@@ -187,7 +196,6 @@
             document.getElementById("match-status-box").style.display = "block";
             document.getElementById("search-btn").innerText = "ИЗДӨӨНҮ ТОКТОТУУ ✕";
 
-            // 1. Өзүбүздү издөө тизмесине кошобуз
             const mySearchRef = database.ref('matchmaking/' + myClanName);
             mySearchRef.set({
                 clanName: myClanName,
@@ -197,21 +205,17 @@
                 timestamp: Date.now()
             });
 
-            // 2. Базадагы өзгөрүүлөрдү дайыма угуп туруу (Реалдуу убакыт агымы)
             matchmakingListener = database.ref('matchmaking').on('value', snapshot => {
                 if (!isSearching) return;
-                
                 let allPlayers = snapshot.val();
                 if (!allPlayers) return;
 
-                // Өзүбүздүн актуалдуу абалды текшеребиз (Бизди башка бирөө таап алдыбы?)
                 let myCurrentState = allPlayers[myClanName];
                 if (myCurrentState && myCurrentState.status === "matched") {
                     goToBattle(myCurrentState.roomId, myCurrentState.role);
                     return;
                 }
 
-                // Эгер бизди эч ким таба элек болсо, өзүбүз каршылаш издейбиз
                 let opponent = null;
                 for (let key in allPlayers) {
                     if (key !== myClanName && allPlayers[key].status === "searching") {
@@ -220,11 +224,9 @@
                     }
                 }
 
-                // Каршылаш табылса бөлмө түзүп, экөөнү тең ошол бөлмөгө байлайбыз
                 if (opponent) {
                     let roomId = "room_" + Math.min(myClanName.hashCode(), opponent.clanName.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponent.clanName.hashCode());
                     
-                    // Бөлмөнү базада түзүү
                     database.ref('rooms/' + roomId).set({
                         p1: opponent.clanName,
                         p2: myClanName,
@@ -233,7 +235,6 @@
                         status: "playing"
                     });
 
-                    // Каршылашка жана өзүбүзгө сигнал берүү
                     database.ref('matchmaking/' + opponent.clanName).update({ status: "matched", roomId: roomId, role: "p1" });
                     database.ref('matchmaking/' + myClanName).update({ status: "matched", roomId: roomId, role: "p2" });
                 }
@@ -260,7 +261,6 @@
             initOnlineGame();
         }
 
-        // Стрингди уникалдуу сандык ID кылуу функциясы (Бөлмө атын бирдей түзүү үчүн)
         String.prototype.hashCode = function() {
             let hash = 0;
             for (let i = 0; i < this.length; i++) {
@@ -269,14 +269,14 @@
             return Math.abs(hash);
         };
 
-        // --- ОЮНДУН НЕГИЗГИ ТЕХНИКАЛЫК ЛОГИКАСЫ ---
+        // ОНЛАЙН ДВИЖОК
         function initOnlineGame() {
             document.getElementById("main-menu").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
             document.getElementById("mobile-control-pad").style.display = "flex";
             document.body.classList.add("game-mode");
 
-            document.getElementById("game-role-title").innerText = playerRole === "p1" ? "Клан: 1-ОЮНЧУ (КӨК)" : "Клан: 2-ОЮНЧУ (КЫЗЫЛ)";
+            document.getElementById("game-role-title").innerText = playerRole === "p1" ? "Сиз: КӨК ТАНК (Сол тарап)" : "Сиз: КЫЗЫЛ ТАНК (Оң тарап)";
             document.getElementById("game-role-title").style.color = playerRole === "p1" ? "#3b82f6" : "#ef4444";
 
             isGameRunning = true;
@@ -285,7 +285,6 @@
             player2 = new Tank("p2", 18 * TILE_SIZE, 6 * TILE_SIZE, "clan2", 3);
             setupMobileControls();
 
-            // Экинчи оюнчунун кыймылдарын реалдуу убакытта базадан угуу
             database.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 let data = snapshot.val();
                 if (!data) return;
@@ -410,7 +409,7 @@
                 if (currentRoomId) {
                     database.ref('rooms/' + currentRoomId + '/' + playerRole + '_input').set({ dir: touchDir, fire: touchFire });
                 }
-                if (touchFire) { me.shoot(); touchFire = false; } // Бир басканда бир ок
+                if (touchFire) { me.shoot(); touchFire = false; } 
             }
         }
 
@@ -420,17 +419,17 @@
                 el.addEventListener("touchstart", (e) => { e.preventDefault(); touchDir = dir; });
                 el.addEventListener("touchend", (e) => { e.preventDefault(); touchDir = null; });
             };
-            bind("btn-move-up", "up"); bind("btn-move-down", "down");
-            bind("btn-move-left", "left"); bind("btn-move-right", "right");
+            bind("btn-up-1", "up"); bind("btn-down-1", "down");
+            bind("btn-left-1", "left"); bind("btn-right-1", "right");
 
-            let fireEl = document.getElementById("btn-action-fire");
+            let fireEl = document.getElementById("btn-fire-main");
             fireEl.addEventListener("touchstart", (e) => { e.preventDefault(); touchFire = true; });
             fireEl.addEventListener("touchend", (e) => { e.preventDefault(); touchFire = false; });
         }
 
         function endBattle(winnerSide) {
             isGameRunning = false;
-            alert(winnerSide === "clan1" ? "🏆 КӨК ТАНК УТТУ!" : "🏆 КЫЗЫЛ ТАНК УТТУ!");
+            alert(winnerSide === "clan1" ? "🏆 КӨК ЖАЛ КЛАНЫ УТТУ!" : "🏆 КАРА ТУЛПАР КЛАНЫ УТТУ!");
             exitBattle();
         }
 
