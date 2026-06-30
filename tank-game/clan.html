@@ -2,595 +2,548 @@
 <html lang="ky">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Танк Кландар Согушу - BilimAl</title>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>БилимАл Танк Оюну - Кландар Согушу</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
         body {
-            background-color: #0c0f12; color: #fff;
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: #fff;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            min-height: 100vh; padding: 10px; overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
         }
-        body.game-mode { overflow: hidden; touch-action: none; }
-        .clan-panel {
-            background: #111827; padding: 20px; border-radius: 15px; border: 3px solid #3b82f6;
-            width: 100%; max-width: 650px; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2); margin-top: 10px;
-        }
-        h1 { text-align: center; color: #f43f5e; font-size: 24px; margin-bottom: 10px; }
-        .card { background: #1f2937; padding: 15px; border-radius: 10px; border: 1px solid #374151; margin-bottom: 15px; }
-        h3 { color: #00e5ff; margin-bottom: 8px; font-size: 16px; }
-        input {
-            width: 100%; padding: 10px; margin: 5px 0 10px;
-            background: #111827; border: 1px solid #4b5563; color: white; border-radius: 6px; font-size: 14px;
-        }
-        button {
-            width: 100%; padding: 11px; background: #3b82f6; border: none;
-            color: white; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 14px;
-        }
-        button:hover { background: #2563eb; }
-        
-        .resource-bar { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 10px 15px; border-radius: 8px; border: 1px solid #eab308; margin-bottom: 15px; }
-        .crystal-count { color: #00f2fe; font-weight: bold; font-size: 16px; display: flex; align-items: center; gap: 5px; }
-        
-        .upgrade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .up-box { background: #111827; padding: 10px; border-radius: 8px; border: 1px solid #4b5563; text-align: center; }
-        .up-box p { font-size: 12px; color: #9ca3af; margin-bottom: 5px; }
-        .up-btn { background: #10b981; padding: 6px; font-size: 12px; }
-        .up-btn:hover { background: #059669; }
 
-        .matchmaking-status {
-            background: #111827; padding: 15px; border-radius: 8px; text-align: center; border: 1px dashed #eab308; margin-top: 10px;
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+            border-radius: 8px;
+            overflow: hidden;
         }
-        .spinner {
-            display: inline-block; width: 20px; height: 20px;
-            border: 3px solid rgba(255,255,255,0.3); border-radius: 50%;
-            border-top-color: #eab308; animation: spin 1s ease-in-out infinite; margin-right: 10px; vertical-align: middle;
+
+        #header-bar {
+            width: 1000px;
+            background-color: #1a1a1a;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        
-        #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; }
-        .top-bar {
-            width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #131920; border-radius: 10px 10px 0 0;
+
+        #btn-leave {
+            background-color: #e53935;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-left: 20px;
+            transition: background 0.2s;
         }
-        .game-container { position: relative; background: #0c0f12; border: 4px solid #3b82f6; border-radius: 0 0 10px 10px; overflow: hidden; width: 100%; max-width: 840px; }
-        canvas { display: block; width: 100%; height: auto; background: #141b24; }
-        
-        .mobile-controls-container {
-            display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 840px; margin-top: 10px; padding: 5px;
+
+        #btn-leave:hover {
+            background-color: #c62828;
         }
-        .joystick-box { display: grid; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 5px; }
-        .control-btn { background: #1f2937; border: 2px solid #374151; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
-        .control-btn:active { background: #3b82f6; border-color: #60a5fa; }
-        .btn-up { grid-column: 2; grid-row: 1; }
-        .btn-left { grid-column: 1; grid-row: 2; }
-        .btn-right { grid-column: 3; grid-row: 2; }
-        .btn-down { grid-column: 2; grid-row: 3; }
-        .fire-box { display: flex; align-items: center; justify-content: center; padding-right: 10px; }
-        .fire-btn { width: 85px; height: 85px; color: white; font-weight: bold; border-radius: 50%; border: 4px solid #f43f5e; background: #e11d48; font-size: 18px; box-shadow: 0 0 15px rgba(225, 29, 72, 0.4); }
-        .fire-btn:active { background: #be123c; transform: scale(0.95); }
+
+        #clan-info-display {
+            color: #ff3d00;
+            font-weight: bold;
+            font-size: 14px;
+            margin-right: 20px;
+            text-align: right;
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            border: 4px solid #2196F3;
+            border-top: none;
+        }
+
+        /* Ыңгайлаштырылган Alert Модалдык терезеси (Браузердин alert'и оюнду катырып таштабашы үчүн) */
+        #custom-alert {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            color: #000;
+            padding: 30px 50px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        #custom-alert h2 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+
+        #custom-alert button {
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        #custom-alert button:hover {
+            background-color: #1e88e5;
+        }
     </style>
 </head>
 <body>
 
-    <div class="clan-panel" id="main-menu">
-        <h1>⚔️ CLASH OF TANKS</h1>
+    <div id="game-container">
+        <div id="header-bar">
+            <button id="btn-leave">✕ Баш тартуу</button>
+            <div id="clan-info-display">Сиз: КЫЗЫЛ ТАНК (Оң тарап)</div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
         
-        <div class="resource-bar">
-            <div class="crystal-count">💎 Кристаллдар: <span id="crystal-val">0</span></div>
-            <div style="font-size: 13px; color: #a855f7; font-weight: bold;">Клан Деңгээли: <span id="clan-lv-val">1</span></div>
-        </div>
-
-        <div class="card" id="create-clan-section">
-            <h3>🛡️ ЖАҢЫ КЛАН НЕГИЗДӨӨ</h3>
-            <input type="text" id="clan-name-input" placeholder="Кландын атын жазыңыз...">
-            <button onclick="createClan()">Кланды түзүү</button>
-        </div>
-
-        <div class="card" id="my-clan-section" style="display:none; border-color: #10b981;">
-            <h3>Абалы: <span style="color:#10b981;">Клан Активдүү</span></h3>
-            <p id="my-clan-info" style="font-size:14px; color:#9ca3af; margin-bottom: 5px;"></p>
-            <button style="background: #4b5563; padding: 4px 10px; font-size: 11px; width: auto;" onclick="resetClan()">Кландан чыгуу</button>
-        </div>
-
-        <div class="card" style="border-color: #a855f7;">
-            <h3>🛠️ КЛАНДЫ ЖАНА ТАНККА КҮЧТӨӨ</h3>
-            <div class="upgrade-grid">
-                <div class="up-box">
-                    <p>🏃‍♂️ Танк Тездиги<br><b id="lvl-speed">Lv.1</b></p>
-                    <button class="up-btn" onclick="upgradeFeature('speed')">Жогорулатуу (15 💎)</button>
-                </div>
-                <div class="up-box">
-                    <p>⚡ Ок Ылдамдыгы<br><b id="lvl-bullet">Lv.1</b></p>
-                    <button class="up-btn" onclick="upgradeFeature('bullet')">Жогорулатуу (15 💎)</button>
-                </div>
-                <div class="up-box">
-                    <p>🏰 Чеп Коргоосу<br><b id="lvl-fort">Lv.1</b></p>
-                    <button class="up-btn" onclick="upgradeFeature('fort')">Жогорулатуу (15 💎)</button>
-                </div>
-                <div class="up-box">
-                    <p>🎖️ Танк Даражасы<br><b id="lvl-tank">Lv.1</b></p>
-                    <button class="up-btn" onclick="upgradeFeature('tank')">Жогорулатуу (25 💎)</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card" style="border-color: #ef4444;">
-            <h3>🔍 ОНЛАЙН СУРОО-ТАЛАП</h3>
-            <button id="search-btn" style="background: #ef4444;" onclick="toggleMatchmaking()">КАРШЫЛАШТЫ ИЗДӨӨ ⚔️</button>
-            <div class="matchmaking-status" id="match-status-box" style="display: none;">
-                <div class="spinner"></div>
-                <span id="match-status-text" style="color: #eab308; font-weight: bold;">Каршылаш изделүүдө...</span>
-            </div>
+        <div id="custom-alert">
+            <h2 id="alert-message">Сообщение с bilimal.org:</h2>
+            <button onclick="closeAlert()">OK</button>
         </div>
     </div>
 
-    <div id="game-wrapper">
-        <div class="top-bar">
-            <button style="background:#ef4444; border:none; color:white; padding:5px 12px; border-radius:5px; font-weight: bold;" onclick="exitBattle()">✕ Баш тартуу</button>
-            <div style="font-weight:bold; font-size:15px;" id="game-role-title">Жүктөлүүдө...</div>
-        </div>
-        <div class="game-container">
-            <canvas id="gameCanvas" width="840" height="560"></canvas>
-        </div>
-        
-        <div class="mobile-controls-container" id="mobile-control-pad">
-            <div class="joystick-box">
-                <button class="control-btn btn-up" id="btn-up-1">▲</button>
-                <button class="control-btn btn-left" id="btn-left-1">◀</button>
-                <button class="control-btn btn-right" id="btn-right-1">▶</button>
-                <button class="control-btn btn-down" id="btn-down-1">▼</button>
-            </div>
-            <div class="fire-box">
-                <button class="fire-btn" id="btn-fire-main">FIRE</button>
-            </div>
-        </div>
-    </div>
+<script>
+// =========================================================================
+// 1. ОЮНДУН ЖАЛПЫ ЖӨНДӨӨЛӨРҮ ЖАНА ОПТИМИЗАЦИЯ КӨРСӨТКҮЧТӨРҮ
+// =========================================================================
+const BLOCK_SIZE = 40;          // Танканын жана блоктордун көлөмү (КИЧИРЕЙБЕЙТ)
+const MAP_COLS = 120;           // 100 оюнчу кенен батышы үчүн чоңойтулган карта (120х120 блок)
+const MAP_ROWS = 120;
+const WORLD_WIDTH = MAP_COLS * BLOCK_SIZE;   // Жалпы картанын туурасы: 4800px
+const WORLD_HEIGHT = MAP_ROWS * BLOCK_SIZE;  // Жалпы картанын бийиктиги: 4800px
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyD2wN4R6Y_h_K8HnL2qWXf9vMsPzU1tB0Y", 
-            authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app/", 
-            projectId: "bilimal-org",
-            storageBucket: "bilimal-org.appspot.com",
-            messagingSenderId: "367351239854", 
-            appId: "1:367351239854:web:0fa9b9cd2c3f8e6b12d4a5" 
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+// Экранда колдонуучуга көрүнүп турган аймактын өлчөмү (Viewport)
+const VIEW_WIDTH = 1000; 
+const VIEW_HEIGHT = 600;
 
-        let myClanName = localStorage.getItem("tank_my_clan") || "";
-        let crystals = parseInt(localStorage.getItem("tank_crystals")) || 0;
-        let upSpeed = parseInt(localStorage.getItem("up_speed")) || 1;
-        let upBullet = parseInt(localStorage.getItem("up_bullet")) || 1;
-        let upFort = parseInt(localStorage.getItem("up_fort")) || 1;
-        let upTank = parseInt(localStorage.getItem("up_tank")) || 1;
-        let clanLevel = parseInt(localStorage.getItem("up_clan_level")) || 1;
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = VIEW_WIDTH;
+canvas.height = VIEW_HEIGHT;
 
-        let playerRole = ""; let currentRoomId = null; let isSearching = false;
-        let matchmakingListener = null; let roomData = null;
+// Камера объекти (Оюнчуну картанын борборунда ээрчип жүрөт)
+let camera = { x: 0, y: 0 };
 
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        
-        const TILE_SIZE = 28; const COLS = 30; const ROWS = 20;
-        let isGameRunning = false; let bullets = []; let map = [];
-        let player1 = null; let player2 = null; let touchDir = null; let activeKeys = {};
+// Оюндун катышуучуларынын маалымат базасы
+let localPlayerId = "player_" + Math.random().toString(36).substr(2, 9);
+let players = {};
+let bullets = [];
+let mapData = [];
 
-        function updateMenuUI() {
-            document.getElementById("crystal-val").innerText = crystals;
-            document.getElementById("clan-lv-val").innerText = clanLevel;
-            document.getElementById("lvl-speed").innerText = "Lv." + upSpeed;
-            document.getElementById("lvl-bullet").innerText = "Lv." + upBullet;
-            document.getElementById("lvl-fort").innerText = "Lv." + upFort;
-            document.getElementById("lvl-tank").innerText = "Lv." + upTank;
-            
-            if (myClanName) {
-                document.getElementById("create-clan-section").style.display = "none";
-                document.getElementById("my-clan-section").style.display = "block";
-                document.getElementById("my-clan-info").innerText = `Клан: "${myClanName}" [Даражасы: ${clanLevel}]`;
+// =========================================================================
+// 2. ЧОҢ КАРТАНЫ ГЕНЕРАЦИЯЛОО (ТОСКООЛДУКТАР ЖАНА ДУБАЛДАР)
+// =========================================================================
+function createWorldMap() {
+    let matrix = [];
+    for (let r = 0; r < MAP_ROWS; r++) {
+        matrix[r] = [];
+        for (let c = 0; c < MAP_COLS; c++) {
+            // Сырткы чекиттерге өтпөс боз дубалдарды орнотуу
+            if (r === 0 || r === MAP_ROWS - 1 || c === 0 || c === MAP_COLS - 1) {
+                matrix[r][c] = 2; // Боз темир дубал (бузулбайт)
+            } 
+            // Картанын ичине туш келди кыш дубалдарды жайгаштыруу
+            else if (Math.random() < 0.07 && (c > 4 && c < MAP_COLS - 5)) {
+                matrix[r][c] = 1; // Күрөң кыш дубал (ок тийгенде бузулат)
             } else {
-                document.getElementById("create-clan-section").style.display = "block";
-                document.getElementById("my-clan-section").style.display = "none";
+                matrix[r][c] = 0; // Бош аянтча
+            }
+        }
+    }
+    return matrix;
+}
+mapData = createWorldMap();
+
+// Локалдык оюнчуну кокусунан бир кланга кошуу (Көк же Кызыл)
+let isBlueClan = Math.random() > 0.5;
+let myClanType = isBlueClan ? "КӨК ТАНК" : "КЫЗЫЛ ТАНК";
+let myClanName = "Ноутбук клан";
+
+// Интерфейстеги жазууну жаңыртуу
+document.getElementById('clan-info-display').innerText = `Сиз: ${myClanType} ("${myClanName}")`;
+if(isBlueClan) {
+    document.getElementById('clan-info-display').style.color = "#2196F3";
+}
+
+players[localPlayerId] = {
+    id: localPlayerId,
+    x: isBlueClan ? 150 : WORLD_WIDTH - 150,
+    y: Math.random() * (WORLD_HEIGHT - 300) + 150,
+    angle: isBlueClan ? 0 : 180,
+    clan: myClanType,
+    clanName: myClanName,
+    hp: 100,
+    maxHp: 100,
+    level: 1,
+    title: "T-Lv.1",
+    speed: 4,
+    lastShot: 0
+};
+
+// Тест иретинде каршылаштарга танк кошуп коюу (мисалы, көрүү үчүн)
+let enemyId = "enemy_bot_1";
+players[enemyId] = {
+    id: enemyId,
+    x: isBlueClan ? WORLD_WIDTH - 250 : 250,
+    y: players[localPlayerId].y + 40,
+    angle: isBlueClan ? 180 : 0,
+    clan: isBlueClan ? "КЫЗЫЛ ТАНК" : "КӨК ТАНК",
+    clanName: "КАРА ТУЛПАР КЛАНЫ",
+    hp: 100,
+    maxHp: 100,
+    level: 2,
+    title: "T-Lv.2",
+    speed: 4,
+    lastShot: 0
+};
+
+// =========================================================================
+// 3. БАШКАРУУ СИСТЕМАСЫ
+// =========================================================================
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    // Прокрутканы (барактын жылышын) токтотуу
+    if(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) {
+        e.preventDefault();
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function handlePlayerMovement() {
+    let p = players[localPlayerId];
+    if (!p || p.hp <= 0) return;
+
+    let nextX = p.x;
+    let nextY = p.y;
+    let isMoving = false;
+
+    if (keys['KeyW'] || keys['ArrowUp']) {
+        nextY -= p.speed;
+        p.angle = 270;
+        isMoving = true;
+    } else if (keys['KeyS'] || keys['ArrowDown']) {
+        nextY += p.speed;
+        p.angle = 90;
+        isMoving = true;
+    } else if (keys['KeyA'] || keys['ArrowLeft']) {
+        nextX -= p.speed;
+        p.angle = 180;
+        isMoving = true;
+    } else if (keys['KeyD'] || keys['ArrowRight']) {
+        nextX += p.speed;
+        p.angle = 0;
+        isMoving = true;
+    }
+
+    // Танка тоскоолдуктарга же дубалга тийбесе гана жылат
+    if (isMoving && !checkWallCollision(nextX, nextY)) {
+        p.x = nextX;
+        p.y = nextY;
+    }
+
+    // Ок атуу (Боштук - Space баскычы)
+    if (keys['Space']) {
+        let currentTime = Date.now();
+        if (currentTime - p.lastShot > 400) { // Ок атуулардын ортосундагы тыныгуу (400мс)
+            fireBullet(p);
+            p.lastShot = currentTime;
+        }
+    }
+
+    // Башка оюнчуларга маалымат жиберүү (Firebase жаңыртуу коду ушул жерге келет)
+    // firebase.database().ref('players/' + localPlayerId).update({ x: p.x, y: p.y, angle: p.angle, hp: p.hp });
+}
+
+function checkWallCollision(x, y) {
+    let sizeHalf = BLOCK_SIZE / 2;
+    // Танканын төрт бурчунун координаттарын текшерүү
+    let boundingPoints = [
+        {x: x - sizeHalf + 2, y: y - sizeHalf + 2},
+        {x: x + sizeHalf - 2, y: y - sizeHalf + 2},
+        {x: x - sizeHalf + 2, y: y + sizeHalf - 2},
+        {x: x + sizeHalf - 2, y: y + sizeHalf - 2}
+    ];
+
+    for (let pt of boundingPoints) {
+        let col = Math.floor(pt.x / BLOCK_SIZE);
+        let row = Math.floor(pt.y / BLOCK_SIZE);
+
+        if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return true;
+        if (mapData[row][col] > 0) return true; 
+    }
+    return false;
+}
+
+function fireBullet(player) {
+    let rad = (player.angle * Math.PI) / 180;
+    // Окту танканын мурдунан чыгаруу
+    let startX = player.x + Math.cos(rad) * (BLOCK_SIZE / 2 + 6);
+    let startY = player.y + Math.sin(rad) * (BLOCK_SIZE / 2 + 6);
+
+    let bulletObj = {
+        id: "bullet_" + player.id + "_" + Date.now(),
+        ownerId: player.id,
+        clan: player.clan,
+        x: startX,
+        y: startY,
+        vx: Math.cos(rad) * 9, // Октун ылдамдыгы
+        vy: Math.sin(rad) * 9,
+        active: true
+    };
+    bullets.push(bulletObj);
+    
+    // Эгер тармактык синхрондоштуруу болсо:
+    // firebase.database().ref('bullets/' + bulletObj.id).set(bulletObj);
+}
+
+// =========================================================================
+// 4. ОКТОРДУН КАГЫЛЫШУУСУ ЖАНА КАРА ЭКРАНДЫ ОҢДОО
+// =========================================================================
+function processGameLogic() {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        let b = bullets[i];
+        if (!b.active) {
+            bullets.splice(i, 1);
+            continue;
+        }
+
+        // Окту жылдыруу
+        b.x += b.vx;
+        b.y += b.vy;
+
+        // 1. Картанын сыртына чыгып кетсе жок кылуу
+        if (b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) {
+            b.active = false;
+            continue;
+        }
+
+        // 2. Дубалдарга тийгендигин текшерүү
+        let currentCol = Math.floor(b.x / BLOCK_SIZE);
+        let currentRow = Math.floor(b.y / BLOCK_SIZE);
+
+        if (currentRow >= 0 && currentRow < MAP_ROWS && currentCol >= 0 && currentCol < MAP_COLS) {
+            let cellType = mapData[currentRow][currentCol];
+            if (cellType === 1) { // Күрөң дубал бузулат
+                mapData[currentRow][currentCol] = 0;
+                b.active = false;
+                continue;
+            } else if (cellType === 2) { // Боз дубалга тийсе ок өзү эле өчөт
+                b.active = false;
+                continue;
             }
         }
 
-        function upgradeFeature(type) {
-            let cost = type === 'tank' ? 25 : 15;
-            if (crystals < cost) return alert("Кристаллдар жетишсиз!");
-            
-            crystals -= cost;
-            if (type === 'speed') upSpeed++;
-            if (type === 'bullet') upBullet++;
-            if (type === 'fort') upFort++;
-            if (type === 'tank') { upTank++; clanLevel++; }
-
-            localStorage.setItem("tank_crystals", crystals);
-            localStorage.setItem("up_speed", upSpeed);
-            localStorage.setItem("up_bullet", upBullet);
-            localStorage.setItem("up_fort", upFort);
-            localStorage.setItem("up_tank", upTank);
-            localStorage.setItem("up_clan_level", clanLevel);
-            updateMenuUI();
-        }
-
-        function createClan() {
-            let input = document.getElementById("clan-name-input");
-            let name = input.value.trim().replace(/[\.\$\#\[\]]/g, ""); 
-            if (!name) return alert("Атты жазыңыз!");
-            myClanName = name;
-            localStorage.setItem("tank_my_clan", name);
-            updateMenuUI();
-        }
-
-        function resetClan() {
-            if(confirm("Кландан чыгууну каалайсызбы?")) {
-                localStorage.removeItem("tank_my_clan");
-                myClanName = ""; updateMenuUI();
-            }
-        }
-
-        function toggleMatchmaking() {
-            if (!myClanName) return alert("Адегенде клан негиздеңиз!");
-            if (isSearching) { stopSearch(); } else { startSearch(); }
-        }
-
-        function generateMapArray() {
-            return [
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
-                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
-                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
-                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
-                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
-                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
-                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
-                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
-                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-            ];
-        }
-
-        function startSearch() {
-            isSearching = true;
-            document.getElementById("match-status-box").style.display = "block";
-            document.getElementById("search-btn").innerText = "ИЗДӨӨНҮ ТОКТОТУУ ✕";
-
-            database.ref('matchmaking/' + myClanName).set({
-                clanName: myClanName, status: "searching", clanLv: clanLevel, tankLv: upTank,
-                upSp: upSpeed, upBl: upBullet, upFt: upFort, timestamp: Date.now()
-            });
-
-            matchmakingListener = database.ref('matchmaking').on('value', snapshot => {
-                if (!isSearching) return;
-                let allPlayers = snapshot.val(); if (!allPlayers) return;
-
-                let myState = allPlayers[myClanName];
-                if (myState && myState.status === "matched") {
-                    goToBattle(myState.roomId, myState.role); return;
+        // 3. ОКТОР БИРИ-БИРИНЕ ТИЙГЕНДЕ ОРТОДО ЖОК БОЛУШУ (Сиздин сурам)
+        for (let j = 0; j < bullets.length; j++) {
+            let b2 = bullets[j];
+            if (b.id !== b2.id && b.ownerId !== b2.ownerId && b2.active) {
+                let distanceBetweenBullets = Math.hypot(b.x - b2.x, b.y - b2.y);
+                if (distanceBetweenBullets < 10) { // Эки ок кагылышты
+                    b.active = false;
+                    b2.active = false;
+                    break;
                 }
+            }
+        }
+        if (!b.active) continue;
 
-                let opponent = null; let opponentKey = "";
-                for (let key in allPlayers) {
-                    if (key !== myClanName && allPlayers[key].status === "searching") {
-                        opponent = allPlayers[key]; opponentKey = key; break;
+        // 4. Ок танкага тийгенде (Эки тарапка тең зыян жетет, бир тараптуу эмес)
+        for (let pId in players) {
+            let targetPlayer = players[pId];
+            if (targetPlayer.hp <= 0) continue;
+
+            // Өзүнүн огу өзүнө жана өзүнүн кланындагыларга зыян келтирбейт
+            if (b.ownerId !== targetPlayer.id && b.clan !== targetPlayer.clan) {
+                let hitDistance = Math.hypot(b.x - targetPlayer.x, b.y - targetPlayer.y);
+                if (hitDistance < (BLOCK_SIZE / 2 + 3)) {
+                    targetPlayer.hp -= 25; // Ок тийгенде 25 HP кетет
+                    b.active = false;
+
+                    if (targetPlayer.hp <= 0) {
+                        targetPlayer.hp = 0;
+                        triggerWinNotification(b.clan, targetPlayer.clanName);
                     }
-                }
-
-                if (opponent && myClanName > opponentKey) {
-                    let roomId = "room_" + Math.min(myClanName.hashCode(), opponentKey.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponentKey.hashCode());
-                    let initialMap = generateMapArray();
-
-                    database.ref('rooms/' + roomId).set({
-                        p1: opponent.clanName || opponentKey, p1_clanLv: opponent.clanLv || 1, p1_tankLv: opponent.tankLv || 1, p1_upSp: opponent.upSp || 1, p1_upBl: opponent.upBl || 1,
-                        p2: myClanName, p2_clanLv: clanLevel, p2_tankLv: upTank, p2_upSp: upSpeed, p2_upBl: upBullet,
-                        p1_pos: { x: 2 * TILE_SIZE, y: 9 * TILE_SIZE, dir: "right", hp: 3, lastShot: 0 },
-                        p2_pos: { x: 27 * TILE_SIZE, y: 9 * TILE_SIZE, dir: "left", hp: 3, lastShot: 0 },
-                        fort_hp1: 2 + (opponent.upFt || 1), fort_hp2: 2 + upFort,
-                        status: "playing",
-                        map: initialMap
-                    }).then(() => {
-                        database.ref('matchmaking/' + opponentKey).update({ status: "matched", roomId: roomId, role: "p1" });
-                        database.ref('matchmaking/' + myClanName).update({ status: "matched", roomId: roomId, role: "p2" });
-                    });
-                }
-            });
-        }
-
-        function stopSearch() {
-            isSearching = false;
-            if (matchmakingListener) database.ref('matchmaking').off('value', matchmakingListener);
-            database.ref('matchmaking/' + myClanName).remove();
-            document.getElementById("match-status-box").style.display = "none";
-            document.getElementById("search-btn").innerText = "КАРШЫЛАШТЫ ИЗДӨӨ ⚔️";
-        }
-
-        function goToBattle(roomId, role) {
-            isSearching = false;
-            currentRoomId = roomId; playerRole = role;
-            if (matchmakingListener) database.ref('matchmaking').off('value', matchmakingListener);
-            database.ref('matchmaking/' + myClanName).remove();
-            document.getElementById("match-status-box").style.display = "none";
-            initOnlineGame();
-        }
-
-        String.prototype.hashCode = function() {
-            let hash = 0; for (let i = 0; i < this.length; i++) { hash = this.charCodeAt(i) + ((hash << 5) - hash); } return Math.abs(hash);
-        };
-
-        function initOnlineGame() {
-            document.getElementById("main-menu").style.display = "none";
-            document.getElementById("game-wrapper").style.display = "flex";
-            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) { document.getElementById("mobile-control-pad").style.display = "flex"; }
-            document.body.classList.add("game-mode");
-
-            document.getElementById("game-role-title").innerText = playerRole === "p1" ? `🛡️ КӨК ТАНК ("${myClanName}")` : `⚔️ КЫЗЫЛ ТАНК ("${myClanName}")`;
-            document.getElementById("game-role-title").style.color = playerRole === "p1" ? "#3b82f6" : "#ef4444";
-
-            isGameRunning = true;
-            map = generateMapArray(); // Алгачкы локалдык жүктөө
-            
-            player1 = new Tank("p1", 2 * TILE_SIZE, 9 * TILE_SIZE, "clan1", 3);
-            player2 = new Tank("p2", 27 * TILE_SIZE, 9 * TILE_SIZE, "clan2", 3);
-            
-            setupMobileControls(); setupKeyboardControls();
-
-            // 1. БӨЛМӨНҮН ЖАЛПЫ МААЛЫМАТТАРЫН СИНХРОНДОО
-            database.ref('rooms/' + currentRoomId).on('value', snapshot => {
-                let data = snapshot.val(); if (!data) return;
-                roomData = data; 
-                
-                player1.clanName = data.p1 || "Көк Клан"; player1.clanLv = data.p1_clanLv || 1; player1.tankLv = data.p1_tankLv || 1; player1.speed = 1.6 + ((data.p1_upSp || 1) * 0.4); player1.bulletSpeed = 5 + (data.p1_upBl || 1);
-                player2.clanName = data.p2 || "Кызыл Клан"; player2.clanLv = data.p2_clanLv || 1; player2.tankLv = data.p2_tankLv || 1; player2.speed = 1.6 + ((data.p2_upSp || 1) * 0.4); player2.bulletSpeed = 5 + (data.p2_upBl || 1);
-
-                if (data.p1_pos) {
-                    if (playerRole !== "p1") { player1.x = data.p1_pos.x; player1.y = data.p1_pos.y; player1.dir = data.p1_pos.dir; }
-                    player1.hp = data.p1_pos.hp;
-                    if (data.p1_pos.shootTrigger && data.p1_pos.shootTrigger !== player1.lastShot) {
-                        bullets.push(new Bullet(player1.x + player1.w/2, player1.y + player1.h/2, data.p1_pos.dir, "clan1", "p1", player1.bulletSpeed));
-                        player1.lastShot = data.p1_pos.shootTrigger;
-                    }
-                }
-                if (data.p2_pos) {
-                    if (playerRole !== "p2") { player2.x = data.p2_pos.x; player2.y = data.p2_pos.y; player2.dir = data.p2_pos.dir; }
-                    player2.hp = data.p2_pos.hp;
-                    if (data.p2_pos.shootTrigger && data.p2_pos.shootTrigger !== player2.lastShot) {
-                        bullets.push(new Bullet(player2.x + player2.w/2, player2.y + player2.h/2, data.p2_pos.dir, "clan2", "p2", player2.bulletSpeed));
-                        player2.lastShot = data.p2_pos.shootTrigger;
-                    }
-                }
-            });
-
-            // 2. КАРТА КЕРПИЧТЕРИН ТҮЗ ЭФИРДЕ ЭКИ ТАРАПКА СИНХРОНДОО
-            database.ref('rooms/' + currentRoomId + '/map').on('value', mapSnapshot => {
-                let firebaseMap = mapSnapshot.val();
-                if (firebaseMap) { map = firebaseMap; }
-            });
-        }
-
-        class Tank {
-            constructor(id, x, y, side, hp) {
-                this.id = id; this.x = x; this.y = y;
-                this.w = TILE_SIZE - 4; this.h = TILE_SIZE - 4;
-                this.dir = side === "clan1" ? "right" : "left";
-                this.side = side; this.hp = hp; this.speed = 2; this.bulletSpeed = 6;
-                this.clanName = ""; this.clanLv = 1; this.tankLv = 1; this.lastShot = 0;
-            }
-            draw() {
-                ctx.save(); ctx.translate(this.x + this.w/2, this.y + this.h/2);
-                if(this.dir === "down") ctx.rotate(Math.PI);
-                if(this.dir === "left") ctx.rotate(-Math.PI/2);
-                if(this.dir === "right") ctx.rotate(Math.PI/2);
-                ctx.fillStyle = this.side === "clan1" ? "#3b82f6" : "#ef4444";
-                ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
-                ctx.fillStyle = "#fff"; ctx.fillRect(-2, -this.h/2 - 5, 4, this.h/2); ctx.restore();
-                
-                let displayName = this.clanName || (this.id === "p1" ? "Көк Клан" : "Кызыл Клан");
-                let displayClanLv = this.clanLv || 1;
-                let displayTankLv = this.tankLv || 1;
-
-                ctx.fillStyle = "#fff"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
-                ctx.fillText(`${displayName} [C-Lv.${displayClanLv}]`, this.x + this.w/2, this.y - 18);
-                ctx.fillStyle = "#00ffff";
-                ctx.fillText(`T-Lv.${displayTankLv}`, this.x + this.w/2, this.y - 9);
-
-                ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(this.x, this.y - 5, this.w, 4);
-                ctx.fillStyle = this.side === "clan1" ? "#00ffcc" : "#ff0055";
-                ctx.fillRect(this.x, this.y - 5, (this.w) * (this.hp / 3), 4);
-            }
-            move(dir) {
-                this.dir = dir; let nx = this.x, ny = this.y;
-                if(dir === "up") ny -= this.speed; if(dir === "down") ny += this.speed;
-                if(dir === "left") nx -= this.speed; if(dir === "right") nx += this.speed;
-                
-                if(!this.checkCollision(nx, ny)) {
-                    this.x = nx; this.y = ny;
-                    database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({ x: this.x, y: this.y, dir: this.dir });
+                    break;
                 }
             }
-            checkCollision(nx, ny) {
-                if(nx < 1 || nx + this.w > canvas.width - 1 || ny < 1 || ny + this.h > canvas.height - 1) return true;
-                let other = (this.id === "p1") ? player2 : player1;
-                if (other && nx < other.x + other.w && nx + this.w > other.x && ny < other.y + other.h && ny + this.h > other.y) return true;
-                let pts = [{x:nx+2, y:ny+2}, {x:nx+this.w-2, y:ny+2}, {x:nx+2, y:ny+this.h-2}, {x:nx+this.w-2, y:ny+this.h-2}];
-                for(let p of pts) {
-                    let cx = Math.floor(p.x/TILE_SIZE), cy = Math.floor(p.y/TILE_SIZE);
-                    if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) { if([1,2,8,9].includes(map[cy][cx])) return true; }
-                }
-                return false;
-            }
-            shoot() {
-                let token = Date.now();
-                database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({ shootTrigger: token, dir: this.dir });
-            }
         }
+    }
+}
 
-        class Bullet {
-            constructor(x, y, dir, side, ownerId, speed) {
-                this.x = x; this.y = y; this.dir = dir; this.side = side; this.ownerId = ownerId;
-                this.speed = speed; this.active = true; this.r = 3;
-            }
-            draw() {
-                ctx.fillStyle = this.side === "clan1" ? "#3b82f6" : "#ef4444";
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
-            }
-            update() {
-                if(this.dir === "up") this.y -= this.speed; if(this.dir === "down") this.y += this.speed;
-                if(this.dir === "left") this.x -= this.speed; if(this.dir === "right") this.x += this.speed;
+function triggerWinNotification(winnerClan, loserClanName) {
+    // Оюн катып, экран кара болуп калбашы үчүн кыска мөөнөттүү тыныгуу менен терезе ачылат
+    setTimeout(() => {
+        let msg = `🏆 ${winnerClan.toUpperCase()} ЖЕҢДИ!\n(${loserClanName} талкаланды)`;
+        document.getElementById('alert-message').innerText = msg;
+        document.getElementById('custom-alert').style.display = 'block';
+    }, 50);
+}
 
-                let target = (this.ownerId === "p1") ? player2 : player1;
-                if(target && this.x > target.x && this.x < target.x + target.w && this.y > target.y && this.y < target.y + target.h) {
-                    this.active = false;
-                    if (playerRole === this.ownerId) {
-                        let nextHp = target.hp - 1;
-                        database.ref('rooms/' + currentRoomId + '/' + (this.ownerId === "p1" ? "p2" : "p1") + '_pos').update({ hp: nextHp });
-                        if(nextHp <= 0) endBattle(this.ownerId === "p1" ? "p2" : "p1"); 
-                    }
-                    return;
-                }
+function closeAlert() {
+    document.getElementById('custom-alert').style.display = 'none';
+    // Оюнду кайра жаңылоо логикасы:
+    location.reload();
+}
 
-                let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
-                if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
-                    let block = map[cy][cx];
-                    if(block === 1) { 
-                        this.active = false; 
-                        // СИНХРОНДУУ ТАЛКАЛОО: Октун ээси гана базага буйрук берет
-                        if (playerRole === this.ownerId) {
-                            database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
-                        }
-                    }
-                    else if(block === 2) { this.active = false; }
-                    
-                    else if(block === 8) { 
-                        if (this.ownerId === "p2") { 
-                            this.active = false;
-                            if (playerRole === this.ownerId && roomData) {
-                                let curHp = (roomData.fort_hp1 || 3) - 1;
-                                database.ref('rooms/' + currentRoomId).update({ fort_hp1: curHp });
-                                if(curHp <= 0) {
-                                    database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
-                                    endBattle("p1");
-                                }
-                            }
-                        } else { this.active = false; } 
-                    }
-                    else if(block === 9) { 
-                        if (this.ownerId === "p1") { 
-                            this.active = false;
-                            if (playerRole === this.ownerId && roomData) {
-                                let curHp = (roomData.fort_hp2 || 3) - 1;
-                                database.ref('rooms/' + currentRoomId).update({ fort_hp2: curHp });
-                                if(curHp <= 0) {
-                                    database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
-                                    endBattle("p2");
-                                }
-                            }
-                        } else { this.active = false; }
-                    }
-                }
-                if(this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.active = false;
+// =========================================================================
+// 5. КАМЕРА ЖАНА КӨРҮНҮҮЧҮ АЙМАКТЫ ТАРТУУ (RENDER SYSTEM)
+// =========================================================================
+function adjustCameraPosition() {
+    let myTank = players[localPlayerId];
+    if (!myTank) return;
+
+    // Камера дайыма жергиликтүү оюнчуну борборго алат
+    camera.x = myTank.x - VIEW_WIDTH / 2;
+    camera.y = myTank.y - VIEW_HEIGHT / 2;
+
+    // Камера чоң дүйнөнүн четтеринен чыгып кетпейт
+    if (camera.x < 0) camera.x = 0;
+    if (camera.y < 0) camera.y = 0;
+    if (camera.x > WORLD_WIDTH - VIEW_WIDTH) camera.x = WORLD_WIDTH - VIEW_WIDTH;
+    if (camera.y > WORLD_HEIGHT - VIEW_HEIGHT) camera.y = WORLD_HEIGHT - VIEW_HEIGHT;
+}
+
+function renderGraphics() {
+    // 1. Ар бир кадрда экранды толук тазалоо (Кара экрандын алдын алат)
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+    ctx.save();
+    // Камеранын багыты боюнча координаталарды жылдыруу
+    ctx.translate(-camera.x, -camera.y);
+
+    // Оптимизация: Камерага көрүнгөн гана блокторду таап чыгуу (Талкаланбаш үчүн)
+    let minCol = Math.floor(camera.x / BLOCK_SIZE);
+    let maxCol = Math.ceil((camera.x + VIEW_WIDTH) / BLOCK_SIZE);
+    let minRow = Math.floor(camera.y / BLOCK_SIZE);
+    let maxRow = Math.ceil((camera.y + VIEW_HEIGHT) / BLOCK_SIZE);
+
+    if (minCol < 0) minCol = 0;
+    if (maxCol >= MAP_COLS) maxCol = MAP_COLS - 1;
+    if (minRow < 0) minRow = 0;
+    if (maxRow >= MAP_ROWS) maxRow = MAP_ROWS - 1;
+
+    // Картаны чийүү
+    for (let r = minRow; r <= maxRow; r++) {
+        for (let c = minCol; c <= maxCol; c++) {
+            let tile = mapData[r][c];
+            if (tile === 1) {
+                ctx.fillStyle = "#A0522D"; // Кыш дубалдын түсү
+                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+            } else if (tile === 2) {
+                ctx.fillStyle = "#506070"; // Корголгон дубалдын түсү
+                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
             }
         }
+    }
 
-        function handleInput() {
-            if (!isGameRunning) return;
-            let me = (playerRole === "p1") ? player1 : player2; if (!me) return;
-            let currentDir = touchDir;
-            if (!currentDir) {
-                if (activeKeys["KeyW"] || activeKeys["ArrowUp"]) currentDir = "up";
-                else if (activeKeys["KeyS"] || activeKeys["ArrowDown"]) currentDir = "down";
-                else if (activeKeys["KeyA"] || activeKeys["ArrowLeft"]) currentDir = "left";
-                else if (activeKeys["KeyD"] || activeKeys["ArrowRight"]) currentDir = "right";
-            }
-            if (currentDir) me.move(currentDir);
+    // Танкаларды чийүү
+    for (let id in players) {
+        let tank = players[id];
+        
+        // Маанилер undefined болсо ката бербеши үчүн коопсуздук текшерүүсү
+        if (!tank || tank.hp <= 0) continue;
+
+        // Камерадан сырткары өтө алыс жайгашкан танкаларды чийбей өтүү (Иштешин тездетет)
+        if (tank.x < camera.x - BLOCK_SIZE || tank.x > camera.x + VIEW_WIDTH + BLOCK_SIZE ||
+            tank.y < camera.y - BLOCK_SIZE || tank.y > camera.y + VIEW_HEIGHT + BLOCK_SIZE) {
+            continue;
         }
 
-        function setupKeyboardControls() {
-            window.addEventListener("keydown", (e) => {
-                if (!isGameRunning) return;
-                if (["Space", "KeyW", "KeyS", "KeyA", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-                activeKeys[e.code] = true;
-                if (e.code === "Space") { let me = (playerRole === "p1") ? player1 : player2; if (me) me.shoot(); }
-            });
-            window.addEventListener("keyup", (e) => activeKeys[e.code] = false);
-        }
+        ctx.save();
+        ctx.translate(tank.x, tank.y);
+        ctx.rotate((tank.angle * Math.PI) / 180);
 
-        function setupMobileControls() {
-            const bind = (id, dir) => {
-                let el = document.getElementById(id); if(!el) return;
-                el.addEventListener("touchstart", (e) => { e.preventDefault(); touchDir = dir; }, {passive: false});
-                el.addEventListener("touchend", (e) => { e.preventDefault(); touchDir = null; }, {passive: false});
-            };
-            bind("btn-up-1", "up"); bind("btn-down-1", "down"); bind("btn-left-1", "left"); bind("btn-right-1", "right");
-            let fireBtn = document.getElementById("btn-fire-main");
-            if(fireBtn) { fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); let me = (playerRole === "p1") ? player1 : player2; if (me && isGameRunning) me.shoot(); }, {passive: false}); }
-        }
+        // Танкалардын кландык түстөрү
+        let isCurrentBlue = (tank.clan && (tank.clan.includes("КӨК") || tank.clan.includes("КОК")));
+        ctx.fillStyle = isCurrentBlue ? "#2196F3" : "#F44336";
+        
+        // Негизги танк корпусу (Өлчөмү туруктуу бойдон сакталат)
+        ctx.fillRect(-BLOCK_SIZE / 2, -BLOCK_SIZE / 2, BLOCK_SIZE, BLOCK_SIZE);
 
-        function endBattle(loserId) {
-            if (!isGameRunning) return; isGameRunning = false;
-            let iWon = (playerRole !== loserId);
-            if (iWon) {
-                crystals += 10;
-                localStorage.setItem("tank_crystals", crystals);
-                alert("🏆 КУТТУКТАЙБЫЗ! Сиздин клан утту жана 10 💎 Кристалл таптыңыз!");
-            } else {
-                alert("💥 Сиздин чеп же танкаңыз талкаланды! Сиз утулдуңуз.");
-            }
-            exitBattle();
-        }
+        // Танканын үстүнкү ак багыттоочу сызыгы (оозу)
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, -3, BLOCK_SIZE / 2 + 5, 6);
+        ctx.restore();
 
-        function exitBattle() {
-            isGameRunning = false;
-            if(currentRoomId) database.ref('rooms/' + currentRoomId).remove();
-            location.reload();
-        }
+        // Танканын үстүндөгү жазуу тексттери (Коопсуз маанилер менен)
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        
+        let displayClanName = tank.clan ? tank.clan : "ТАНК";
+        let displaySubClan = tank.clanName ? tank.clanName : "Клан";
+        let displayTitle = tank.title ? tank.title : "T-Lv.1";
 
-        function gameLoop() {
-            if(isGameRunning) {
-                handleInput();
-                for(let i = bullets.length - 1; i >= 0; i--) { bullets[i].update(); if(!bullets[i].active) bullets.splice(i, 1); }
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                let fHp1 = roomData ? (roomData.fort_hp1 ?? 3) : 3;
-                let fHp2 = roomData ? (roomData.fort_hp2 ?? 3) : 3;
+        ctx.fillText(`${displayClanName} ("${displaySubClan}")`, tank.x, tank.y - 35);
+        ctx.fillStyle = "#00FFFF";
+        ctx.fillText(displayTitle, tank.x, tank.y - 22);
 
-                for(let r = 0; r < ROWS; r++) {
-                    for(let c = 0; c < COLS; c++) {
-                        let b = map[r][c];
-                        if(b === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
-                        if(b === 2) { ctx.fillStyle = "#4b5563"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
-                        
-                        if(b === 8) { 
-                            ctx.fillStyle = "#3b82f6"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+TILE_SIZE/2, r*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2 - 1, 0, Math.PI*2); ctx.fill(); 
-                            ctx.fillStyle="#fff"; ctx.font="11px Arial"; ctx.fillText("🐺", c*TILE_SIZE+5, r*TILE_SIZE+18);
-                            ctx.fillStyle="#00ffcc"; ctx.font="bold 8px Arial"; ctx.fillText("H:" + fHp1, c*TILE_SIZE+4, r*TILE_SIZE-2);
-                        }
-                        if(b === 9) { 
-                            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+TILE_SIZE/2, r*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2 - 1, 0, Math.PI*2); ctx.fill(); 
-                            ctx.fillStyle="#fff"; ctx.font="11px Arial"; ctx.fillText("🦅", c*TILE_SIZE+5, r*TILE_SIZE+18);
-                            ctx.fillStyle="#ff0055"; ctx.font="bold 8px Arial"; ctx.fillText("H:" + fHp2, c*TILE_SIZE+4, r*TILE_SIZE-2);
-                        }
-                    }
-                }
-                if(player1) player1.draw(); if(player2) player2.draw(); bullets.forEach(b => b.draw());
-            }
-            requestAnimationFrame(gameLoop);
-        }
+        // Жашоо көрсөткүчү (HP Bar)
+        ctx.fillStyle = "#FF0000";
+        ctx.fillRect(tank.x - 20, tank.y - 15, 40, 4);
+        ctx.fillStyle = "#00FF00";
+        let hpRatio = tank.hp / tank.maxHp;
+        if (hpRatio < 0) hpRatio = 0;
+        ctx.fillRect(tank.x - 20, tank.y - 15, hpRatio * 40, 4);
 
-        updateMenuUI(); gameLoop();
-    </script>
+        // Кландын логотиби же тегерекчеси
+        ctx.beginPath();
+        ctx.arc(tank.x - 15, tank.y - 45, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = isCurrentBlue ? "#0026ff" : "#b70000";
+        ctx.fill();
+    }
+
+    // Окторду чийүү
+    ctx.fillStyle = "#FFEB3B"; // Жаркыраган сары ок
+    for (let b of bullets) {
+        if (!b.active) continue;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+
+    ctx.restore(); 
+}
+
+// =========================================================================
+// 6. ОЮНДУН НЕГИЗГИ АЙЛАНЫШ ЦИКЛИ (GAME LOOP)
+// =========================================================================
+function mainGameLoop() {
+    try {
+        handlePlayerMovement();
+        processGameLogic();
+        adjustCameraPosition();
+        renderGraphics();
+    } catch (error) {
+        console.error("Оюндун негизги иштөө кадамдарында ката катталды: ", error);
+    }
+    requestAnimationFrame(mainGameLoop);
+}
+
+// Оюнду баштоо
+mainGameLoop();
+</script>
+
 </body>
 </html>
