@@ -5,9 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>БилимАл Танк - Бүркүттөр Кагылышуусу</title>
     
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
     <style>
         * {
             box-sizing: border-box;
@@ -28,81 +25,86 @@
             overflow: hidden;
         }
 
-        /* Оюндун интерфейси */
+        /* Жогорку статистика панели */
         #ui-top-panel {
             width: 100%;
-            max-width: 1024px;
+            max-width: 1000px;
             background: linear-gradient(180deg, #1a202c 0%, #11141a 100%);
             border-bottom: 3px solid #4a5568;
-            padding: 8px 15px;
+            padding: 10px 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 10;
+            border-radius: 0 0 8px 8px;
         }
 
         .stat-box {
             display: flex;
             align-items: center;
             gap: 15px;
-            font-size: 13px;
+            font-size: 14px;
         }
 
         .crystal-count {
             color: #00e5ff;
             font-weight: bold;
             background: rgba(0, 229, 255, 0.1);
-            padding: 4px 10px;
+            padding: 4px 12px;
             border-radius: 12px;
             border: 1px solid rgba(0, 229, 255, 0.3);
         }
 
-        /* Күчтөө (Апгрейд) Панели */
+        /* Апгрейд баскычтары */
         #upgrade-menu {
             display: flex;
-            gap: 8px;
+            gap: 10px;
         }
 
         .btn-upgrade {
             background: linear-gradient(135deg, #ff9100 0%, #ff6d00 100%);
             color: #fff;
             border: none;
-            padding: 6px 12px;
-            font-size: 11px;
+            padding: 8px 14px;
+            font-size: 12px;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
         .btn-upgrade:active { transform: scale(0.95); }
-        .btn-upgrade:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-upgrade:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
+        /* Оюн контейнери */
         #game-wrapper {
             position: relative;
             width: 1000px;
             height: 600px;
             max-width: 100vw;
-            margin-top: 10px;
+            margin-top: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         canvas {
             display: block;
             background-color: #05070a;
             border: 3px solid #2196F3;
-            border-radius: 6px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border-radius: 8px;
             width: 100%;
             height: 100%;
         }
 
-        /* ТЕЛЕФОН МЕНЕН ОЙНОО ПАНЕЛИ (Мобилдик Башкаруу) */
+        /* МОБИЛДИК БАШКАРУУ ИНТЕРФЕЙСИ */
         #mobile-ui {
-            display: none; /* Компьютерде жашыруун болот, телефондо скрипт аркылуу ачылат */
+            display: none; /* Скрипт аркылуу мобилдик түзмөктөрдө гана ачылат */
             position: fixed;
-            bottom: 20px;
+            bottom: 30px;
             left: 0;
             width: 100%;
-            padding: 0 30px;
+            padding: 0 40px;
             justify-content: space-between;
             align-items: center;
             pointer-events: none;
@@ -110,10 +112,10 @@
         }
 
         .joystick-container {
-            width: 150px;
-            height: 150px;
-            background: rgba(255, 255, 255, 0.07);
-            border: 3px solid rgba(255, 255, 255, 0.2);
+            width: 160px;
+            height: 160px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 3px solid rgba(255, 255, 255, 0.25);
             border-radius: 50%;
             position: relative;
             pointer-events: auto;
@@ -122,20 +124,20 @@
                 ". up ."
                 "left . right"
                 ". down .";
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
         }
 
         .touch-btn {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.12);
             border: none;
             color: #fff;
             font-weight: bold;
-            font-size: 18px;
-            border-radius: 8px;
+            font-size: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
-        .touch-btn:active { background: rgba(33, 150, 243, 0.6); }
+        .touch-btn:active { background: rgba(33, 150, 243, 0.7); }
 
         .btn-up    { grid-area: up; border-radius: 50% 50% 0 0; }
         .btn-down  { grid-area: down; border-radius: 0 0 50% 50%; }
@@ -143,21 +145,21 @@
         .btn-right { grid-area: right; border-radius: 0 50% 50% 0; }
 
         #fire-button {
-            width: 90px;
-            height: 90px;
+            width: 95px;
+            height: 95px;
             background: linear-gradient(135deg, #f44336 0%, #b71c1c 100%);
             border: 4px solid rgba(255, 255, 255, 0.4);
             color: white;
             font-weight: bold;
             font-size: 16px;
             border-radius: 50%;
-            box-shadow: 0 5px 15px rgba(244,67,54,0.4);
+            box-shadow: 0 6px 20px rgba(244,67,54,0.5);
             pointer-events: auto;
             cursor: pointer;
         }
         #fire-button:active { transform: scale(0.9); background: #b71c1c; }
 
-        /* Калкып чыгуучу билдирүү (Уткан команда үчүн модалдык терезе) */
+        /* Модалдык терезе (Жеңүүчү үчүн) */
         #win-modal {
             display: none;
             position: fixed;
@@ -169,7 +171,7 @@
             border-radius: 12px;
             padding: 30px;
             text-align: center;
-            box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
             z-index: 1000;
             width: 90%;
             max-width: 450px;
@@ -178,32 +180,35 @@
         #win-modal h2 {
             margin: 0 0 10px 0;
             color: #ffd700;
-            font-size: 24px;
+            font-size: 26px;
         }
 
         #win-modal p {
             margin: 0 0 20px 0;
             font-size: 16px;
             color: #e2e8f0;
+            line-height: 1.5;
         }
 
         #win-modal button {
             background: #ffd700;
             color: #000;
             border: none;
-            padding: 10px 25px;
+            padding: 12px 30px;
             font-weight: bold;
             font-size: 15px;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255,215,0,0.3);
         }
+        #win-modal button:hover { background: #ffea00; }
     </style>
 </head>
 <body>
 
     <div id="ui-top-panel">
         <div class="stat-box">
-            <span id="player-clan-tag" style="font-weight: bold;">Клан жүктөлүүдө...</span>
+            <span id="player-clan-tag" style="font-weight: bold; color: #2196F3;">Жүктөлүүдө...</span>
             <span class="crystal-count">💎 Кристалл: <span id="ui-crystals">0</span></span>
         </div>
         
@@ -217,7 +222,7 @@
         <canvas id="gameCanvas"></canvas>
     </div>
 
-    <div id="mobile-ui" id="mobileControls">
+    <div id="mobile-ui">
         <div class="joystick-container">
             <button class="touch-btn btn-up" id="touch-up">▲</button>
             <button class="touch-btn btn-left" id="touch-left">◀</button>
@@ -229,50 +234,19 @@
 
     <div id="win-modal">
         <h2 id="win-title">🏆 ЖЕҢИШ!</h2>
-        <p id="win-desc">Кайсы бир команда утту.</p>
+        <p id="win-desc">Оюн аяктады.</p>
         <button onclick="restartBattlefield()">Кайра баштоо</button>
     </div>
 
 <script>
 // =========================================================================
-// 1. ФИРБЕЙЗ (FIREBASE) ЖӨНДӨӨЛӨРҮ ЖАНА ТАРМАКТЫК СИНХРОНДОШТУРУУ
+// 1. ОЮНДУН НЕГИЗГИ ӨЛЧӨМДӨРҮ ЖАНА АБАЛЫ
 // =========================================================================
-// Эгер өзүңүздүн базаңыз болсо ушул жерге маалыматтарды жазыңыз.
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
-
-let database = null;
-let isOnline = false;
-
-// Firebase коопсуз түрдө ишке киргизүү
-try {
-    if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-        firebase.initializeApp(firebaseConfig);
-        database = firebase.database();
-        isOnline = true;
-        console.log("Firebase ийгиликтүү туташты!");
-    } else {
-        console.warn("Firebase жөндөөлөрү жазылган жок. Оюн локалдык режимде иштеп жатат.");
-    }
-} catch (err) {
-    console.error("Firebase катасы:", err);
-}
-
-// =========================================================================
-// 2. ОЮНДУН НЕГИЗГИ ТУРУКТУУ МАНЗИЛДЕРИ
-// =========================================================================
-const BLOCK_SIZE = 40;            // Танка жана дубал өлчөмдөрү
-const MAP_COLS = 120;             // 120х120 блоктуу гиганттык карта (100 оюнчуга ылайык)
+const BLOCK_SIZE = 40;            
+const MAP_COLS = 120;             
 const MAP_ROWS = 120;
-const WORLD_WIDTH = MAP_COLS * BLOCK_SIZE;   // 4800px
-const WORLD_HEIGHT = MAP_ROWS * BLOCK_SIZE;  // 4800px
+const WORLD_WIDTH = MAP_COLS * BLOCK_SIZE;   
+const WORLD_HEIGHT = MAP_ROWS * BLOCK_SIZE;  
 
 const VIEW_WIDTH = 1000; 
 const VIEW_HEIGHT = 600;
@@ -282,75 +256,67 @@ const ctx = canvas.getContext('2d');
 canvas.width = VIEW_WIDTH;
 canvas.height = VIEW_HEIGHT;
 
-// Камера башкаруусу
 let camera = { x: 0, y: 0 };
-
-// Оюндун объекттеринин массивдери
 let localPlayerId = "player_" + Math.random().toString(36).substr(2, 9);
 let players = {};
 let bullets = [];
-let particles = [];    // От атуу жана тийүү эффекттери үчүн бөлүкчөлөр
-let crystals = [];     // Картада чачылып жаткан кристаллдар
-let mapData = [];      // Карта марицасы
+let particles = [];    
+let crystals = [];     
+let mapData = [];      
 
-// Клан жана Танка деңгээлдеринин тутуму
-let localCrystals = 10; // Баштапкы белек кристалл
+let localCrystals = 10; // Баштапкы кристалл берилет
 
-// БҮРКҮТ БАЗАЛАРЫ (Эки тарапта тең болот - Коргоо максатында)
+// Бүркүт базаларынын алгачкы абалы
 let blueEagle = { x: 160, y: WORLD_HEIGHT / 2, hp: 500, maxHp: 500, clan: "КӨК КЛАН" };
 let redEagle = { x: WORLD_WIDTH - 160, y: WORLD_HEIGHT / 2, hp: 500, maxHp: 500, clan: "КЫЗЫЛ КЛАН" };
 
-// Телефонду аныктоо жана мобилдик интерфейсти иштетүү
+// Мобилдик түзмөктү текшерүү жана интерфейсти коопсуз ачуу
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 1025;
 if (isMobile) {
-    document.getElementById('mobile-ui').style.display = 'flex';
+    let mobUi = document.getElementById('mobile-ui');
+    if(mobUi) mobUi.style.display = 'flex';
 }
 
 // =========================================================================
-// 3. КАРТАНЫ ГЕНЕРАЦИЯЛОО ЖАНА ОБЪЕКТТЕРДИ ЖАЙГАШТЫРУУ
+// 2. КАРТАНЫ ГЕНЕРАЦИЯЛОО СИСТЕМАСЫ
 // =========================================================================
 function buildWorld() {
     let matrix = [];
     for (let r = 0; r < MAP_ROWS; r++) {
         matrix[r] = [];
         for (let c = 0; c < MAP_COLS; c++) {
-            // Сырткы чекиттер
             if (r === 0 || r === MAP_ROWS - 1 || c === 0 || c === MAP_COLS - 1) {
-                matrix[r][c] = 2; // Бузулгус чек ара дубалы
-            } 
-            // Күтүүсүз кыш дубалдары
-            else if (Math.random() < 0.06 && (c > 6 && c < MAP_COLS - 7)) {
-                matrix[r][c] = 1; // Бузулуучу кыш дубал
+                matrix[r][c] = 2; // Темир чек ара
+            } else if (Math.random() < 0.06 && (c > 6 && c < MAP_COLS - 7)) {
+                matrix[r][c] = 1; // Кыш блок
             } else {
                 matrix[r][c] = 0;
             }
         }
     }
-
-    // Бүркүттөр турган жерлерди боштук кылуу (айланасында дубал калбашы үчүн)
-    clearSpaceAround(4, Math.floor(MAP_ROWS / 2));
-    clearSpaceAround(MAP_COLS - 5, Math.floor(MAP_ROWS / 2));
-
     return matrix;
 }
 
 function clearSpaceAround(centerCol, centerRow) {
-    for(let r = centerRow - 3; r <= centerRow + 3; r++) {
-        for(let c = centerCol - 3; c <= centerCol + 3; c++) {
+    for(let r = centerRow - 4; r <= centerRow + 4; r++) {
+        for(let c = centerCol - 4; c <= centerCol + 4; c++) {
             if(r > 0 && r < MAP_ROWS - 1 && c > 0 && c < MAP_COLS - 1) {
                 mapData[r][c] = 0;
             }
         }
     }
 }
-mapData = buildWorld();
 
-// Жергиликтүү оюнчуну түзүү (Көк же Кызыл Кланга бөлүү)
+mapData = buildWorld();
+clearSpaceAround(4, Math.floor(MAP_ROWS / 2));
+clearSpaceAround(MAP_COLS - 5, Math.floor(MAP_ROWS / 2));
+
+// Локалдык оюнчуну түзүү
 let assignBlue = Math.random() > 0.5;
 players[localPlayerId] = {
     id: localPlayerId,
-    x: assignBlue ? 260 : WORLD_WIDTH - 260,
-    y: WORLD_HEIGHT / 2 + (Math.random() * 200 - 100),
+    x: assignBlue ? 280 : WORLD_WIDTH - 280,
+    y: WORLD_HEIGHT / 2,
     angle: assignBlue ? 0 : 180,
     clan: assignBlue ? "КӨК КЛАН" : "КЫЗЫЛ КЛАН",
     clanLevel: 1,
@@ -362,10 +328,25 @@ players[localPlayerId] = {
     lastShot: 0
 };
 
-updateUI();
+// Бот кошуу (Тесттик каршылаш экранда көрүнүшү үчүн)
+let botId = "bot_enemy_player";
+players[botId] = {
+    id: botId,
+    x: assignBlue ? WORLD_WIDTH - 350 : 350,
+    y: WORLD_HEIGHT / 2 - 80,
+    angle: assignBlue ? 180 : 0,
+    clan: assignBlue ? "КЫЗЫЛ КЛАН" : "КӨК КЛАН",
+    clanLevel: 1,
+    tankLevel: 1,
+    hp: 120,
+    maxHp: 120,
+    damage: 25,
+    speed: 4,
+    lastShot: 0
+};
 
 // =========================================================================
-// 4. ОЮНДУ БАШКАРУУ ТУТУМУ (ПЕКЕЙ ЖАНА ТЕЛЕФОН)
+// 3. БАШКАРУУ ЖАНА ТЕЗ СИНХРОНДОШТУРУУ
 // =========================================================================
 const keys = {};
 window.addEventListener('keydown', e => {
@@ -374,17 +355,19 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => keys[e.code] = false);
 
-// Мобилдик баскычтарды угуу
 const touchStates = { Up: false, Down: false, Left: false, Right: false };
 setupMobileListeners('touch-up', 'Up');
 setupMobileListeners('touch-down', 'Down');
 setupMobileListeners('touch-left', 'Left');
 setupMobileListeners('touch-right', 'Right');
 
-document.getElementById('fire-button').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    triggerLocalShot();
-});
+let fireBtn = document.getElementById('fire-button');
+if(fireBtn) {
+    fireBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        triggerLocalShot();
+    });
+}
 
 function setupMobileListeners(elementId, direction) {
     let el = document.getElementById(elementId);
@@ -401,7 +384,6 @@ function processMovement() {
     let nextY = p.y;
     let moved = false;
 
-    // Клавиатура же сенсордук башкарууну текшерүү
     if (keys['KeyW'] || keys['ArrowUp'] || touchStates.Up) {
         nextY -= p.speed; p.angle = 270; moved = true;
     } else if (keys['KeyS'] || keys['ArrowDown'] || touchStates.Down) {
@@ -415,7 +397,6 @@ function processMovement() {
     if (moved && !isCollidingWithWalls(nextX, nextY) && !isCollidingWithEagles(nextX, nextY)) {
         p.x = nextX;
         p.y = nextY;
-        syncPlayerToFirebase();
     }
 
     if (keys['Space']) {
@@ -436,8 +417,8 @@ function triggerLocalShot() {
 function isCollidingWithWalls(x, y) {
     let h = BLOCK_SIZE / 2;
     let checkPoints = [
-        {x: x - h + 3, y: y - h + 3}, {x: x + h - 3, y: y - h + 3},
-        {x: x - h + 3, y: y + h - 3}, {x: x + h - 3, y: y + h - 3}
+        {x: x - h + 2, y: y - h + 2}, {x: x + h - 2, y: y - h + 2},
+        {x: x - h + 2, y: y + h - 2}, {x: x + h - 2, y: y + h - 2}
     ];
     for (let pt of checkPoints) {
         let c = Math.floor(pt.x / BLOCK_SIZE);
@@ -449,72 +430,64 @@ function isCollidingWithWalls(x, y) {
 }
 
 function isCollidingWithEagles(x, y) {
-    let distToBlue = Math.hypot(x - blueEagle.x, y - blueEagle.y);
-    let distToRed = Math.hypot(x - redEagle.x, y - redEagle.y);
-    return (distToBlue < BLOCK_SIZE + 10 || distToRed < BLOCK_SIZE + 10);
+    let distBlue = Math.hypot(x - blueEagle.x, y - blueEagle.y);
+    let distRed = Math.hypot(x - redEagle.x, y - redEagle.y);
+    return (distBlue < BLOCK_SIZE + 5 || distRed < BLOCK_SIZE + 5);
 }
 
 // =========================================================================
-// 5. ОКТОР, ЭФФЕКТТЕР (PARTICLES) ЖАНА КРИСТАЛДАР
+// 4. ЭФФЕКТТЕР ЖАНА КАГЫЛЫШУУ ЛОГИКАСЫ
 // =========================================================================
 function createBullet(player) {
     let rad = (player.angle * Math.PI) / 180;
-    let bx = player.x + Math.cos(rad) * (BLOCK_SIZE / 2 + 8);
-    let by = player.y + Math.sin(rad) * (BLOCK_SIZE / 2 + 8);
+    let bx = player.x + Math.cos(rad) * (BLOCK_SIZE / 2 + 6);
+    let by = player.y + Math.sin(rad) * (BLOCK_SIZE / 2 + 6);
 
-    let b = {
+    bullets.push({
         id: "b_" + player.id + "_" + Date.now(),
         ownerId: player.id,
         clan: player.clan,
         damage: player.damage,
         x: bx, y: by,
-        vx: Math.cos(rad) * 10,
-        vy: Math.sin(rad) * 10,
+        vx: Math.cos(rad) * 9,
+        vy: Math.sin(rad) * 9,
         active: true
-    };
-    bullets.push(b);
+    });
 
-    // ОТ АТКАНДЫГЫ ТУУРАЛУУ ЭФФЕКТ (Кыска убакытка учкан от учкундары)
-    for(let i=0; i<8; i++) {
+    // Ок атуу эффекти (учкундар)
+    for(let i=0; i<6; i++) {
         particles.push({
             x: bx, y: by,
-            vx: Math.cos(rad + (Math.random() - 0.5) * 0.5) * (Math.random() * 4 + 2),
-            vy: Math.sin(rad + (Math.random() - 0.5) * 0.5) * (Math.random() * 4 + 2),
-            color: "#ffaa00", radius: Math.random() * 3 + 2, alpha: 1, life: 1
+            vx: Math.cos(rad + (Math.random() - 0.5) * 0.4) * (Math.random() * 3 + 2),
+            vy: Math.sin(rad + (Math.random() - 0.5) * 0.4) * (Math.random() * 3 + 2),
+            color: "#ffca28", radius: Math.random() * 2 + 2, alpha: 1
         });
     }
-
-    syncBulletToFirebase(b);
 }
 
-// Жардыруу эффекти (Ок тийген жерлерге кошулат)
 function makeExplosionEffect(x, y, color) {
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 12; i++) {
         particles.push({
             x: x, y: y,
-            vx: (Math.random() - 0.5) * 7,
-            vy: (Math.random() - 0.5) * 7,
-            color: color || "#ff3300",
-            radius: Math.random() * 4 + 1,
-            alpha: 1,
-            life: 1
+            vx: (Math.random() - 0.5) * 6,
+            vy: (Math.random() - 0.5) * 6,
+            color: color || "#ff5722",
+            radius: Math.random() * 3 + 1,
+            alpha: 1
         });
     }
 }
 
 function updateGameElements() {
-    // 1. Бөлүкчөлөрдү (эффекттерди) жаңыртуу
+    // Эффекттерди жаңыртуу
     for (let i = particles.length - 1; i >= 0; i--) {
         let pt = particles[i];
-        pt.x += pt.vx;
-        pt.y += pt.vy;
-        pt.alpha -= 0.04; // Көрүүнү акырындап өчүрүү
-        if (pt.alpha <= 0) {
-            particles.splice(i, 1);
-        }
+        pt.x += pt.vx; pt.y += pt.vy;
+        pt.alpha -= 0.04;
+        if (pt.alpha <= 0) particles.splice(i, 1);
     }
 
-    // 2. Кристаллдар менен кагылышуу (Кристалл чогултуу)
+    // Кристалл чогултуу
     let lp = players[localPlayerId];
     if (lp && lp.hp > 0) {
         for (let i = crystals.length - 1; i >= 0; i--) {
@@ -523,53 +496,46 @@ function updateGameElements() {
                 localCrystals += cry.amount;
                 makeExplosionEffect(cry.x, cry.y, "#00ffff");
                 crystals.splice(i, 1);
-                updateUI();
             }
         }
     }
 
-    // 3. Октордун логикасы жана кагылышуулар
+    // Октордун жылышы жана кагылышуусу
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         if (!b.active) { bullets.splice(i, 1); continue; }
 
-        b.x += b.vx;
-        b.y += b.vy;
+        b.x += b.vx; b.y += b.vy;
 
-        // Дүйнө чеги
         if (b.x < 0 || b.x > WORLD_WIDTH || b.y < 0 || b.y > WORLD_HEIGHT) {
             b.active = false; continue;
         }
 
-        // Дубалга тийүү
         let c = Math.floor(b.x / BLOCK_SIZE);
         let r = Math.floor(b.y / BLOCK_SIZE);
+
         if (r >= 0 && r < MAP_ROWS && c >= 0 && c < MAP_COLS) {
             let tile = mapData[r][c];
-            if (tile === 1) { // Кыш дубал кыйрады
-                mapData[r][c] = 0;
-                b.active = false;
-                makeExplosionEffect(b.x, b.y, "#d87a3c");
-                
-                // Кристалл жаралуу мүмкүнчүлүгү (35%)
-                if(Math.random() < 0.35) {
+            if (tile === 1) { // Кыш блок талкаланды
+                mapData[r][c] = 0; b.active = false;
+                makeExplosionEffect(b.x, b.y, "#cd7f32");
+                if(Math.random() < 0.40) {
                     crystals.push({ x: (c * BLOCK_SIZE) + BLOCK_SIZE/2, y: (r * BLOCK_SIZE) + BLOCK_SIZE/2, amount: 1 });
                 }
                 continue;
-            } else if (tile === 2) { // Темир дубал
+            } else if (tile === 2) {
                 b.active = false;
-                makeExplosionEffect(b.x, b.y, "#aaaaaa");
+                makeExplosionEffect(b.x, b.y, "#90a4ae");
                 continue;
             }
         }
 
-        // ОКТОР БИРИ-БИРИНЕ ТИЙГЕНДЕ ЖОК БОЛУШУ
+        // Октор кагылышканда
         for (let j = 0; j < bullets.length; j++) {
             let b2 = bullets[j];
             if (b.id !== b2.id && b.ownerId !== b2.ownerId && b2.active) {
                 if (Math.hypot(b.x - b2.x, b.y - b2.y) < 12) {
-                    b.active = false;
-                    b2.active = false;
+                    b.active = false; b2.active = false;
                     makeExplosionEffect((b.x + b2.x)/2, (b.y + b2.y)/2, "#ffffff");
                     break;
                 }
@@ -577,275 +543,136 @@ function updateGameElements() {
         }
         if (!b.active) continue;
 
-        // БҮРКҮТ БАЗАЛАРЫНА ОК ТИЙҮҮ ЛОГИКАСЫ
-        // Көк Бүркүткө тийүү
+        // Бүркүт базаларына зыян берүү
         if (b.clan !== "КӨК КЛАН" && Math.hypot(b.x - blueEagle.x, b.y - blueEagle.y) < BLOCK_SIZE) {
-            blueEagle.hp -= b.damage;
-            b.active = false;
-            makeExplosionEffect(b.x, b.y, "#ff0000");
-            checkVictoryCondition();
-            continue;
+            blueEagle.hp -= b.damage; b.active = false;
+            makeExplosionEffect(b.x, b.y, "#ff1744");
+            checkVictory(); continue;
         }
-        // Кызыл Бүркүткө тийүү
         if (b.clan !== "КЫЗЫЛ КЛАН" && Math.hypot(b.x - redEagle.x, b.y - redEagle.y) < BLOCK_SIZE) {
-            redEagle.hp -= b.damage;
-            b.active = false;
-            makeExplosionEffect(b.x, b.y, "#ff0000");
-            checkVictoryCondition();
-            continue;
+            redEagle.hp -= b.damage; b.active = false;
+            makeExplosionEffect(b.x, b.y, "#ff1744");
+            checkVictory(); continue;
         }
 
-        // Танкага ок тийүү
+        // Танкаларга зыян жеткирүү
         for (let pId in players) {
             let target = players[pId];
-            if (target.hp <= 0) continue;
+            if (target.hp <= 0 || b.clan === target.clan) continue;
 
-            if (b.ownerId !== target.id && b.clan !== target.clan) {
-                if (Math.hypot(b.x - target.x, b.y - target.y) < BLOCK_SIZE / 2 + 2) {
-                    target.hp -= b.damage;
-                    b.active = false;
-                    makeExplosionEffect(b.x, b.y, "#ffeb3b");
-
-                    if (target.hp <= 0) {
-                        target.hp = 0;
-                        makeExplosionEffect(target.x, target.y, "#ff0000"); // Танк жарылды
-                    }
-                    
-                    if (target.id === localPlayerId) syncPlayerToFirebase();
-                    break;
+            if (Math.hypot(b.x - target.x, b.y - target.y) < BLOCK_SIZE / 2 + 4) {
+                target.hp -= b.damage; b.active = false;
+                makeExplosionEffect(b.x, b.y, "#ffeb3b");
+                if (target.hp <= 0) {
+                    target.hp = 0;
+                    makeExplosionEffect(target.x, target.y, "#ff3d00");
                 }
+                break;
             }
         }
     }
 }
 
-// Уткан команданы аныктоо (Бүркүт өлгөндө)
-function checkVictoryCondition() {
-    if (blueEagle.hp <= 0) {
-        blueEagle.hp = 0;
-        announceWinner("КЫЗЫЛ КЛАН");
-    } else if (redEagle.hp <= 0) {
-        redEagle.hp = 0;
-        announceWinner("КӨК КЛАН");
-    }
+function checkVictory() {
+    if (blueEagle.hp <= 0) { blueEagle.hp = 0; showWinModal("КЫЗЫЛ КЛАН"); }
+    else if (redEagle.hp <= 0) { redEagle.hp = 0; showWinModal("КӨК КЛАН"); }
 }
 
-function announceWinner(winnerClanName) {
-    setTimeout(() => {
-        document.getElementById('win-title').innerText = `🏆 ЖЕҢИШ: ${winnerClanName}!`;
-        document.getElementById('win-desc').innerText = `Каршылаш тараптын Кландык Бүркүт Базасы талкаланды!`;
-        document.getElementById('win-modal').style.display = 'block';
-    }, 50);
+function showWinModal(winner) {
+    let title = document.getElementById('win-title');
+    let desc = document.getElementById('win-desc');
+    let modal = document.getElementById('win-modal');
+    if (title && desc && modal) {
+        title.innerText = `🏆 ЖЕҢИШ: ${winner}!`;
+        desc.innerText = `Каршылаш тараптын Коргоочу Бүркүт базасы толук кыйратылды!`;
+        modal.style.display = 'block';
+    }
 }
 
 function restartBattlefield() {
-    document.getElementById('win-modal').style.display = 'none';
-    // Маалыматтарды баштапкы абалга келтирүү
-    blueEagle.hp = 500;
-    redEagle.hp = 500;
+    let modal = document.getElementById('win-modal');
+    if(modal) modal.style.display = 'none';
+    blueEagle.hp = 500; redEagle.hp = 500;
     mapData = buildWorld();
+    clearSpaceAround(4, Math.floor(MAP_ROWS / 2));
+    clearSpaceAround(MAP_COLS - 5, Math.floor(MAP_ROWS / 2));
+    
     let lp = players[localPlayerId];
     if(lp) {
         lp.hp = lp.maxHp;
-        lp.x = lp.clan === "КӨК КЛАН" ? 260 : WORLD_WIDTH - 260;
+        lp.x = lp.clan === "КӨК КЛАН" ? 280 : WORLD_WIDTH - 280;
         lp.y = WORLD_HEIGHT / 2;
     }
-    bullets = [];
-    crystals = [];
-    particles = [];
-    updateUI();
+    bullets = []; crystals = []; particles = [];
 }
 
 // =========================================================================
-// 6. КҮЧТӨӨ (КРИСТАЛЛ МЕНЕН АПГРЕЙД) СИСТЕМАСЫ
+// 5. КҮЧТӨӨ (УПГРЕЙД) ОПЕРАЦИЯЛАРЫ ЖАНА ИНТЕРФЕЙСТИ ЖАҢЫРТУУ
 // =========================================================================
 function upgradeTankStat() {
     let lp = players[localPlayerId];
     if (!lp || localCrystals < 3) return;
-
     localCrystals -= 3;
     lp.tankLevel += 1;
-    lp.maxHp += 20;
-    lp.hp = lp.maxHp; // Айлануу учурунда жашоосун толуктайт
-    lp.damage += 8;   // Октун кубаттуулугу жогорулайт
-    lp.speed += 0.5;  // Ылдамдык кошулат
-
+    lp.maxHp += 25;
+    lp.hp = lp.maxHp;
+    lp.damage += 10;
+    lp.speed += 0.4;
     makeExplosionEffect(lp.x, lp.y, "#ff9100");
-    updateUI();
-    syncPlayerToFirebase();
 }
 
 function upgradeClanStat() {
     let lp = players[localPlayerId];
     if (!lp || localCrystals < 5) return;
-
     localCrystals -= 5;
     lp.clanLevel += 1;
-    
-    // Клан деңгээли көтөрүлгөндө өз базасынын (Бүркүттүн) жашоосу бекемделет
-    if (lp.clan === "КӨК КЛАН") {
-        blueEagle.hp = Math.min(blueEagle.hp + 100, blueEagle.maxHp + 100);
-        blueEagle.maxHp += 100;
-    } else {
-        redEagle.hp = Math.min(redEagle.hp + 100, redEagle.maxHp + 100);
-        redEagle.maxHp += 100;
-    }
-
+    if (lp.clan === "КӨК КЛАН") { blueEagle.maxHp += 150; blueEagle.hp = blueEagle.maxHp; }
+    else { redEagle.maxHp += 150; redEagle.hp = redEagle.maxHp; }
     makeExplosionEffect(lp.x, lp.y, "#00ff00");
-    updateUI();
-    syncPlayerToFirebase();
 }
 
 function updateUI() {
     let lp = players[localPlayerId];
-    if (!lp) return;
+    let tag = document.getElementById('player-clan-tag');
+    let cryText = document.getElementById('ui-crystals');
+    let btnT = document.getElementById('upg-tank');
+    let btnC = document.getElementById('upg-clan');
 
-    document.getElementById('ui-crystals').innerText = localCrystals;
-    document.getElementById('player-clan-tag').innerText = `${lp.clan} | Танк Деңгээли: ${lp.tankLevel} | Клан Деңгээли: ${lp.clanLevel}`;
-    
-    // Баскычтарды көзөмөлдөө
-    document.getElementById('upg-tank').disabled = localCrystals < 3;
-    document.getElementById('upg-clan').disabled = localCrystals < 5;
+    if(lp && tag && cryText && btnT && btnC) {
+        cryText.innerText = localCrystals;
+        tag.innerText = `${lp.clan} | Танк: Lv.${lp.tankLevel} | Клан: Lv.${lp.clanLevel}`;
+        tag.style.color = lp.clan === "КӨК КЛАН" ? "#2196F3" : "#F44336";
+        btnT.disabled = localCrystals < 3;
+        btnC.disabled = localCrystals < 5;
+    }
 }
 
 // =========================================================================
-// 7. СҮРӨТТӨРҮН ТАРТУУ КҮЧҮ (RENDERING & CAMERA)
+// 6. КАМЕРА ЖАНА КАНВАСКА ГРАФИКА ТАРТУУ
 // =========================================================================
-function updateCameraPosition() {
+function updateCamera() {
     let lp = players[localPlayerId];
     if (!lp) return;
-
     camera.x = lp.x - VIEW_WIDTH / 2;
     camera.y = lp.y - VIEW_HEIGHT / 2;
-
-    // Карта чек араларынан чыкпоо
     if (camera.x < 0) camera.x = 0;
     if (camera.y < 0) camera.y = 0;
     if (camera.x > WORLD_WIDTH - VIEW_WIDTH) camera.x = WORLD_WIDTH - VIEW_WIDTH;
     if (camera.y > WORLD_HEIGHT - VIEW_HEIGHT) camera.y = WORLD_HEIGHT - VIEW_HEIGHT;
 }
 
-function renderEverything() {
-    // Экран тазалоо
-    ctx.fillStyle = "#090d14";
-    ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
-
+function drawEagle(eagle) {
+    let size = BLOCK_SIZE * 1.6;
     ctx.save();
-    ctx.translate(-camera.x, -camera.y);
-
-    // Көрүнүүчү блокторду гана тартуу (Оптимизация)
-    let minC = Math.floor(camera.x / BLOCK_SIZE);
-    let maxC = Math.ceil((camera.x + VIEW_WIDTH) / BLOCK_SIZE);
-    let minR = Math.floor(camera.y / BLOCK_SIZE);
-    let maxR = Math.ceil((camera.y + VIEW_HEIGHT) / BLOCK_SIZE);
-
-    if (minC < 0) minC = 0; if (maxC >= MAP_COLS) maxC = MAP_COLS - 1;
-    if (minR < 0) minR = 0; if (maxR >= MAP_ROWS) maxR = MAP_ROWS - 1;
-
-    for (let r = minR; r <= maxR; r++) {
-        for (let c = minC; c <= maxC; c++) {
-            let tile = mapData[r][c];
-            if (tile === 1) {
-                ctx.fillStyle = "#2c3e50"; // Кыш дубалдардын түсү
-                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-                ctx.strokeStyle = "#34495e";
-                ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-            } else if (tile === 2) {
-                ctx.fillStyle = "#111625"; // Чек ара темир дубалдары
-                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-                ctx.strokeStyle = "#4a5568";
-                ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
-            }
-        }
-    }
-
-    // КРИСТАЛДАРДЫ СҮРӨТТӨӨ
-    for (let cry of crystals) {
-        ctx.fillStyle = "#00e5ff";
-        ctx.beginPath();
-        ctx.arc(cry.x, cry.y, 6, 0, 2 * Math.PI);
-        ctx.fill();
-        // Жалтырак сырткы кабыгы
-        ctx.strokeStyle = "#ffffff";
-        ctx.stroke();
-    }
-
-    // ЭФФЕКТТЕРДИ (БӨЛҮКЧӨЛӨРДҮ) ТАРТУУ
-    for (let pt of particles) {
-        ctx.save();
-        ctx.globalAlpha = pt.alpha;
-        ctx.fillStyle = pt.color;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, pt.radius, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    // БҮРКҮТ БАЗАЛАРЫН ТАРТУУ (EAGLES)
-    drawEagleBase(blueEagle);
-    drawEagleBase(redEagle);
-
-    // ТАНКАЛАРДЫ ТАРТУУ
-    for (let id in players) {
-        let t = players[id];
-        if (!t || t.hp <= 0) continue;
-
-        ctx.save();
-        ctx.translate(t.x, t.y);
-        ctx.rotate((t.angle * Math.PI) / 180);
-
-        // Командалык түс
-        let isBlue = t.clan === "КӨК КЛАН";
-        ctx.fillStyle = isBlue ? "#0070f3" : "#ff0055";
-        
-        // Корпус
-        ctx.fillRect(-BLOCK_SIZE / 2, -BLOCK_SIZE / 2, BLOCK_SIZE, BLOCK_SIZE);
-        // Танк түтүгү
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, -3, BLOCK_SIZE / 2 + 7, 6);
-        ctx.restore();
-
-        // Ысымдары жана Деңгээл маалыматтары
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 10px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(`${t.clan} [T-Lv.${t.tankLevel}]`, t.x, t.y - 30);
-
-        // Танканын HP тилкеси
-        ctx.fillStyle = "#ff3333";
-        ctx.fillRect(t.x - 20, t.y - 20, 40, 4);
-        ctx.fillStyle = "#00ff66";
-        ctx.fillRect(t.x - 20, t.y - 20, (t.hp / t.maxHp) * 40, 4);
-    }
-
-    // ОКТОРДУ ТАРТУУ
-    ctx.fillStyle = "#ffeb3b";
-    for (let b of bullets) {
-        if (!b.active) continue;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, 4, 0, 2 * Math.PI);
-        ctx.fill();
-    }
-
-    ctx.restore();
-}
-
-// Бүркүт базасын өзгөчө кылып тартуу функциясы
-function drawEagleBase(eagle) {
-    let size = BLOCK_SIZE * 1.5;
-    ctx.save();
-    
-    // Түсү кланга карап аныкталат
     let isBlue = eagle.clan === "КӨК КЛАН";
-    ctx.fillStyle = isBlue ? "rgba(0, 112, 243, 0.2)" : "rgba(255, 0, 85, 0.2)";
-    ctx.strokeStyle = isBlue ? "#0070f3" : "#ff0055";
+    ctx.fillStyle = isBlue ? "rgba(33, 150, 243, 0.15)" : "rgba(244, 67, 54, 0.15)";
+    ctx.strokeStyle = isBlue ? "#2196F3" : "#F44336";
     ctx.lineWidth = 3;
 
-    // Базанын аянтчасы
     ctx.fillRect(eagle.x - size/2, eagle.y - size/2, size, size);
     ctx.strokeRect(eagle.x - size/2, eagle.y - size/2, size, size);
 
-    // Ичиндеги "Бүркүт" символу (Үч бурчтук формасындагы кубаттуу борбор)
+    // Бүркүттүн стилдештирилген үч бурчтук символу
     ctx.fillStyle = isBlue ? "#00e5ff" : "#ff9100";
     ctx.beginPath();
     ctx.moveTo(eagle.x, eagle.y - size/3);
@@ -854,75 +681,115 @@ function drawEagleBase(eagle) {
     ctx.closePath();
     ctx.fill();
 
-    // Базанын аты жана HP көрсөткүчү
+    // Тексттер
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 11px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(`🦅 БҮРКҮТ (${eagle.clan})`, eagle.x, eagle.y - size/2 - 12);
+    ctx.fillText(`🦅 БҮРКҮТ БАЗА`, eagle.x, eagle.y - size/2 - 12);
 
-    // Базанын HP сызыгы
-    ctx.fillStyle = "#551111";
-    ctx.fillRect(eagle.x - 30, eagle.y - size/2 - 6, 60, 5);
-    ctx.fillStyle = "#00ffcc";
-    ctx.fillRect(eagle.x - 30, eagle.y - size/2 - 6, (eagle.hp / eagle.maxHp) * 60, 5);
+    // HP Bar
+    ctx.fillStyle = "#37474f";
+    ctx.fillRect(eagle.x - 35, eagle.y - size/2 - 6, 70, 6);
+    ctx.fillStyle = "#00e676";
+    ctx.fillRect(eagle.x - 35, eagle.y - size/2 - 6, (eagle.hp / eagle.maxHp) * 70, 6);
+    ctx.restore();
+}
+
+function render() {
+    ctx.fillStyle = "#06090e";
+    ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+
+    let minC = Math.max(0, Math.floor(camera.x / BLOCK_SIZE));
+    let maxC = Math.min(MAP_COLS - 1, Math.ceil((camera.x + VIEW_WIDTH) / BLOCK_SIZE));
+    let minR = Math.max(0, Math.floor(camera.y / BLOCK_SIZE));
+    let maxR = Math.min(MAP_ROWS - 1, Math.ceil((camera.y + VIEW_HEIGHT) / BLOCK_SIZE));
+
+    // Карта таануу
+    for (let r = minR; r <= maxR; r++) {
+        for (let c = minC; c <= maxC; c++) {
+            let tile = mapData[r][c];
+            if (tile === 1) {
+                ctx.fillStyle = "#3e2723"; 
+                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+            } else if (tile === 2) {
+                ctx.fillStyle = "#212121"; 
+                ctx.fillRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE - 1, BLOCK_SIZE - 1);
+            }
+        }
+    }
+
+    // Кристаллдар
+    for (let cry of crystals) {
+        ctx.fillStyle = "#00e5ff";
+        ctx.beginPath(); ctx.arc(cry.x, cry.y, 6, 0, 2 * Math.PI); ctx.fill();
+    }
+
+    // Бүркүттөр
+    drawEagle(blueEagle);
+    drawEagle(redEagle);
+
+    // Танкалар
+    for (let id in players) {
+        let t = players[id];
+        if (!t || t.hp <= 0) continue;
+
+        ctx.save();
+        ctx.translate(t.x, t.y);
+        ctx.rotate((t.angle * Math.PI) / 180);
+        ctx.fillStyle = t.clan === "КӨК КЛАН" ? "#1e88e5" : "#e53935";
+        ctx.fillRect(-BLOCK_SIZE / 2, -BLOCK_SIZE / 2, BLOCK_SIZE, BLOCK_SIZE);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, -3, BLOCK_SIZE / 2 + 6, 6);
+        ctx.restore();
+
+        // Ысымдары
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(`[Lv.${t.tankLevel}] Танк`, t.x, t.y - 22);
+
+        // Танктын HP
+        ctx.fillStyle = "#c62828";
+        ctx.fillRect(t.x - 18, t.y - 14, 36, 4);
+        ctx.fillStyle = "#00c853";
+        ctx.fillRect(t.x - 18, t.y - 14, (t.hp / t.maxHp) * 36, 4);
+    }
+
+    // Октор
+    ctx.fillStyle = "#ffeb3b";
+    for (let b of bullets) {
+        if (!b.active) continue;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 4, 0, 2 * Math.PI); ctx.fill();
+    }
+
+    // Бөлүкчөлөр
+    for (let pt of particles) {
+        ctx.save(); ctx.globalAlpha = pt.alpha; ctx.fillStyle = pt.color;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.radius, 0, 2 * Math.PI); ctx.fill();
+        ctx.restore();
+    }
 
     ctx.restore();
 }
 
 // =========================================================================
-// 8. СИНХРОНДОШТУРУУ КЫЗМАТТАРЫ (ФИРБЕЙЗ УБАГЫНДА)
-// =========================================================================
-function syncPlayerToFirebase() {
-    if (!isOnline) return;
-    database.ref('players/' + localPlayerId).set(players[localPlayerId]);
-}
-
-function syncBulletToFirebase(b) {
-    if (!isOnline) return;
-    database.ref('bullets/' + b.id).set(b);
-}
-
-if (isOnline) {
-    // Башка оюнчуларды угуу
-    database.ref('players').on('child_added', (snapshot) => {
-        let p = snapshot.val();
-        if (p.id !== localPlayerId) players[p.id] = p;
-    });
-
-    database.ref('players').on('child_changed', (snapshot) => {
-        let p = snapshot.val();
-        if (p.id !== localPlayerId) players[p.id] = p;
-    });
-
-    database.ref('players').on('child_removed', (snapshot) => {
-        let p = snapshot.val();
-        if (p.id && players[p.id]) delete players[p.id];
-    });
-
-    // Окторду синхрондоштуруу
-    database.ref('bullets').on('child_added', (snapshot) => {
-        let b = snapshot.val();
-        if (b.ownerId !== localPlayerId) bullets.push(b);
-    });
-}
-
-// =========================================================================
-// 9. ОЮНДУН АЙЛАНУУ ЦИКЛИ (GAME LOOP)
+// 7. НЕГИЗГИ ЦИКЛ (GAME LOOP)
 // =========================================================================
 function mainCycle() {
-    try {
-        processMovement();
-        updateGameElements();
-        updateCameraPosition();
-        renderEverything();
-    } catch(err) {
-        console.error("Цикл учурунда жаңылыштык чыкты:", err);
-    }
+    processMovement();
+    updateGameElements();
+    updateCamera();
+    render();
+    updateUI();
     requestAnimationFrame(mainCycle);
 }
 
-// Оюнду толугу менен ишке кошуу
+// Оюнду эч кандай катасыз коопсуз баштоо
 mainCycle();
 </script>
+
 </body>
 </html>
