@@ -41,7 +41,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Оюн интерфейси */
         #game-wrapper { display: none; flex-direction: column; align-items: center; width: 100%; }
         .top-bar {
             width: 100%; max-width: 840px; display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #131920; border-radius: 10px 10px 0 0;
@@ -49,7 +48,6 @@
         .game-container { position: relative; background: #000; border: 4px solid #3b82f6; border-radius: 0 0 10px 10px; overflow: hidden; width: 100%; max-width: 840px; }
         canvas { display: block; width: 100%; height: auto; }
         
-        /* Мобилдик башкаруу пульттары */
         .mobile-controls-container {
             display: none; justify-content: space-between; align-items: center; width: 100%; max-width: 840px; margin-top: 15px; padding: 10px;
         }
@@ -104,13 +102,12 @@
         </div>
         
         <div class="mobile-controls-container" id="mobile-control-pad">
-            <div class="joystick-box" id="joystick-left">
+            <div class="joystick-box">
                 <button class="control-btn btn-up" id="btn-up-1">▲</button>
                 <button class="control-btn btn-left" id="btn-left-1">◀</button>
                 <button class="control-btn btn-right" id="btn-right-1">▶</button>
                 <button class="control-btn btn-down" id="btn-down-1">▼</button>
             </div>
-            
             <div class="fire-box">
                 <button class="fire-btn" id="btn-fire-main">FIRE</button>
             </div>
@@ -118,11 +115,10 @@
     </div>
 
     <script>
-        // ЕВРОПА РЕГИОНУНА ЖАНА СИЗДИН БАЗАГА ТОЛУК ЫЛАЙЫКТАЛГАН КОНФИГУРАЦИЯ
         const firebaseConfig = {
-            apiKey: "AIzaSyD2wN4R6Y_h_K8HnL2qWXf9vMsPzU1tB0Y", // Сиздин чыныгы долбоордун ачкычы
+            apiKey: "AIzaSyD2wN4R6Y_h_K8HnL2qWXf9vMsPzU1tB0Y", 
             authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app/", // Европа базасынын дареги
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app/", 
             projectId: "bilimal-org",
             storageBucket: "bilimal-org.appspot.com",
             messagingSenderId: "367351239854", 
@@ -142,7 +138,7 @@
         const ctx = canvas.getContext("2d");
         const TILE_SIZE = 40; const COLS = 21; const ROWS = 14;
         let isGameRunning = false; let bullets = []; let map = [];
-        let player1 = null; let player2 = null; let touchDir = null; let touchFire = false;
+        let player1 = null; let player2 = null; let touchDir = null;
 
         function checkClanState() {
             if (myClanName) {
@@ -155,7 +151,6 @@
             }
         }
 
-        // АТТЫ ЭЭЛЕП (ЗАНЯТ) КОЮУ СИСТЕМАСЫ
         function createClan() {
             let input = document.getElementById("clan-name-input");
             let name = input.value.trim().replace(/[\.\$\#\[\]]/g, ""); 
@@ -165,28 +160,23 @@
                 if (snapshot.exists()) {
                     alert("Бул кландын аты бош эмес! Башка ат тандаңыз.");
                 } else {
-                    database.ref('registered_clans/' + name).set({
-                        registeredAt: Date.now()
-                    }).then(() => {
+                    database.ref('registered_clans/' + name).set({ registeredAt: Date.now() }).then(() => {
                         myClanName = name;
                         localStorage.setItem("tank_my_clan", name);
                         checkClanState();
-                    }).catch(err => {
-                        alert("Ката кетти, кайра аракет кылыңыз.");
                     });
                 }
             });
         }
 
         function resetClan() {
-            if(confirm("Бул кландан чыгууну каалайсызбы? Башкалар бул атты ээлеп алышы мүмкүн.")) {
+            if(confirm("Бул кландан чыгууну каалайсызбы?")) {
                 localStorage.removeItem("tank_my_clan");
                 myClanName = "";
                 checkClanState();
             }
         }
 
-        // РЕАЛДУУ УБАҚЫТТАГЫ МАТЧМЕЙКИНГ
         function toggleMatchmaking() {
             if (!myClanName) return alert("Адегенде клан түзүңүз!");
             if (isSearching) { stopSearch(); } else { startSearch(); }
@@ -197,13 +187,8 @@
             document.getElementById("match-status-box").style.display = "block";
             document.getElementById("search-btn").innerText = "ИЗДӨӨНҮ ТОКТОТУУ ✕";
 
-            const mySearchRef = database.ref('matchmaking/' + myClanName);
-            mySearchRef.set({
-                clanName: myClanName,
-                status: "searching",
-                roomId: "",
-                role: "",
-                timestamp: Date.now()
+            database.ref('matchmaking/' + myClanName).set({
+                clanName: myClanName, status: "searching", roomId: "", role: "", timestamp: Date.now()
             });
 
             matchmakingListener = database.ref('matchmaking').on('value', snapshot => {
@@ -229,10 +214,9 @@
                     let roomId = "room_" + Math.min(myClanName.hashCode(), opponent.clanName.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponent.clanName.hashCode());
                     
                     database.ref('rooms/' + roomId).set({
-                        p1: opponent.clanName,
-                        p2: myClanName,
-                        p1_input: { dir: null, fire: false },
-                        p2_input: { dir: null, fire: false },
+                        p1: opponent.clanName, p2: myClanName,
+                        p1_pos: { x: 2 * TILE_SIZE, y: 6 * TILE_SIZE, dir: "right", hp: 3, lastShot: 0 },
+                        p2_pos: { x: 18 * TILE_SIZE, y: 6 * TILE_SIZE, dir: "left", hp: 3, lastShot: 0 },
                         status: "playing"
                     });
 
@@ -254,30 +238,23 @@
             isSearching = false;
             currentRoomId = roomId;
             playerRole = role;
-
             if (matchmakingListener) database.ref('matchmaking').off('value', matchmakingListener);
             database.ref('matchmaking/' + myClanName).remove();
-            
             document.getElementById("match-status-box").style.display = "none";
             initOnlineGame();
         }
 
         String.prototype.hashCode = function() {
-            let hash = 0;
-            for (let i = 0; i < this.length; i++) {
-                hash = this.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            return Math.abs(hash);
+            let hash = 0; for (let i = 0; i < this.length; i++) { hash = this.charCodeAt(i) + ((hash << 5) - hash); } return Math.abs(hash);
         };
 
-        // ОЮНДУН ОНЛАЙН ДВИЖОГУ
         function initOnlineGame() {
             document.getElementById("main-menu").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
             document.getElementById("mobile-control-pad").style.display = "flex";
             document.body.classList.add("game-mode");
 
-            document.getElementById("game-role-title").innerText = playerRole === "p1" ? "Сиз: КӨК ТАНК (Сол тарап)" : "Сиз: КЫЗЫЛ ТАНК (Оң тарап)";
+            document.getElementById("game-role-title").innerText = playerRole === "p1" ? "Сиз: КӨК ТАНК (Сол)" : "Сиз: КЫЗЫЛ ТАНК (Оң)";
             document.getElementById("game-role-title").style.color = playerRole === "p1" ? "#3b82f6" : "#ef4444";
 
             isGameRunning = true;
@@ -286,17 +263,26 @@
             player2 = new Tank("p2", 18 * TILE_SIZE, 6 * TILE_SIZE, "clan2", 3);
             setupMobileControls();
 
-            // Каршылаштын кыймыл-аракетин реалдуу убакытта базадан кабыл алуу
+            // ЭКИ ТАРАПТЫ ТЕҢ СИНХРОНДУУ ОКУУ ЖАНА ЧИЙҮҮ БӨЛҮМҮ
             database.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 let data = snapshot.val();
                 if (!data) return;
                 
-                if (playerRole === "p1") {
-                    if (data.p2_input.dir !== undefined) player2.dir = data.p2_input.dir;
-                    if (data.p2_input.fire) player2.shoot();
-                } else {
-                    if (data.p1_input.dir !== undefined) player1.dir = data.p1_input.dir;
-                    if (data.p1_input.fire) player1.shoot();
+                if (data.p1_pos) {
+                    player1.x = data.p1_pos.x; player1.y = data.p1_pos.y;
+                    player1.dir = data.p1_pos.dir; player1.hp = data.p1_pos.hp;
+                    if (data.p1_pos.shootTrigger && data.p1_pos.shootTrigger !== player1.lastShot) {
+                        bullets.push(new Bullet(player1.x + player1.w/2, player1.y + player1.h/2, player1.dir, "clan1", "p1"));
+                        player1.lastShot = data.p1_pos.shootTrigger;
+                    }
+                }
+                if (data.p2_pos) {
+                    player2.x = data.p2_pos.x; player2.y = data.p2_pos.y;
+                    player2.dir = data.p2_pos.dir; player2.hp = data.p2_pos.hp;
+                    if (data.p2_pos.shootTrigger && data.p2_pos.shootTrigger !== player2.lastShot) {
+                        bullets.push(new Bullet(player2.x + player2.w/2, player2.y + player2.h/2, player2.dir, "clan2", "p2"));
+                        player2.lastShot = data.p2_pos.shootTrigger;
+                    }
                 }
             });
         }
@@ -325,7 +311,7 @@
                 this.id = id; this.x = x; this.y = y;
                 this.w = TILE_SIZE - 6; this.h = TILE_SIZE - 6;
                 this.dir = side === "clan1" ? "right" : "left";
-                this.side = side; this.hp = hp; this.speed = 2.5; this.lastShot = 0;
+                this.side = side; this.hp = hp; this.speed = 3; this.lastShot = 0;
             }
             draw() {
                 ctx.save(); ctx.translate(this.x + this.w/2, this.y + this.h/2);
@@ -340,13 +326,20 @@
                 ctx.fillStyle = this.side === "clan1" ? "#00ffcc" : "#ff0055";
                 ctx.fillRect(this.x, this.y - 10, (this.w) * (this.hp / 3), 5);
             }
-            move() {
+            move(dir) {
+                this.dir = dir;
                 let nx = this.x, ny = this.y;
-                if(this.dir === "up") ny -= this.speed;
-                if(this.dir === "down") ny += this.speed;
-                if(this.dir === "left") nx -= this.speed;
-                if(this.dir === "right") nx += this.speed;
-                if(!this.checkCollision(nx, ny)) { this.x = nx; this.y = ny; }
+                if(dir === "up") ny -= this.speed;
+                if(dir === "down") ny += this.speed;
+                if(dir === "left") nx -= this.speed;
+                if(dir === "right") nx += this.speed;
+                
+                if(!this.checkCollision(nx, ny)) {
+                    this.x = nx; this.y = ny;
+                    database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({
+                        x: this.x, y: this.y, dir: this.dir
+                    });
+                }
             }
             checkCollision(nx, ny) {
                 if(nx < 0 || nx + this.w > canvas.width || ny < 0 || ny + this.h > canvas.height) return true;
@@ -362,18 +355,15 @@
                 return false;
             }
             shoot() {
-                let now = Date.now();
-                if(now - this.lastShot > 400) {
-                    bullets.push(new Bullet(this.x + this.w/2, this.y + this.h/2, this.dir, this.side, this.id));
-                    this.lastShot = now;
-                }
+                let token = Date.now();
+                database.ref('rooms/' + currentRoomId + '/' + playerRole + '_pos').update({ shootTrigger: token });
             }
         }
 
         class Bullet {
             constructor(x, y, dir, side, ownerId) {
                 this.x = x; this.y = y; this.dir = dir; this.side = side; this.ownerId = ownerId;
-                this.speed = 6; this.active = true; this.r = 4;
+                this.speed = 7; this.active = true; this.r = 4;
             }
             draw() {
                 ctx.fillStyle = this.side === "clan1" ? "#3b82f6" : "#ef4444";
@@ -387,8 +377,11 @@
 
                 let target = (this.ownerId === "p1") ? player2 : player1;
                 if(target && this.x > target.x && this.x < target.x + target.w && this.y > target.y && this.y < target.y + target.h) {
-                    this.active = false; target.hp--;
-                    if(target.hp <= 0) endBattle(this.ownerId === "p1" ? "clan1" : "clan2");
+                    this.active = false;
+                    if (playerRole === this.ownerId) {
+                        database.ref('rooms/' + currentRoomId + '/' + (this.ownerId === "p1" ? "p2" : "p1") + '_pos').update({ hp: target.hp - 1 });
+                        if(target.hp - 1 <= 0) endBattle(this.ownerId === "p1" ? "clan1" : "clan2");
+                    }
                     return;
                 }
 
@@ -406,13 +399,7 @@
 
         function handleInput() {
             let me = (playerRole === "p1") ? player1 : player2;
-            if (me && isGameRunning) {
-                if (touchDir) { me.dir = touchDir; me.move(); }
-                if (currentRoomId) {
-                    database.ref('rooms/' + currentRoomId + '/' + playerRole + '_input').set({ dir: touchDir, fire: touchFire });
-                }
-                if (touchFire) { me.shoot(); touchFire = false; } 
-            }
+            if (me && isGameRunning && touchDir) { me.move(touchDir); }
         }
 
         function setupMobileControls() {
@@ -424,9 +411,11 @@
             bind("btn-up-1", "up"); bind("btn-down-1", "down");
             bind("btn-left-1", "left"); bind("btn-right-1", "right");
 
-            let fireEl = document.getElementById("btn-fire-main");
-            fireEl.addEventListener("touchstart", (e) => { e.preventDefault(); touchFire = true; });
-            fireEl.addEventListener("touchend", (e) => { e.preventDefault(); touchFire = false; });
+            document.getElementById("btn-fire-main").addEventListener("touchstart", (e) => {
+                e.preventDefault();
+                let me = (playerRole === "p1") ? player1 : player2;
+                if (me && isGameRunning) me.shoot();
+            });
         }
 
         function endBattle(winnerSide) {
