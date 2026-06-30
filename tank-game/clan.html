@@ -163,7 +163,6 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // RPG ЖАНА КРЫСТАЛЛ СИСТЕМАСЫНЫН ӨЗГӨРМӨЛӨРҮ
         let myClanName = localStorage.getItem("tank_my_clan") || "";
         let crystals = parseInt(localStorage.getItem("tank_crystals")) || 0;
         let upSpeed = parseInt(localStorage.getItem("up_speed")) || 1;
@@ -178,7 +177,6 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
         
-        // Керпичтерди майда кылуу (Көлөмү 28 пиксель, Танк батпай калуудан толук кутулат)
         const TILE_SIZE = 28; const COLS = 30; const ROWS = 20;
         let isGameRunning = false; let bullets = []; let map = [];
         let player1 = null; let player2 = null; let touchDir = null; let activeKeys = {};
@@ -203,7 +201,7 @@
 
         function upgradeFeature(type) {
             let cost = type === 'tank' ? 25 : 15;
-            if (crystals < cost) return alert("Кристаллдар жетишсиз! Согушта жеңип кристалдарды топтоңуз.");
+            if (crystals < cost) return alert("Кристаллдар жетишсиз!");
             
             crystals -= cost;
             if (type === 'speed') upSpeed++;
@@ -217,7 +215,6 @@
             localStorage.setItem("up_fort", upFort);
             localStorage.setItem("up_tank", upTank);
             localStorage.setItem("up_clan_level", clanLevel);
-            
             updateMenuUI();
         }
 
@@ -242,6 +239,31 @@
             if (isSearching) { stopSearch(); } else { startSearch(); }
         }
 
+        function generateMapArray() {
+            return [
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
+                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
+                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
+                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
+                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
+                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
+                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
+                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
+                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
+                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
+                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
+                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
+                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
+                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
+                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+            ];
+        }
+
         function startSearch() {
             isSearching = true;
             document.getElementById("match-status-box").style.display = "block";
@@ -261,25 +283,27 @@
                     goToBattle(myState.roomId, myState.role); return;
                 }
 
-                let opponent = null;
+                let opponent = null; let opponentKey = "";
                 for (let key in allPlayers) {
                     if (key !== myClanName && allPlayers[key].status === "searching") {
-                        opponent = allPlayers[key]; break;
+                        opponent = allPlayers[key]; opponentKey = key; break;
                     }
                 }
 
-                if (opponent && myClanName > opponent.clanName) {
-                    let roomId = "room_" + Math.min(myClanName.hashCode(), opponent.clanName.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponent.clanName.hashCode());
-                    
+                if (opponent && myClanName > opponentKey) {
+                    let roomId = "room_" + Math.min(myClanName.hashCode(), opponentKey.hashCode()) + "_" + Math.max(myClanName.hashCode(), opponentKey.hashCode());
+                    let initialMap = generateMapArray();
+
                     database.ref('rooms/' + roomId).set({
-                        p1: opponent.clanName, p1_clanLv: opponent.clanLv, p1_tankLv: opponent.tankLv, p1_upSp: opponent.upSp, p1_upBl: opponent.upBl,
+                        p1: opponent.clanName || opponentKey, p1_clanLv: opponent.clanLv || 1, p1_tankLv: opponent.tankLv || 1, p1_upSp: opponent.upSp || 1, p1_upBl: opponent.upBl || 1,
                         p2: myClanName, p2_clanLv: clanLevel, p2_tankLv: upTank, p2_upSp: upSpeed, p2_upBl: upBullet,
                         p1_pos: { x: 2 * TILE_SIZE, y: 9 * TILE_SIZE, dir: "right", hp: 3, lastShot: 0 },
                         p2_pos: { x: 27 * TILE_SIZE, y: 9 * TILE_SIZE, dir: "left", hp: 3, lastShot: 0 },
-                        fort_hp1: 2 + opponent.upFt, fort_hp2: 2 + upFort,
-                        status: "playing"
+                        fort_hp1: 2 + (opponent.upFt || 1), fort_hp2: 2 + upFort,
+                        status: "playing",
+                        map: initialMap
                     }).then(() => {
-                        database.ref('matchmaking/' + opponent.clanName).update({ status: "matched", roomId: roomId, role: "p1" });
+                        database.ref('matchmaking/' + opponentKey).update({ status: "matched", roomId: roomId, role: "p1" });
                         database.ref('matchmaking/' + myClanName).update({ status: "matched", roomId: roomId, role: "p2" });
                     });
                 }
@@ -317,21 +341,20 @@
             document.getElementById("game-role-title").style.color = playerRole === "p1" ? "#3b82f6" : "#ef4444";
 
             isGameRunning = true;
-            initMap();
+            map = generateMapArray(); // Алгачкы локалдык жүктөө
             
-            // Танктардын баштапкы ылдамдыктары жайлатылды (Күчтөгөн сайын өсөт)
             player1 = new Tank("p1", 2 * TILE_SIZE, 9 * TILE_SIZE, "clan1", 3);
             player2 = new Tank("p2", 27 * TILE_SIZE, 9 * TILE_SIZE, "clan2", 3);
             
             setupMobileControls(); setupKeyboardControls();
 
+            // 1. БӨЛМӨНҮН ЖАЛПЫ МААЛЫМАТТАРЫН СИНХРОНДОО
             database.ref('rooms/' + currentRoomId).on('value', snapshot => {
                 let data = snapshot.val(); if (!data) return;
                 roomData = data; 
                 
-                // Күчтөөлөрдү бөлмөдөн реалдуу убакытта танктарга жүктөө
-                player1.clanName = data.p1; player1.clanLv = data.p1_clanLv; player1.tankLv = data.p1_tankLv; player1.speed = 1.8 + (data.p1_upSp * 0.4); player1.bulletSpeed = 5 + data.p1_upBl;
-                player2.clanName = data.p2; player2.clanLv = data.p2_clanLv; player2.tankLv = data.p2_tankLv; player2.speed = 1.8 + (data.p2_upSp * 0.4); player2.bulletSpeed = 5 + data.p2_upBl;
+                player1.clanName = data.p1 || "Көк Клан"; player1.clanLv = data.p1_clanLv || 1; player1.tankLv = data.p1_tankLv || 1; player1.speed = 1.6 + ((data.p1_upSp || 1) * 0.4); player1.bulletSpeed = 5 + (data.p1_upBl || 1);
+                player2.clanName = data.p2 || "Кызыл Клан"; player2.clanLv = data.p2_clanLv || 1; player2.tankLv = data.p2_tankLv || 1; player2.speed = 1.6 + ((data.p2_upSp || 1) * 0.4); player2.bulletSpeed = 5 + (data.p2_upBl || 1);
 
                 if (data.p1_pos) {
                     if (playerRole !== "p1") { player1.x = data.p1_pos.x; player1.y = data.p1_pos.y; player1.dir = data.p1_pos.dir; }
@@ -350,32 +373,12 @@
                     }
                 }
             });
-        }
 
-        function initMap() {
-            // Жаңы кеңейтилген ачык өтмөктүү карта (30х20)
-            map = [
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
-                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
-                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
-                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
-                [0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0],
-                [0,1,8,1,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,1,9,1],
-                [0,1,1,0,0,2,2,2,2,0,0,1,1,1,0,0,1,1,1,0,0,2,2,2,2,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                [0,0,2,2,2,0,0,1,1,0,0,0,0,0,2,2,0,0,0,0,0,1,1,0,0,2,2,2,0,0],
-                [0,0,2,2,2,0,0,1,1,0,1,1,0,0,2,2,0,0,1,1,0,1,1,0,0,2,2,2,0,0],
-                [0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,1,1,0,0,1,1,0,2,2,0,0,0,0,1,1,0,0,0,0,2,2,0,1,1,0,0,1,1,0],
-                [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-            ];
+            // 2. КАРТА КЕРПИЧТЕРИН ТҮЗ ЭФИРДЕ ЭКИ ТАРАПКА СИНХРОНДОО
+            database.ref('rooms/' + currentRoomId + '/map').on('value', mapSnapshot => {
+                let firebaseMap = mapSnapshot.val();
+                if (firebaseMap) { map = firebaseMap; }
+            });
         }
 
         class Tank {
@@ -395,11 +398,14 @@
                 ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
                 ctx.fillStyle = "#fff"; ctx.fillRect(-2, -this.h/2 - 5, 4, this.h/2); ctx.restore();
                 
-                // ДЕҢГЕЭЛДЕРДИ ЖАНА КЛАН АТЫН ТАНК ҮСТҮНӨ ЧЫГАРУУ
+                let displayName = this.clanName || (this.id === "p1" ? "Көк Клан" : "Кызыл Клан");
+                let displayClanLv = this.clanLv || 1;
+                let displayTankLv = this.tankLv || 1;
+
                 ctx.fillStyle = "#fff"; ctx.font = "bold 9px Arial"; ctx.textAlign = "center";
-                ctx.fillText(`${this.clanName} [C-Lv.${this.clanLv}]`, this.x + this.w/2, this.y - 18);
+                ctx.fillText(`${displayName} [C-Lv.${displayClanLv}]`, this.x + this.w/2, this.y - 18);
                 ctx.fillStyle = "#00ffff";
-                ctx.fillText(`T-Lv.${this.tankLv}`, this.x + this.w/2, this.y - 9);
+                ctx.fillText(`T-Lv.${displayTankLv}`, this.x + this.w/2, this.y - 9);
 
                 ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(this.x, this.y - 5, this.w, 4);
                 ctx.fillStyle = this.side === "clan1" ? "#00ffcc" : "#ff0055";
@@ -449,8 +455,9 @@
                 if(target && this.x > target.x && this.x < target.x + target.w && this.y > target.y && this.y < target.y + target.h) {
                     this.active = false;
                     if (playerRole === this.ownerId) {
-                        database.ref('rooms/' + currentRoomId + '/' + (this.ownerId === "p1" ? "p2" : "p1") + '_pos').update({ hp: target.hp - 1 });
-                        if(target.hp - 1 <= 0) endBattle(this.ownerId === "p1" ? "p2" : "p1"); 
+                        let nextHp = target.hp - 1;
+                        database.ref('rooms/' + currentRoomId + '/' + (this.ownerId === "p1" ? "p2" : "p1") + '_pos').update({ hp: nextHp });
+                        if(nextHp <= 0) endBattle(this.ownerId === "p1" ? "p2" : "p1"); 
                     }
                     return;
                 }
@@ -458,27 +465,38 @@
                 let cx = Math.floor(this.x/TILE_SIZE), cy = Math.floor(this.y/TILE_SIZE);
                 if(cy>=0 && cy<ROWS && cx>=0 && cx<COLS) {
                     let block = map[cy][cx];
-                    if(block === 1) { map[cy][cx] = 0; this.active = false; }
+                    if(block === 1) { 
+                        this.active = false; 
+                        // СИНХРОНДУУ ТАЛКАЛОО: Октун ээси гана базага буйрук берет
+                        if (playerRole === this.ownerId) {
+                            database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
+                        }
+                    }
                     else if(block === 2) { this.active = false; }
                     
-                    // КАТА ОҢДОЛДУ: Өзүнүн чебин өзү атканда зыян тийбейт
                     else if(block === 8) { 
-                        if (this.ownerId === "p2") { // Тек гана Кызыл танк Көктүн бүркүтүн атып ута алат
+                        if (this.ownerId === "p2") { 
                             this.active = false;
-                            if(roomData) {
-                                let curHp = roomData.fort_hp1 - 1;
+                            if (playerRole === this.ownerId && roomData) {
+                                let curHp = (roomData.fort_hp1 || 3) - 1;
                                 database.ref('rooms/' + currentRoomId).update({ fort_hp1: curHp });
-                                if(curHp <= 0) endBattle("p1");
+                                if(curHp <= 0) {
+                                    database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
+                                    endBattle("p1");
+                                }
                             }
-                        } else { this.active = false; } // Жарылбайт
+                        } else { this.active = false; } 
                     }
                     else if(block === 9) { 
-                        if (this.ownerId === "p1") { // Тек гана Көк танк Кызылдын бүркүтүн атып ута алат
+                        if (this.ownerId === "p1") { 
                             this.active = false;
-                            if(roomData) {
-                                let curHp = roomData.fort_hp2 - 1;
+                            if (playerRole === this.ownerId && roomData) {
+                                let curHp = (roomData.fort_hp2 || 3) - 1;
                                 database.ref('rooms/' + currentRoomId).update({ fort_hp2: curHp });
-                                if(curHp <= 0) endBattle("p2");
+                                if(curHp <= 0) {
+                                    database.ref('rooms/' + currentRoomId + '/map/' + cy + '/' + cx).set(0);
+                                    endBattle("p2");
+                                }
                             }
                         } else { this.active = false; }
                     }
@@ -523,10 +541,9 @@
 
         function endBattle(loserId) {
             if (!isGameRunning) return; isGameRunning = false;
-            
             let iWon = (playerRole !== loserId);
             if (iWon) {
-                crystals += 10; // ЖЕҢИШ ҮЧҮН 10 КРИСТАЛЛ БЕРИЛЕТ!
+                crystals += 10;
                 localStorage.setItem("tank_crystals", crystals);
                 alert("🏆 КУТТУКТАЙБЫЗ! Сиздин клан утту жана 10 💎 Кристалл таптыңыз!");
             } else {
@@ -546,22 +563,25 @@
                 handleInput();
                 for(let i = bullets.length - 1; i >= 0; i--) { bullets[i].update(); if(!bullets[i].active) bullets.splice(i, 1); }
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                let fHp1 = roomData ? (roomData.fort_hp1 ?? 3) : 3;
+                let fHp2 = roomData ? (roomData.fort_hp2 ?? 3) : 3;
+
                 for(let r = 0; r < ROWS; r++) {
                     for(let c = 0; c < COLS; c++) {
                         let b = map[r][c];
                         if(b === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                         if(b === 2) { ctx.fillStyle = "#4b5563"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
                         
-                        // Чептердин үстүнө дагы калган жашоолорун (HP) жазуу
                         if(b === 8) { 
                             ctx.fillStyle = "#3b82f6"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+TILE_SIZE/2, r*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2 - 1, 0, Math.PI*2); ctx.fill(); 
                             ctx.fillStyle="#fff"; ctx.font="11px Arial"; ctx.fillText("🐺", c*TILE_SIZE+5, r*TILE_SIZE+18);
-                            if(roomData) { ctx.fillStyle="#00ffcc"; ctx.font="bold 8px Arial"; ctx.fillText("H:"+roomData.fort_hp1, c*TILE_SIZE+4, r*TILE_SIZE-2); }
+                            ctx.fillStyle="#00ffcc"; ctx.font="bold 8px Arial"; ctx.fillText("H:" + fHp1, c*TILE_SIZE+4, r*TILE_SIZE-2);
                         }
                         if(b === 9) { 
                             ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(c*TILE_SIZE+TILE_SIZE/2, r*TILE_SIZE+TILE_SIZE/2, TILE_SIZE/2 - 1, 0, Math.PI*2); ctx.fill(); 
                             ctx.fillStyle="#fff"; ctx.font="11px Arial"; ctx.fillText("🦅", c*TILE_SIZE+5, r*TILE_SIZE+18);
-                            if(roomData) { ctx.fillStyle="#ff0055"; ctx.font="bold 8px Arial"; ctx.fillText("H:"+roomData.fort_hp2, c*TILE_SIZE+4, r*TILE_SIZE-2); }
+                            ctx.fillStyle="#ff0055"; ctx.font="bold 8px Arial"; ctx.fillText("H:" + fHp2, c*TILE_SIZE+4, r*TILE_SIZE-2);
                         }
                     }
                 }
