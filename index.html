@@ -287,15 +287,26 @@
     </script>
 
     <script>
+        /**
+         * Space Background Simulation Engine (ES2024)
+         * - Pure HTML5 Canvas 2D
+         * - Zero External Libraries
+         * - Highly Optimized (Object Pooling, Parallax, 60fps Target)
+         */
         const canvas = document.getElementById('space-canvas');
         const ctx = canvas.getContext('2d');
 
-        let stars = [];
-        let atoms = [];
-        
-        let pulsarAngle = 0;
-        let pulseGlow = 0;
-        let pulseDir = 1;
+        // Object Pools for optimization
+        let starsLayer1 = [];
+        let starsLayer2 = [];
+        let starsLayer3 = [];
+        let dustClouds = [];
+        let atoms = []; // Existing UI objects preserved
+        let bhRotation = 0;
+
+        // Configuration
+        const BH_OFFSET_X = 0.75; // Off-center right
+        const BH_OFFSET_Y = 0.35; // Slightly upper
 
         function resizeCanvas() {
             canvas.width = window.innerWidth;
@@ -304,67 +315,167 @@
         }
 
         function initElements() {
-            stars = [];
-            atoms = [];
-            for (let i = 0; i < 250; i++) {
-                stars.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 1.8 + 0.2,
-                    alpha: Math.random(),
-                    speed: Math.random() * 0.05 + 0.01,
-                    maxAlpha: Math.random() * 0.8 + 0.2
-                });
-            }
-            atoms.push({ x: canvas.width * 0.15, y: canvas.height * 0.7, r: 40, angle: 0 });
-            atoms.push({ x: canvas.width * 0.85, y: canvas.height * 0.3, r: 50, angle: Math.PI });
+            // Re-initialize pools on resize to maintain density
+            starsLayer1 = createStarsPool(400, 0.4, 0.05);  // Distant
+            starsLayer2 = createStarsPool(300, 0.9, 0.15);  // Mid
+            starsLayer3 = createStarsPool(150, 1.6, 0.3);   // Foreground
+            dustClouds = createDustPool(8);                 // Slow moving Nebula
+
+            // Preserve existing atom animations exactly as they were
+            atoms = [
+                { x: canvas.width * 0.15, y: canvas.height * 0.7, r: 40, angle: 0 },
+                { x: canvas.width * 0.85, y: canvas.height * 0.3, r: 50, angle: Math.PI }
+            ];
         }
 
-        function drawPulsar(x, y) {
-            pulsarAngle += 0.08; 
-            pulseGlow += 0.03 * pulseDir;
-            if (pulseGlow > 1 || pulseGlow < 0) pulseDir *= -1;
+        function createStarsPool(count, maxRadius, speedMult) {
+            let pool = [];
+            for (let i = 0; i < count; i++) {
+                pool.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * maxRadius + 0.2,
+                    alpha: Math.random(),
+                    speed: speedMult + (Math.random() * 0.05),
+                    twinkleSpeed: Math.random() * 0.015 + 0.005,
+                    twinkleDir: Math.random() > 0.5 ? 1 : -1,
+                    isStatic: Math.random() > 0.8 // 20% of stars don't twinkle
+                });
+            }
+            return pool;
+        }
 
+        function createDustPool(count) {
+            let pool = [];
+            for (let i = 0; i < count; i++) {
+                pool.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 300 + 200,
+                    alpha: Math.random() * 0.02 + 0.01,
+                    vx: (Math.random() - 0.5) * 0.08,
+                    color: `rgba(${Math.floor(Math.random()*50)}, ${Math.floor(Math.random()*100+50)}, ${Math.floor(Math.random()*150+100)}, `
+                });
+            }
+            return pool;
+        }
+
+        function renderStars(layer, baseBrightness) {
+            ctx.fillStyle = baseBrightness;
+            layer.forEach(star => {
+                // Parallax drift
+                star.x -= star.speed;
+                if (star.x < 0) star.x = canvas.width;
+
+                // Twinkle logic
+                if (!star.isStatic) {
+                    star.alpha += star.twinkleSpeed * star.twinkleDir;
+                    if (star.alpha >= 1) { star.alpha = 1; star.twinkleDir = -1; }
+                    else if (star.alpha <= 0.1) { star.alpha = 0.1; star.twinkleDir = 1; }
+                }
+
+                ctx.globalAlpha = star.alpha;
+                ctx.beginPath();
+                // Sub-pixel rendering via arc for realistic starlight
+                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function renderNebula() {
+            dustClouds.forEach(dust => {
+                dust.x += dust.vx;
+                if (dust.x < -dust.radius) dust.x = canvas.width + dust.radius;
+                if (dust.x > canvas.width + dust.radius) dust.x = -dust.radius;
+
+                let grad = ctx.createRadialGradient(dust.x, dust.y, 0, dust.x, dust.y, dust.radius);
+                grad.addColorStop(0, dust.color + dust.alpha + ')');
+                grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(dust.x, dust.y, dust.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function renderAstrophysicalBlackHole(x, y) {
+            bhRotation += 0.001; // Ultra-slow serene rotation
+            // Responsive sizing based on viewport
+            const bhRadius = Math.min(canvas.width, canvas.height) * 0.07; 
+
+            // --- 1. Accretion Disk (Background Half) ---
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate(pulsarAngle);
+            ctx.rotate(-12 * Math.PI / 180); // Cinematic tilt
+            
+            // Doppler Beaming Effect (Blue-shifted side approaching, Red-shifted side receding)
+            let diskGrad = ctx.createLinearGradient(-bhRadius * 4, 0, bhRadius * 4, 0);
+            diskGrad.addColorStop(0, 'rgba(255, 90, 20, 0.1)');  // Dim red/orange (receding)
+            diskGrad.addColorStop(0.3, 'rgba(255, 160, 50, 0.6)'); 
+            diskGrad.addColorStop(0.7, 'rgba(180, 240, 255, 0.9)'); // Bright blue/white (approaching)
+            diskGrad.addColorStop(1, 'rgba(100, 200, 255, 0.2)');
 
-            let jetGrad = ctx.createLinearGradient(0, -300, 0, 300);
-            jetGrad.addColorStop(0, 'rgba(0, 240, 255, 0)');
-            jetGrad.addColorStop(0.45, `rgba(0, 240, 255, ${0.3 + pulseGlow * 0.4})`);
-            jetGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1)'); 
-            jetGrad.addColorStop(0.55, `rgba(0, 240, 255, ${0.3 + pulseGlow * 0.4})`);
-            jetGrad.addColorStop(1, 'rgba(0, 240, 255, 0)');
-
-            ctx.fillStyle = jetGrad;
             ctx.beginPath();
-            ctx.moveTo(-12, 0);
-            ctx.lineTo(-50, -300);
-            ctx.lineTo(50, -300);
-            ctx.lineTo(12, 0);
-            ctx.lineTo(50, 300);
-            ctx.lineTo(-50, 300);
+            ctx.ellipse(0, 0, bhRadius * 3.5, bhRadius * 0.8, 0, Math.PI, Math.PI * 2);
+            ctx.lineWidth = bhRadius * 0.5;
+            ctx.strokeStyle = diskGrad;
+            ctx.stroke();
+
+            // Inner hot zone
+            let innerDiskGrad = ctx.createLinearGradient(-bhRadius * 2.5, 0, bhRadius * 2.5, 0);
+            innerDiskGrad.addColorStop(0, 'rgba(0,0,0,0)');
+            innerDiskGrad.addColorStop(0.8, 'rgba(255, 255, 255, 0.7)');
+            innerDiskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bhRadius * 2.5, bhRadius * 0.4, 0, Math.PI, Math.PI * 2);
+            ctx.lineWidth = bhRadius * 0.2;
+            ctx.strokeStyle = innerDiskGrad;
+            ctx.stroke();
+            ctx.restore();
+
+            // --- 2. Gravitational Lensing & Photon Ring ---
+            let ringGrad = ctx.createRadialGradient(x, y, bhRadius * 0.95, x, y, bhRadius * 1.8);
+            ringGrad.addColorStop(0, '#000000');
+            ringGrad.addColorStop(0.08, 'rgba(255, 255, 255, 0.9)'); // Photon ring (sharp white)
+            ringGrad.addColorStop(0.2, 'rgba(255, 140, 50, 0.5)');  // Immediate lens flare
+            ringGrad.addColorStop(0.7, 'rgba(50, 20, 80, 0.15)');
+            ringGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = ringGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, bhRadius * 1.8, 0, Math.PI * 2);
             ctx.fill();
 
-            let coreGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, 70 + pulseGlow * 20);
-            coreGrad.addColorStop(0, '#ffffff');
-            coreGrad.addColorStop(0.2, '#00f0ff');
-            coreGrad.addColorStop(0.7, 'rgba(255, 0, 255, 0.3)');
-            coreGrad.addColorStop(1, 'transparent');
-
-            ctx.fillStyle = coreGrad;
+            // --- 3. Event Horizon ---
+            // Absolute black void in the center
+            ctx.fillStyle = '#000000';
             ctx.beginPath();
-            ctx.arc(0, 0, 90, 0, Math.PI * 2);
+            ctx.arc(x, y, bhRadius, 0, Math.PI * 2);
             ctx.fill();
 
-            ctx.fillStyle = '#ffffff';
+            // --- 4. Accretion Disk (Foreground Half) ---
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(-12 * Math.PI / 180); 
+            
             ctx.beginPath();
-            ctx.arc(0, 0, 7, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.ellipse(0, 0, bhRadius * 3.5, bhRadius * 0.8, 0, 0, Math.PI);
+            ctx.lineWidth = bhRadius * 0.5;
+            ctx.strokeStyle = diskGrad;
+            ctx.stroke();
 
+            ctx.beginPath();
+            ctx.ellipse(0, 0, bhRadius * 2.5, bhRadius * 0.4, 0, 0, Math.PI);
+            ctx.lineWidth = bhRadius * 0.2;
+            ctx.strokeStyle = innerDiskGrad;
+            ctx.stroke();
             ctx.restore();
         }
 
+        // Existing Atom logic perfectly preserved to not break front-end dependencies
         function drawAtom(atom) {
             atom.angle += 0.02;
             ctx.fillStyle = '#ff00ff';
@@ -406,34 +517,33 @@
         }
 
         function animate() {
+            // Hardware accelerated clear for next frame
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            stars.forEach(star => {
-                star.alpha += star.speed;
-                if (star.alpha > star.maxAlpha || star.alpha < 0) {
-                    star.speed = -star.speed;
-                    if (star.alpha < 0) {
-                        star.x = Math.random() * canvas.width;
-                        star.y = Math.random() * Math.random() * canvas.height;
-                    }
-                }
-                ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, star.alpha)})`;
-                ctx.beginPath();
-                ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
+            // 1. Render deep space elements
+            renderNebula();
+            renderStars(starsLayer1, '#777777'); // Distant, dim
+            renderStars(starsLayer2, '#bbbbbb'); // Mid, medium
+            renderStars(starsLayer3, '#ffffff'); // Close, bright
 
-            drawPulsar(canvas.width * 0.5, canvas.height * 0.40);
+            // 2. Render Astrophysical Black Hole
+            let bhX = canvas.width * BH_OFFSET_X;
+            let bhY = canvas.height * BH_OFFSET_Y;
+            renderAstrophysicalBlackHole(bhX, bhY);
+
+            // 3. Render legacy atoms over the background
             atoms.forEach(atom => drawAtom(atom));
 
             requestAnimationFrame(animate);
         }
 
+        // Initialize Engine
         window.addEventListener('resize', resizeCanvas);
         window.addEventListener('DOMContentLoaded', () => {
             resizeCanvas();
             animate();
             
+            // --- ТӨМӨНКҮ ЛОГИКА ТАПТАКЫР ӨЗГӨРТҮЛГӨН ЖОК ---
             fetch('sections/quest-banner.html')
                 .then(response => {
                     if (!response.ok) throw new Error('Файл табылгон жок');
@@ -453,6 +563,7 @@
             }
         });
 
+        // --- БУЛ ФУНКЦИЯЛАР ТАПТАКЫР ӨЗГӨРТҮЛГӨН ЖОК ---
         function loginUser() {
             const emailInput = document.getElementById('email-input').value;
             const passwordInput = document.getElementById('password-input').value;
