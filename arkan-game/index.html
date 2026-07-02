@@ -1,285 +1,164 @@
-/**
- * /arkan-game/js/game.js
- * Оюн башталганда "komuzakbakai.mp3" аудиосун фондо иштетүү функциясы кошулду.
- */
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аркан Тартыш: Күч Энергиясы — BilimAl</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #050510; color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        #gameCanvas { display: block; width: 100%; height: 55%; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        /* Мугалимдин башкаруу панели */
+        #setup-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: #070716; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .setup-container { background: rgba(15, 15, 40, 0.95); border: 2px solid #00f0ff; border-radius: 16px; padding: 30px; width: 750px; max-width: 100%; box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); }
+        .setup-title { font-size: 1.8rem; color: #00f0ff; text-align: center; margin-bottom: 20px; font-weight: bold; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #aaa; font-weight: 600; }
+        .form-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(0,240,255,0.3); padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; outline: none; }
+        .form-input:focus { border-color: #ff00ff; box-shadow: 0 0 10px rgba(255,0,255,0.3); }
+        textarea.form-input { height: 120px; resize: none; font-family: monospace; font-size: 0.9rem; line-height: 1.5; }
+        
+        .saved-tests-box { background: rgba(0, 0, 0, 0.4); border: 1px dashed rgba(0, 240, 255, 0.3); padding: 12px; border-radius: 10px; margin-bottom: 15px; max-height: 120px; overflow-y: auto; }
+        .test-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 6px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05); }
+        .btn-select { background: #00f0ff; color: #000; border: none; padding: 5px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; }
+        .btn-delete { background: #ff0055; color: #fff; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 0.85rem; margin-left: 8px; }
+        
+        .action-row { display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .btn-save { background: transparent; border: 2px solid #ff00ff; color: #ff00ff; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .btn-save:hover { background: #ff00ff; color: #fff; }
+        .btn-start { background: linear-gradient(90deg, #ff00ff, #7000ff); border: none; color: white; padding: 14px; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; font-size: 1.2rem; transition: 0.3s; }
+        .btn-start:hover { transform: scale(1.01); box-shadow: 0 0 20px rgba(255, 0, 255, 0.5); }
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const bgMusic = document.getElementById('bgMusic'); // Аудио элементти алуу
+        /* Негизги оюн интерфейси */
+        #ui-layer { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .interactive { pointer-events: auto; }
+        
+        /* Жогорку упайлар панели */
+        .top-bar { position: absolute; top: 20px; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 0 30px; z-index: 20; }
+        .btn-exit { background: rgba(15, 15, 40, 0.85); border: 2px solid #00f0ff; color: #00f0ff; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; text-decoration: none; backdrop-filter: blur(5px); }
+        .btn-exit:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px #00f0ff; }
+        .score-box { background: rgba(15, 15, 40, 0.85); padding: 10px 25px; border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.2); font-size: 1.2rem; display: flex; gap: 20px; backdrop-filter: blur(5px); }
+        
+        /* Төмөнкү Тест Контейнери */
+        .duel-container { display: flex; width: 100%; height: 45%; position: absolute; bottom: 0; left: 0; background: #070716; border-top: 3px solid #7000ff; z-index: 20; }
+        
+        .quiz-side { width: 50%; height: 100%; padding: 25px; display: flex; flex-direction: column; justify-content: flex-start; position: relative; }
+        .left-side { border-right: 1px solid rgba(0, 240, 255, 0.15); }
+        .right-side { border-left: 1px solid rgba(255, 0, 85, 0.15); }
 
-function resizeCanvas() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight * 0.55;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+        .side-header { font-size: 1.15rem; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+        .question-text { font-size: 1.1rem; font-weight: 600; line-height: 1.5; min-height: 65px; margin-bottom: 20px; width: 100%; color: #fff; overflow-y: auto; }
+        
+        /* Варианттардын сеткасы */
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; }
+        .answer-btn { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; padding: 15px 20px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; text-align: left; line-height: 1.3; display: block; width: 100%; }
+        
+        .left-side .side-header { color: #00f0ff; }
+        .left-side .answer-btn:hover { background: linear-gradient(90deg, #0055ff, #00f0ff); border-color: transparent; color: #000; box-shadow: 0 0 12px rgba(0, 240, 255, 0.4); transform: translateY(-2px); }
+        
+        .right-side .side-header { color: #ff0055; }
+        .right-side .answer-btn:hover { background: linear-gradient(90deg, #ff0055, #ff00aa); border-color: transparent; color: #fff; box-shadow: 0 0 12px rgba(255, 0, 85, 0.4); transform: translateY(-2px); }
 
-const testTopics = [
-    { q: "Ньютондун 3-закону кандай айтылат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе тынч абалын сактай албайт"] }
-];
+        /* Күтүү терезеси */
+        .waiting-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(7, 7, 22, 0.95); backdrop-filter: blur(8px); display: none; flex-direction: column; justify-content: center; align-items: center; font-size: 1.4rem; font-weight: bold; color: #fff; z-index: 30; text-align: center; border-radius: 4px; }
+        
+        /* Жыйынтык модалдык терезеси */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+        .modal-content { background: #0f0f2d; border: 3px solid #00f0ff; padding: 40px; border-radius: 20px; text-align: center; width: 500px; max-width: 90%; box-shadow: 0 0 30px rgba(0,240,255,0.3); }
+        .modal-title { font-size: 2.2rem; font-weight: bold; margin-bottom: 15px; }
+        .modal-btn { background: #00f0ff; color: #000; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 25px; transition: 0.2s; }
+        .modal-btn:hover { background: #ff00ff; color: #fff; transform: scale(1.05); }
+    </style>
+</head>
+<body>
 
-let defaultQuestionsText = [];
-for (let i = 0; i < 25; i++) {
-    defaultQuestionsText.push(`Суроо №${i+1}: Ньютондун 3-закону кандай айтылат? | Аракет күчү каршы аракет күчүнө модулу боюнча барабар | Күч ылдамдыкка түз пропорциялуу | Инерция дайыма сакталат | Нерсе тынч абалын сактай албайт | 0`);
-}
-document.getElementById('questionsTextArea').value = defaultQuestionsText.join('\n');
+    <audio id="bgMusic" src="./komuzakbakai.mp3" loop></audio>
 
-let parsedQuestions = [];
-let gameActive = false;
+    <div id="setup-layer">
+        <div class="setup-container">
+            <div class="setup-title">🪢 Аркан Тартыш: Мугалимдин Панели</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                <div class="form-group">
+                    <label>Сол команданын аты (Көк):</label>
+                    <input type="text" id="leftTeamInput" class="form-input" value="Көк Танк">
+                </div>
+                <div class="form-group">
+                    <label>Оң команданын аты (Кызыл):</label>
+                    <input type="text" id="rightTeamInput" class="form-input" value="Кара Тулпар">
+                </div>
+            </div>
 
-let leftTeam = { name: "Көк Танк", index: 0, score: 0, correctCount: 0, endTime: 0, finished: false };
-let rightTeam = { name: "Кара Тулпар", index: 0, score: 0, correctCount: 0, endTime: 0, finished: false };
+            <div class="form-group">
+                <label>Сакталган даяр тесттер:</label>
+                <div class="saved-tests-box" id="savedTestsList"></div>
+            </div>
 
-let startTime = 0;
-let ropeOffset = 0;
-let targetRopeOffset = 0;
+            <div class="form-group">
+                <label>Тесттин мазмуну (Формат: Суроо | Вариант1 | Вариант2 | Вариант3 | Вариант4 | 0):</label>
+                <textarea id="questionsTextArea" class="form-input"></textarea>
+            </div>
 
-// Сакталган тесттерди башкаруу
-function loadSavedTestsList() {
-    const listContainer = document.getElementById('savedTestsList');
-    listContainer.innerHTML = '';
-    let savedTests = JSON.parse(localStorage.getItem('bilimal_arkan_tests')) || {};
-    if (Object.keys(savedTests).length === 0) {
-        listContainer.innerHTML = `<div style="color: #555; text-align: center; padding-top: 10px;">Сакталган тесттер азырынча жок.</div>`;
-        return;
-    }
-    for (let testName in savedTests) {
-        const item = document.createElement('div');
-        item.className = 'test-item';
-        item.innerHTML = `<span>📁 ${testName}</span><div><button class="btn-select" data-name="${testName}">Ачуу</button><button class="btn-delete" data-name="${testName}">Өчүрүү</button></div>`;
-        listContainer.appendChild(item);
-    }
-    document.querySelectorAll('.btn-select').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const name = e.target.getAttribute('data-name');
-            document.getElementById('questionsTextArea').value = savedTests[name];
-            document.getElementById('testNameInput').value = name;
-        });
-    });
-    document.querySelectorAll('.btn-delete').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const name = e.target.getAttribute('data-name');
-            if (confirm(`"${name}" өчүрүлсүнбү?`)) {
-                delete savedTests[name];
-                localStorage.setItem('bilimal_arkan_tests', JSON.stringify(savedTests));
-                loadSavedTestsList();
-            }
-        });
-    });
-}
+            <div class="action-row">
+                <input type="text" id="testNameInput" class="form-input" placeholder="Тестке ат бериңиз">
+                <button class="btn-save" id="saveTestBtn">Тестти Сактоо 💾</button>
+            </div>
 
-document.getElementById('saveTestBtn').addEventListener('click', () => {
-    const testName = document.getElementById('testNameInput').value.trim();
-    const testContent = document.getElementById('questionsTextArea').value.trim();
-    if (!testName || !testContent) return alert("Атын жана мазмунун толтуруңуз!");
-    let savedTests = JSON.parse(localStorage.getItem('bilimal_arkan_tests')) || {};
-    savedTests[testName] = testContent;
-    localStorage.setItem('bilimal_arkan_tests', JSON.stringify(savedTests));
-    loadSavedTestsList();
-    alert("Тест сакталды!");
-});
+            <button class="btn-start" id="startGameBtn">Оюнду Баштоо 🚀</button>
+        </div>
+    </div>
 
-loadSavedTestsList();
+    <canvas id="gameCanvas"></canvas>
 
-// ОЮНДУ БАШТОО (Музыка ушул жерде кошулат)
-document.getElementById('startGameBtn').addEventListener('click', () => {
-    const rawLeft = document.getElementById('leftTeamInput').value.trim();
-    const rawRight = document.getElementById('rightTeamInput').value.trim();
-    if(rawLeft) leftTeam.name = rawLeft;
-    if(rawRight) rightTeam.name = rawRight;
-
-    const textData = document.getElementById('questionsTextArea').value.trim();
-    const lines = textData.split('\n');
-    
-    parsedQuestions = [];
-    lines.forEach(line => {
-        if (!line.trim()) return;
-        const parts = line.split('|');
-        if (parts.length >= 6) {
-            parsedQuestions.push({
-                question: parts[0].trim(),
-                originalAnswers: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].trim()],
-                correctText: parts[1].trim()
-            });
-        }
-    });
-
-    if (parsedQuestions.length === 0) return alert("Тесттин форматы ката!");
-
-    // МУЗЫКАНЫ ОЙНОТУУ 🎵
-    if (bgMusic) {
-        bgMusic.currentTime = 0; // Музыканы башынан баштоо
-        bgMusic.volume = 0.4; // Үнүнүн катуулугун 40% кылып коюу (мугалимге/балдарга тоскоол болбош үчүн)
-        bgMusic.play().catch(error => {
-            console.log("Аудио ойнотууга браузер бөгөт койду (колдонуучу басышы керек): ", error);
-        });
-    }
-
-    document.getElementById('setup-layer').style.display = 'none';
-    document.getElementById('ui-layer').style.display = 'flex';
-    
-    // UI элементтерин даярдоо
-    document.getElementById('ui-layer').innerHTML = `
+    <div id="ui-layer">
         <div class="top-bar interactive">
-            <button class="btn-exit" onclick="window.location.href='../sections/test-games.html'">← Чыгуу</button>
+            <a class="btn-exit" href="../sections/test-games.html">← Чыгуу</a>
             <div class="score-box">
-                <div><span style="color: #00f0ff;">${leftTeam.name}</span>: <span id="leftScoreDisplay" style="font-weight:bold; color: #00f0ff;">0</span></div>
+                <div><span id="leftTeamLabel" style="color: #00f0ff;">Сол</span>: <span id="leftScoreDisplay" style="font-weight:bold; color: #00f0ff;">0</span></div>
                 <div style="color: #444;">|</div>
-                <div><span style="color: #ff0055;">${rightTeam.name}</span>: <span id="rightScoreDisplay" style="font-weight:bold; color: #ff0055;">0</span></div>
+                <div><span id="rightTeamLabel" style="color: #ff0055;">Оң</span>: <span id="rightScoreDisplay" style="font-weight:bold; color: #ff0055;">0</span></div>
             </div>
         </div>
+
         <div class="duel-container interactive">
             <div class="quiz-side left-side">
-                <div class="side-header"><span style="color: #00f0ff;">${leftTeam.name}</span><span id="leftProgress">Суроо: 1/25</span></div>
-                <div class="question-text" id="leftQuestionText"></div><div class="answers-grid" id="leftAnswersGrid"></div>
-                <div class="waiting-overlay" id="leftWaitingOverlay">Даяр! Күтүңүз...</div>
+                <div class="side-header">
+                    <span id="leftSideName">Көк Команда</span>
+                    <span id="leftProgress">Суроо: 1/25</span>
+                </div>
+                <div class="question-text" id="leftQuestionText">Жүктөлүүдө...</div>
+                <div class="answers-grid" id="leftAnswersGrid"></div>
+                <div class="waiting-overlay" id="leftWaitingOverlay">
+                    <span>🏁 БАРДЫК ТЕСТ БҮТТҮ!</span>
+                    <span style="font-size:0.9rem; color:#aaa; font-weight:normal; margin-top:8px;">Экинчи топту күтүңүз...</span>
+                </div>
             </div>
+
             <div class="quiz-side right-side">
-                <div class="side-header"><span style="color: #ff0055;">${rightTeam.name}</span><span id="rightProgress">Суроо: 1/25</span></div>
-                <div class="question-text" id="rightQuestionText"></div><div class="answers-grid" id="rightAnswersGrid"></div>
-                <div class="waiting-overlay" id="rightWaitingOverlay">Даяр! Күтүңүз...</div>
+                <div class="side-header">
+                    <span id="rightSideName">Кызыл Команда</span>
+                    <span id="rightProgress">Суроо: 1/25</span>
+                </div>
+                <div class="question-text" id="rightQuestionText">Жүктөлүүдө...</div>
+                <div class="answers-grid" id="rightAnswersGrid"></div>
+                <div class="waiting-overlay" id="rightWaitingOverlay">
+                    <span>🏁 БАРДЫК ТЕСТ БҮТТҮ!</span>
+                    <span style="font-size:0.9rem; color:#aaa; font-weight:normal; margin-top:8px;">Экинчи топту күтүңүз...</span>
+                </div>
             </div>
         </div>
-    `;
+    </div>
 
-    gameActive = true;
-    startTime = performance.now();
-    
-    leftTeam.index = 0; leftTeam.score = 0; leftTeam.correctCount = 0; leftTeam.finished = false;
-    rightTeam.index = 0; rightTeam.score = 0; rightTeam.correctCount = 0; rightTeam.finished = false;
-    ropeOffset = 0; targetRopeOffset = 0;
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="modal-title" id="resultTitle">ЖЕҢИШ! 🎉</div>
+            <p id="resultDesc" style="color: #ccc; line-height: 1.6; font-size: 1.1rem; margin-top: 15px; text-align: left;"></p>
+            <button class="modal-btn" onclick="window.location.href='../sections/test-games.html'">Оюн бетине кайтуу</button>
+        </div>
+    </div>
 
-    renderSide('left');
-    renderSide('right');
-    requestAnimationFrame(drawGame);
-});
-
-function renderSide(side) {
-    const team = (side === 'left') ? leftTeam : rightTeam;
-    const progressEl = document.getElementById(`${side}Progress`);
-    const questionEl = document.getElementById(`${side}QuestionText`);
-    const gridEl = document.getElementById(`${side}AnswersGrid`);
-
-    if (team.index >= parsedQuestions.length) {
-        team.finished = true;
-        if (team.endTime === 0) team.endTime = performance.now();
-        document.getElementById(`${side}WaitingOverlay`).style.display = 'flex';
-        checkGameCompletion();
-        return;
-    }
-
-    if(progressEl) progressEl.innerText = `Суроо: ${team.index + 1}/${parsedQuestions.length}`;
-    if(questionEl) questionEl.innerText = parsedQuestions[team.index].question;
-
-    if(gridEl) {
-        gridEl.innerHTML = '';
-        const currentQuiz = parsedQuestions[team.index];
-        const shuffledAnswers = [...currentQuiz.originalAnswers].sort(() => Math.random() - 0.5);
-
-        shuffledAnswers.forEach((ans) => {
-            const button = document.createElement('button');
-            button.className = 'answer-btn';
-            button.innerText = ans;
-            button.onclick = () => handleSelection(side, ans, currentQuiz.correctText);
-            gridEl.appendChild(button);
-        });
-    }
-}
-
-function handleSelection(side, selectedAnswer, correctText) {
-    if (!gameActive) return;
-    const team = (side === 'left') ? leftTeam : rightTeam;
-    if (selectedAnswer === correctText) {
-        team.score += 100; team.correctCount++;
-        targetRopeOffset += (side === 'left') ? -50 : 50;
-    } else {
-        targetRopeOffset += (side === 'left') ? 30 : -30;
-    }
-    const scoreDisplay = document.getElementById(`${side}ScoreDisplay`);
-    if(scoreDisplay) scoreDisplay.innerText = team.score;
-    team.index++;
-    renderSide(side);
-}
-
-function checkGameCompletion() {
-    if (leftTeam.finished && rightTeam.finished && gameActive) {
-        gameActive = false;
-        
-        // ОЮН БҮТКӨНДӨ МУЗЫКАНЫ ТОКТОТУУ 🎵
-        if (bgMusic) {
-            bgMusic.pause();
-        }
-
-        const modal = document.getElementById('resultModal');
-        const title = document.getElementById('resultTitle');
-        const desc = document.getElementById('resultDesc');
-
-        const leftDuration = ((leftTeam.endTime - startTime) / 1000).toFixed(2);
-        const rightDuration = ((rightTeam.endTime - startTime) / 1000).toFixed(2);
-
-        let winnerName = ""; let winReason = "";
-
-        if (leftTeam.correctCount > rightTeam.correctCount) {
-            winnerName = leftTeam.name; title.style.color = "#00f0ff";
-            winReason = `<b>${leftTeam.name}</b> көбүрөөк туура жооп берди!`;
-        } else if (rightTeam.correctCount > leftTeam.correctCount) {
-            winnerName = rightTeam.name; title.style.color = "#ff0055";
-            winReason = `<b>${rightTeam.name}</b> көбүрөөк туура жооп берди!`;
-        } else {
-            if (parseFloat(leftDuration) < parseFloat(rightDuration)) {
-                winnerName = leftTeam.name; title.style.color = "#00f0ff";
-                winReason = `Упайлар тең, бирок <b>${leftTeam.name}</b> ылдам аяктады!`;
-            } else {
-                winnerName = rightTeam.name; title.style.color = "#ff0055";
-                winReason = `Упайлар тең, бирок <b>${rightTeam.name}</b> ылдам аяктады!`;
-            }
-        }
-
-        title.innerText = `🏆 ${winnerName} ЖЕҢДИ!`;
-        desc.innerHTML = `${winReason} <br><br> Жыйынтык: <br> • ${leftTeam.name}: ${leftTeam.correctCount} туура (${leftDuration} сек)<br> • ${rightTeam.name}: ${rightTeam.correctCount} туура (${rightDuration} сек)`;
-        modal.style.display = 'flex';
-    }
-}
-
-function drawGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const centerY = canvas.height * 0.7;
-    const centerX = canvas.width / 2 + ropeOffset;
-
-    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
-    skyGradient.addColorStop(0, '#0f2027'); skyGradient.addColorStop(1, '#203a43');
-    ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
-
-    ctx.beginPath(); ctx.arc(canvas.width * 0.85, canvas.height * 0.25, 35, 0, Math.PI * 2);
-    ctx.fillStyle = '#ff00ff'; ctx.shadowBlur = 25; ctx.shadowColor = '#ff00ff'; ctx.fill(); ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#0a0a20'; ctx.fillRect(0, canvas.height * 0.65, canvas.width, canvas.height * 0.35);
-    ctx.beginPath(); ctx.moveTo(0, canvas.height * 0.65); ctx.lineTo(canvas.width, canvas.height * 0.67);
-    ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 3; ctx.stroke();
-
-    ctx.beginPath(); ctx.moveTo(30, centerY); ctx.lineTo(canvas.width - 30, centerY);
-    ctx.lineWidth = 10; ctx.strokeStyle = '#d4af37'; ctx.stroke();
-
-    ctx.fillStyle = '#ff0055'; ctx.fillRect(centerX - 8, centerY - 20, 16, 40);
-    ctx.fillStyle = 'rgba(0, 240, 255, 0.2)'; ctx.fillRect(canvas.width / 2 - 2, centerY - 35, 4, 70);
-
-    drawTeam(canvas.width * 0.22 + ropeOffset * 0.4, centerY, '#00f0ff', `[${leftTeam.name}]`, false);
-    drawTeam(canvas.width * 0.78 + ropeOffset * 0.4, centerY, '#ff0055', `[${rightTeam.name}]`, true);
-
-    ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
-    if (gameActive) requestAnimationFrame(drawGame);
-}
-
-function drawTeam(startX, centerY, color, teamName, isRightSide) {
-    ctx.fillStyle = color; ctx.font = "bold 13px Segoe UI"; ctx.textAlign = "center";
-    ctx.fillText(teamName, startX, centerY - 55);
-    for (let i = 0; i < 3; i++) {
-        let offsetX = isRightSide ? (i * 35) : -(i * 35);
-        let x = startX + offsetX; let y = centerY;
-        ctx.beginPath(); ctx.arc(x, y - 30, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.lineWidth = 5; ctx.strokeStyle = color;
-        ctx.beginPath(); ctx.moveTo(x, y - 21); ctx.lineTo(x, y + 8); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x, y - 15); ctx.lineTo(startX, y); ctx.lineWidth = 3; ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(x, y + 8); ctx.lineTo(x - 8, y + 30); ctx.moveTo(x, y + 8); ctx.lineTo(x + 8, y + 30); ctx.stroke();
-    }
-}
+    <script type="module" src="./js/game.js"></script>
+</body>
+</html>
