@@ -1,6 +1,7 @@
 /**
  * /arkan-game/js/game.js
- * Динамикалык суроолор жана Командалык эсептөө тутуму менен жаңыртылган кыймылдаткыч.
+ * Эки оюнчуга бир убакта өз алдынча суроо берүүчү, варианттарды аралаштыруучу 
+ * жана убакыт боюнча жеңүүчүнү аныктоочу толук рендеринг кыймылдаткычы.
  */
 
 const canvas = document.getElementById('gameCanvas');
@@ -8,139 +9,269 @@ const ctx = canvas.getContext('2d');
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    canvas.height = window.innerHeight * 0.55; // Каньвас жогорку 55% гана ээлейт
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Демейки (Планы бар) 25 даана суроонун шаблону (Мугалим текст кутучасына чаптабаса ушул иштейт)
-const defaultTemplate = `Ньютондун үчүнчү закону кандай туюнтулат? | Аракет күчү каршы аракет күчүнө модулу боюнча барабар | Күч массага түз пропорционалдуу | Инерция сакталат | Энергия жоголбойт | 0
-Нерсеге аракет эткен күчтүн бирдиги кайсы? | Джоуль | Ватт | Ньютон | Паскаль | 2
-Э эки команда тең арканды 500 Н менен тартса чыңалуу канча? | 0 Н | 250 Н | 500 Н | 1000 Н | 2`;
+// Мугалим үчүн даяр 25 суроолуу физикалык тест генерациясы (автоматтык толтурулат)
+const testTopics = [
+    { q: "Ньютондун 3-закону кандай айтылат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе тынч абалын сактай албайт"] },
+    { q: "Күчтүн СИ системасындагы бирдиги кайсы?", a: "Ньютон (Н)", w: ["Джоуль (Дж)", "Ватт (Вт)", "Паскаль (Па)"] },
+    { q: "Аркан тартышууда командалар 600 Н күч жумшашса, аркандын чыңалуусу канча?", a: "600 Н", w: ["0 Н", "300 Н", "1200 Н"] },
+    { q: "Бут менен жерди артка түрткөндө, бизди алдыга кайсы күч түртөт?", a: "Жердин каршы аракеттешүү сүрүлүү күчү", w: ["Оордук күчү", "Гравитациялык күч", "Центрге умтулуучу күч"] },
+    { q: "Нерсенин массасынын көбөйүшү анын инерттүүлүгүнө кандай таасир этет?", a: "Инерттүүлүгү жогорулайт", w: ["Инерттүүлүгү азаят", "Өзгөрбөйт", "Ылдамдыгы автоматтык өсөт"] }
+];
 
-// Текст кутучасына демейки үлгүнү алдын ала жазып коюу
-document.getElementById('questionsTextArea').value = Array(25).fill(null).map((_, i) => 
-    `Физикалык суроо №${i+1}: Күч жана кыймыл динамикасы кандай аныкталат? | Туура жооп варианты | Ката вариант А | Ката вариант Б | Ката вариант В | 0`
-).join('\n');
+// Текст талаасына 25 суроону формат боюнча даярдап салуу
+let defaultQuestionsText = [];
+for (let i = 0; i < 25; i++) {
+    const topic = testTopics[i % testTopics.length];
+    defaultQuestionsText.push(`Суроо №${i+1}: ${topic.q} | ${topic.a} | ${topic.w[0]} | ${topic.w[1]} | ${topic.w[2]} | 0`);
+}
+document.getElementById('questionsTextArea').value = defaultQuestionsText.join('\n');
 
-// Оюндун абалын сактоочу өзгөрмөлөр
-let gameQuestions = [];
-let currentQuestionIndex = 0;
+// Базалык өзгөрмөлөр
+let parsedQuestions = [];
 let gameActive = false;
 
-let leftTeamName = "Көк Команда";
-let rightTeamName = "Кызыл Команда";
+// Командалардын динамикалык абалы
+let leftTeam = { name: "Көк Танк", index: 0, score: 0, correctCount: 0, endTime: 0, finished: false, renderedAnswers: [] };
+let rightTeam = { name: "Кара Тулпар", index: 0, score: 0, correctCount: 0, endTime: 0, finished: false, renderedAnswers: [] };
 
-let leftScore = 0;
-let rightScore = 0;
-
-let ropeOffset = 0; 
+let startTime = 0;
+let ropeOffset = 0;
 let targetRopeOffset = 0;
 
-// Оюнду баштоо баскычын угуу
+// Оюнду баштоо баскычы
 document.getElementById('startGameBtn').addEventListener('click', () => {
     const rawLeft = document.getElementById('leftTeamInput').value.trim();
     const rawRight = document.getElementById('rightTeamInput').value.trim();
-    if(rawLeft) leftTeamName = rawLeft;
-    if(rawRight) rightTeamName = rawRight;
+    if(rawLeft) leftTeam.name = rawLeft;
+    if(rawRight) rightTeam.name = rawRight;
 
-    // Суроолорду парсинг кылуу (Текстти массиве айлантуу)
+    // Тексттен суроолорду массивге парсинг кылуу
     const textData = document.getElementById('questionsTextArea').value.trim();
     const lines = textData.split('\n');
     
-    gameQuestions = [];
+    parsedQuestions = [];
     lines.forEach(line => {
         const parts = line.split('|');
         if (parts.length >= 6) {
-            gameQuestions.push({
+            parsedQuestions.push({
                 question: parts[0].trim(),
-                answers: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].trim()],
-                correct: parseInt(parts[5].trim())
+                originalAnswers: [parts[1].trim(), parts[2].trim(), parts[3].trim(), parts[4].trim()],
+                correctText: parts[1].trim() // Туура жооптун тексти аркылуу текшеребиз (аралашканда ката кетпеши үчүн)
             });
         }
     });
 
-    if (gameQuestions.length === 0) {
-        alert("Суроолорду форматка ылайык туура киргизиңиз!");
+    if (parsedQuestions.length === 0) {
+        alert("Суроолорду туура форматта киргизиңиз!");
         return;
     }
 
-    // Интерфейстерди алмаштыруу
+    // Экрандарды алмаштыруу
     document.getElementById('setup-layer').style.display = 'none';
     document.getElementById('ui-layer').style.display = 'flex';
-    document.getElementById('leftTeamLabel').innerText = leftTeamName;
-    document.getElementById('rightTeamLabel').innerText = rightTeamName;
+    
+    document.getElementById('leftSideName').innerText = leftTeam.name;
+    document.getElementById('rightSideName').innerText = rightTeam.name;
+    document.getElementById('leftTeamLabel').innerText = leftTeam.name;
+    document.getElementById('rightTeamLabel').innerText = rightTeam.name;
 
+    // Оюнду баштапкы абалга келтирүү
     gameActive = true;
-    currentQuestionIndex = 0;
-    leftScore = 0;
-    rightScore = 0;
-    ropeOffset = 0;
-    targetRopeOffset = 0;
+    startTime = performance.now();
+    
+    leftTeam.index = 0; leftTeam.score = 0; leftTeam.correctCount = 0; leftTeam.finished = false;
+    rightTeam.index = 0; rightTeam.score = 0; rightTeam.correctCount = 0; rightTeam.finished = false;
+    ropeOffset = 0; targetRopeOffset = 0;
 
-    loadQuestion();
+    document.getElementById('leftWaitingOverlay').style.display = 'none';
+    document.getElementById('rightWaitingOverlay').style.display = 'none';
+
+    renderSide('left');
+    renderSide('right');
     requestAnimationFrame(drawGame);
 });
 
 /**
- * Рендеринг цикли (Сиз каалагандай визуалдык катмарга тийбейбиз)
+ * Варианттарды аралаштырып, ар бир командага өзүнчө терезеге чыгаруу
+ */
+function renderSide(side) {
+    const team = (side === 'left') ? leftTeam : rightTeam;
+    const progressEl = document.getElementById(`${side}Progress`);
+    const questionEl = document.getElementById(`${side}QuestionText`);
+    const gridEl = document.getElementById(`${side}AnswersGrid`);
+
+    if (team.index >= parsedQuestions.length) {
+        team.finished = true;
+        if (team.endTime === 0) team.endTime = performance.now();
+        document.getElementById(`${side}WaitingOverlay`).style.display = 'flex';
+        document.getElementById(`${side}WaitingOverlay`).innerHTML = `🏁 БАРДЫК ТЕСТ БҮТТҮ! <br><span style="font-size:1rem; color:#aaa; font-weight:normal; margin-top:10px; display:block;">Экинчи команданы күтүүдө...</span>`;
+        checkGameCompletion();
+        return;
+    }
+
+    progressEl.innerText = `Суроо: ${team.index + 1}/${parsedQuestions.length}`;
+    const currentQuiz = parsedQuestions[team.index];
+    questionEl.innerText = currentQuiz.question;
+
+    gridEl.innerHTML = '';
+
+    // Көчүрбөө үчүн варианттарды кокусунан аралаштыруу (Shuffling)
+    const shuffledAnswers = [...currentQuiz.originalAnswers].sort(() => Math.random() - 0.5);
+    team.renderedAnswers = shuffledAnswers;
+
+    shuffledAnswers.forEach((ans) => {
+        const button = document.createElement('button');
+        button.className = 'answer-btn';
+        button.innerText = ans;
+        button.onclick = () => handleSelection(side, ans, currentQuiz.correctText);
+        gridEl.appendChild(button);
+    });
+}
+
+/**
+ * Жоопту текшерүү жана арканды реалдуу убакытта тартуу
+ */
+function handleSelection(side, selectedAnswer, correctText) {
+    if (!gameActive) return;
+    
+    const team = (side === 'left') ? leftTeam : rightTeam;
+    const isCorrect = (selectedAnswer === correctText);
+
+    if (isCorrect) {
+        team.score += 100;
+        team.correctCount++;
+        // Сол команда тапса аркан солго (-), оң команда тапса оңго (+) жылат
+        targetRopeOffset += (side === 'left') ? -50 : 50;
+    } else {
+        // Ката кетирсе аркан каршы тарапка тартылып кетет
+        targetRopeOffset += (side === 'left') ? 30 : -30;
+    }
+
+    // Жогорку упай тактасын жаңыртуу
+    document.getElementById(`${side}ScoreDisplay`).innerText = team.score;
+
+    team.index++;
+    renderSide(side);
+}
+
+/**
+ * Эки команда тең бүткөнүн көзөмөлдөө
+ */
+function checkGameCompletion() {
+    if (leftTeam.finished && rightTeam.finished && gameActive) {
+        gameActive = false;
+        
+        const modal = document.getElementById('resultModal');
+        const title = document.getElementById('resultTitle');
+        const desc = document.getElementById('resultDesc');
+
+        // Убакыттарды секундга айлантуу
+        const leftDuration = ((leftTeam.endTime - startTime) / 1000).toFixed(2);
+        const rightDuration = ((rightTeam.endTime - startTime) / 1000).toFixed(2);
+
+        let winnerName = "";
+        let winReason = "";
+
+        // 1-шарт: Кимдин туура жооптору (упайы) көп болсо, ошол утат
+        if (leftTeam.correctCount > rightTeam.correctCount) {
+            winnerName = leftTeam.name;
+            title.style.color = "#00f0ff";
+            winReason = `<b>${leftTeam.name}</b> командасы көбүрөөк туура жооп берип жеңишке жетти!`;
+        } else if (rightTeam.correctCount > leftTeam.correctCount) {
+            winnerName = rightTeam.name;
+            title.style.color = "#ff0055";
+            winReason = `<b>${rightTeam.name}</b> командасы көбүрөөк туура жооп берип жеңишке жетти!`;
+        } else {
+            // 2-шарт: Эгер упайлар тең болсо, ким эртерээк (тезирээк) бүтүрсө ошол утат!
+            if (parseFloat(leftDuration) < parseFloat(rightDuration)) {
+                winnerName = leftTeam.name;
+                title.style.color = "#00f0ff";
+                winReason = `Эки команда тең бирдей туура жооп беришти, бирок <b>${leftTeam.name}</b> командасы <b>${leftDuration} сек</b> ичинде тезирээк бүтүрүп, ылдамдык боюнча утту!`;
+            } else if (parseFloat(rightDuration) < parseFloat(leftDuration)) {
+                winnerName = rightTeam.name;
+                title.style.color = "#ff0055";
+                winReason = `Эки команда тең бирдей туура жооп беришти, бирок <b>${rightTeam.name}</b> командасы <b>${rightDuration} сек</b> ичинде тезирээк бүтүрүп, ылдамдык боюнча утту!`;
+            } else {
+                winnerName = "ТЕҢ ЧЫГУУ";
+                title.style.color = "#d4af37";
+                winReason = `Керемет! Эки команда тең бирдей упай топтоп, бирдей убакытта бүтүрүштү. Күчтөр толугу менен тең салмакталды!`;
+            }
+        }
+
+        title.innerText = (winnerName === "ТЕҢ ЧЫГУУ") ? "🤝 ТЕҢ ЧЫГУУ!" : `🏆 ${winnerName} ЖЕҢДИ!`;
+        desc.innerHTML = `
+            ${winReason} <br><br>
+            📊 <b>Жыйынтык статистика:</b><br>
+            • ${leftTeam.name}: <b>${leftTeam.correctCount} туура жооп</b> (${leftDuration} секунд)<br>
+            • ${rightTeam.name}: <b>${rightTeam.correctCount} туура жооп</b> (${rightDuration} секунд)
+        `;
+
+        modal.style.display = 'flex';
+    }
+}
+
+/**
+ * Каньвас Рендеринг (Жогорку 55% экранда гана таза иштейт)
  */
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const centerY = canvas.height * 0.65;
+    const centerY = canvas.height * 0.7; // Каармандарды бир аз ылдыйыраак тууралоо
     const centerX = canvas.width / 2 + ropeOffset;
 
-    // Жайлоо асманы
-    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.6);
+    // Асман фону
+    let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
     skyGradient.addColorStop(0, '#0f2027');
     skyGradient.addColorStop(1, '#203a43');
     ctx.fillStyle = skyGradient;
-    ctx.fillRect(0, 0, canvas.width, canvas.height * 0.6);
+    ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
 
     // Күн
     ctx.beginPath();
-    ctx.arc(canvas.width * 0.8, canvas.height * 0.2, 40, 0, Math.PI * 2);
+    ctx.arc(canvas.width * 0.85, canvas.height * 0.25, 35, 0, Math.PI * 2);
     ctx.fillStyle = '#ff00ff';
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 25;
     ctx.shadowColor = '#ff00ff';
     ctx.fill();
     ctx.shadowBlur = 0;
 
     // Жер катмары
     ctx.fillStyle = '#0a0a20';
-    ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
+    ctx.fillRect(0, canvas.height * 0.65, canvas.width, canvas.height * 0.35);
     
     ctx.beginPath();
-    ctx.moveTo(0, canvas.height * 0.6);
-    ctx.lineTo(canvas.width, canvas.height * 0.62);
+    ctx.moveTo(0, canvas.height * 0.65);
+    ctx.lineTo(canvas.width, canvas.height * 0.67);
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 3;
     ctx.stroke();
 
     // Аркан
     ctx.beginPath();
-    ctx.moveTo(50, centerY);
-    ctx.lineTo(canvas.width - 50, centerY);
-    ctx.lineWidth = 12;
+    ctx.moveTo(30, centerY);
+    ctx.lineTo(canvas.width - 30, centerY);
+    ctx.lineWidth = 10;
     ctx.strokeStyle = '#d4af37';
     ctx.stroke();
 
     // Кызыл маркер
     ctx.fillStyle = '#ff0055';
-    ctx.fillRect(centerX - 10, centerY - 25, 20, 50);
+    ctx.fillRect(centerX - 8, centerY - 20, 16, 40);
     
-    // Тең салмактуулук сызыгы
+    // Орто сызык
     ctx.fillStyle = 'rgba(0, 240, 255, 0.2)';
-    ctx.fillRect(canvas.width / 2 - 2, centerY - 40, 4, 80);
+    ctx.fillRect(canvas.width / 2 - 2, centerY - 35, 4, 70);
 
-    // Сол команданы тартуу
-    drawTeam(canvas.width * 0.25 + ropeOffset * 0.5, centerY, '#00f0ff', `[${leftTeamName}]`, false);
+    // Командаларды тартуу (Борбордук жылышуу менен)
+    drawTeam(canvas.width * 0.22 + ropeOffset * 0.4, centerY, '#00f0ff', `[${leftTeam.name}]`, false);
+    drawTeam(canvas.width * 0.78 + ropeOffset * 0.4, centerY, '#ff0055', `[${rightTeam.name}]`, true);
 
-    // Оң команданы тартуу
-    drawTeam(canvas.width * 0.75 + ropeOffset * 0.5, centerY, '#ff0055', `[${rightTeamName}]`, true);
-
-    // Физикалык жылышуу инерциясы
+    // Жылмакай физикалык инерция
     ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
 
     if (gameActive) {
@@ -150,131 +281,37 @@ function drawGame() {
 
 function drawTeam(startX, centerY, color, teamName, isRightSide) {
     ctx.fillStyle = color;
-    ctx.font = "bold 14px Segoe UI";
+    ctx.font = "bold 13px Segoe UI";
     ctx.textAlign = "center";
-    ctx.fillText(teamName, startX, centerY - 70);
+    ctx.fillText(teamName, startX, centerY - 55);
 
     for (let i = 0; i < 3; i++) {
-        let offsetX = isRightSide ? (i * 45) : -(i * 45);
+        let offsetX = isRightSide ? (i * 35) : -(i * 35);
         let x = startX + offsetX;
         let y = centerY;
 
         ctx.beginPath();
-        ctx.arc(x, y - 40, 12, 0, Math.PI * 2);
+        ctx.arc(x, y - 30, 9, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 5;
         ctx.strokeStyle = color;
         ctx.beginPath();
-        ctx.moveTo(x, y - 28);
-        ctx.lineTo(x, y + 10);
+        ctx.moveTo(x, y - 21);
+        ctx.lineTo(x, y + 8);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(x, y - 20);
+        ctx.moveTo(x, y - 15);
         ctx.lineTo(startX, y);
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3;
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(x, y + 10);
-        ctx.lineTo(x - 10, y + 40);
-        ctx.moveTo(x, y + 10);
-        ctx.lineTo(x + 10, y + 40);
+        ctx.moveTo(x, y + 8);
+        ctx.lineTo(x - 8, y + 30);
+        ctx.moveTo(x, y + 8);
+        ctx.lineTo(x + 8, y + 30);
         ctx.stroke();
     }
-}
-
-function loadQuestion() {
-    if (currentQuestionIndex >= gameQuestions.length) {
-        endGame();
-        return;
-    }
-
-    const currentQuiz = gameQuestions[currentQuestionIndex];
-    // Кезекте кайсы команда жооп берип жатканын визуалдык көрсөтүү
-    const isLeftTurn = currentQuestionIndex % 2 === 0;
-    const activeTeam = isLeftTurn ? leftTeamName : rightTeamName;
-    const activeColor = isLeftTurn ? '#00f0ff' : '#ff0055';
-
-    document.getElementById('questionText').innerHTML = `
-        <div style="font-size:0.9rem; color:${activeColor}; margin-bottom:8px; font-weight:bold;">
-            Жооп берүүчү кезек: ${activeTeam} Командасы (Суроо ${currentQuestionIndex + 1}/${gameQuestions.length})
-        </div>
-        ${currentQuiz.question}
-    `;
-    
-    const answersGrid = document.getElementById('answersGrid');
-    answersGrid.innerHTML = '';
-
-    currentQuiz.answers.forEach((answer, index) => {
-        const button = document.createElement('button');
-        button.className = 'answer-btn';
-        button.innerText = `${index + 1}) ${answer}`;
-        button.onclick = () => handleAnswer(index, currentQuiz.correct, isLeftTurn);
-        answersGrid.appendChild(button);
-    });
-}
-
-function handleAnswer(selectedIndex, correctIndex, isLeftTurn) {
-    if (!gameActive) return;
-
-    if (selectedIndex === correctIndex) {
-        if (isLeftTurn) {
-            leftScore += 100;
-            document.getElementById('leftScoreDisplay').innerText = leftScore;
-            targetRopeOffset -= 70; // Сол тарап өзүнө тартты
-        } else {
-            rightScore += 100;
-            document.getElementById('rightScoreDisplay').innerText = rightScore;
-            targetRopeOffset += 70; // Оң тарап өзүнө тартты
-        }
-    } else {
-        // Ким ката кетирсе, карама каршы команда арканды өзүнө тартып алат
-        if (isLeftTurn) {
-            rightScore += 50; 
-            document.getElementById('rightScoreDisplay').innerText = rightScore;
-            targetRopeOffset += 50;
-        } else {
-            leftScore += 50;
-            document.getElementById('leftScoreDisplay').innerText = leftScore;
-            targetRopeOffset -= 50;
-        }
-    }
-
-    currentQuestionIndex++;
-    
-    const container = document.getElementById('quizContainer');
-    container.style.transform = 'scale(0.97)';
-    setTimeout(() => {
-        container.style.transform = 'scale(1)';
-        loadQuestion();
-    }, 250);
-}
-
-/**
- * Оюн аягында упайларды салыштырып жеңүүчүнү аныктоо
- */
-function endGame() {
-    gameActive = false;
-    document.getElementById('quizContainer').style.display = 'none';
-    const modal = document.getElementById('resultModal');
-    const title = document.getElementById('resultTitle');
-    const desc = document.getElementById('resultDesc');
-
-    if (leftScore > rightScore) {
-        title.innerText = `🎉 ЖЕҢИШ: ${leftTeamName}!`;
-        title.style.color = "#00f0ff";
-        desc.innerHTML = `Бул мелдеште <b>${leftTeamName}</b> командасы мыкты билим көрсөтүп, көбүрөөк туура жооп берди!<br><br>🏆 Жыйынтык эсеп:<br>${leftTeamName}: <b>${leftScore} упай</b><br>${rightTeamName}: <b>${rightScore} упай</b>`;
-    } else if (rightScore > leftScore) {
-        title.innerText = `🎉 ЖЕҢИШ: ${rightTeamName}!`;
-        title.style.color = "#ff0055";
-        desc.innerHTML = `Бул мелдеште <b>${rightTeamName}</b> командасы мыкты билим көрсөтүп, көбүрөөк туура жооп берди!<br><br>🏆 Жыйынтык эсеп:<br>${rightTeamName}: <b>${rightScore} упай</b><br>${leftTeamName}: <b>${leftScore} упай</b>`;
-    } else {
-        title.innerText = "ДОСТУК ЖЕҢДИ! 🤝";
-        title.style.color = "#d4af37";
-        desc.innerHTML = `Эки команда тең бирдей деңгээлде упай топтошту! Күчтөрдүн тең салмактуулугу сакталды.<br><br>Жыйынтык эсеп: <b>${leftScore} - ${rightScore}</b>`;
-    }
-
-    modal.style.display = 'flex';
 }
