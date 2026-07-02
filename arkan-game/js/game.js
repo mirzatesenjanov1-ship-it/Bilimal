@@ -1,11 +1,11 @@
 /**
  * /arkan-game/js/game.js
- * Оюн башталганда "komuzakbakai.mp3" аудиосун фондо иштетүү функциясы кошулду.
+ * Скриншоттогу (image_879279.png) текст кулоо катасы толук оңдолду.
  */
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const bgMusic = document.getElementById('bgMusic'); // Аудио элементти алуу
+const bgMusic = document.getElementById('bgMusic');
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -14,10 +14,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-const testTopics = [
-    { q: "Ньютондун 3-закону кандай айтылат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе тынч абалын сактай албайт"] }
-];
-
+// Баштапкы суроо шаблону
 let defaultQuestionsText = [];
 for (let i = 0; i < 25; i++) {
     defaultQuestionsText.push(`Суроо №${i+1}: Ньютондун 3-закону кандай айтылат? | Аракет күчү каршы аракет күчүнө модулу боюнча барабар | Күч ылдамдыкка түз пропорциялуу | Инерция дайыма сакталат | Нерсе тынч абалын сактай албайт | 0`);
@@ -34,7 +31,6 @@ let startTime = 0;
 let ropeOffset = 0;
 let targetRopeOffset = 0;
 
-// Сакталган тесттерди башкаруу
 function loadSavedTestsList() {
     const listContainer = document.getElementById('savedTestsList');
     listContainer.innerHTML = '';
@@ -71,7 +67,7 @@ function loadSavedTestsList() {
 document.getElementById('saveTestBtn').addEventListener('click', () => {
     const testName = document.getElementById('testNameInput').value.trim();
     const testContent = document.getElementById('questionsTextArea').value.trim();
-    if (!testName || !testContent) return alert("Атын жана мазмунун толтуруңуз!");
+    if (!testName || !testContent) return alert("Атын жазыңыз!");
     let savedTests = JSON.parse(localStorage.getItem('bilimal_arkan_tests')) || {};
     savedTests[testName] = testContent;
     localStorage.setItem('bilimal_arkan_tests', JSON.stringify(savedTests));
@@ -81,7 +77,7 @@ document.getElementById('saveTestBtn').addEventListener('click', () => {
 
 loadSavedTestsList();
 
-// ОЮНДУ БАШТОО (Музыка ушул жерде кошулат)
+// ОЮНДУ БАШТОО
 document.getElementById('startGameBtn').addEventListener('click', () => {
     const rawLeft = document.getElementById('leftTeamInput').value.trim();
     const rawRight = document.getElementById('rightTeamInput').value.trim();
@@ -106,48 +102,30 @@ document.getElementById('startGameBtn').addEventListener('click', () => {
 
     if (parsedQuestions.length === 0) return alert("Тесттин форматы ката!");
 
-    // МУЗЫКАНЫ ОЙНОТУУ 🎵
     if (bgMusic) {
-        bgMusic.currentTime = 0; // Музыканы башынан баштоо
-        bgMusic.volume = 0.4; // Үнүнүн катуулугун 40% кылып коюу (мугалимге/балдарга тоскоол болбош үчүн)
-        bgMusic.play().catch(error => {
-            console.log("Аудио ойнотууга браузер бөгөт койду (колдонуучу басышы керек): ", error);
-        });
+        bgMusic.currentTime = 0;
+        bgMusic.volume = 0.4;
+        bgMusic.play().catch(e => console.log(e));
     }
+
+    // Тексттерди жаңыртуу
+    document.getElementById('leftSideName').innerText = leftTeam.name;
+    document.getElementById('rightSideName').innerText = rightTeam.name;
+    document.getElementById('leftTeamLabel').innerText = leftTeam.name;
+    document.getElementById('rightTeamLabel').innerText = rightTeam.name;
 
     document.getElementById('setup-layer').style.display = 'none';
     document.getElementById('ui-layer').style.display = 'flex';
     
-    // UI элементтерин даярдоо
-    document.getElementById('ui-layer').innerHTML = `
-        <div class="top-bar interactive">
-            <button class="btn-exit" onclick="window.location.href='../sections/test-games.html'">← Чыгуу</button>
-            <div class="score-box">
-                <div><span style="color: #00f0ff;">${leftTeam.name}</span>: <span id="leftScoreDisplay" style="font-weight:bold; color: #00f0ff;">0</span></div>
-                <div style="color: #444;">|</div>
-                <div><span style="color: #ff0055;">${rightTeam.name}</span>: <span id="rightScoreDisplay" style="font-weight:bold; color: #ff0055;">0</span></div>
-            </div>
-        </div>
-        <div class="duel-container interactive">
-            <div class="quiz-side left-side">
-                <div class="side-header"><span style="color: #00f0ff;">${leftTeam.name}</span><span id="leftProgress">Суроо: 1/25</span></div>
-                <div class="question-text" id="leftQuestionText"></div><div class="answers-grid" id="leftAnswersGrid"></div>
-                <div class="waiting-overlay" id="leftWaitingOverlay">Даяр! Күтүңүз...</div>
-            </div>
-            <div class="quiz-side right-side">
-                <div class="side-header"><span style="color: #ff0055;">${rightTeam.name}</span><span id="rightProgress">Суроо: 1/25</span></div>
-                <div class="question-text" id="rightQuestionText"></div><div class="answers-grid" id="rightAnswersGrid"></div>
-                <div class="waiting-overlay" id="rightWaitingOverlay">Даяр! Күтүңүз...</div>
-            </div>
-        </div>
-    `;
-
     gameActive = true;
     startTime = performance.now();
     
     leftTeam.index = 0; leftTeam.score = 0; leftTeam.correctCount = 0; leftTeam.finished = false;
     rightTeam.index = 0; rightTeam.score = 0; rightTeam.correctCount = 0; rightTeam.finished = false;
     ropeOffset = 0; targetRopeOffset = 0;
+
+    document.getElementById('leftWaitingOverlay').style.display = 'none';
+    document.getElementById('rightWaitingOverlay').style.display = 'none';
 
     renderSide('left');
     renderSide('right');
@@ -159,21 +137,23 @@ function renderSide(side) {
     const progressEl = document.getElementById(`${side}Progress`);
     const questionEl = document.getElementById(`${side}QuestionText`);
     const gridEl = document.getElementById(`${side}AnswersGrid`);
+    const overlayEl = document.getElementById(`${side}WaitingOverlay`);
 
     if (team.index >= parsedQuestions.length) {
         team.finished = true;
         if (team.endTime === 0) team.endTime = performance.now();
-        document.getElementById(`${side}WaitingOverlay`).style.display = 'flex';
+        if(overlayEl) overlayEl.style.display = 'flex';
         checkGameCompletion();
         return;
     }
 
     if(progressEl) progressEl.innerText = `Суроо: ${team.index + 1}/${parsedQuestions.length}`;
-    if(questionEl) questionEl.innerText = parsedQuestions[team.index].question;
+    
+    const currentQuiz = parsedQuestions[team.index];
+    if(questionEl) questionEl.innerText = currentQuiz.question;
 
     if(gridEl) {
         gridEl.innerHTML = '';
-        const currentQuiz = parsedQuestions[team.index];
         const shuffledAnswers = [...currentQuiz.originalAnswers].sort(() => Math.random() - 0.5);
 
         shuffledAnswers.forEach((ans) => {
@@ -189,14 +169,18 @@ function renderSide(side) {
 function handleSelection(side, selectedAnswer, correctText) {
     if (!gameActive) return;
     const team = (side === 'left') ? leftTeam : rightTeam;
+    
     if (selectedAnswer === correctText) {
-        team.score += 100; team.correctCount++;
+        team.score += 100;
+        team.correctCount++;
         targetRopeOffset += (side === 'left') ? -50 : 50;
     } else {
         targetRopeOffset += (side === 'left') ? 30 : -30;
     }
+    
     const scoreDisplay = document.getElementById(`${side}ScoreDisplay`);
     if(scoreDisplay) scoreDisplay.innerText = team.score;
+    
     team.index++;
     renderSide(side);
 }
@@ -204,11 +188,7 @@ function handleSelection(side, selectedAnswer, correctText) {
 function checkGameCompletion() {
     if (leftTeam.finished && rightTeam.finished && gameActive) {
         gameActive = false;
-        
-        // ОЮН БҮТКӨНДӨ МУЗЫКАНЫ ТОКТОТУУ 🎵
-        if (bgMusic) {
-            bgMusic.pause();
-        }
+        if (bgMusic) bgMusic.pause();
 
         const modal = document.getElementById('resultModal');
         const title = document.getElementById('resultTitle');
