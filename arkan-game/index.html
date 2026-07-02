@@ -41,7 +41,7 @@
         .score-box { background: rgba(15, 15, 40, 0.85); padding: 10px 25px; border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.2); font-size: 1.2rem; display: flex; gap: 20px; }
         
         /* Төмөнкү Тест Контейнери */
-        .duel-container { display: flex; width: 100%; height: 45%; position: absolute; bottom: 0; left: 0; background: #070716; border-top: 3px solid #7000ff; z-index: 20; padding-bottom: 60px; /* Жарнама үчүн боштук */ }
+        .duel-container { display: flex; width: 100%; height: 45%; position: absolute; bottom: 0; left: 0; background: #070716; border-top: 3px solid #7000ff; z-index: 20; padding-bottom: 60px; }
         
         .quiz-side { width: 50%; height: 100%; padding: 20px; display: flex; flex-direction: column; justify-content: flex-start; position: relative; }
         .left-side { border-right: 1px solid rgba(0, 240, 255, 0.15); }
@@ -64,35 +64,16 @@
         .modal-title { font-size: 2.2rem; font-weight: bold; margin-bottom: 15px; }
         .modal-btn { background: #00f0ff; color: #000; border: none; padding: 12px 30px; font-size: 1.1rem; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 25px; }
 
-        /* ==========================================================
-           ЖАРНАМА БАННЕРЛЕРИ ҮЧҮН АТАЙЫН ЖАКШЫРТЫЛГАН СТИЛДЕР (Дизайн бузулбайт)
-        ========================================================== */
+        /* ЖАРНАМА СТИЛДЕРИ */
         .yandex-top-ad {
-            width: 100%;
-            max-width: 728px;
-            height: 90px;
-            margin-bottom: 15px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 4px;
+            width: 100%; max-width: 728px; height: 90px; margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex; justify-content: center; align-items: center; border-radius: 4px;
         }
-
         .yandex-bottom-sticky-ad {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 50px;
-            background: #04040c;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 40; /* Тест блогунун үстүндө, бирок баскычтарды жаппайт */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            pointer-events: auto;
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 50px;
+            background: #04040c; border-top: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 40; display: flex; justify-content: center; align-items: center; pointer-events: auto;
         }
     </style>
 </head>
@@ -101,7 +82,6 @@
     <audio id="bgMusic" src="./komuzakbakai.mp3" loop></audio>
 
     <div id="setup-layer">
-        
         <div class="yandex-top-ad" id="yandex_rtb_R-A-19536065-1">
             <span style="color: #444; font-size: 0.8rem;">Жарнама (Яндекс)</span>
         </div>
@@ -190,10 +170,285 @@
         </div>
     </div>
 
-    <script type="module" src="./js/game.js"></script>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const bgMusic = document.getElementById('bgMusic');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight * 0.55;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const testTopics = [
+            { q: "Ньютондун 3-закону кандай туюнтулат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар, багыты боюнча карама-каршы", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе баштапкы абалын өзгөртпөйт"] },
+            { q: "Күчтүн бирдиги эмне?", a: "Ньютон", w: ["Джоуль", "Ватт", "Паскаль"] },
+            { q: "Жердин тартылуу күчү кандай тамга менен белгиленет?", a: "F_оор", w: ["N", "P", "F_сүрт"] }
+        ];
+
+        let leftTeam = { name: "Көк Танк", score: 0, index: 0, correctCount: 0, finished: false };
+        let rightTeam = { name: "Кара Тулпар", score: 0, index: 0, correctCount: 0, finished: false };
+        let parsedQuestions = [];
+        let gameActive = false;
+        let startTime = 0;
+        let ropeOffset = 0;
+        let targetRopeOffset = 0;
+
+        const defaultQuestionsText = testTopics.map(t => `${t.q}\n*${t.a}\n${t.w.join('\n')}`).join('\n\n');
+        document.getElementById('questionsTextArea').value = defaultQuestionsText;
+
+        function loadSavedTests() {
+            const container = document.getElementById('savedTestsList');
+            container.innerHTML = '';
+            const saved = JSON.parse(localStorage.getItem('arkan_saved_tests') || '{}');
+            Object.keys(saved).forEach(name => {
+                const div = document.createElement('div');
+                div.className = 'test-item';
+                div.innerHTML = `<span>${name}</span><div><button class="btn-select" onclick="selectTest('${name}')">Тандоо</button><button class="btn-delete" onclick="deleteTest('${name}')">❌</button></div>`;
+                container.appendChild(div);
+            });
+        }
+
+        window.selectTest = function(name) {
+            const saved = JSON.parse(localStorage.getItem('arkan_saved_tests') || '{}');
+            if (saved[name]) {
+                document.getElementById('questionsTextArea').value = saved[name];
+                document.getElementById('testNameInput').value = name;
+            }
+        };
+
+        window.deleteTest = function(name) {
+            const saved = JSON.parse(localStorage.getItem('arkan_saved_tests') || '{}');
+            delete saved[name];
+            localStorage.setItem('arkan_saved_tests', JSON.stringify(saved));
+            loadSavedTests();
+        };
+
+        document.getElementById('saveTestBtn').addEventListener('click', () => {
+            const name = document.getElementById('testNameInput').value.trim();
+            const text = document.getElementById('questionsTextArea').value.trim();
+            if (!name || !text) return alert('Тесттин атын жана мазмунун жазыңыз!');
+            const saved = JSON.parse(localStorage.getItem('arkan_saved_tests') || '{}');
+            saved[name] = text;
+            localStorage.setItem('arkan_saved_tests', JSON.stringify(saved));
+            loadSavedTests();
+            alert('Тест ийгиликтүү сакталды!');
+        });
+
+        loadSavedTests();
+
+        function parseQuestions(text) {
+            const blocks = text.split('\n\n');
+            const result = [];
+            blocks.forEach(b => {
+                const lines = b.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                if (lines.length >= 2) {
+                    const q = lines[0];
+                    let a = '';
+                    const w = [];
+                    lines.slice(1).forEach(l => {
+                        if (l.startsWith('*')) a = l.substring(1).trim();
+                        else w.push(l);
+                    });
+                    if (!a && w.length > 0) a = w.shift();
+                    result.push({ q, a, w });
+                }
+            });
+            return result;
+        }
+
+        document.getElementById('startGameBtn').addEventListener('click', () => {
+            const text = document.getElementById('questionsTextArea').value.trim();
+            parsedQuestions = parseQuestions(text);
+            if (parsedQuestions.length === 0) return alert('Тест форматы туура эмес!');
+
+            leftTeam.name = document.getElementById('leftTeamInput').value.trim() || "Көк Команда";
+            rightTeam.name = document.getElementById('rightTeamInput').value.trim() || "Кызыл Команда";
+
+            document.getElementById('leftSideName').innerText = leftTeam.name;
+            document.getElementById('rightSideName').innerText = rightTeam.name;
+            document.getElementById('leftTeamLabel').innerText = leftTeam.name;
+            document.getElementById('rightTeamLabel').innerText = rightTeam.name;
+
+            document.getElementById('setup-layer').style.display = 'none';
+            document.getElementById('ui-layer').style.display = 'block';
+
+            try { bgMusic.play(); } catch(e){}
+
+            gameActive = true;
+            startTime = performance.now();
+            leftTeam.index = 0; leftTeam.score = 0; leftTeam.correctCount = 0; leftTeam.finished = false;
+            rightTeam.index = 0; rightTeam.score = 0; rightTeam.correctCount = 0; rightTeam.finished = false;
+            ropeOffset = 0; targetRopeOffset = 0;
+
+            renderSide('left');
+            renderSide('right');
+            requestAnimationFrame(drawGame);
+        });
+
+        function renderSide(side) {
+            const team = (side === 'left') ? leftTeam : rightTeam;
+            const progressEl = document.getElementById(`${side}Progress`);
+            const questionEl = document.getElementById(`${side}QuestionText`);
+            const gridEl = document.getElementById(`${side}AnswersGrid`);
+
+            if (team.index >= parsedQuestions.length) {
+                team.finished = true;
+                document.getElementById(`${side}WaitingOverlay`).style.display = 'flex';
+                checkGameCompletion();
+                return;
+            }
+
+            progressEl.innerText = `Суроо: ${team.index + 1}/${parsedQuestions.length}`;
+            const currentQuiz = parsedQuestions[team.index];
+            questionEl.innerText = currentQuiz.q;
+            gridEl.innerHTML = '';
+
+            const shuffledAnswers = [currentQuiz.a, ...currentQuiz.w].sort(() => Math.random() - 0.5);
+            shuffledAnswers.forEach(ans => {
+                const button = document.createElement('button');
+                button.className = 'answer-btn';
+                button.innerText = ans;
+                button.onclick = () => handleSelection(side, ans, currentQuiz.a);
+                gridEl.appendChild(button);
+            });
+        }
+
+        function handleSelection(side, selectedAnswer, correctAnswer) {
+            if (!gameActive) return;
+            const team = (side === 'left') ? leftTeam : rightTeam;
+
+            if (selectedAnswer === correctAnswer) {
+                team.score += 100;
+                team.correctCount++;
+                targetRopeOffset += (side === 'left') ? -50 : 50;
+            } else {
+                targetRopeOffset += (side === 'left') ? 30 : -30;
+            }
+
+            document.getElementById(`${side}ScoreDisplay`).innerText = team.score;
+            team.index++;
+            renderSide(side);
+        }
+
+        function checkGameCompletion() {
+            if (leftTeam.finished && rightTeam.finished && gameActive) {
+                gameActive = false;
+                try { bgMusic.pause(); } catch(e){}
+
+                const modal = document.getElementById('resultModal');
+                const title = document.getElementById('resultTitle');
+                const desc = document.getElementById('resultDesc');
+
+                const totalDuration = ((performance.now() - startTime) / 1000).toFixed(2);
+                let winnerName = "";
+                let winReason = "";
+
+                if (leftTeam.correctCount > rightTeam.correctCount) {
+                    winnerName = leftTeam.name;
+                    title.style.color = "#00f0ff";
+                    winReason = `🏆 <b>${leftTeam.name}</b> көбүрөөк туура жооп берди!`;
+                } else if (rightTeam.correctCount > leftTeam.correctCount) {
+                    winnerName = rightTeam.name;
+                    title.style.color = "#ff0055";
+                    winReason = `🏆 <b>${rightTeam.name}</b> көбүрөөк туура жооп берди!`;
+                } else {
+                    winReason = `🤝 Упайлар тең чыкты!`;
+                    title.style.color = "#fff";
+                }
+
+                title.innerHTML = winnerName ? `🏆 ${winnerName} ЖЕҢДИ!` : "🤝 ТЕҢ ЧЫГУУ!";
+                desc.innerHTML = `
+                    ${winReason}<br><br>
+                    ⏱️ Жалпы убакыт: <b>${totalDuration} сек</b><br><br>
+                    📊 <b>Жыйынтык:</b><br>
+                    • ${leftTeam.name}: ${leftTeam.correctCount} туура жооп<br>
+                    • ${rightTeam.name}: ${rightTeam.correctCount} туура жооп
+                `;
+                modal.style.display = 'flex';
+            }
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerY = canvas.height * 0.7;
+            const centerX = canvas.width / 2 + ropeOffset;
+
+            // Асман градиенти
+            let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
+            skyGradient.addColorStop(0, '#0f2027');
+            skyGradient.addColorStop(1, '#203a43');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
+
+            // Аркан сызыгы
+            ctx.beginPath();
+            ctx.moveTo(30, centerY);
+            ctx.lineTo(canvas.width - 30, centerY);
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            // Борбордук кызыл лента
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+
+            // Командаларды тартуу (сол жана оң)
+            drawTeam(canvas.width * 0.22 + ropeOffset, centerY, '#00f0ff', leftTeam.name, false);
+            drawTeam(canvas.width * 0.78 + ropeOffset, centerY, '#ff0055', rightTeam.name, true);
+
+            // Анимацияны жылмакай кылуу
+            ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
+
+            if (gameActive) requestAnimationFrame(drawGame);
+        }
+
+        function drawTeam(startX, centerY, color, teamName, isRightSide) {
+            ctx.fillStyle = color;
+            ctx.font = "bold 13px Segoe UI";
+            ctx.textAlign = "center";
+            ctx.fillText(teamName, startX, centerY - 55);
+
+            for (let i = 0; i < 3; i++) {
+                let offsetX = isRightSide ? (i * 35) : -(i * 35);
+                let x = startX + offsetX;
+                let y = centerY;
+
+                // Башы
+                ctx.beginPath();
+                ctx.arc(x, y - 30, 9, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Денеси
+                ctx.lineWidth = 5;
+                ctx.strokeStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(x, y - 21);
+                ctx.lineTo(x, y + 8);
+                ctx.stroke();
+
+                // Колдору
+                ctx.beginPath();
+                ctx.moveTo(x, y - 10);
+                ctx.lineTo(startX, y);
+                ctx.stroke();
+
+                // Буттары
+                ctx.beginPath();
+                ctx.moveTo(x, y + 8);
+                ctx.lineTo(x - 8, y + 30);
+                ctx.moveTo(x, y + 8);
+                ctx.lineTo(x + 8, y + 30);
+                ctx.stroke();
+            }
+        }
+    </script>
 
     <script>
-        // Рекламалык блокторду жүктөө функциясы
         window.yaContextCb.push(()=>{
             Ya.Context.AdvManager.render({
                 renderTo: 'yandex_rtb_R-A-19536065-1',
