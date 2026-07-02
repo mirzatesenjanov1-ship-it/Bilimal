@@ -41,7 +41,7 @@
         .score-box { background: rgba(15, 15, 40, 0.85); padding: 10px 25px; border-radius: 8px; border: 1px solid rgba(0, 240, 255, 0.2); font-size: 1.2rem; display: flex; gap: 20px; }
         
         /* Төмөнкү Тест Контейнери */
-        .duel-container { display: flex; width: 100%; height: 45%; position: absolute; bottom: 0; left: 0; background: #070716; border-top: 3px solid #7000ff; z-index: 20; padding-bottom: 60px; }
+        .duel-container { display: flex; width: 100%; height: 45%; position: absolute; bottom: 0; left: 0; background: #070716; border-top: 3px solid #7000ff; z-index: 20; padding-bottom: 60px; overflow-y: auto; }
         
         .quiz-side { width: 50%; height: 100%; padding: 20px; display: flex; flex-direction: column; justify-content: flex-start; position: relative; }
         .left-side { border-right: 1px solid rgba(0, 240, 255, 0.15); }
@@ -49,8 +49,26 @@
         .side-header { font-size: 1.15rem; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
         .question-text { font-size: 1.1rem; font-weight: 600; line-height: 1.4; min-height: 50px; margin-bottom: 15px; width: 100%; color: #fff; }
         
-        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
-        .answer-btn { background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); color: #fff; padding: 12px 15px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; text-align: left; }
+        /* ЖАҢЫЛАНГАН ИЙКЕМДҮҮ БАБЫЛМА СТИЛИ */
+        .answers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; align-items: start; }
+        .answer-btn { 
+            background: rgba(255, 255, 255, 0.04); 
+            border: 1px solid rgba(255, 255, 255, 0.12); 
+            color: #fff; 
+            padding: 10px 14px; 
+            border-radius: 8px; 
+            font-size: 0.95rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            text-align: left;
+            line-height: 1.3;
+            word-wrap: break-word;
+            white-space: normal;
+            height: auto;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+        }
         
         .left-side .side-header { color: #00f0ff; }
         .left-side .answer-btn:hover { background: linear-gradient(90deg, #0055ff, #00f0ff); color: #000; }
@@ -183,7 +201,7 @@
         resizeCanvas();
 
         const testTopics = [
-            { q: "Ньютондун 3-закону кандай айтылат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар, багыты боюнча карама-каршы", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе тынч абалын сактай албайт"] },
+            { q: "Ньютондун 3-закону кандай айтылат?", a: "Аракет күчү каршы аракет күчүнө модулу боюнча барабар, багыты боюнча карама-акыркы", w: ["Күч ылдамдыкка түз пропорциялуу", "Инерция дайыма сакталат", "Нерсе тынч абалын сактай албайт"] },
             { q: "Күчтүн бирдиги эмне?", a: "Ньютон", w: ["Джоуль", "Ватт", "Паскаль"] },
             { q: "Жердин тартылуу күчү кандай тамга менен белгиленет?", a: "F_оор", w: ["N", "P", "F_сүрт"] }
         ];
@@ -195,8 +213,6 @@
         let startTime = 0;
         let ropeOffset = 0;
         let targetRopeOffset = 0;
-
-        // Анимация үчүн убакыт эсептегич (Синусоида кыймылы үчүн)
         let animationPulse = 0;
 
         const defaultQuestionsText = testTopics.map(t => `${t.q}\n*${t.a}\n${t.w.join('\n')}`).join('\n\n');
@@ -379,17 +395,14 @@
             const centerY = canvas.height * 0.7;
             const centerX = canvas.width / 2 + ropeOffset;
 
-            // Тартылуу анимациясы үчүн убакытты өзгөртүү
             animationPulse += 0.12;
 
-            // Асман градиенти
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.65);
             skyGradient.addColorStop(0, '#0f2027');
             skyGradient.addColorStop(1, '#203a43');
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
 
-            // Аркан сызыгы
             ctx.beginPath();
             ctx.moveTo(30, centerY);
             ctx.lineTo(canvas.width - 30, centerY);
@@ -397,18 +410,14 @@
             ctx.lineWidth = 7;
             ctx.stroke();
 
-            // Борбордук лента (Маркер)
             ctx.beginPath();
             ctx.rect(centerX - 4, centerY - 15, 8, 30);
             ctx.fillStyle = '#ff0000';
             ctx.fill();
 
-            // ЧОҢОЙТУЛГАН ЖАНА АНИМАЦИЯЛАНГАН КОМАНДАЛАР
-            // Math.sin() аркылуу адамдар реалдуу түрдө алдыга-артка ийилип күч келтиргендей көрүнөт
             drawTeam(canvas.width * 0.25 + ropeOffset, centerY, '#00f0ff', leftTeam.name, false, animationPulse);
             drawTeam(canvas.width * 0.75 + ropeOffset, centerY, '#ff0055', rightTeam.name, true, animationPulse);
 
-            // Жылмакай жылыш
             ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
 
             if (gameActive) requestAnimationFrame(drawGame);
@@ -420,45 +429,37 @@
             ctx.textAlign = "center";
             ctx.fillText(teamName, startX + (isRightSide ? 50 : -50), centerY - 80);
 
-            // Ар бир командада 3 киши бар
             for (let i = 0; i < 3; i++) {
-                // Адамдардын аралыгын кичине чоңойттук (45px)
                 let distanceBetweenPlayers = isRightSide ? (i * 45) : -(i * 45);
-                
-                // ТАРТЫШУУ АНИМАЦИЯСЫ: Ар бир адам өз алдынча кичине синусоидалык термелүү жасайт
                 let leanX = Math.sin(pulse + i) * 6; 
                 
                 let x = startX + distanceBetweenPlayers + leanX;
                 let y = centerY;
 
-                // 1. БАШЫ (Радиусу 9дан 13кө чоңойтулду)
                 ctx.beginPath();
                 ctx.arc(x, y - 45, 13, 0, Math.PI * 2);
                 ctx.fill();
 
-                // 2. ДЕНЕСИ (Жоондугу 5тен 8ге чоңойтулду)
                 ctx.lineWidth = 8;
                 ctx.strokeStyle = color;
                 ctx.lineCap = "round";
                 ctx.beginPath();
                 ctx.moveTo(x, y - 32);
-                ctx.lineTo(x - (isRightSide ? -5 : 5), y + 10); // Күч менен артка кыйшайган абалы
+                ctx.lineTo(x - (isRightSide ? -5 : 5), y + 10); 
                 ctx.stroke();
 
-                // 3. КОЛДОРУ (Арканды кармаган сызыктары)
                 ctx.lineWidth = 6;
                 ctx.beginPath();
                 ctx.moveTo(x, y - 18);
                 ctx.lineTo(x + (isRightSide ? -25 : 25), y);
                 ctx.stroke();
 
-                // 4. БУТТАРЫ (Жерди бекем басып турган абалы)
                 ctx.lineWidth = 7;
                 ctx.beginPath();
                 ctx.moveTo(x - (isRightSide ? -5 : 5), y + 10);
-                ctx.lineTo(x - 15, y + 40); // Сол бут
+                ctx.lineTo(x - 15, y + 40); 
                 ctx.moveTo(x - (isRightSide ? -5 : 5), y + 10);
-                ctx.lineTo(x + 15, y + 40); // Оң бут
+                ctx.lineTo(x + 15, y + 40); 
                 ctx.stroke();
             }
         }
