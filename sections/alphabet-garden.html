@@ -34,7 +34,7 @@
         .tab-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
         .tab-btn.active { background: #ff0055; color: #fff; box-shadow: 0 0 15px rgba(255, 0, 85, 0.4); }
 
-        /* ТАМГАЛАРДЫН СЕТКАСЫ (Чоң жана балага ыңгайлуу) */
+        /* ТАМГАЛАРДЫН СЕТКАСЫ */
         .garden-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(75px, 1fr)); gap: 15px; max-width: 900px; margin: 0 auto; background: rgba(20, 15, 45, 0.6); padding: 25px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .letter-card { background: linear-gradient(135deg, #1f1a4a, #130f35); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; font-size: 2rem; font-weight: bold; color: #fff; padding: 15px 0; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; user-select: none; }
         .letter-card:hover { background: #ff0055; transform: scale(1.15) translateY(-5px); box-shadow: 0 0 20px rgba(255, 0, 85, 0.5); border-color: #ff0055; }
@@ -145,19 +145,26 @@
             letterView.innerText = letter;
             wordView.innerText = word + " ⭐";
 
-            // CSS анимацияны кайра жандыруу
             letterView.style.animation = 'none';
             letterView.offsetHeight; 
             letterView.style.animation = 'pop 0.4s ease';
 
-            // Электрондук үн коштоо (Текстти кепке айлантуу)
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 let plainWord = word.split(' ')[0];
                 let speechText = `${letter}, ${plainWord}`;
                 let utterance = new SpeechSynthesisUtterance(speechText);
                 
-                if (lang === 'ky') utterance.lang = 'ky-KG';
+                if (lang === 'ky') {
+                    let voices = window.speechSynthesis.getVoices();
+                    let kyVoice = voices.find(v => v.lang.includes('ky'));
+                    if (kyVoice) {
+                        utterance.voice = kyVoice;
+                        utterance.lang = 'ky-KG';
+                    } else {
+                        utterance.lang = 'ru-RU'; 
+                    }
+                }
                 else if (lang === 'ru') utterance.lang = 'ru-RU';
                 else if (lang === 'en') utterance.lang = 'en-US';
                 
@@ -165,7 +172,6 @@
             }
         }
 
-        // Баракча ачылганда автоматтык түрдө кыргыз тилин жүктөө
         window.onload = () => { loadAlphabet('ky'); };
     </script>
 
