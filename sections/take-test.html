@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl.org - Тест Тапшыруу</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- 💰 GOOGLE ADSENSE ИНТЕГРАЦИЯСЫ -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5636365922849544" crossorigin="anonymous"></script>
+    
+    <!-- 💰 YANDEX ADVERTISING NETWORK (YAN) ИНТЕГРАЦИЯСЫ -->
+    <script>window.yaContextCb=window.yaContextCb||[]</script>
+    <script src="https://yandex.ru/ads/system/context.js" async></script>
+
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -22,9 +30,11 @@
             padding: 20px;
             margin: 0;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            user-select: none; /* Текстти белгилеп көчүрүүгө бөгөт коюу */
         }
         .container {
             background-color: var(--card-bg);
@@ -34,6 +44,7 @@
             width: 100%;
             max-width: 600px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            z-index: 10;
         }
         h2 { color: var(--primary); text-align: center; margin-top: 0; }
         .form-group { margin-bottom: 20px; }
@@ -55,9 +66,41 @@
         .option-label input { margin-right: 10px; }
         .timer-bar { background: #ff5252; color: #fff; padding: 10px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 20px; display: none; }
         .cheat-warning { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 10px; border-radius: 6px; font-size: 13px; text-align: center; margin-bottom: 15px; font-weight: bold; display: none; }
+        
+        /* 🌐 ЖАРНАМА БЛОКТОРУНУН СТИЛИ */
+        .ad-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px 0;
+            text-align: center;
+            background: var(--card-bg);
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .ad-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;"> <!-- Чычкандын оң баскычын бөгөттөө -->
+
+<!-- 💰 ТӨБӨСҮНДӨГҮ ЖАРНАМАЛЫК БЛОК (GOOGLE ADSENSE) -->
+<div class="ad-container">
+    <div class="ad-title">Жарнама</div>
+    <ins class="adsbygoogle"
+         style="display:block"
+         data-ad-client="ca-pub-5636365922849544"
+         data-ad-slot="2233445566"
+         data-ad-format="horizontal"
+         data-full-width-responsive="true"></ins>
+    <script> (adsbygoogle = window.adsbygoogle || []).push({}); </script>
+</div>
 
 <div class="container">
     <!-- КАТТОО ЭКРАНЫ -->
@@ -90,6 +133,21 @@
     </div>
 </div>
 
+<!-- 💰 ТӨМӨНКҮ ЖАРНАМАЛЫК БЛОК (YANDEX RTB) -->
+<div class="ad-container">
+    <div class="ad-title">Жарнама сунуштары</div>
+    <div id="yandex_rtb_R-A-quiz-bottom"></div>
+    <script>
+        window.yaContextCb.push(()=>{
+            Ya.Context.AdvManager.render({
+                blockId: "R-A-1234567-5", // Бул жерге Яндекс өнөктөш тармагынан берилген ID коюлат
+                renderTo: "yandex_rtb_R-A-quiz-bottom",
+                type: "feed"
+            })
+        })
+    </script>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, get, set, push, update } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
@@ -114,7 +172,15 @@
     let resultId = null; 
     let antiCheatActive = false;
     let countdownInterval = null;
-    let leaveCount = 0; // 🔢 Окуучунун терезеден чыгуу санын эсептегич
+    let leaveCount = 0;
+
+    // Анти-көчүрүү функциясы (Ctrl+C, Ctrl+V, Ctrl+U жана F12 баскычтарын бөгөттөө)
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && (e.key === 'c' || e.key === 'v' || e.key === 'u') || e.key === 'F12') {
+            e.preventDefault();
+            alert("Бул баракчада маалыматты көчүрүүгө же иштеп чыгуучу куралдарын ачууга тыюу салынган!");
+        }
+    });
 
     function generateClassOptions() {
         const select = document.getElementById("studentClass");
@@ -164,7 +230,7 @@
             student_class: sClass,
             test_code: testCode,
             test_title: testData.title,
-            status: "Процесс", // Реалдуу убакытта мугалим "Чечүүдө..." деп көрөт
+            status: "Процесс",
             timestamp: Date.now()
         });
 
@@ -198,7 +264,6 @@
         if (leaveCount <= 3) {
             warningBox.innerText = `⚠️ ЭСКЕРТҮҮ! Сиз терезеден чыктыңыз! Калган мүмкүнчүлүк: ${3 - leaveCount}/3`;
             
-            // Мугалимдин тактасына убактысы жана чыгуу номери менен заматта жазуу
             const logPushRef = push(ref(db, `teachers_data/${teacherUid}/results/${resultId}/logs`));
             set(logPushRef, {
                 type: "leave",
@@ -207,7 +272,6 @@
             });
         } 
         
-        // 🚨 Эгерде 3 жолудан ашып кетсе (4-жолу чыкканда) автоматтык түрдө куулат!
         if (leaveCount > 3) {
             window.removeEventListener("blur", logCheatAttempt);
             
@@ -218,7 +282,7 @@
                 time: timeStr
             });
             
-            finishTestAndSubmit(true); // Автоматтык түрдө бөгөттөп сактоо
+            finishTestAndSubmit(true);
         }
     }
 
@@ -233,7 +297,7 @@
             
             if (q.type === "simple") {
                 let optionsHtml = "";
-                q.options.forEach((opt, oIdx) => {
+                q.options.forEach((opt) => {
                     optionsHtml += `<label class="option-label"><input type="radio" name="q-${idx}" value="${opt.text}"> ${opt.text}</label>`;
                 });
                 div.innerHTML = `<div><strong>Суроо №${idx+1}:</strong> ${q.question}</div><div style="margin-top:12px;">${optionsHtml}</div>`;
@@ -307,14 +371,12 @@
         });
 
         const isSimpleOnly = testData.type === 'SIMPLE';
-        
-        // Акыркы статус чечилет
         let finalStatus = isSimpleOnly ? "Бааланды" : "Аяктады";
         if (wasKicked) finalStatus = "Бөгөттөлдү";
 
         await update(ref(db, `teachers_data/${teacherUid}/results/${resultId}`), {
             answers: savedAnswers,
-            score: wasKicked ? 0 : autoScore, // Эгер бөгөттөлсө 0 баллга айланат
+            score: wasKicked ? 0 : autoScore,
             max_score: totalMaxPoints,
             status: finalStatus
         });
@@ -322,7 +384,6 @@
         if(wasKicked) {
             document.body.innerHTML = `<div style="text-align:center; padding:50px;"><h2 style="color:#ef4444;">🚫 ТЕСТТЕН БӨГӨТТӨЛДҮҢҮЗ!</h2><p>Сиз 3 жолудан ашык башка терезеге (шпаргалкага) өттүңүз. Жыйынтыгыңыз жокко чыгарылды жана мугалимге билдирилди!</p></div>`;
         } else {
-            alert("Тест аяктады!");
             document.body.innerHTML = `<div style="text-align:center; padding:50px;"><h2 style="color:var(--success);">🎉 Тест аяктады!</h2><p>Жоопторуңуз мугалимге ийгиликтүү жөнөтүлдү.</p></div>`;
         }
     }
