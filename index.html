@@ -98,19 +98,30 @@
 
         /* Авторизация Модалы (Почта жана Пароль) */
         #login-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 8, 0.96); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .login-box { background: rgba(12, 12, 28, 0.9); border: 2px solid rgba(0, 240, 255, 0.3); padding: 40px; border-radius: 20px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 0 50px rgba(0, 240, 255, 0.25); }
-        .login-box h2 { color: #00f0ff; margin-bottom: 15px; font-size: 1.9rem; font-weight: 800; }
-        .login-box p { color: #94a3b8; margin-bottom: 25px; font-size: 0.9rem; }
+        .login-box { background: rgba(12, 12, 28, 0.9); border: 2px solid rgba(0, 240, 255, 0.3); padding: 40px; border-radius: 20px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 0 50px rgba(0, 240, 255, 0.25); }
+        .login-box h2 { color: #00f0ff; margin-bottom: 5px; font-size: 1.9rem; font-weight: 800; }
+        .login-box p { color: #94a3b8; margin-bottom: 20px; font-size: 0.9rem; }
         
         /* Input талаалары */
-        .input-group { position: relative; margin-bottom: 20px; }
+        .input-group { position: relative; margin-bottom: 15px; }
         .input-group input { width: 100%; padding: 14px 15px 14px 40px; background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; color: #fff; font-size: 1rem; outline: none; transition: 0.3s; }
         .input-group input:focus { border-color: #ff00ff; box-shadow: 0 0 10px rgba(255,0,255,0.3); }
         .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #a5b4fc; }
         
-        .login-box button { width: 100%; background: linear-gradient(90deg, #00f0ff, #7000ff); border: none; padding: 14px; border-radius: 8px; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        /* Чекбокс жана Купуялык шарттары */
+        .policy-agreement { display: flex; align-items: flex-start; gap: 10px; text-align: left; margin-bottom: 20px; cursor: pointer; }
+        .policy-agreement input { margin-top: 3px; cursor: pointer; width: 16px; height: 16px; accent-color: #00f0ff; }
+        .policy-agreement span { color: #94a3b8; font-size: 0.8rem; line-height: 1.4; user-select: none; }
+        .policy-agreement a { color: #00f0ff; text-decoration: none; }
+        .policy-agreement a:hover { text-decoration: underline; }
+
+        .login-box button { width: 100%; background: linear-gradient(90deg, #00f0ff, #7000ff); border: none; padding: 14px; border-radius: 8px; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; margin-top: 5px; }
         .login-box button:hover { box-shadow: 0 0 25px rgba(0, 240, 255, 0.6); transform: translateY(-2px); }
         
+        /* Демо жана Конок кирүү баскычынын стили */
+        .btn-demo-login { background: transparent !important; border: 1px dashed #00f0ff !important; color: #00f0ff !important; margin-top: 10px !important; }
+        .btn-demo-login:hover { background: rgba(0, 240, 255, 0.1) !important; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3) !important; }
+
         footer { text-align: center; padding: 40px; color: #4b5563; font-size: 0.9rem; position: relative; z-index: 2; border-top: 1px solid rgba(255,255,255,0.02); margin-bottom: 50px; /* Төмөнкү баннер үчүн боштук */ }
 
         /* ==========================================================
@@ -161,8 +172,15 @@
                 <span class="input-icon">🔑</span>
                 <input type="password" id="password-input" placeholder="Пароль" required>
             </div>
+
+            <label class="policy-agreement" for="policy-checkbox">
+                <input type="checkbox" id="policy-checkbox">
+                <span>Мен сайттын <a href="pages/privacy-policy.html" target="_blank">Купуялык саясаты</a> жана колдонуучулук шарттарына макулмун. Маалыматтарым корголот.</span>
+            </label>
             
             <button onclick="loginUser()">Сайтка Кирүү 🚀</button>
+            
+            <button onclick="loginAsGuest()" class="btn-demo-login">Демо-режим (Көрүүчү катары кирүү) 👁️</button>
         </div>
     </div>
 
@@ -575,10 +593,17 @@
         function loginUser() {
             const emailInput = document.getElementById('email-input').value;
             const passwordInput = document.getElementById('password-input').value;
+            const policyCheckbox = document.getElementById('policy-checkbox').checked;
             
+            if (!policyCheckbox) {
+                alert('Сураныч, Купуялык саясатынын шарттарына макулдугуңузду билдириңиз!');
+                return;
+            }
+
             if (emailInput.includes('@') && emailInput.includes('.') && passwordInput.length >= 6) {
                 localStorage.setItem('bilimal_user_email', emailInput);
                 localStorage.setItem('bilimal_user_pass', passwordInput);
+                localStorage.setItem('bilimal_user_role', 'user');
                 
                 document.getElementById('login-modal').style.display = 'none';
                 alert('Кош келиңиз! Ийгиликтүү кирдиңиз.');
@@ -589,6 +614,17 @@
             } else {
                 alert('Сураныч, туура электрондук почта жазыңыз.');
             }
+        }
+
+        /* 👁️ МОДЕРАТОРЛОР ҮЧҮН ДЕМО КИРҮҮ ФУНКЦИЯСЫ */
+        function loginAsGuest() {
+            localStorage.setItem('bilimal_user_email', 'guest@bilimal.org');
+            localStorage.setItem('bilimal_user_pass', 'guest12345');
+            localStorage.setItem('bilimal_user_role', 'guest'); // конок режими
+            
+            document.getElementById('login-modal').style.display = 'none';
+            alert('Конок режими ийгиликтүү иштетилди! Бардык мазмун ачык.');
+            checkStoryStatus();
         }
 
         function checkStoryStatus() {
