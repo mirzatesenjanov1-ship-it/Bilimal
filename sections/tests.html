@@ -53,7 +53,6 @@
         .btn-edit { background-color: #eab308; color: #000; }
         .btn-delete { background-color: var(--danger); color: white; padding: 10px; }
         .btn-copy { background-color: #3b82f6; color: white; }
-        .btn-grade { background-color: #f59e0b; color: #000; padding: 10px 18px; font-size: 14px; }
         .btn-excel { background-color: #107c41; color: white; font-size: 12px; padding: 6px 12px; }
 
         .test-item { background: #0f1422; border: 1px solid var(--border); padding: 18px; border-radius: 8px; margin-bottom: 15px; }
@@ -104,7 +103,7 @@
 <div class="header">
     <a href="#" class="logo">BilimAl.org</a>
     <div style="background: rgba(0,210,255,0.1); padding: 8px 15px; border-radius: 20px; font-size: 14px; border: 1px solid var(--primary);">
-        👤 Мугалим: <span id="teacherEmail">Жүктөлүүдө...</span>
+        👤 Мугалим: <span id="teacherEmail">Идентификацияланууда...</span>
     </div>
 </div>
 
@@ -159,7 +158,7 @@
 
         <div class="card">
             <div class="title">📁 Сиздин Түзүлгөн Тесттериңиз</div>
-            <div id="activeTestsList">Аныкталууда...</div>
+            <div id="activeTestsList">Колдонуучу текшерилүүдө...</div>
         </div>
     </div>
 
@@ -185,7 +184,7 @@
                 <div style="text-align: right;">Аракеттер</div>
             </div>
 
-            <div id="studentResultsContainer">Аныкталууда...</div>
+            <div id="studentResultsContainer">Колдонуучу текшерилүүдө...</div>
         </div>
     </div>
 </div>
@@ -215,22 +214,24 @@
     let editingTestId = null;
     let globalResultsCached = {};
 
-    // Күчөтүлгөн синхрондуу текшерүү (Мобилдик кэшти тазалоо жана маалыматты күтүү)
-    onAuthStateChanged(auth, async (user) => {
-        if (user) {
+    // ЭРЕЖЕЛЕРГЕ 100% ЫЛАЙЫКТАЛГАН КООПСУЗ АВТОРИЗАЦИЯ ТЕКШЕРҮҮСҮ
+    onAuthStateChanged(auth, (user) => {
+        if (user && user.uid) {
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
             
-            // Телефондо кэш болуп калбаш үчүн дароо чакырабыз
-            await loadActiveTests();
-            listenToStudentResults();
+            // Түзүлгөн эрежелер (auth.uid == $uid) коопсуз иштеши үчүн UID алынгандан КЕЙИН ГАНА базага кайрылабыз
+            loadActiveTests(user.uid);
+            listenToStudentResults(user.uid);
         } else {
-            // Эгер колдонуучу жок болсо, 1 секунд күтүп анан логинге айдайт (телефондо шашылыш жабылбаш үчүн)
+            // Эгер телефон кэшинен улам убактылуу таппай жатса, логинге багыттоо
+            document.getElementById("activeTestsList").innerText = "Авторизация жок. Багытталууда...";
+            document.getElementById("studentResultsContainer").innerText = "Авторизация жок. Багытталууда...";
             setTimeout(() => {
                 if (!auth.currentUser) {
                     window.location.href = "https://bilimal.org/login.html";
                 }
-            }, 1000);
+            }, 2000);
         }
     });
 
@@ -307,7 +308,7 @@
     }
 
     window.saveTest = async function() {
-        if (!teacherUid) { alert("Мугалим аныкталган жок, кайра кириңиз!"); return; }
+        if (!teacherUid) { alert("Ката: Авторизация толук бүтө элек же ишке ашкан жок!"); return; }
         const title = document.getElementById("testTitle").value.trim();
         if (!title) { alert("Тесттин темасын жазыңыз!"); return; }
 
@@ -356,11 +357,16 @@
             questions: finalQuestions
         };
 
-        await set(ref(db, `teachers_data/${teacherUid}/tests/${testId}`), payload);
-        await set(ref(db, `global_test_lookup/${testCode}`), { teacher_uid: teacherUid, test_id: testId });
-
-        alert("Тест сакталды! Коду: " + testCode);
-        resetForm(); loadActiveTests();
+        try {
+            await set(ref(db, `teachers_data/${teacherUid}/tests/${testId}`), payload);
+            // global_test_lookup ачык (true) болгондуктан катасыз жазат
+            await set(ref(db, `global_test_lookup/${testCode}`), { teacher_uid: teacherUid, test_id: testId });
+            alert("Тест сакталды! Коду: " + testCode);
+            resetForm(); loadActiveTests(teacherUid);
+        } catch (e) {
+            console.error(e);
+            alert("Ката кетти: Базага жазууга укук берилген жок!");
+        }
     }
 
     function resetForm() {
@@ -372,16 +378,14 @@
         document.getElementById("editorModeTitle").innerText = "✏️ Тестти Түзүү режими";
     }
 
-    async function loadActiveTests() {
+    async function loadActiveTests(verifiedUid) {
         const container = document.getElementById("activeTestsList");
         const filterSelect = document.getElementById("filterTestSelect");
-        if (!teacherUid) return;
-        
-        // Телефондо эски маалымат калбаш үчүн тазалап турат
         container.innerHTML = "Жүктөлүүдө..."; 
         
         try {
-            const snap = await get(ref(db, `teachers_data/${teacherUid}/tests`));
+            // Түз ушул жерден тастыкталган UID аркылуу кайрылабыз
+            const snap = await get(ref(db, `teachers_data/${verifiedUid}/tests`));
             if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
             
             container.innerHTML = "";
@@ -416,11 +420,13 @@
                 container.appendChild(div);
             });
         } catch (error) {
-            container.innerHTML = "Маалымат алууда ката кетти. Кайра баракты жаңылап көрүңүз.";
+            console.error("Ката:", error);
+            container.innerHTML = "<span style='color:var(--danger)'>Базадан маалымат алуу бөгөттөлдү. Кайра кириңиз.</span>";
         }
     }
 
     window.editTest = async function(id) {
+        if (!teacherUid) return;
         resetForm(); editingTestId = id;
         document.getElementById("editorModeTitle").innerText = "🛠️ Тестти Өзгөртүү режими";
         const snap = await get(ref(db, `teachers_data/${teacherUid}/tests/${id}`));
@@ -434,10 +440,11 @@
     }
 
     window.deleteTest = async function(id, code) {
-        if (confirm("Өчүрүлсүнбү?")) {
+        if (!teacherUid) return;
+        if (confirm("Бул тестти өчүрүүнү каалайсызбы?")) {
             await remove(ref(db, `teachers_data/${teacherUid}/tests/${id}`));
             await remove(ref(db, `global_test_lookup/${code}`));
-            loadActiveTests();
+            loadActiveTests(teacherUid);
         }
     }
 
@@ -464,11 +471,10 @@
         }
     }
 
-    function listenToStudentResults() {
-        if (!teacherUid) return;
-        const resultsRef = ref(db, `teachers_data/${teacherUid}/results`);
+    function listenToStudentResults(verifiedUid) {
+        const resultsRef = ref(db, `teachers_data/${verifiedUid}/results`);
         
-        // Телефондо реалдуу убакытта үзгүлтүксүз угуу үчүн өзгөртүлдү
+        // Реалдуу убакытта коопсуз угуу
         onValue(resultsRef, (snap) => {
             if (!snap.exists()) {
                 document.getElementById("studentResultsContainer").innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
@@ -477,6 +483,9 @@
             }
             globalResultsCached = snap.val();
             filterResultsByTest();
+        }, (error) => {
+            console.error("Жыйынтык катасы:", error);
+            document.getElementById("studentResultsContainer").innerHTML = "<span style='color:var(--danger)'>Жыйынтыктарды алууга эреже жол берген жок.</span>";
         });
     }
 
@@ -535,13 +544,14 @@
     }
 
     window.toggleResultCheck = async function(resId, currentStatus) {
-        if(currentStatus === "Процесс") return;
+        if(!teacherUid || currentStatus === "Процесс") return;
         const nextStatus = currentStatus === "Бааланды" ? "Аяктады" : "Бааланды";
         await update(ref(db, `teachers_data/${teacherUid}/results/${resId}`), { status: nextStatus });
     }
 
     window.deleteResult = async function(resId) {
-        if (confirm("Өчүрүлсүнбү?")) {
+        if (!teacherUid) return;
+        if (confirm("Бул жыйынтыкты өчүрүүнү каалайсызбы?")) {
             await remove(ref(db, `teachers_data/${teacherUid}/results/${resId}`));
         }
     }
