@@ -6,7 +6,6 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-9GSQV6QV0');
     </script>
 
@@ -76,18 +75,6 @@
 
         .q-editor-block { border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 15px; margin-top: 15px; background: rgba(255,255,255,0.01); border-radius: 6px; position: relative; }
         .remove-q-btn { position: absolute; top: 12px; right: 12px; background: var(--danger); color: white; border: none; border-radius: 4px; width: 22px; height: 22px; cursor: pointer; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: #151b29; border: 1px solid var(--border); width: 95%; max-width: 750px; max-height: 90vh; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
-        .modal-header { padding: 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
-        .modal-footer { padding: 15px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
-        .q-review-box { background: #0b0f19; border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
-        
-        .log-container { background: #1c2333; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 13px; }
-        .log-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 10px; }
-        .log-danger { color: var(--danger); }
-        .log-success { color: var(--success); }
 
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -109,9 +96,6 @@
             .result-row div:nth-child(2) { text-align: left; padding-right: 35px; }
             .result-row div:nth-child(5) { margin: 5px 0; }
             .result-row div:nth-child(6) { justify-content: flex-start; margin-top: 5px; }
-            
-            .modal-content { width: 98%; max-height: 95vh; }
-            .modal-body { padding: 15px; }
         }
     </style>
 </head>
@@ -175,7 +159,7 @@
 
         <div class="card">
             <div class="title">📁 Сиздин Түзүлгөн Тесттериңиз</div>
-            <div id="activeTestsList">Жүктөлүүдө...</div>
+            <div id="activeTestsList">Аныкталууда...</div>
         </div>
     </div>
 
@@ -201,29 +185,7 @@
                 <div style="text-align: right;">Аракеттер</div>
             </div>
 
-            <div id="studentResultsContainer">Жүктөлүүдө...</div>
-        </div>
-    </div>
-</div>
-
-<div class="modal" id="gradingModal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 style="margin:0;" id="modalTitle">Баалоо жана Мониторинг</h3>
-            <button onclick="closeGradeModal()" style="background:transparent; border:none; color:#fff; font-size:22px; cursor:pointer;">&times;</button>
-        </div>
-        <div class="modal-body">
-            <div class="title" style="font-size: 15px; color: var(--danger); margin-bottom: 10px;"><i class="fa-solid fa-shield-halved"></i> Реалдуу убакыттагы Anti-Cheat Монитор</div>
-            <div class="log-container" id="antiCheatRealtimeLog">
-                <div style="color:var(--text-muted);">Иш-аракеттер журналы жүктөлүүдө...</div>
-            </div>
-
-            <div class="title" style="font-size: 15px; margin-bottom: 10px;"><i class="fa-solid fa-file-signature"></i> Окуучунун жооптору</div>
-            <div id="modalAnswersArea"></div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeGradeModal()">Жабуу</button>
-            <button class="btn btn-success" onclick="submitFinalGrades()" style="margin:0; width:auto;">Жыйынтыкты бекитүү</button>
+            <div id="studentResultsContainer">Аныкталууда...</div>
         </div>
     </div>
 </div>
@@ -251,23 +213,24 @@
     let currentSelectedType = "simple";
     let questionsArray = [];
     let editingTestId = null;
-    let activeResultId = null;
-    let unsubscribeResults = null;
     let globalResultsCached = {};
 
-    // VIP чектөөлөрү толугу менен тазаланды. Почтасы бар каалаган мугалим толук кандуу колдоно алат.
-    onAuthStateChanged(auth, (user) => {
+    // Күчөтүлгөн синхрондуу текшерүү (Мобилдик кэшти тазалоо жана маалыматты күтүү)
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
             teacherUid = user.uid;
             document.getElementById("teacherEmail").innerText = user.email;
-            loadActiveTests();
+            
+            // Телефондо кэш болуп калбаш үчүн дароо чакырабыз
+            await loadActiveTests();
             listenToStudentResults();
         } else {
+            // Эгер колдонуучу жок болсо, 1 секунд күтүп анан логинге айдайт (телефондо шашылыш жабылбаш үчүн)
             setTimeout(() => {
                 if (!auth.currentUser) {
-                    window.location.href = "https://bilimal.org/auth/login.html";
+                    window.location.href = "https://bilimal.org/login.html";
                 }
-            }, 2500);
+            }, 1000);
         }
     });
 
@@ -344,7 +307,7 @@
     }
 
     window.saveTest = async function() {
-        if (!teacherUid) return;
+        if (!teacherUid) { alert("Мугалим аныкталган жок, кайра кириңиз!"); return; }
         const title = document.getElementById("testTitle").value.trim();
         if (!title) { alert("Тесттин темасын жазыңыз!"); return; }
 
@@ -413,40 +376,48 @@
         const container = document.getElementById("activeTestsList");
         const filterSelect = document.getElementById("filterTestSelect");
         if (!teacherUid) return;
-        const snap = await get(ref(db, `teachers_data/${teacherUid}/tests`));
-        if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
         
-        container.innerHTML = "";
-        filterSelect.innerHTML = `<option value="all">Бардык тесттердин жыйынтыктары</option>`;
-
-        snap.forEach((child) => {
-            const t = child.val();
-            const actualId = child.key;
+        // Телефондо эски маалымат калбаш үчүн тазалап турат
+        container.innerHTML = "Жүктөлүүдө..."; 
+        
+        try {
+            const snap = await get(ref(db, `teachers_data/${teacherUid}/tests`));
+            if (!snap.exists()) { container.innerHTML = "Тесттер азырынча жок."; return; }
             
-            const opt = document.createElement("option");
-            opt.value = t.code;
-            opt.innerText = t.title;
-            filterSelect.appendChild(opt);
+            container.innerHTML = "";
+            filterSelect.innerHTML = `<option value="all">Бардык тесттердин жыйынтыктары</option>`;
 
-            const div = document.createElement("div");
-            div.className = "test-item";
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                    <div>
-                        <strong style="color:#fff; font-size:15px;">${t.title}</strong>
-                        <div class="test-meta-tags">
-                            <span class="tag tag-code">Код: ${t.code}</span>
-                            <span class="tag tag-type">Түрү: ${t.type}</span>
+            snap.forEach((child) => {
+                const t = child.val();
+                const actualId = child.key;
+                
+                const opt = document.createElement("option");
+                opt.value = t.code;
+                opt.innerText = t.title;
+                filterSelect.appendChild(opt);
+
+                const div = document.createElement("div");
+                div.className = "test-item";
+                div.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                        <div>
+                            <strong style="color:#fff; font-size:15px;">${t.title}</strong>
+                            <div class="test-meta-tags">
+                                <span class="tag tag-code">Код: ${t.code}</span>
+                                <span class="tag tag-type">Түрү: ${t.type}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn btn-copy" onclick="copyLink('${t.code}')"><i class="fa-solid fa-link"></i> Код</button>
-                        <button class="btn btn-edit" onclick="editTest('${actualId}')"><i class="fa-solid fa-pen"></i> Өзгөртүү</button>
-                        <button class="btn btn-delete" onclick="deleteTest('${actualId}', '${t.code}')"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>`;
-            container.appendChild(div);
-        });
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="btn btn-copy" onclick="copyLink('${t.code}')"><i class="fa-solid fa-link"></i> Код</button>
+                            <button class="btn btn-edit" onclick="editTest('${actualId}')"><i class="fa-solid fa-pen"></i> Өзгөртүү</button>
+                            <button class="btn btn-delete" onclick="deleteTest('${actualId}', '${t.code}')"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+                container.appendChild(div);
+            });
+        } catch (error) {
+            container.innerHTML = "Маалымат алууда ката кетти. Кайра баракты жаңылап көрүңүз.";
+        }
     }
 
     window.editTest = async function(id) {
@@ -474,7 +445,7 @@
         const finalUrl = `https://bilimal.org/sections/take-test.html?code=${code}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(finalUrl).then(() => {
-                alert("Тесттин шилтемеси көчүрүлдү!\nАны окуучуларга жөнөтсөңүз болот.");
+                alert("Тесттин шилтемеси көчүрүлдү!");
             }).catch(err => {
                 prompt("Шилтемени кол менен көчүрүп алыңыз:", finalUrl);
             });
@@ -487,14 +458,17 @@
                 document.execCommand('copy');
                 alert("Тесттин шилтемеси көчүрүлдү!");
             } catch (err) {
-                prompt("Шилтемени көчүрңүз:", finalUrl);
+                prompt("Шилтемени көчүрүңүз:", finalUrl);
             }
             document.body.removeChild(textArea);
         }
     }
 
     function listenToStudentResults() {
+        if (!teacherUid) return;
         const resultsRef = ref(db, `teachers_data/${teacherUid}/results`);
+        
+        // Телефондо реалдуу убакытта үзгүлтүксүз угуу үчүн өзгөртүлдү
         onValue(resultsRef, (snap) => {
             if (!snap.exists()) {
                 document.getElementById("studentResultsContainer").innerHTML = "<div style='color:var(--text-muted); padding:10px;'>Тапшырган окуучулар жок.</div>";
@@ -526,7 +500,7 @@
             if (status === "Процесс") {
                 statusHtml = `<span style="color:#00d2ff; font-weight:bold;"><i class="fa-solid fa-spinner fa-spin"></i> Чечүүдө...</span>`;
             } else if (status === "Бөгөттөлдү") {
-                statusHtml = `<span style="color:#ef4444; font-weight:bold;"><i class="fa-solid fa-ban"></i> АНТИЧИТ АЙДОО!</span>`;
+                statusHtml = `<span style="color:#ef4444; font-weight:bold;"><i class="fa-solid fa-ban"></i> АНТИЧИТ!</span>`;
             } else if (status === "Аяктады") {
                 statusHtml = `<span style="color:#eab308; font-weight:bold;"><i class="fa-solid fa-hourglass"></i> Текшерүү</span>`;
             } else {
@@ -550,7 +524,6 @@
                 <div style="color:var(--primary); font-size:13px;">${res.test_code || '—'}</div>
                 <div>${statusHtml}</div>
                 <div style="text-align: right; display:flex; gap:6px; justify-content: flex-end; align-items:center; flex-wrap:wrap;">
-                    <button class="btn btn-grade" onclick="openGradeModal('${resId}')">Көрүү</button>
                     <button class="btn btn-delete" onclick="deleteResult('${resId}')"><i class="fa-solid fa-trash-can"></i></button>
                 </div>`;
             container.appendChild(div);
@@ -583,62 +556,6 @@
         link.setAttribute("href", encodeURI(csvContent));
         link.setAttribute("download", `BilimAl_Жыйынтыктар.csv`);
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    }
-
-    window.openGradeModal = function(resultId) {
-        activeResultId = resultId;
-        const modal = document.getElementById("gradingModal");
-        const logArea = document.getElementById("antiCheatRealtimeLog");
-        const answersArea = document.getElementById("modalAnswersArea");
-
-        if (unsubscribeResults) unsubscribeResults();
-        unsubscribeResults = onValue(ref(db, `teachers_data/${teacherUid}/results/${resultId}`), (snap) => {
-            if (!snap.exists()) return;
-            const data = snap.val();
-            document.getElementById("modalTitle").innerText = `Мониторинг: ${data.student_name} (${data.student_class})`;
-
-            logArea.innerHTML = "";
-            if (data.logs) {
-                Object.values(data.logs).reverse().forEach(log => {
-                    const typeClass = log.type === "leave" ? "log-danger" : (log.type === "kick" ? "log-danger" : "log-success");
-                    const icon = log.type === "leave" ? "⚠️" : (log.type === "kick" ? "🚫" : "✅");
-                    logArea.innerHTML += `<div class="log-item"><span class="${typeClass}" style="font-weight:bold;">${icon} ${log.message}</span><span style="color:var(--text-muted); font-size:11px;">${log.time}</span></div>`;
-                });
-            } else {
-                logArea.innerHTML = "<div style='color:var(--success);'>✅ Эч кандай эреже бузуу катталган жок. Окуучу терезеден чыга элек.</div>";
-            }
-
-            answersArea.innerHTML = "";
-            if (data.answers) {
-                data.answers.forEach((ans, idx) => {
-                    answersArea.innerHTML += `
-                        <div class="q-review-box">
-                            <div><strong>№${idx+1} Суроо:</strong> ${ans.question}</div>
-                            <div style="color:var(--primary); margin:8px 0;">👤 Жообу: "${ans.student_answer || 'Жооп жок'}"</div>
-                            <div><label>Балл (Макс: ${ans.max_points}):</label><input type="number" class="grade-score-input" data-max="${ans.max_points}" value="${ans.given_points || 0}" style="width:100px;"></div>
-                        </div>`;
-                });
-            } else {
-                answersArea.innerHTML = "<div style='color:var(--text-muted);'>Окуучу суроолорду аткарып жатат, бүткөндө жооптор ушул жерге түшөт.</div>";
-            }
-        });
-        modal.style.display = "flex";
-    }
-
-    window.closeGradeModal = function() { if (unsubscribeResults) unsubscribeResults(); document.getElementById("gradingModal").style.display = "none"; }
-
-    window.submitFinalGrades = async function() {
-        if (!activeResultId) return;
-        const inputs = document.querySelectorAll(".grade-score-input");
-        let total = 0, maxTotal = 0;
-        for (let input of inputs) {
-            const val = parseInt(input.value) || 0;
-            const max = parseInt(input.getAttribute("data-max"));
-            if (val > max) { alert("Балл ашпашы керек!"); return; }
-            total += val; maxTotal += max;
-        }
-        await update(ref(db, `teachers_data/${teacherUid}/results/${activeResultId}`), { score: total, max_score: maxTotal, status: "Бааланды" });
-        alert("Ийгиликтүү бааланды!"); closeGradeModal();
     }
 </script>
 </body>
