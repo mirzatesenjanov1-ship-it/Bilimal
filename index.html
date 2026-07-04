@@ -16,46 +16,95 @@
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             color: #ffffff;
         }
+        
         #space-canvas {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: -1;
+            z-index: 1; /* Жылдыздар жана кара тешик фондо туура көрүнүшү үчүн */
         }
-        /* Модалдык терезелер үчүн жалпы стиль */
+
+        /* Контенттер фондун үстүнө чыгышы керек */
+        #quest-banner-container {
+            position: relative;
+            z-index: 10; 
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Модалдык терезелер үчүн туруктуу стиль */
         .modal-overlay {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(5, 5, 15, 0.9);
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: rgba(5, 5, 15, 0.95);
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 999;
+            z-index: 9999; /* Баардык нерсенин үстүндө турушу керек */
+        }
+        
+        .modal-content {
+            background: #101025; 
+            padding: 40px; 
+            border-radius: 16px; 
+            border: 2px solid #00f0ff; 
+            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            max-width: 400px;
+            width: 90%;
+            z-index: 10000;
+        }
+
+        .modal-content input {
+            margin: 10px 0; 
+            padding: 12px; 
+            width: 100%; 
+            box-sizing: border-box;
+            background: #1a1a35;
+            border: 1px solid #333366;
+            color: #fff;
+            border-radius: 6px;
+        }
+
+        .modal-content button {
+            padding: 12px 24px; 
+            border: none; 
+            cursor: pointer; 
+            font-weight: bold;
+            border-radius: 6px;
+            margin: 5px;
+            transition: 0.3s;
         }
     </style>
 </head>
 <body>
 
-    <!-- Космос фону үчүн Canvas -->
     <canvas id="space-canvas"></canvas>
 
-    <!-- Контент үчүн контейнерлер -->
     <div id="quest-banner-container"></div>
+
     <div id="login-modal" class="modal-overlay" style="display: flex;">
-        <!-- Анимация бузулбашы үчүн үлгү катары кирүү формасынын структурасы -->
-        <div style="background: #101025; padding: 30px; border-radius: 12px; border: 1px solid #00f0ff; text-align: center;">
+        <div class="modal-content">
             <h2>BilimAl долбооруна кош келиңиз!</h2>
-            <input type="email" id="email-input" placeholder="Электрондук почта (Email)" style="margin: 10px; padding: 8px; width: 80%;"><br>
-            <input type="password" id="password-input" placeholder="Пароль (кеминде 6 белги)" style="margin: 10px; padding: 8px; width: 80%;"><br>
-            <label style="font-size: 12px;">
-                <input type="checkbox" id="policy-checkbox"> Купуялык саясатына макулмун
-            </label><br><br>
-            <button onclick="loginUser()" style="padding: 10px 20px; background: #00f0ff; border: none; cursor: pointer; color: #000; font-weight: bold;">Кирүү</button>
-            <button onclick="loginAsGuest()" style="padding: 10px 20px; background: #555; border: none; cursor: pointer; color: #fff; margin-left: 10px;">Конок катары кирүү</button>
+            <input type="email" id="email-input" placeholder="Электрондук почта (Email)">
+            <input type="password" id="password-input" placeholder="Пароль (кеминде 6 белги)">
+            <br>
+            <label style="font-size: 13px; display: block; margin: 10px 0; cursor: pointer;">
+                <input type="checkbox" id="policy-checkbox" style="width: auto; margin-right: 5px;"> Купуялык саясатына макулмун
+            </label>
+            <button onclick="loginUser()" style="background: #00f0ff; color: #000;">Кирүү</button>
+            <button onclick="loginAsGuest()" style="background: #333355; color: #fff;">Конок катары кирүү</button>
         </div>
     </div>
+
     <div id="story-modal" class="modal-overlay" style="display: none;"></div>
 
     <script>
@@ -64,15 +113,13 @@
         const ctx = canvas.getContext('2d');
 
         let bhRotation = 0;
-        const BH_OFFSET_X = 0.75; // Кара тешиктин экрандагы орду (оң тарапта)
+        const BH_OFFSET_X = 0.75; 
         const BH_OFFSET_Y = 0.4;
 
-        // Анимация үчүн жасалма маалыматтар (Массивдер)
         let starsLayer1 = [], starsLayer2 = [], starsLayer3 = [];
         let dustClouds = [];
         let atoms = [{ x: 200, y: 300, r: 40, angle: 0 }, { x: 450, y: 150, r: 50, angle: 1 }];
 
-        // Экран өлчөмүнө жараша Canvas-ты тууралоо жана объекттерди жаратуу
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
@@ -81,14 +128,11 @@
 
         function initSpaceObjects() {
             starsLayer1 = []; starsLayer2 = []; starsLayer3 = []; dustClouds = [];
-            
-            // Жылдыздарды жаратуу
             for(let i=0; i<40; i++) {
                 starsLayer1.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, speed: 0.1, radius: 0.8, alpha: Math.random(), twinkleSpeed: 0.005, twinkleDir: 1, isStatic: false });
                 starsLayer2.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, speed: 0.2, radius: 1.2, alpha: Math.random(), twinkleSpeed: 0.01, twinkleDir: 1, isStatic: false });
                 starsLayer3.push({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, speed: 0.4, radius: 1.8, alpha: Math.random(), twinkleSpeed: 0.02, twinkleDir: 1, isStatic: true });
             }
-            // Небула (космос чаңдары)
             for(let i=0; i<5; i++) {
                 dustClouds.push({
                     x: Math.random()*canvas.width, y: Math.random()*canvas.height,
@@ -98,19 +142,16 @@
             }
         }
 
-        // --- CANVAS АНИМАЦИЯ ФУНКЦИЯЛАРЫ ---
         function renderStars(layer, baseBrightness) {
             ctx.fillStyle = baseBrightness;
             layer.forEach(star => {
                 star.x -= star.speed;
                 if (star.x < 0) star.x = canvas.width;
-
                 if (!star.isStatic) {
                     star.alpha += star.twinkleSpeed * star.twinkleDir;
                     if (star.alpha >= 1) { star.alpha = 1; star.twinkleDir = -1; }
                     else if (star.alpha <= 0.1) { star.alpha = 0.1; star.twinkleDir = 1; }
                 }
-
                 ctx.globalAlpha = star.alpha;
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
@@ -137,12 +178,12 @@
         }
 
         function renderAstrophysicalBlackHole(x, y) {
-            bhRotation += 0.005; // Айлануу ылдамдыгы бир аз байкалаарлык кылып жогорулатылды
+            bhRotation += 0.005; 
             const bhRadius = Math.min(canvas.width, canvas.height) * 0.07; 
 
             ctx.save();
             ctx.translate(x, y);
-            ctx.rotate(-12 * Math.PI / 180 + bhRotation); // Кара тешиктин аккрециялык диски эми айланат
+            ctx.rotate(-12 * Math.PI / 180 + bhRotation); 
             
             let diskGrad = ctx.createLinearGradient(-bhRadius * 4, 0, bhRadius * 4, 0);
             diskGrad.addColorStop(0, 'rgba(255, 90, 20, 0.1)');  
@@ -158,8 +199,7 @@
 
             let innerDiskGrad = ctx.createLinearGradient(-bhRadius * 2.5, 0, bhRadius * 2.5, 0);
             innerDiskGrad.addColorStop(0, 'rgba(0,0,0,0)');
-            innerDiskGrad.addColorStop(0.8, 'rgba(255, 255, 255, 0.7)');
-            innerDiskGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            innerDiskGrad.addColorStop(0.8, 'rgba(255, 255, 255, 0.7)'); innerDiskGrad.addColorStop(1, 'rgba(0,0,0,0)');
             
             ctx.beginPath();
             ctx.ellipse(0, 0, bhRadius * 2.5, bhRadius * 0.4, 0, Math.PI, Math.PI * 2);
@@ -205,14 +245,11 @@
 
         function drawAtom(atom) {
             atom.angle += 0.02;
-            
-            // Атомдун ядросу
             ctx.fillStyle = '#ff00ff';
             ctx.beginPath();
             ctx.arc(atom.x, atom.y, 6, 0, Math.PI * 2);
             ctx.fill();
             
-            // 1-электрондун орбитасы жана өзү
             ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
             ctx.lineWidth = 1;
             ctx.save();
@@ -230,7 +267,6 @@
             ctx.fill();
             ctx.restore();
 
-            // 2-электрондун орбитасы жана өзү
             ctx.save();
             ctx.translate(atom.x, atom.y);
             ctx.rotate(-Math.PI / 4);
@@ -249,7 +285,6 @@
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             renderNebula();
             renderStars(starsLayer1, '#777777'); 
             renderStars(starsLayer2, '#bbbbbb'); 
@@ -260,7 +295,6 @@
             renderAstrophysicalBlackHole(bhX, bhY);
 
             atoms.forEach(atom => drawAtom(atom));
-
             requestAnimationFrame(animate);
         }
 
@@ -271,10 +305,10 @@
             resizeCanvas();
             animate();
             
-            // Квест баннерин жүктөө
+            // Квест баннерин коопсуз жүктөө
             fetch('sections/quest-banner.html')
                 .then(response => {
-                    if (!response.ok) throw new Error('Файл табылгон жок');
+                    if (!response.ok) throw new Error('Баннер файлы серверден табылган жок');
                     return response.text();
                 })
                 .then(data => {
@@ -282,7 +316,7 @@
                 })
                 .catch(err => console.error('Квест баннерин жүктөөдө ката чыкты:', err));
             
-            // Колдонуучу мурун кирген болсо, модалды көрсөтпөө
+            // Авторизацияны текшерүү
             const userEmail = localStorage.getItem('bilimal_user_email');
             const userPass = localStorage.getItem('bilimal_user_pass');
             
@@ -309,7 +343,6 @@
                 
                 document.getElementById('login-modal').style.display = 'none';
                 alert('Кош келиңиз! Ийгиликтүү кирдиңиз.');
-                
                 checkStoryStatus();
             } else if (passwordInput.length < 6) {
                 alert('Пароль кеминде 6 белгиден турушу керек!');
@@ -353,5 +386,8 @@
             alert('Саякат башталды! Сизге 1-деңгээлдеги Механика Өрөөнү ачылды! 🚀');
         }
     </script>
+
+    <script src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafd419add82a1af8ec0def99355.js"></script>
+
 </body>
 </html>
