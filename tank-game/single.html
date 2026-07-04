@@ -2,6 +2,501 @@
 <html lang="ky">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tank Game</title>
+    
+    <!-- ADSTERRA POPUNDER (Оюнга тоскоолдук кылбайт, арткы фондо ачылат) -->
+    <!-- Эгер Popunder жарнамасын колдонсоңуз, анын скриптин ушул жерге коюңуз -->
+    <!-- <script type='text/javascript' src='//ваша-ссылка-adsterra.com/invoke.js'></script> -->
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* ЖАРНАМА ҮЧҮН КОНТЕЙНЕРЛЕР */
+        .ad-banner-container {
+            width: 100%;
+            text-align: center;
+            background: #222;
+            min-height: 50px; /* Баннердин өлчөмүнө жараша өзгөртөсүз */
+            margin: 5px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #game-wrapper, #single-menu-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        canvas {
+            background-color: #000;
+            box-shadow: 0 0 10px #00e5ff;
+            max-width: 100%;
+            height: auto;
+        }
+
+        /* Бул жерде сиздин калган CSS стилдериңиз турат */
+        #ui { padding: 10px; font-weight: bold; }
+        .controls { display: flex; gap: 10px; margin-top: 10px; }
+        .controls button { padding: 15px; font-size: 16px; font-weight: bold; }
+        .banner { display: none; position: absolute; background: rgba(0,0,0,0.8); padding: 20px; border: 2px solid #00e5ff; text-align: center; }
+        .banner.show { display: block; }
+    </style>
+</head>
+<body>
+
+    <!-- ================= ЖОГОРКУ ЖАРНАМА (ADSTERRA) ================= -->
+    <div class="ad-banner-container">
+        <!-- 320x50 же 728x90 өлчөмүндөгү Adsterra скриптин ушул жерге коюңуз -->
+        <script type="text/javascript">
+            atOptions = {
+                'key' : 'СИЗДИН_ADSTERRA_АЧКЫЧЫҢЫЗ_1',
+                'format' : 'iframe',
+                'height' : 50,
+                'width' : 320,
+                'params' : {}
+            };
+        </script>
+        <!-- Төмөнкү ссылканы өзүңүздүкүнө алмаштырыңыз -->
+        <!-- <script type="text/javascript" src="//www.highperformanceformat.com/СИЗДИН_ADSTERRA_АЧКЫЧЫҢЫЗ_1/invoke.js"></script> -->
+        <span style="color: #666; font-size: 12px;">Жарнама (320x50)</span>
+    </div>
+    <!-- ============================================================== -->
+
+    <div id="single-menu-container">
+        <h1>ТАНК ОЮНУ</h1>
+        <button onclick="pressStartGame()" style="padding: 15px 30px; font-size: 18px;">Оюнду баштоо</button>
+    </div>
+
+    <div id="game-wrapper" style="display: none;">
+        <div id="ui">
+            Упай: <span id="score-val">0</span> | Өмүр: <span id="lives-val">3</span> | Раунд: <span id="level-val">1</span> | <span id="tank-lvl-val">Lvl 1</span>
+        </div>
+        
+        <canvas id="gameCanvas" width="416" height="416"></canvas>
+
+        <div id="levelBanner" class="banner">
+            <h2 id="banner-title" style="color: #00e5ff; margin:0;"></h2>
+            <p id="banner-desc" style="color: #fff; margin-top:5px;"></p>
+        </div>
+
+        <div class="controls" id="mobile-controls">
+            <div>
+                <button id="pad-up">⬆️</button>
+                <div>
+                    <button id="pad-left">⬅️</button>
+                    <button id="pad-down">⬇️</button>
+                    <button id="pad-right">➡️</button>
+                </div>
+            </div>
+            <button id="pad-fire" style="background: red; color: white;">АТУУ</button>
+        </div>
+    </div>
+
+    <!-- ================= ТӨМӨНКҮ ЖАРНАМА (ADSTERRA) ================= -->
+    <div class="ad-banner-container">
+        <!-- 300x250 же башка өлчөмдөгү баннер скриптин ушул жерге коюңуз -->
+        <script type="text/javascript">
+            atOptions = {
+                'key' : 'СИЗДИН_ADSTERRA_АЧКЫЧЫҢЫЗ_2',
+                'format' : 'iframe',
+                'height' : 250,
+                'width' : 300,
+                'params' : {}
+            };
+        </script>
+        <!-- Төмөнкү ссылканы өзүңүздүкүнө алмаштырыңыз -->
+        <!-- <script type="text/javascript" src="//www.highperformanceformat.com/СИЗДИН_ADSTERRA_АЧКЫЧЫҢЫЗ_2/invoke.js"></script> -->
+        <span style="color: #666; font-size: 12px;">Жарнама (300x250)</span>
+    </div>
+    <!-- ============================================================== -->
+
+    <script>
+        /* =========================================================================
+         *  1. СИЗДИН БИРИНЧИ БӨЛҮГҮҢҮЗ (ӨЗГӨРМӨЛӨР, КАРТА, TANK КЛАССЫ Ж.Б.)
+         * ========================================================================= */
+        
+        // ---> ОШОЛ БИРИНЧИ БӨЛҮКТҮ ТУУРА УШУЛ ЖЕРГЕ ЧАПТАҢЫЗ <---
+
+
+
+        /* =========================================================================
+         *  2. СИЗ ЖИБЕРГЕН ЭКИНЧИ БӨЛҮК (BULLET КЛАССЫ ЖАНА ЛОГИКА)
+         * ========================================================================= */
+        class Bullet {
+            constructor(x, y, dir, side, power) {
+                this.x = x; this.y = y; this.dir = dir; this.side = side;
+                this.speed = side === "friendly" ? (5 + Math.floor(power * 0.6)) : 5;
+                this.r = side === "friendly" ? (2 + Math.floor(power * 0.4)) : 3;
+                this.active = true; this.power = power;
+            }
+            draw() {
+                ctx.save();
+                if (this.side === "friendly") {
+                    ctx.fillStyle = LEVEL_COLORS[this.power - 1]?.main || "#00e5ff";
+                    ctx.shadowBlur = 8; ctx.shadowColor = ctx.fillStyle;
+                } else { ctx.fillStyle = "#ff0055"; }
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2); ctx.fill();
+                ctx.restore();
+            }
+            update() {
+                if (this.dir === "up") this.y -= this.speed;
+                if (this.dir === "down") this.y += this.speed;
+                if (this.dir === "left") this.x -= this.speed;
+                if (this.dir === "right") this.x += this.speed;
+
+                if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) { this.active = false; return; }
+
+                let cx = Math.floor(this.x / TILE_SIZE); let cy = Math.floor(this.y / TILE_SIZE);
+                if (cy >= 0 && cy < ROWS && cx >= 0 && cx < COLS) {
+                    let b = map[cy][cx];
+                    if (b === 1) { 
+                        map[cy][cx] = 0; this.active = false; 
+                        createExplosion(this.x, this.y, "#b45309", 8); 
+                        playSound("hitWall"); 
+                    }
+                    else if (b === 2) { 
+                        if (this.side === "friendly" && this.power === 11) {
+                            map[cy][cx] = 0;
+                            createExplosion(this.x, this.y, "#64748b", 12); 
+                            addFloatingText(this.x, this.y, "CRUSH!");
+                        }
+                        this.active = false; 
+                        if (this.power < 11) createExplosion(this.x, this.y, "#64748b", 3); 
+                        playSound("hitWall"); 
+                    }
+                    else if (b === 9) { this.active = false; gameOver(); }
+                }
+            }
+        }
+
+        function pressStartGame() {
+            document.getElementById("single-menu-container").style.display = "none";
+            document.getElementById("game-wrapper").style.display = "flex";
+            gameState.score = 0; gameState.lives = 3; gameState.level = 1;
+            savedPlayerLevel = 1; 
+            isGameRunning = true; isRoundTransition = false;
+            playSound("start"); 
+            startRound();
+        }
+
+        function triggerPlayerSpawn() {
+            let sx = 4 * TILE_SIZE + TILE_SIZE/2;
+            let sy = 13 * TILE_SIZE + TILE_SIZE/2;
+            spawnPulsar = { x: sx, y: sy, radius: 4, growing: true, timer: 90, active: true };
+            player1 = null; 
+        }
+
+        function startRound() {
+            enemies = []; bullets = []; bonuses = [];
+            gameState.enemiesDefeated = 0;
+            gameState.maxEnemies = 4 + gameState.level;
+            resetMap();
+            isRoundTransition = false;
+
+            triggerPlayerSpawn();
+            triggerPopupBanner(`РАУНД ${gameState.level}`, "Атака башталды!");
+            spawnEnemy();
+        }
+
+        function nextRoundSequence() {
+            if (isRoundTransition) return;
+            
+            if (player1) {
+                savedPlayerLevel = player1.tankLevel;
+            }
+
+            isRoundTransition = true;
+            bullets = []; 
+            triggerPopupBanner(`РАУНД ИЙГИЛИКТҮҮ АЯКТАДЫ!`, "Кийинки раунд 3 секундда ачылат...");
+            stopSound("move");
+            
+            setTimeout(() => {
+                gameState.level++;
+                startRound();
+            }, 3000); 
+        }
+
+        function triggerPopupBanner(title, desc) {
+            const banner = document.getElementById("levelBanner");
+            document.getElementById("banner-title").innerText = title;
+            document.getElementById("banner-desc").innerText = desc;
+            banner.classList.add("show");
+            if (!isRoundTransition) {
+                setTimeout(() => { banner.classList.remove("show"); }, 1500);
+            } else {
+                setTimeout(() => { banner.classList.remove("show"); }, 2800);
+            }
+        }
+
+        function spawnEnemy() {
+            if (!isGameRunning || isRoundTransition) return;
+            if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
+            const spawnPoints = [{x: 4, y: 4}, {x: 10 * TILE_SIZE + 4, y: 4}, {x: 20 * TILE_SIZE + 4, y: 4}];
+            let p = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+            let rand = Math.random();
+            let eType = rand < 0.2 ? "heavy" : (rand < 0.4 ? "bonus" : "light");
+            enemies.push(new Tank("enemy_" + Date.now() + Math.random(), p.x, p.y, eType, "enemy"));
+        }
+
+        window.addEventListener("keydown", e => { keys[e.key] = true; });
+        window.addEventListener("keyup", e => { keys[e.key] = false; });
+
+        function setupControls() {
+            const setupBtn = (id, dir) => {
+                const btn = document.getElementById(id);
+                if (!btn) return;
+                btn.addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
+                btn.addEventListener("touchend", (e) => { e.preventDefault(); if (activeTouchDir === dir) activeTouchDir = null; });
+            };
+            setupBtn("pad-up", "up"); setupBtn("pad-down", "down"); setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
+
+            const fireBtn = document.getElementById("pad-fire");
+            if (fireBtn) {
+                fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); isTouchFiring = true; });
+                fireBtn.addEventListener("touchend", (e) => { e.preventDefault(); isTouchFiring = false; });
+            }
+        }
+
+        function handleInput() {
+            if (!player1) {
+                stopSound("move");
+                return;
+            }
+            
+            let isMoving = false;
+            if (typeof activeTouchDir !== 'undefined' && activeTouchDir) {
+                player1.dir = activeTouchDir; player1.move();
+                isMoving = true;
+            } else {
+                if (keys["w"] || keys["ArrowUp"]) { player1.dir = "up"; player1.move(); isMoving = true; }
+                else if (keys["s"] || keys["ArrowDown"]) { player1.dir = "down"; player1.move(); isMoving = true; }
+                else if (keys["a"] || keys["ArrowLeft"]) { player1.dir = "left"; player1.move(); isMoving = true; }
+                else if (keys["d"] || keys["ArrowRight"]) { player1.dir = "right"; player1.move(); isMoving = true; }
+            }
+
+            if (isMoving && isGameRunning && !isRoundTransition) {
+                playSound("move"); 
+            } else {
+                stopSound("move");
+            }
+
+            if (keys[" "] || keys["f"] || (typeof isTouchFiring !== 'undefined' && isTouchFiring)) player1.shoot();
+        }
+
+        function rectCollision(r1, r2) {
+            return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+        }
+
+        function update() {
+            if (!isGameRunning) return;
+
+            if (spawnPulsar.active) {
+                spawnPulsar.timer--;
+                if (spawnPulsar.growing) {
+                    spawnPulsar.radius += 0.6; if (spawnPulsar.radius > 22) spawnPulsar.growing = false;
+                } else {
+                    spawnPulsar.radius -= 0.6; if (spawnPulsar.radius < 6) spawnPulsar.growing = true;
+                }
+                if (spawnPulsar.timer <= 0) {
+                    spawnPulsar.active = false;
+                    player1 = new Tank("player1", 4 * TILE_SIZE + 4, 13 * TILE_SIZE + 4, "player", "friendly");
+                }
+            }
+
+            if (isRoundTransition) {
+                for (let i = particles.length - 1; i >= 0; i--) { particles[i].update(); if (particles[i].alpha <= 0) particles.splice(i, 1); }
+                return;
+            }
+
+            handleInput();
+
+            if (player1 && player1.shield > 0) player1.shield--;
+            if (gameState.cementTimer > 0) {
+                gameState.cementTimer--; if (gameState.cementTimer === 0) toggleBaseDefense(false);
+            }
+
+            for (let i = bonuses.length - 1; i >= 0; i--) {
+                bonuses[i].timer--;
+                if (player1 && rectCollision(player1, bonuses[i])) {
+                    playSound("bonusEat"); 
+                    if (bonuses[i].type === "star") {
+                        player1.tankLevel = Math.min(11, player1.tankLevel + 1);
+                        savedPlayerLevel = player1.tankLevel; 
+                    }
+                    if (bonuses[i].type === "shield") player1.shield = 350;
+                    if (bonuses[i].type === "heart") gameState.lives++;
+                    if (bonuses[i].type === "cement") { gameState.cementTimer = 400; toggleBaseDefense(true); }
+                    bonuses.splice(i, 1); continue;
+                }
+                if (bonuses[i].timer <= 0) bonuses.splice(i, 1);
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b1 = bullets[i]; if (!b1.active) continue;
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (i === j) continue;
+                    let b2 = bullets[j]; if (!b2.active || b1.side === b2.side) continue;
+                    let dist = Math.hypot(b1.x - b2.x, b1.y - b2.y);
+                    if (dist < (b1.r + b2.r + 3)) {
+                        createExplosion((b1.x + b2.x)/2, (b1.y + b2.y)/2, "#ffffff", 4);
+                        b1.active = false; b2.active = false; break;
+                    }
+                }
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i]; if (!b.active) { bullets.splice(i, 1); continue; }
+                b.update(); if (!b.active) { bullets.splice(i, 1); continue; }
+
+                if (b.side === "friendly") {
+                    for (let j = enemies.length - 1; j >= 0; j--) {
+                        if (rectCollision({ x: b.x - b.r, y: b.y - b.r, w: b.r*2, h: b.r*2 }, enemies[j])) {
+                            b.active = false; enemies[j].hp -= b.power;
+                            createExplosion(b.x, b.y, "#fff", 5);
+                            if (enemies[j].hp <= 0) {
+                                createExplosion(enemies[j].x + 16, enemies[j].y + 16, "#f59e0b", 15);
+                                addFloatingText(enemies[j].x, enemies[j].y, "+100"); 
+                                playSound("enemyExplode"); 
+                                
+                                if (enemies[j].type === "bonus" || Math.random() < 0.55) {
+                                    let types = ["star", "star", "shield", "heart", "cement"];
+                                    bonuses.push(new Bonus(enemies[j].x, enemies[j].y, types[Math.floor(Math.random() * types.length)]));
+                                }
+                                enemies.splice(j, 1); gameState.score += 100; gameState.enemiesDefeated++;
+                            } else {
+                                playSound("hitNoDie"); 
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    if (player1 && rectCollision({ x: b.x - b.r, y: b.y - b.r, w: b.r*2, h: b.r*2 }, player1)) {
+                        b.active = false;
+                        if (player1.shield <= 0) {
+                            gameState.lives--;
+                            createExplosion(player1.x + 16, player1.y + 16, "#ef4444", 20);
+                            playSound("playerExplode"); 
+                            stopSound("move");
+                            if (gameState.lives <= 0) { gameOver(); } else { triggerPlayerSpawn(); }
+                        }
+                    }
+                }
+                if (!b.active) bullets.splice(i, 1);
+            }
+
+            for (let enemy of enemies) {
+                enemy.move(); if (Math.random() < 0.015) enemy.shoot();
+            }
+
+            enemyTimer++;
+            if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
+
+            if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) {
+                nextRoundSequence();
+            }
+
+            for (let i = textEffects.length - 1; i >= 0; i--) {
+                textEffects[i].y -= textEffects[i].speedY; textEffects[i].alpha -= 0.02;
+                if (textEffects[i].alpha <= 0) textEffects.splice(i, 1);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update(); if (particles[i].alpha <= 0) particles.splice(i, 1);
+            }
+            updateUI();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (typeof map === 'undefined' || map.length === 0) return;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    let b = map[r][c];
+                    if (b === 1) { ctx.fillStyle = "#b45309"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (b === 2) { ctx.fillStyle = "#64748b"; ctx.fillRect(c*TILE_SIZE, r*TILE_SIZE, TILE_SIZE-1, TILE_SIZE-1); }
+                    if (b === 9) { 
+                        ctx.fillStyle = "#eab308"; ctx.beginPath(); 
+                        ctx.arc(c*TILE_SIZE+20, r*TILE_SIZE+20, 16, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "#000"; ctx.font = "14px Arial"; ctx.fillText("🦅", c*TILE_SIZE+11, r*TILE_SIZE+25);
+                    }
+                }
+            }
+
+            if (spawnPulsar.active) {
+                ctx.save();
+                let gradient = ctx.createRadialGradient(spawnPulsar.x, spawnPulsar.y, 2, spawnPulsar.x, spawnPulsar.y, spawnPulsar.radius);
+                gradient.addColorStop(0, "rgba(0, 229, 255, 1)");
+                gradient.addColorStop(0.5, "rgba(16, 185, 129, 0.5)");
+                gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+                ctx.fillStyle = gradient; ctx.beginPath();
+                ctx.arc(spawnPulsar.x, spawnPulsar.y, spawnPulsar.radius, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+
+            if (player1) player1.draw();
+            for (let e of enemies) e.draw();
+            for (let b of bullets) b.draw();
+            for (let b of bonuses) b.draw();
+            for (let p of particles) p.draw();
+
+            for (let t of textEffects) {
+                ctx.save(); ctx.globalAlpha = t.alpha;
+                ctx.fillStyle = "#00e5ff"; ctx.font = "bold 16px Arial";
+                ctx.fillText(t.text, t.x, t.y); ctx.restore();
+            }
+        }
+
+        function updateUI() {
+            document.getElementById("score-val").innerText = gameState.score;
+            document.getElementById("lives-val").innerText = gameState.lives;
+            document.getElementById("level-val").innerText = gameState.level;
+            
+            let currentLvl = player1 ? player1.tankLevel : savedPlayerLevel;
+            document.getElementById("tank-lvl-val").innerText = `Lvl ${currentLvl}`;
+        }
+
+        function exitToSingleMenu() {
+            isGameRunning = false;
+            stopSound("move");
+            document.getElementById("game-wrapper").style.display = "none";
+            document.getElementById("single-menu-container").style.display = "flex";
+        }
+
+        function gameOver() { 
+            isGameRunning = false; 
+            stopSound("move");
+            alert("Оюн бүттү! Штаб талкаланды же өмүрүңүз калбады. Упай: " + gameState.score); 
+            exitToSingleMenu(); 
+        }
+
+        function gameLoop() {
+            update(); draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        setupControls();
+        gameLoop();
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Танк Согушу 2D - Жалгыз Ойноо - BilimAl</title>
     <style>
