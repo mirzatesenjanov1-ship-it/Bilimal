@@ -155,30 +155,6 @@
             transform: translate(-50%, -50%) scale(1);
         }
         
-        /* --- ЖАРНАМА ЖАНА МОДАЛДЫК ТЕРЕЗЕЛЕР --- */
-        #ad-interstitial-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.95);
-            display: none; 
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 60;
-        }
-        .ad-box {
-            background: #1f2937;
-            border: 3px solid #d946ef;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            max-width: 420px;
-            width: 95%;
-            box-shadow: 0 0 30px rgba(217, 70, 239, 0.4);
-        }
-        .ad-box h3 { font-size: 22px; color: #d946ef; margin-bottom: 15px; }
-        .ad-timer { font-size: 16px; color: #38bdf8; margin-top: 15px; font-weight: bold; }
-
         #revive-prompt-overlay, #upgrade-prompt-overlay {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -217,7 +193,6 @@
         }
         .skip-btn:hover { color: #f3f4f6; }
 
-        /* Моб Башкаруу жана Туруктуу Баннердик Аянтча */
         .mobile-controls {
             display: flex;
             flex-direction: column;
@@ -267,21 +242,20 @@
         }
         .fire-btn:active { background: #df004e; }
         
-        /* Туруктуу жарнама баннери үчүн контейнер (Social Bar / Banner 320x50) */
-        #adsterra-sticky-banner {
+        /* Коопсуз туруктуу жарнама бурчу (Автоматтык түрдө жарнама чыгып турат) */
+        #adsterra-sticky-corner {
             width: 100%;
             max-width: 320px;
             height: 50px;
-            background: rgba(31, 41, 55, 0.4);
-            border: 1px dashed #374151;
+            margin-top: 5px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
-            color: #4b5563;
             overflow: hidden;
         }
     </style>
+    
+    <script type="text/javascript" src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js" async></script>
 </head>
 <body>
     <div id="single-menu-container">
@@ -309,7 +283,6 @@
                 <p id="banner-desc">Даяр болуңуз...</p>
             </div>
             
-            <!-- Оюнду кайра жандандыруу терезеси (Revive Prompt) -->
             <div id="revive-prompt-overlay">
                 <div class="modal-box">
                     <h2 style="color: #ef4444;">ОЮН БҮТТҮ!</h2>
@@ -319,22 +292,12 @@
                 </div>
             </div>
 
-            <!-- Кийинки раундда Танк Күчтөө терезеси (Upgrade Prompt) -->
             <div id="upgrade-prompt-overlay">
                 <div class="modal-box upgrade-style">
                     <h2 style="color: #3b82f6;">РАУНД ТАМАНДАЛДЫ!</h2>
                     <p>Кийинки раундга өтүү алдында танкыңыздын деңгээлин дароо көтөрүүнү каалайсызбы?</p>
                     <button class="action-btn blue-btn" onclick="acceptUpgradeAd()">ЖАРНАМА КӨРҮП ТАНКТЫ КҮЧТӨӨ (⚡ Lvl +1)</button>
                     <button class="skip-btn" onclick="skipUpgrade()">Жок, уланта берүү</button>
-                </div>
-            </div>
-
-            <!-- Эки этаптуу жана жалпы жарнамалык толук экран (Adsterra) -->
-            <div id="ad-interstitial-overlay">
-                <div class="ad-box">
-                    <h3 id="ad-screen-title">ЖАРНАМА БЛОГУ</h3>
-                    <div id="adsterra-ad-space"></div>
-                    <div class="ad-timer" id="ad-timer-text">Даярдалууда...</div>
                 </div>
             </div>
 
@@ -353,8 +316,12 @@
                     <button class="fire-btn" id="pad-fire">FIRE</button>
                 </div>
             </div>
-            <!-- Төмөнкү туруктуу Social Bar/Баннер аянтчасы -->
-            <div id="adsterra-sticky-banner"></div>
+            <div id="adsterra-sticky-corner">
+                 <script type="text/javascript">
+                     // Сиздин Adsterra кодуңуз бул жерде автоматтык түрдө иштейт
+                     document.write('<script type="text/javascript" src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js"><\/script>');
+                 </script>
+            </div>
         </div>
     </div>
     
@@ -366,7 +333,6 @@
         const ROWS = 14; 
         let isGameRunning = false; 
         let isRoundTransition = false; 
-        let isAdShowing = false; 
         let gameState = { score: 0, lives: 3, level: 1, maxEnemies: 4, enemiesDefeated: 0, cementTimer: 0 };
         let keys = {};
         let activeTouchDir = null;
@@ -618,8 +584,7 @@
                 savedPlayerLevel = 1;
             }
 
-            isGameRunning = true; isRoundTransition = false; isAdShowing = false;
-            loadStickyBanner(); 
+            isGameRunning = true; isRoundTransition = false;
             playSound("start"); startRound();
         }
 
@@ -644,7 +609,7 @@
         }
 
         function spawnEnemy() {
-            if (!isGameRunning || isRoundTransition || isAdShowing || document.getElementById("revive-prompt-overlay").style.display === "flex") return;
+            if (!isGameRunning || isRoundTransition || document.getElementById("revive-prompt-overlay").style.display === "flex") return;
             if (enemies.length + gameState.enemiesDefeated >= gameState.maxEnemies) return;
             const spawnPoints = [{x: 4, y: 4}, {x: 10 * TILE_SIZE + 4, y: 4}, {x: 20 * TILE_SIZE + 4, y: 4}];
             let p = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
@@ -659,13 +624,16 @@
         function setupControls() {
             const setupBtn = (id, dir) => {
                 const btn = document.getElementById(id);
+                if(!btn) return;
                 btn.addEventListener("touchstart", (e) => { e.preventDefault(); activeTouchDir = dir; });
                 btn.addEventListener("touchend", (e) => { e.preventDefault(); if (activeTouchDir === dir) activeTouchDir = null; });
             };
             setupBtn("pad-up", "up"); setupBtn("pad-down", "down"); setupBtn("pad-left", "left"); setupBtn("pad-right", "right");
             const fireBtn = document.getElementById("pad-fire");
-            fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); isTouchFiring = true; });
-            fireBtn.addEventListener("touchend", (e) => { e.preventDefault(); isTouchFiring = false; });
+            if(fireBtn) {
+                fireBtn.addEventListener("touchstart", (e) => { e.preventDefault(); isTouchFiring = true; });
+                fireBtn.addEventListener("touchend", (e) => { e.preventDefault(); isTouchFiring = false; });
+            }
         }
 
         function handleInput() {
@@ -678,7 +646,7 @@
                 else if (keys["a"] || keys["ArrowLeft"]) { player1.dir = "left"; player1.move(); isMoving = true; }
                 else if (keys["d"] || keys["ArrowRight"]) { player1.dir = "right"; player1.move(); isMoving = true; }
             }
-            if (isMoving && isGameRunning && !isRoundTransition && !isAdShowing) playSound("move"); else stopSound("move");
+            if (isMoving && isGameRunning && !isRoundTransition) playSound("move"); else stopSound("move");
             if (keys[" "] || keys["f"] || isTouchFiring) player1.shoot();
         }
 
@@ -686,55 +654,21 @@
             return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
         }
 
-        /* --- ADSTERRA ЖАРНАМА ТУТУМУН АКТИВДЕШТИРҮҮ --- */
-        
-        function loadAdsterraScript() {
-            const container = document.getElementById('adsterra-ad-space');
-            container.innerHTML = ''; 
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = 'https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js';
-            container.appendChild(script);
-        }
+        /* --- 100% ИШТӨӨЧҮ ЖАРНАМАЛАРДЫН SMARTLINK ТУТУМУ --- */
+        const ADSTERRA_SMARTLINK = "https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js";
 
-        function loadStickyBanner() {
-            const bannerContainer = document.getElementById('adsterra-sticky-banner');
-            bannerContainer.innerHTML = '';
-            const script = document.createElement('script');
-            script.type = 'text/javascript';
-            script.src = 'https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js';
-            bannerContainer.appendChild(script);
-        }
-
-        // 1. Башкы менюдагы Супер Бонус жарнамасы
+        // 1. Башкы менюдагы Супер Бонус
         function watchMenuBonusAd() {
-            isAdShowing = true;
-            const overlay = document.getElementById('ad-interstitial-overlay');
-            const timerText = document.getElementById('ad-timer-text');
+            // Коопсуз жаңы өтмөктө жарнаманы ачуу
+            window.open(ADSTERRA_SMARTLINK, '_blank');
             
-            document.getElementById('ad-screen-title').innerText = "СУПЕР БОНУС ЖАРНАМАСЫ";
-            overlay.style.display = 'flex';
-            loadAdsterraScript();
-
-            let timeLeft = 5;
-            timerText.innerText = `Бонус алууга даярдык: ${timeLeft} сек...`;
-
-            const interval = setInterval(() => {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    timerText.innerText = `Бонус алууга даярдык: ${timeLeft} сек...`;
-                } else {
-                    clearInterval(interval);
-                    overlay.style.display = 'none';
-                    isAdShowing = false;
-                    hasMenuBonus = true;
-                    alert("КУТТУКТАЙБЫЗ! Оюнду баштаганда +1 Кошумча Өмүр, Цемент Коргоо жана Лвл 2 танк берилет!");
-                    document.getElementById("menu-bonus-btn").style.display = "none";
-                }
-            }, 1000);
+            // Оюнда дароо бонустарды иштетүү (Күттүрүү жок)
+            hasMenuBonus = true;
+            alert("🎁 СУПЕР БОНУС АКТИВДЕШТИРИЛДИ! Оюн башталганда сизге: +1 Кошумча Өмүр, Цемент Коргоо жана Лвл 2 танк берилет!");
+            document.getElementById("menu-bonus-btn").style.display = "none";
         }
 
-        // 2. Оюн бүткөндө эки этаптуу (5+5 сек) кайра жандануу жарнамасы
+        // 2. Өмүр бүткөндө жандануу жарнамасы
         function triggerReviveScreen(reason) {
             stopSound("move");
             if (currentReviveCount >= 3) {
@@ -748,42 +682,16 @@
 
         function acceptReviveAd() {
             document.getElementById("revive-prompt-overlay").style.display = "none";
-            isAdShowing = true;
-
-            const overlay = document.getElementById('ad-interstitial-overlay');
-            const timerText = document.getElementById('ad-timer-text');
-            document.getElementById('ad-screen-title').innerText = "ОЮНДУ УЛАНТУУ ЖАРНАМАСЫ";
             
-            overlay.style.display = 'flex';
-            loadAdsterraScript();
-
-            let currentAd = 1;
-            let timeLeft = 5;
-            timerText.innerText = `Жарнама 1/2 көрсөтүлүүдө: ${timeLeft} сек...`;
-
-            const interval = setInterval(() => {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    timerText.innerText = `Жарнама ${currentAd}/2 көрсөтүлүүдө: ${timeLeft} сек...`;
-                } else {
-                    if (currentAd === 1) {
-                        currentAd = 2;
-                        timeLeft = 5;
-                        timerText.innerText = `Жарнама 2/2 көрсөтүлүүдө: ${timeLeft} сек...`;
-                        loadAdsterraScript(); 
-                    } else {
-                        clearInterval(interval);
-                        overlay.style.display = 'none';
-                        isAdShowing = false;
-                        
-                        gameState.lives = 3;
-                        currentReviveCount++;
-                        if (player1) player1.tankLevel = savedPlayerLevel;
-                        resetMap(); 
-                        triggerPlayerSpawn();
-                    }
-                }
-            }, 1000);
+            // Жаңы өтмөктө коопсуз ачуу
+            window.open(ADSTERRA_SMARTLINK, '_blank');
+            
+            // Оюнчуну дароо жандандыруу
+            gameState.lives = 3;
+            currentReviveCount++;
+            if (player1) player1.tankLevel = savedPlayerLevel;
+            resetMap(); 
+            triggerPlayerSpawn();
         }
 
         function declineRevive() {
@@ -795,32 +703,14 @@
         // 3. Раунд аяктаганда танкты күчтөө жарнамасы
         function acceptUpgradeAd() {
             document.getElementById("upgrade-prompt-overlay").style.display = "none";
-            isAdShowing = true;
-
-            const overlay = document.getElementById('ad-interstitial-overlay');
-            const timerText = document.getElementById('ad-timer-text');
-            document.getElementById('ad-screen-title').innerText = "ТАНКТЫ КҮЧТӨӨ ЖАРНАМАСЫ";
             
-            overlay.style.display = 'flex';
-            loadAdsterraScript();
-
-            let timeLeft = 5;
-            timerText.innerText = `Танк деңгээлин жогорулатуу: ${timeLeft} ...`;
-
-            const interval = setInterval(() => {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    timerText.innerText = `Танк деңгээлин жогорулатуу: ${timeLeft} ...`;
-                } else {
-                    clearInterval(interval);
-                    overlay.style.display = 'none';
-                    isAdShowing = false;
-                    
-                    savedPlayerLevel = Math.min(11, savedPlayerLevel + 1);
-                    gameState.level++;
-                    startRound();
-                }
-            }, 1000);
+            // Жаңы өтмөктө ачуу
+            window.open(ADSTERRA_SMARTLINK, '_blank');
+            
+            // Танкты күчтөп, кийинки раундду баштоо
+            savedPlayerLevel = Math.min(11, savedPlayerLevel + 1);
+            gameState.level++;
+            startRound();
         }
 
         function skipUpgrade() {
@@ -830,9 +720,8 @@
         }
 
         /* --- ОЮНДУН НЕГИЗГИ АЙЛАНУУСУ ЖАНА ЖАҢЫЛООСУ --- */
-        
         function update() {
-            if (!isGameRunning || isAdShowing || 
+            if (!isGameRunning || 
                 document.getElementById("revive-prompt-overlay").style.display === "flex" ||
                 document.getElementById("upgrade-prompt-overlay").style.display === "flex") return;
 
@@ -969,7 +858,7 @@
         }
 
         function exitToSingleMenu() {
-            isGameRunning = false; isAdShowing = false; stopSound("move");
+            isGameRunning = false; stopSound("move");
             document.getElementById("game-wrapper").style.display = "none";
             document.getElementById("single-menu-container").style.display = "block";
         }
