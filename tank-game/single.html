@@ -309,6 +309,7 @@
                 <p id="banner-desc">Даяр болуңуз...</p>
             </div>
             
+            <!-- Оюнду кайра жандандыруу терезеси (Revive Prompt) -->
             <div id="revive-prompt-overlay">
                 <div class="modal-box">
                     <h2 style="color: #ef4444;">ОЮН БҮТТҮ!</h2>
@@ -318,6 +319,7 @@
                 </div>
             </div>
 
+            <!-- Кийинки раундда Танк Күчтөө терезеси (Upgrade Prompt) -->
             <div id="upgrade-prompt-overlay">
                 <div class="modal-box upgrade-style">
                     <h2 style="color: #3b82f6;">РАУНД ТАМАНДАЛДЫ!</h2>
@@ -327,6 +329,7 @@
                 </div>
             </div>
 
+            <!-- Эки этаптуу жана жалпы жарнамалык толук экран (Adsterra) -->
             <div id="ad-interstitial-overlay">
                 <div class="ad-box">
                     <h3 id="ad-screen-title">ЖАРНАМА БЛОГУ</h3>
@@ -350,7 +353,8 @@
                     <button class="fire-btn" id="pad-fire">FIRE</button>
                 </div>
             </div>
-            <div id="adsterra-sticky-banner">Adsterra Жарнама аянтчасы</div>
+            <!-- Төмөнкү туруктуу Social Bar/Баннер аянтчасы -->
+            <div id="adsterra-sticky-banner"></div>
         </div>
     </div>
     
@@ -376,8 +380,8 @@
         let player1 = null;
         let map = [];
         let savedPlayerLevel = 1; 
-        let hasMenuBonus = false; // Менюдан бонус алганы
-        let currentReviveCount = 0; // Бир оюндагы улантуу саны (чек коюу үчүн)
+        let hasMenuBonus = false; 
+        let currentReviveCount = 0; 
         let spawnPulsar = { x: 0, y: 0, radius: 5, growing: true, timer: 0, active: false };
         
         const sounds = {
@@ -598,17 +602,16 @@
             document.getElementById("single-menu-container").style.display = "none";
             document.getElementById("game-wrapper").style.display = "flex";
             
-            // Баштапкы жөндөөлөр
             gameState.score = 0; 
             gameState.level = 1; 
             currentReviveCount = 0;
             
             if (hasMenuBonus) {
-                gameState.lives = 4; // 3 + 1 бонус өмүр
-                gameState.cementTimer = 500; // Оюнду цемент коргоо менен баштоо
-                savedPlayerLevel = 2; // Дароо Lvl 2 танк
-                hasMenuBonus = false; // Бонусту баштаганда жок кылабыз
-                document.getElementById("menu-bonus-btn").style.display = "block"; // Кийинкиде кайра ачылат
+                gameState.lives = 4; 
+                gameState.cementTimer = 500; 
+                savedPlayerLevel = 2; 
+                hasMenuBonus = false; 
+                document.getElementById("menu-bonus-btn").style.display = "block"; 
             } else {
                 gameState.lives = 3;
                 gameState.cementTimer = 0;
@@ -616,7 +619,7 @@
             }
 
             isGameRunning = true; isRoundTransition = false; isAdShowing = false;
-            loadStickyBanner(); // Туруктуу жарнаманы жүктөө
+            loadStickyBanner(); 
             playSound("start"); startRound();
         }
 
@@ -683,7 +686,7 @@
             return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
         }
 
-        /* --- ПРОФЕССИОНАЛДЫК ЖАРНАМА КӨРСӨТҮҮ ЛОГИКАЛАРЫ (ADSTERRA INTEGRATION) --- */
+        /* --- ADSTERRA ЖАРНАМА ТУТУМУН АКТИВДЕШТИРҮҮ --- */
         
         function loadAdsterraScript() {
             const container = document.getElementById('adsterra-ad-space');
@@ -734,7 +737,6 @@
         // 2. Оюн бүткөндө эки этаптуу (5+5 сек) кайра жандануу жарнамасы
         function triggerReviveScreen(reason) {
             stopSound("move");
-            // Бир оюнда ашыкча улантып кызыгын кетирбөө үчүн чек (макс: 3 жолу)
             if (currentReviveCount >= 3) {
                 alert("Кайра жандануу чеги бүттү! Сиздин упай: " + gameState.score);
                 exitToSingleMenu();
@@ -768,13 +770,12 @@
                         currentAd = 2;
                         timeLeft = 5;
                         timerText.innerText = `Жарнама 2/2 көрсөтүлүүдө: ${timeLeft} сек...`;
-                        loadAdsterraScript(); // Жаңы жарнама көрсөтүү (eCPM жогорулатуу)
+                        loadAdsterraScript(); 
                     } else {
                         clearInterval(interval);
                         overlay.style.display = 'none';
                         isAdShowing = false;
                         
-                        // Оюнчуну ошол эле жерден жандандыруу механикасы
                         gameState.lives = 3;
                         currentReviveCount++;
                         if (player1) player1.tankLevel = savedPlayerLevel;
@@ -828,7 +829,7 @@
             startRound();
         }
 
-        /* --- ОЮНДУН НЕГИЗГИ АЙЛАНУУСУ ЖАНА ЖАҢЫЛООСУ (ӨЗГӨРГӨН ЖОК) --- */
+        /* --- ОЮНДУН НЕГИЗГИ АЙЛАНУУСУ ЖАНА ЖАҢЫЛООСУ --- */
         
         function update() {
             if (!isGameRunning || isAdShowing || 
@@ -909,7 +910,6 @@
             for (let enemy of enemies) { enemy.move(); if (Math.random() < 0.015) enemy.shoot(); }
             enemyTimer++; if (enemyTimer > 100) { spawnEnemy(); enemyTimer = 0; }
 
-            // Раунд ийгиликтүү бүткөндө күчтөө терезеси чыгат
             if (gameState.enemiesDefeated >= gameState.maxEnemies && enemies.length === 0) {
                 isRoundTransition = true;
                 stopSound("move");
