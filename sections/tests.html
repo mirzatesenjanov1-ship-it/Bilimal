@@ -120,7 +120,7 @@
 <div class="header">
     <a href="#" class="logo">BilimAl.org</a>
     <div style="background: rgba(0,210,255,0.1); padding: 8px 15px; border-radius: 20px; font-size: 14px; border: 1px solid var(--primary);">
-        👤 Мугалим: <span id="teacherEmail">Текшерилүүдө...</span>
+        👤 Мугалим: <span id="teacherEmail">Жүктөлүүдө...</span>
     </div>
 </div>
 
@@ -255,19 +255,19 @@
     let unsubscribeResults = null;
     let globalResultsCached = {};
 
-    // Мобилдик браузерлердин коопсуздук каталарын айланып өтүү үчүн коопсуз иштетүү (try-catch) кошулду
+    // VIP чектөөлөрү толугу менен тазаланды. Почтасы бар каалаган мугалим толук кандуу колдоно алат.
     onAuthStateChanged(auth, (user) => {
-        try {
-            if (user) {
-                teacherUid = user.uid;
-                document.getElementById("teacherEmail").innerText = user.email;
-                loadActiveTests();
-                listenToStudentResults();
-            } else {
-                window.location.href = "../login.html";
-            }
-        } catch (e) {
-            console.error("Мобилдик иденттендирүү катасы: ", e);
+        if (user) {
+            teacherUid = user.uid;
+            document.getElementById("teacherEmail").innerText = user.email;
+            loadActiveTests();
+            listenToStudentResults();
+        } else {
+            setTimeout(() => {
+                if (!auth.currentUser) {
+                    window.location.href = "https://bilimal.org/auth/login.html";
+                }
+            }, 2500);
         }
     });
 
@@ -470,10 +470,8 @@
         }
     }
 
-    // Мобилдик шилтемелерге толук ылайыкташтырылган абсолюттук функция
     window.copyLink = function(code) {
         const finalUrl = `https://bilimal.org/sections/take-test.html?code=${code}`;
-        
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(finalUrl).then(() => {
                 alert("Тесттин шилтемеси көчүрүлдү!\nАны окуучуларга жөнөтсөңүз болот.");
@@ -481,7 +479,6 @@
                 prompt("Шилтемени кол менен көчүрүп алыңыз:", finalUrl);
             });
         } else {
-            // Эски телефон браузерлери үчүн коопсуз альтернатива
             const textArea = document.createElement("textarea");
             textArea.value = finalUrl;
             document.body.appendChild(textArea);
@@ -490,7 +487,7 @@
                 document.execCommand('copy');
                 alert("Тесттин шилтемеси көчүрүлдү!");
             } catch (err) {
-                prompt("Шилтемени көчүрүңүз:", finalUrl);
+                prompt("Шилтемени көчүрңүз:", finalUrl);
             }
             document.body.removeChild(textArea);
         }
