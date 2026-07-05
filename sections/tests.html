@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl.org - Тест Борбору</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -279,38 +282,10 @@
             cursor: pointer;
         }
 
-        /* МОБИЛДИК ВЕРСИЯ ҮЧҮН ЭКРАНГА АДАПТАЦИЯ (Responsive) */
         @media (max-width: 900px) {
-            body {
-                flex-direction: column;
-            }
-
-            .sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #1e2640;
-            }
-
-            .main-content {
-                grid-template-columns: 1fr;
-                padding: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .format-buttons {
-                grid-template-columns: 1fr;
-            }
-            .student-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            .student-meta {
-                width: 100%;
-                justify-content: space-between;
-                text-align: left;
-            }
+            body { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #1e2640; }
+            .main-content { grid-template-columns: 1fr; padding: 15px; }
         }
     </style>
 </head>
@@ -318,8 +293,8 @@
 
     <div class="sidebar">
         <a href="../dashboard.html" class="logo">BilimAl.org</a>
-        <div class="user-badge">
-            <i class="fas fa-user-gradient"></i> Мугалим:<br>mirzatestebesov51@gmail.com
+        <div class="user-badge" id="userEmailBadge">
+            <i class="fas fa-user-gradient"></i> Жүктөлүүдө...
         </div>
         <ul class="sidebar-menu">
             <li><a href="../dashboard.html"><i class="fas fa-arrow-left"></i> Башкы бетке</a></li>
@@ -348,7 +323,6 @@
                 </div>
 
                 <div id="questionsContainer"></div>
-
                 <button class="btn-add-block" id="addQuestionBtn"><i class="fas fa-plus"></i> Жаңы суроо блогун кошуу</button>
 
                 <div class="form-group">
@@ -377,7 +351,7 @@
                     <i class="fas fa-list-ul"></i> Сиз түзгөн тесттердин тизмеси
                 </div>
                 <div id="createdTestsList">
-                    <p class="loading-text">Түзүлгөн тесттер жок...</p>
+                    <p class="loading-text">Тесттер жүктөлүүдө...</p>
                 </div>
             </div>
         </div>
@@ -405,38 +379,8 @@
                     <div class="student-meta">
                         <span class="score">1/3</span>
                         <div class="actions-btn">
-                            <i class="fas fa-eye" title="Көрүү"></i>
-                            <i class="fas fa-trash" title="Өчүрүү"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="student-item success">
-                    <div class="student-info">
-                        <h4>Мимммммммммм</h4>
-                        <p>ПИЗА тест1 • Класс: 12-Д • Коду: TEST-8708</p>
-                    </div>
-                    <div class="student-meta">
-                        <span class="score success">0/100</span>
-                        <div class="actions-btn">
-                            <i class="fas fa-eye" title="Көрүү"></i>
-                            <i class="fas fa-trash" title="Өчүрүү"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="student-item danger">
-                    <div class="student-info">
-                        <h4>Осососо</h4>
-                        <p>Механика Тесттик режим • Класс: 1-А • Коду: TEST-9086</p>
-                    </div>
-                    <div class="student-meta">
-                        <span class="score danger" style="font-size:12px; display:block; text-align:center;">
-                            <i class="fas fa-ban"></i> АНТИЧИТ АЙДОО!
-                        </span>
-                        <div class="actions-btn">
-                            <i class="fas fa-eye" title="Көрүү"></i>
-                            <i class="fas fa-trash" title="Өчүрүү"></i>
+                            <i class="fas fa-eye"></i>
+                            <i class="fas fa-trash"></i>
                         </div>
                     </div>
                 </div>
@@ -446,15 +390,43 @@
     </div>
 
     <script>
-        // Ички коопсуздук каталарын алдын алуу
-        window.addEventListener('error', function(e) {
-            if (e.message && e.message.includes('cross-origin')) {
-                e.preventDefault();
-            }
-        }, true);
+        // 1. БУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН ФАЙРИБЕЙС КОНФИГДИ КОЮҢУЗ
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Firebase демилгелөө
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        
+        const database = firebase.database();
+        const auth = firebase.auth();
 
-        // Формат баскычтарын которуштуруу логикасы
+        let currentUserId = null;
+        let questionIdx = 0;
         let currentFormat = 'text';
+
+        // Мугалим киргенин же кирбегенин текшерүү (Сиздин Firebase эрежеңизге ылайык)
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUserId = user.uid; // Корголгон uid алынды
+                document.getElementById('userEmailBadge').innerHTML = `<i class="fas fa-user-gradient"></i> Мугалим:<br>${user.email}`;
+                // Эми базадан ушул мугалимге тиешелүү тесттерди таап чыгарабыз
+                listenToCreatedTests();
+            } else {
+                document.getElementById('userEmailBadge').innerHTML = `<i class="fas fa-exclamation-triangle"></i> Киришиңиз керек`;
+                document.getElementById('createdTestsList').innerHTML = `<p class="loading-text" style="color:#e74c3c;">Катаны алдын алуу үчүн алгач аккаунтка кириңиз!</p>`;
+            }
+        });
+
+        // Форматтарды которуштуруу
         const formatBtns = document.querySelectorAll('.btn-format');
         formatBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -464,12 +436,9 @@
             });
         });
 
-        // Суроо кошуу элементтери
+        // Жаңы суроо кошуу
         const questionsContainer = document.getElementById('questionsContainer');
-        const addQuestionBtn = document.getElementById('addQuestionBtn');
-        let questionIdx = 0;
-
-        addQuestionBtn.addEventListener('click', () => {
+        document.getElementById('addQuestionBtn').addEventListener('click', () => {
             questionIdx++;
             const div = document.createElement('div');
             div.className = 'question-block';
@@ -487,22 +456,16 @@
             questionsContainer.appendChild(div);
         });
 
-        // Тесттерди сактоо жана калыбына келтирүү логикасы
-        const saveTestBtn = document.getElementById('saveTestBtn');
-        const testTitle = document.getElementById('testTitle');
-        const testLimit = document.getElementById('testLimit');
-        const testDuration = document.getElementById('testDuration');
-        const antiCheat = document.getElementById('antiCheat');
-        const createdTestsList = document.getElementById('createdTestsList');
-        const filterSelect = document.getElementById('filterSelect');
+        // ТЕСТТИ САКТОО (Сиздин Firebase эрежеңиз боюнча туура дарекке жазуу)
+        document.getElementById('saveTestBtn').addEventListener('click', () => {
+            if (!currentUserId) {
+                alert('Ката: Сиз авторизациядан өткөн эмессиз!');
+                return;
+            }
 
-        // Баракча ачылганда мурунку сакталган тесттерди чыгаруу
-        document.addEventListener('DOMContentLoaded', displayTests);
-
-        saveTestBtn.addEventListener('click', () => {
-            const titleValue = testTitle.value.trim();
+            const titleValue = document.getElementById('testTitle').value.trim();
             if (!titleValue) {
-                alert('Сураныч, адегенде тесттин темасын жазыңыз!');
+                alert('Сураныч, тесттин темасын жазыңыз!');
                 return;
             }
 
@@ -519,68 +482,91 @@
                 code: randomCode,
                 title: titleValue,
                 format: currentFormat,
-                limit: testLimit.value,
-                duration: testDuration.value || 'Чектөөсүз',
-                antiCheat: antiCheat.checked,
+                limit: document.getElementById('testLimit').value,
+                duration: document.getElementById('testDuration').value || 'Чектөөсүз',
+                antiCheat: document.getElementById('antiCheat').checked,
                 questions: questionsArray
             };
 
-            let database = JSON.parse(localStorage.getItem('bilimal_db_tests')) || [];
-            database.push(testData);
-            localStorage.setItem('bilimal_db_tests', JSON.stringify(database));
-
-            alert(`Тест сакталды! Коду: ${randomCode}`);
-            
-            // Тазалоо
-            testTitle.value = '';
-            testDuration.value = '';
-            questionsContainer.innerHTML = '';
-            questionIdx = 0;
-
-            displayTests();
+            // 1-кадам: Мугалимдин жеке папкасына сактоо (teachers_data/$uid/) -> Эрежеге туура келет!
+            database.ref('teachers_data/' + currentUserId + '/tests/' + randomCode).set(testData)
+            .then(() => {
+                // 2-кадам: Окуучулар код аркылуу таба алуусу үчүн ачык дарекке да көчүрүү
+                return database.ref('global_test_lookup/' + randomCode).set({
+                    teacherUid: currentUserId,
+                    title: titleValue
+                });
+            })
+            .then(() => {
+                alert(`Тест ийгиликтүү сакталды! Коду: ${randomCode}`);
+                // Форманы тазалоо
+                document.getElementById('testTitle').value = '';
+                document.getElementById('testDuration').value = '';
+                questionsContainer.innerHTML = '';
+                questionIdx = 0;
+            })
+            .catch(error => {
+                console.error(error);
+                alert("Ката кетти: Базага кирүүгө уруксат берилген жок!");
+            });
         });
 
-        function displayTests() {
-            let database = JSON.parse(localStorage.getItem('bilimal_db_tests')) || [];
+        // МУРУНКУ ТҮЗҮЛГӨН ТЕСТТЕРДИ БАЗАДАН АЛЫП ЧЫГАРУУ
+        function listenToCreatedTests() {
+            const testsRef = database.ref('teachers_data/' + currentUserId + '/tests');
             
-            if(database.length === 0) {
-                createdTestsList.innerHTML = '<p class="loading-text">Түзүлгөн тесттер жок...</p>';
-                return;
-            }
+            testsRef.on('value', (snapshot) => {
+                const createdTestsList = document.getElementById('createdTestsList');
+                const filterSelect = document.getElementById('filterSelect');
+                
+                createdTestsList.innerHTML = '';
+                filterSelect.innerHTML = '<option>Бардык тесттердин жыйынтыктары</option>';
 
-            createdTestsList.innerHTML = '';
-            filterSelect.innerHTML = '<option>Бардык тесттердин жыйынтыктары</option>';
+                if (!snapshot.exists()) {
+                    createdTestsList.innerHTML = '<p class="loading-text">Түзүлгөн тесттер жок...</p>';
+                    return;
+                }
 
-            database.forEach((test, idx) => {
-                const item = document.createElement('div');
-                item.className = 'student-item';
-                item.style.borderLeftColor = '#00d2ff';
-                item.innerHTML = `
-                    <div class="student-info">
-                        <h4>${test.title}</h4>
-                        <p>Убактысы: ${test.duration} мүнөт • Коду: <strong>${test.code}</strong> • Суроо саны: ${test.questions.length}</p>
-                    </div>
-                    <div class="student-meta">
-                        <div class="actions-btn">
-                            <i class="fas fa-trash" title="Өчүрүү" onclick="removeTest(${idx})"></i>
+                snapshot.forEach((childSnapshot) => {
+                    const testKey = childSnapshot.key;
+                    const test = childSnapshot.val();
+                    const qCount = test.questions ? test.questions.length : 0;
+
+                    const item = document.createElement('div');
+                    item.className = 'student-item';
+                    item.style.borderLeftColor = '#00d2ff';
+                    item.innerHTML = `
+                        <div class="student-info">
+                            <h4>${test.title}</h4>
+                            <p>Убактысы: ${test.duration} мүнөт • Коду: <strong>${test.code}</strong> • Суроо: ${qCount}</p>
                         </div>
-                    </div>
-                `;
-                createdTestsList.appendChild(item);
+                        <div class="student-meta">
+                            <div class="actions-btn">
+                                <i class="fas fa-trash" title="Өчүрүү" onclick="deleteTest('${testKey}')"></i>
+                            </div>
+                        </div>
+                    `;
+                    createdTestsList.appendChild(item);
 
-                const opt = document.createElement('option');
-                opt.value = test.code;
-                opt.textContent = test.title;
-                filterSelect.appendChild(opt);
+                    // Фильтрге кошуу
+                    const opt = document.createElement('option');
+                    opt.value = test.code;
+                    opt.textContent = test.title;
+                    filterSelect.appendChild(opt);
+                });
             });
         }
 
-        window.removeTest = function(idx) {
-            if(confirm('Бул тестти тизмеден өчүрүүнү каалайсызбы?')) {
-                let database = JSON.parse(localStorage.getItem('bilimal_db_tests')) || [];
-                database.splice(idx, 1);
-                localStorage.setItem('bilimal_db_tests', JSON.stringify(database));
-                displayTests();
+        // ТЕСТТИ ӨЧҮРҮҮ ФУНКЦИЯСЫ
+        window.deleteTest = function(testKey) {
+            if (confirm('Бул тестти биротоло өчүрүүнү каалайсызбы?')) {
+                // Жеке папкадан өчүрүү
+                database.ref('teachers_data/' + currentUserId + '/tests/' + testKey).remove()
+                .then(() => {
+                    // Ачык папкадан да тазалоо
+                    return database.ref('global_test_lookup/' + testKey).remove();
+                })
+                .catch(err => alert("Өчүрүүдө ката кетти: " + err.message));
             }
         }
     </script>
