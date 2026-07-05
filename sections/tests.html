@@ -90,6 +90,7 @@
             border: 1px solid #1e2640;
             border-radius: 12px;
             padding: 24px;
+            margin-bottom: 25px;
         }
 
         .card-title {
@@ -255,11 +256,27 @@
         .actions-btn .fa-eye { color: #f1c40f; }
         .actions-btn .fa-trash { color: #e74c3c; }
 
-        /* Учурда жүктөлүп жаткан абал анимациясы үчүн */
         .loading-text {
             color: #7f8c8d;
             font-style: italic;
             padding: 10px 0;
+        }
+
+        /* Жаңы кошулган суроолордун контейнери үчүн стилдер */
+        .question-block {
+            background: #161f33;
+            border: 1px solid #1e2640;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .btn-delete-q {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            color: #e74c3c;
+            cursor: pointer;
         }
 
         /* МОБИЛДИК ВЕРСИЯ ҮЧҮН ЭКРАНГА АДАПТАЦИЯ (Responsive) */
@@ -275,7 +292,7 @@
             }
 
             .main-content {
-                grid-template-columns: 1fr; /* Колонналар бир катар болуп калат */
+                grid-template-columns: 1fr;
                 padding: 15px;
             }
         }
@@ -312,46 +329,64 @@
 
     <div class="main-content">
         
-        <div class="card">
-            <div class="card-title">
-                <i class="fas fa-pen"></i> Тестти Түзүү режими
-            </div>
-            
-            <div class="form-group">
-                <label>Тапшырманын аталышы (Темасы):</label>
-                <input type="text" class="form-control" placeholder="Мисалы: 10-класс Механика ЖӨНӨКӨЙ ТЕСТ">
+        <!-- СОЛ ЖАК: ТЕСТ ТҮЗҮҮ ФОРМАСЫ -->
+        <div>
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-pen"></i> Тестти Түзүү режими
+                </div>
+                
+                <div class="form-group">
+                    <label>Тапшырманын аталышы (Темасы):</label>
+                    <input type="text" id="testTitle" class="form-control" placeholder="Мисалы: 10-класс Механика ЖӨНӨКӨЙ ТЕСТ">
+                </div>
+
+                <label style="display:block; font-size:14px; margin-bottom:8px; color:#bdc3c7;">Суроонун форматын тандаңыз:</label>
+                <div class="format-buttons">
+                    <button class="btn-format active" data-format="text"><i class="fas fa-file-alt"></i> Жөнөкөй текст</button>
+                    <button class="btn-format" data-format="pisa"><i class="fas fa-globe"></i> PISA Блогу</button>
+                    <button class="btn-format" data-format="audio"><i class="fas fa-volume-up"></i> Audio / Эссе</button>
+                </div>
+
+                <!-- Суроолор кошула турган динамикалык контейнер -->
+                <div id="dynamicQuestionsContainer"></div>
+
+                <button class="btn-add-block" id="addQuestionBtn"><i class="fas fa-plus"></i> Жаңы суроо блогун кошуу</button>
+
+                <div class="form-group">
+                    <label>Тапшыруунун чектөөсү:</label>
+                    <select id="testLimit" class="form-control">
+                        <option value="unlimited">Чектөөсүз (Каалаганча)</option>
+                        <option value="1">1 жолу кирүүгө болот</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Тесттин убактысы (Мүнөт):</label>
+                    <input type="number" id="testDuration" class="form-control" placeholder="Чектөөсүз болсо бош калтырыңыз">
+                </div>
+
+                <div class="checkbox-group">
+                    <input type="checkbox" id="antiCheat" checked>
+                    <label for="antiCheat" style="color:#ff4757; cursor:pointer;">Anti-Cheat Күйгүзүү (Башка терезеге өтүүнү бөгөттөө)</label>
+                </div>
+
+                <button class="btn-submit" id="saveTestBtn"><i class="fas fa-save"></i> Тестти сактоо</button>
             </div>
 
-            <label style="display:block; font-size:14px; margin-bottom:8px; color:#bdc3c7;">Суроонун форматын тандаңыз:</label>
-            <div class="format-buttons">
-                <button class="btn-format active"><i class="fas fa-file-alt"></i> Жөнөкөй текст</button>
-                <button class="btn-format"><i class="fas fa-globe"></i> PISA Блогу</button>
-                <button class="btn-format"><i class="fas fa-volume-up"></i> Audio / Эссе</button>
+            <!-- МУГАЛИМДИН ӨЗҮ ТҮЗГӨН ТЕСТТЕРИ ТӨМӨНДӨ КӨРҮНӨТ -->
+            <div class="card">
+                <div class="card-title">
+                    <i class="fas fa-list"></i> Сиз түзгөн тесттердин тизмеси
+                </div>
+                <div id="createdTestsList">
+                    <!-- Түзүлгөн тесттер JavaScript аркылуу ушул жерге жүктөлөт -->
+                    <p class="loading-text">Түзүлгөн тесттер жок...</p>
+                </div>
             </div>
-
-            <button class="btn-add-block"><i class="fas fa-plus"></i> Жаңы суроо блогун кошуу</button>
-
-            <div class="form-group">
-                <label>Тапшыруунун чектөөсү:</label>
-                <select class="form-control">
-                    <option>Чектөөсүз (Каалаганча)</option>
-                    <option>1 жолу кирүүгө болот</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label>Тесттин убактысы (Мүнөт):</label>
-                <input type="number" class="form-control" placeholder="Чектөөсүз болсо бош калтырыңыз">
-            </div>
-
-            <div class="checkbox-group">
-                <input type="checkbox" id="antiCheat" checked>
-                <label for="antiCheat" style="color:#ff4757; cursor:pointer;">Anti-Cheat Күйгүзүү (Башка терезеге өтүүнү бөгөттөө)</label>
-            </div>
-
-            <button class="btn-submit"><i class="fas fa-save"></i> Тестти сактоо</button>
         </div>
 
+        <!-- ОҢ ЖАК: ОКУУЧУЛАРДЫН ЖЫЙЫНТЫКТАРЫ -->
         <div class="card">
             <div class="results-header">
                 <div class="card-title" style="margin-bottom:0;">
@@ -361,7 +396,7 @@
             </div>
 
             <div class="form-group">
-                <select class="form-control">
+                <select class="form-control" id="filterTestsSelect">
                     <option>Бардык тесттердин жыйынтыктары</option>
                 </select>
             </div>
@@ -411,7 +446,6 @@
                     </div>
                 </div>
             </div>
-
         </div>
 
     </div>
@@ -425,13 +459,139 @@
         }, true);
 
         // Формат баскычтарын которуштуруу логикасы
+        let selectedFormat = 'text';
         const formatBtns = document.querySelectorAll('.btn-format');
         formatBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 formatBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                selectedFormat = btn.getAttribute('data-format');
             });
         });
+
+        // Динамикалык түрдө жаңы суроо блокторун кошуу
+        const dynamicQuestionsContainer = document.getElementById('dynamicQuestionsContainer');
+        const addQuestionBtn = document.getElementById('addQuestionBtn');
+        let questionCounter = 0;
+
+        addQuestionBtn.addEventListener('click', () => {
+            questionCounter++;
+            const qBlock = document.createElement('div');
+            qBlock.className = 'question-block';
+            qBlock.id = `qBlock_${questionCounter}`;
+            
+            qBlock.innerHTML = `
+                <i class="fas fa-trash btn-delete-q" onclick="document.getElementById('qBlock_${questionCounter}').remove()"></i>
+                <div class="form-group">
+                    <label>${questionCounter}-Суроо:</label>
+                    <input type="text" class="form-control question-text" placeholder="Суроону жазыңыз">
+                </div>
+                <div class="form-group">
+                    <input type="text" class="form-control question-answer" placeholder="Туура жообун жазыңыз">
+                </div>
+            `;
+            dynamicQuestionsContainer.appendChild(qBlock);
+        });
+
+        // Тесттерди сактоо жана калыбына келтирүү логикасы (LocalStorage / Firebase даярдыгы менен)
+        const saveTestBtn = document.getElementById('saveTestBtn');
+        const testTitleInput = document.getElementById('testTitle');
+        const testLimitSelect = document.getElementById('testLimit');
+        const testDurationInput = document.getElementById('testDuration');
+        const antiCheatCheckbox = document.getElementById('antiCheat');
+        const createdTestsList = document.getElementById('createdTestsList');
+        const filterTestsSelect = document.getElementById('filterTestsSelect');
+
+        // Жүктөлгөндө сакталган тесттерди чыгаруу
+        document.addEventListener('DOMContentLoaded', loadSavedTests);
+
+        saveTestBtn.addEventListener('click', () => {
+            const title = testTitleInput.value.trim();
+            if (!title) {
+                alert('Сураныч, тесттин темасын жазыңыз!');
+                return;
+            }
+
+            const questions = [];
+            document.querySelectorAll('.question-block').forEach(block => {
+                const qText = block.querySelector('.question-text').value;
+                const qAns = block.querySelector('.question-answer').value;
+                if(qText) questions.push({ question: qText, answer: qAns });
+            });
+
+            const testCode = 'TEST-' + Math.floor(1000 + Math.random() * 9000);
+            
+            const newTest = {
+                code: testCode,
+                title: title,
+                format: selectedFormat,
+                limit: testLimitSelect.value,
+                duration: testDurationInput.value || 'Чектөөсүз',
+                antiCheat: antiCheatCheckbox.checked,
+                questions: questions,
+                date: new Date().toLocaleDateString()
+            };
+
+            // Жергиликтүү базага сактоо (Калыбына келтирүүчү негиз)
+            let localTests = JSON.parse(localStorage.getItem('bilimal_tests')) || [];
+            localTests.push(newTest);
+            localStorage.setItem('bilimal_tests', JSON.stringify(localTests));
+
+            alert(`Тест ийгиликтүү сакталды! Коду: ${testCode}`);
+            
+            // Форманы тазалоо
+            testTitleInput.value = '';
+            testDurationInput.value = '';
+            dynamicQuestionsContainer.innerHTML = '';
+            questionCounter = 0;
+
+            loadSavedTests();
+        });
+
+        function loadSavedTests() {
+            let localTests = JSON.parse(localStorage.getItem('bilimal_tests')) || [];
+            
+            if(localTests.length === 0) {
+                createdTestsList.innerHTML = '<p class="loading-text">Түзүлгөн тесттер жок...</p>';
+                return;
+            }
+
+            createdTestsList.innerHTML = '';
+            filterTestsSelect.innerHTML = '<option>Бардык тесттердин жыйынтыктары</option>';
+
+            localTests.forEach((test, index) => {
+                // Тизмеге чыгаруу
+                const testItem = document.createElement('div');
+                testItem.className = 'student-item success';
+                testItem.innerHTML = `
+                    <div class="student-info">
+                        <h4>${test.title}</h4>
+                        <p>Убактысы: ${test.duration} мүнөт • Суроолор: ${test.questions.length} • Коду: <strong>${test.code}</strong></p>
+                    </div>
+                    <div class="student-meta">
+                        <div class="actions-btn">
+                            <i class="fas fa-trash" title="Өчүрүү" onclick="deleteTest(${index})"></i>
+                        </div>
+                    </div>
+                `;
+                createdTestsList.appendChild(testItem);
+
+                // Жыйынтыктар фильтрине кошуу
+                const option = document.createElement('option');
+                option.value = test.code;
+                option.textContent = test.title;
+                filterTestsSelect.appendChild(option);
+            });
+        }
+
+        window.deleteTest = function(index) {
+            if(confirm('Бул тестти өчүрүүнү каалайсызбы?')) {
+                let localTests = JSON.parse(localStorage.getItem('bilimal_tests')) || [];
+                localTests.splice(index, 1);
+                localStorage.setItem('bilimal_tests', JSON.stringify(localTests));
+                loadSavedTests();
+            }
+        }
     </script>
 </body>
 </html>
