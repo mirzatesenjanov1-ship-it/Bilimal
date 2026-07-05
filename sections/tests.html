@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl.org - Тест Борбору</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
@@ -23,7 +24,7 @@
             min-height: 100vh;
         }
 
-        /* Сайдбар (Сол меню) */
+        /* Сайдбар */
         .sidebar {
             width: 260px;
             background-color: #111622;
@@ -294,7 +295,7 @@
     <div class="sidebar">
         <a href="../dashboard.html" class="logo">BilimAl.org</a>
         <div class="user-badge" id="userEmailBadge">
-            <i class="fas fa-user-gradient"></i> Жүктөлүүдө...
+            <i class="fas fa-user-gradient"></i> Идентификациялоо...
         </div>
         <ul class="sidebar-menu">
             <li><a href="../dashboard.html"><i class="fas fa-arrow-left"></i> Башкы бетке</a></li>
@@ -366,42 +367,31 @@
 
             <div class="form-group">
                 <select class="form-control" id="filterSelect">
-                    <option>Бардык тесттердин жыйынтыктары</option>
+                    <option value="all">Бардык тесттердин жыйынтыктары</option>
                 </select>
             </div>
 
             <div id="studentsList">
-                <div class="student-item">
-                    <div class="student-info">
-                        <h4>Асан Үсөн жөнөкөй ТЕСТ 1</h4>
-                        <p>10-класс Механика ЖӨНӨКӨЙ ТЕСТ • Коду: TEST-7673</p>
-                    </div>
-                    <div class="student-meta">
-                        <span class="score">1/3</span>
-                        <div class="actions-btn">
-                            <i class="fas fa-eye"></i>
-                            <i class="fas fa-trash"></i>
-                        </div>
-                    </div>
-                </div>
+                <p class="loading-text">Жыйынтыктар жүктөлүүдө...</p>
             </div>
         </div>
 
     </div>
 
     <script>
-        // 1. БУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН ФАЙРИБЕЙС КОНФИГДИ КОЮҢУЗ
+        // Сиздин 100% чыныгы Firebase жөндөөлөрүңүз
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
         };
         
-        // Firebase демилгелөө
+        // Демилгелөө
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -413,20 +403,23 @@
         let questionIdx = 0;
         let currentFormat = 'text';
 
-        // Мугалим киргенин же кирбегенин текшерүү (Сиздин Firebase эрежеңизге ылайык)
+        // Авторизацияны реалдуу убакытта көзөмөлдөө
         auth.onAuthStateChanged((user) => {
             if (user) {
-                currentUserId = user.uid; // Корголгон uid алынды
+                currentUserId = user.uid;
                 document.getElementById('userEmailBadge').innerHTML = `<i class="fas fa-user-gradient"></i> Мугалим:<br>${user.email}`;
-                // Эми базадан ушул мугалимге тиешелүү тесттерди таап чыгарабыз
+                
+                // База менен байланышты иштетүү
                 listenToCreatedTests();
+                listenToStudentsResults();
             } else {
                 document.getElementById('userEmailBadge').innerHTML = `<i class="fas fa-exclamation-triangle"></i> Киришиңиз керек`;
-                document.getElementById('createdTestsList').innerHTML = `<p class="loading-text" style="color:#e74c3c;">Катаны алдын алуу үчүн алгач аккаунтка кириңиз!</p>`;
+                document.getElementById('createdTestsList').innerHTML = `<p class="loading-text" style="color:#e74c3c;">Алгач системага кириңиз!</p>`;
+                document.getElementById('studentsList').innerHTML = `<p class="loading-text" style="color:#e74c3c;">Жыйынтыктар үчүн авторизация керек.</p>`;
             }
         });
 
-        // Форматтарды которуштуруу
+        // Формат алмаштыруу
         const formatBtns = document.querySelectorAll('.btn-format');
         formatBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -436,7 +429,7 @@
             });
         });
 
-        // Жаңы суроо кошуу
+        // Жаңы суроо блогун кошуу
         const questionsContainer = document.getElementById('questionsContainer');
         document.getElementById('addQuestionBtn').addEventListener('click', () => {
             questionIdx++;
@@ -456,18 +449,12 @@
             questionsContainer.appendChild(div);
         });
 
-        // ТЕСТТИ САКТОО (Сиздин Firebase эрежеңиз боюнча туура дарекке жазуу)
+        // ТЕСТТИ САКТОО (Эрежеге ылайык эки дарекке тең жазат)
         document.getElementById('saveTestBtn').addEventListener('click', () => {
-            if (!currentUserId) {
-                alert('Ката: Сиз авторизациядан өткөн эмессиз!');
-                return;
-            }
+            if (!currentUserId) return alert('Ката: Сиз системага кирген эмессиз!');
 
             const titleValue = document.getElementById('testTitle').value.trim();
-            if (!titleValue) {
-                alert('Сураныч, тесттин темасын жазыңыз!');
-                return;
-            }
+            if (!titleValue) return alert('Сураныч, тесттин темасын жазыңыз!');
 
             const questionsArray = [];
             document.querySelectorAll('.question-block').forEach(b => {
@@ -488,39 +475,32 @@
                 questions: questionsArray
             };
 
-            // 1-кадам: Мугалимдин жеке папкасына сактоо (teachers_data/$uid/) -> Эрежеге туура келет!
+            // 1. Корголгон жеке папкага жазуу (teachers_data/$uid/tests)
             database.ref('teachers_data/' + currentUserId + '/tests/' + randomCode).set(testData)
             .then(() => {
-                // 2-кадам: Окуучулар код аркылуу таба алуусу үчүн ачык дарекке да көчүрүү
+                // 2. Ачык издөө папкасына жазуу (global_test_lookup)
                 return database.ref('global_test_lookup/' + randomCode).set({
                     teacherUid: currentUserId,
                     title: titleValue
                 });
             })
             .then(() => {
-                alert(`Тест ийгиликтүү сакталды! Коду: ${randomCode}`);
-                // Форманы тазалоо
+                alert(`Тест ийгиликтүү түзүлдү! Коду: ${randomCode}`);
                 document.getElementById('testTitle').value = '';
                 document.getElementById('testDuration').value = '';
                 questionsContainer.innerHTML = '';
                 questionIdx = 0;
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Ката кетти: Базага кирүүгө уруксат берилген жок!");
-            });
+            }).catch(err => alert("Сактоодо ката кетти: " + err.message));
         });
 
-        // МУРУНКУ ТҮЗҮЛГӨН ТЕСТТЕРДИ БАЗАДАН АЛЫП ЧЫГАРУУ
+        // МУРУНКУ ТҮЗҮЛГӨН ТЕСТТЕРДИ ЧЫГАРУУ
         function listenToCreatedTests() {
-            const testsRef = database.ref('teachers_data/' + currentUserId + '/tests');
-            
-            testsRef.on('value', (snapshot) => {
+            database.ref('teachers_data/' + currentUserId + '/tests').on('value', (snapshot) => {
                 const createdTestsList = document.getElementById('createdTestsList');
                 const filterSelect = document.getElementById('filterSelect');
                 
                 createdTestsList.innerHTML = '';
-                filterSelect.innerHTML = '<option>Бардык тесттердин жыйынтыктары</option>';
+                filterSelect.innerHTML = '<option value="all">Бардык тесттердин жыйынтыктары</option>';
 
                 if (!snapshot.exists()) {
                     createdTestsList.innerHTML = '<p class="loading-text">Түзүлгөн тесттер жок...</p>';
@@ -548,7 +528,6 @@
                     `;
                     createdTestsList.appendChild(item);
 
-                    // Фильтрге кошуу
                     const opt = document.createElement('option');
                     opt.value = test.code;
                     opt.textContent = test.title;
@@ -557,16 +536,79 @@
             });
         }
 
-        // ТЕСТТИ ӨЧҮРҮҮ ФУНКЦИЯСЫ
+        // ОКУУЧУЛАРДЫН ЖЫЙЫНТЫКТАРЫН LIVE ЧЫГАРУУ
+        function listenToStudentsResults() {
+            database.ref('teachers_data/' + currentUserId + '/results').on('value', (snapshot) => {
+                const studentsList = document.getElementById('studentsList');
+                studentsList.innerHTML = '';
+
+                if (!snapshot.exists()) {
+                    studentsList.innerHTML = '<p class="loading-text">Азырынча окуучулар тапшыра элек...</p>';
+                    return;
+                }
+
+                snapshot.forEach((childSnapshot) => {
+                    const resKey = childSnapshot.key;
+                    const res = childSnapshot.val();
+
+                    const div = document.createElement('div');
+                    if (res.antiCheatTriggered) {
+                        div.className = 'student-item danger';
+                    } else if (res.score >= (res.totalQuestions / 2)) {
+                        div.className = 'student-item success';
+                    } else {
+                        div.className = 'student-item';
+                    }
+
+                    div.setAttribute('data-code', res.testCode);
+
+                    let scoreDisplay = `<span class="score">${res.score}/${res.totalQuestions}</span>`;
+                    if (res.antiCheatTriggered) {
+                        scoreDisplay = `<span class="score danger" style="font-size:12px;"><i class="fas fa-ban"></i> АНТИЧИТ!</span>`;
+                    }
+
+                    div.innerHTML = `
+                        <div class="student-info">
+                            <h4>${res.studentName}</h4>
+                            <p>${res.testTitle} • Класс: ${res.studentClass || '—'} • Коду: ${res.testCode}</p>
+                        </div>
+                        <div class="student-meta">
+                            ${scoreDisplay}
+                            <div class="actions-btn">
+                                <i class="fas fa-trash" title="Өчүрүү" onclick="deleteResult('${resKey}')"></i>
+                            </div>
+                        </div>
+                    `;
+                    studentsList.appendChild(div);
+                });
+            });
+        }
+
+        // Фильтрация логикасы
+        document.getElementById('filterSelect').addEventListener('change', (e) => {
+            const val = e.target.value;
+            const items = document.querySelectorAll('#studentsList .student-item');
+            
+            items.forEach(item => {
+                if (val === 'all' || item.getAttribute('data-code') === val) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        // Өчүрүү функциялары
         window.deleteTest = function(testKey) {
-            if (confirm('Бул тестти биротоло өчүрүүнү каалайсызбы?')) {
-                // Жеке папкадан өчүрүү
-                database.ref('teachers_data/' + currentUserId + '/tests/' + testKey).remove()
-                .then(() => {
-                    // Ачык папкадан да тазалоо
-                    return database.ref('global_test_lookup/' + testKey).remove();
-                })
-                .catch(err => alert("Өчүрүүдө ката кетти: " + err.message));
+            if (confirm('Бул тестти өчүрүүнү каалайсызбы?')) {
+                database.ref('teachers_data/' + currentUserId + '/tests/' + testKey).remove();
+                database.ref('global_test_lookup/' + testKey).remove();
+            }
+        }
+
+        window.deleteResult = function(resKey) {
+            if (confirm('Бул жыйынтыкты тизмеден өчүрөсүзбү?')) {
+                database.ref('teachers_data/' + currentUserId + '/results/' + resKey).remove();
             }
         }
     </script>
