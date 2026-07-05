@@ -75,7 +75,7 @@ export const ClassesModule = {
                 UI.showToast("Класс ийгиликтүү кошулду!");
                 UI.closeModal();
                 this.render();
-                // Синхрондуу түрдө Түзүүчү табындагы селектти жаңыртуу
+                // Синхрондуу түрдө түзүүчү табындагы селектти жаңыртуу
                 window.refreshGlobalSelectors();
             };
         };
