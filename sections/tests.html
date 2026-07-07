@@ -4,125 +4,212 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl — Башкаруу Панели</title>
-    <link rel="stylesheet" href="../css/style.css">
+    
+    <!-- 1. GOOGLE ANALYTICS INTEGRATION -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV60QV0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-9GSQV60QV0');
+    </script>
+
+    <!-- 2. ADSTERRA SOCIAL BAR INTEGRATION -->
+    <script src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js"></script>
+
+    <!-- Ички Стилдер (404 CSS катасын болтурбоо жана кооз дизайн үчүн) -->
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-sidebar: #ffffff;
+            --text-main: #1e293b;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --border-color: #e2e8f0;
+            --card-bg: #ffffff;
+            --toast-success: #10b981;
+            --toast-error: #ef4444;
+        }
+        .dark-theme {
+            --bg-primary: #0f172a;
+            --bg-sidebar: #1e293b;
+            --text-main: #f8fafc;
+            --border-color: #334155;
+            --card-bg: #1e293b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg-primary); color: var(--text-main); transition: background 0.3s; display: flex; flex-direction: column; min-height: 100vh; }
+        
+        .main-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: var(--bg-sidebar); border-bottom: 1px solid var(--border-color); }
+        .search-box { display: flex; gap: 0.5rem; }
+        .search-box input { padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-main); }
+        
+        .app-container { display: flex; flex: 1; }
+        .sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .sidebar.mobile-open { display: flex !important; position: absolute; left: 0; top: 70px; height: calc(100vh - 70px); z-index: 100; }
+        
+        .nav-item, .primary-btn, .secondary-btn, .danger-btn { padding: 0.75rem 1rem; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; background: transparent; color: var(--text-main); text-align: left; width: 100%; }
+        .nav-item:hover, .nav-item.active { background: var(--accent-color); color: white; }
+        .primary-btn { background: var(--accent-color); color: white; text-align: center; justify-content: center; }
+        .primary-btn:hover { background: var(--accent-hover); }
+        .danger-btn { background: #fee2e2; color: #ef4444; justify-content: center; }
+        .danger-btn:hover { background: #fca5a5; }
+        .secondary-btn { background: var(--bg-primary); border: 1px solid var(--border-color); justify-content: center; }
+        
+        .content-area { flex: 1; padding: 2rem; }
+        .filter-bar { display: flex; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap; }
+        .filter-bar select { padding: 0.5rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); }
+        
+        .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 100%)); gap: 1.5rem; margin-top: 1.5rem; }
+        .test-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .card-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 100%)); gap: 0.5rem; margin-top: 1rem; }
+        .card-actions button { padding: 0.4rem; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); cursor: pointer; }
+        
+        /* Модалдар */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 1; transition: opacity 0.2s; }
+        .modal.hidden { display: none; opacity: 0; }
+        .modal-content { background: var(--card-bg); padding: 2rem; border-radius: 16px; width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; color: var(--text-main); }
+        .form-group { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group input { padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); }
+        .modal-actions { display: flex; gap: 0.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        
+        /* Жарнама контейнери */
+        .ad-container-728x90 { display: flex; justify-content: center; margin: 1.5rem 0; width: 100%; overflow: hidden; }
+
+        /* Түртмө билдирүүлөр (Toasts) */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 2000; }
+        .toast { padding: 1rem 1.5rem; border-radius: 8px; color: white; display: flex; align-items: center; gap: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); animation: slideIn 0.3s ease; }
+        .toast-success { background: var(--toast-success); }
+        .toast-error { background: var(--toast-error); }
+        .toast-close-btn { background: transparent; border: none; color: white; cursor: pointer; font-size: 1.2rem; }
+
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @media (max-width: 768px) { .app-container { flex-direction: column; } .sidebar { display: none; width: 100%; } .main-header { padding: 1rem; } }
+    </style>
 </head>
 <body class="light-theme" id="app-body">
 
-    <!-- ТҮНДҮК/КҮНДҮК ЖАНА МОБИЛЬ ТӨШӨЛМӨСҮ -->
+    <!-- БАННЕРДИК ЖАРНАМА ОРДУ (728x90) -->
+    <div class="ad-container-728x90">
+        <!-- 3. ADSTERRA BANNER 728X90 INTEGRATION -->
+        <script>
+            let atOptions = {
+                'key' : '230e338703bb44150336cce1f0832fe3',
+                'format' : 'iframe',
+                'height' : 90,
+                'width' : 728,
+                'params' : {}
+            };
+        </script>
+        <script src="https://www.highperformanceformat.com/230e338703bb44150336cce1f0832fe3/invoke.js"></script>
+    </div>
+
     <header class="main-header">
-        <button id="btn-mobile-menu-toggle" class="icon-btn" aria-label="Мобилдик меню">☰</button>
+        <button id="btn-mobile-menu-toggle" class="primary-btn" style="width:auto;">☰</button>
         <div class="search-box">
             <input type="text" id="input-global-search" placeholder="Издөө...">
-            <button id="btn-global-search" class="primary-btn">Издөө</button>
+            <button id="btn-global-search" class="primary-btn" style="width:auto;">Издөө</button>
         </div>
-        <div class="header-actions">
-            <button id="btn-notification-bell" class="icon-btn">🔔 <span class="badge" id="noti-count">0</span></button>
-            <button id="btn-theme-toggle" class="icon-btn">🌙</button>
+        <div class="header-actions" style="display:flex; gap:10px;">
+            <button id="btn-notification-bell" class="secondary-btn" style="width:auto;">🔔 <span id="noti-count">3</span></button>
+            <button id="btn-theme-toggle" class="secondary-btn" style="width:auto;">🌙 Тема</button>
         </div>
     </header>
 
     <div class="app-container">
-        <!-- СОЛ МЕНЮ (NAVIGATION) -->
         <aside id="sidebar-menu" class="sidebar">
-            <nav>
+            <nav style="display:flex; flex-direction:column; gap:8px;">
                 <button id="nav-btn-profile" class="nav-item">👤 Мугалим Профили</button>
                 <button id="nav-btn-tests" class="nav-item active">📝 Тесттер</button>
                 <button id="nav-btn-questions" class="nav-item">❓ Суроолор</button>
                 <button id="nav-btn-classes" class="nav-item">👥 Класстар жана Окуучулар</button>
                 <button id="nav-btn-analytics" class="nav-item">📊 Аналитика</button>
-                <button id="nav-btn-admin" class="nav-item">👑 Админ Панель</button>
-                <hr>
-                <button id="nav-btn-logout" class="nav-item logout-btn">🚪 Чыгуу</button>
+                <button id="nav-btn-admin" class="nav-item">👑 Admin Панель</button>
+                <hr style="border-color: var(--border-color);">
+                <button id="nav-btn-logout" class="danger-btn">🚪 Чыгуу</button>
             </nav>
         </aside>
 
-        <!-- НЕГИЗГИ МАЗМУН -->
         <main class="content-area">
-            
-            <!-- ТЕСТТЕР СЕКЦИЯСЫ -->
             <section id="section-tests-management">
-                <div class="section-header">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <h2>Тесттерди Башкаруу</h2>
-                    <div class="action-group">
-                        <button id="btn-create-new-test" class="primary-btn">+ Жаңы тест түзүү</button>
-                        <button id="btn-json-import" class="secondary-btn">📥 JSON Импорт</button>
+                    <div style="display:flex; gap:10px;">
+                        <button id="btn-create-new-test" class="primary-btn" style="width:auto;">+ Жаңы тест түзүү</button>
+                        <button id="btn-json-import" class="secondary-btn" style="width:auto;">📥 JSON Импорт</button>
                     </div>
                 </div>
 
-                <!-- ФИЛЬТРЛӨӨ ЖАНА СОРТТОО -->
                 <div class="filter-bar">
                     <select id="select-test-filter-status">
-                        <option value="all">Бардык тесттер</option>
+                        <option value="all">Бардык статус</option>
                         <option value="active">Активдүү</option>
                         <option value="draft">Черновик</option>
                         <option value="archived">Архивделген</option>
                     </select>
                     <select id="select-test-sort">
-                        <option value="date-desc">Алгач жаңылары</option>
-                        <option value="date-asc">Алгач эскилери</option>
-                        <option value="title">Аталышы боюнча</option>
+                        <option value="date-desc">Жаңылар башында</option>
+                        <option value="title">Аталышы (А-Я)</option>
                     </select>
-                    <button id="btn-clear-test-filters" class="danger-btn">Фильтрди тазалоо</button>
+                    <button id="btn-clear-test-filters" class="danger-btn" style="width:auto;">Фильтрди тазалоо</button>
                 </div>
 
-                <!-- ТЕСТТЕРДИН ТИЗМЕСИ -->
-                <div id="tests-list-container" class="grid-container">
-                    <!-- JavaScript аркылуу динамикалык түрдө толтурулат -->
-                </div>
+                <!-- Динамикалык Тесттердин Тизмеси Контейнери -->
+                <div id="tests-list-container" class="grid-container"></div>
 
-                <!-- ПАГИНАЦИЯ -->
-                <div class="pagination-container">
-                    <button id="btn-pagination-prev" class="secondary-btn">Артка</button>
+                <div class="pagination-container" style="display:flex; justify-content:center; align-items:center; gap:15px; margin-top:20px;">
+                    <button id="btn-pagination-prev" class="secondary-btn" style="width:auto;">Артка</button>
                     <span id="span-pagination-info">Барак 1 / 1</span>
-                    <button id="btn-pagination-next" class="secondary-btn">Алга</button>
+                    <button id="btn-pagination-next" class="secondary-btn" style="width:auto;">Алга</button>
                 </div>
             </section>
         </main>
     </div>
 
-    <!-- МОДАЛДЫК ТЕРЕЗЕ: ТЕСТ ТҮЗҮҮ / ТҮЗӨТҮҮ -->
+    <!-- МОДАЛДЫК ТЕРЕЗЕ: ТЕСТ ЭДИТОР -->
     <div id="modal-test-editor" class="modal hidden">
         <div class="modal-content">
-            <h3 id="modal-title">Тест Маалыматы</h3>
-            <input type="hidden" id="input-test-id">
-            <div class="form-group">
-                <label for="input-test-title">Тесттин аталышы:</label>
-                <input type="text" id="input-test-title" required>
+            <h3 id="modal-title">Тест Параметрлери</h3>
+            <div class="form-group" style="margin-top:15px;">
+                <label>Тесттин аталышы:</label>
+                <input type="text" id="input-test-title" placeholder="Мисалы: Ом мыйзамы">
             </div>
             
-            <!-- СУРООЛОРДУ БАШКАРУУ БӨЛҮГҮ -->
-            <div class="questions-management-inside-test">
+            <div style="background:var(--bg-primary); padding:15px; border-radius:10px; margin-bottom:15px;">
                 <h4>Суроолорду башкаруу</h4>
-                <div class="question-actions-top">
-                    <button id="btn-add-question" class="secondary-btn">+ Суроо кошуу</button>
-                    <button id="btn-shuffle-questions" class="secondary-btn">🔀 Суроолорду аралаштыруу</button>
+                <div style="display:flex; gap:10px; margin:10px 0;">
+                    <button id="btn-add-question" class="secondary-btn" style="width:auto;">+ Суроо кошуу</button>
+                    <button id="btn-shuffle-questions" class="secondary-btn" style="width:auto;">🔀 Аралаштыруу</button>
                 </div>
-                <div id="modal-questions-list" class="questions-list-box"></div>
+                <div id="modal-questions-list" style="display:flex; flex-direction:column; gap:10px; max-height:200px; overflow-y:auto;"></div>
             </div>
 
             <div class="modal-actions">
-                <button id="btn-save-draft" class="secondary-btn">Черновик сактоо</button>
-                <button id="btn-preview-test" class="secondary-btn">Алдын ала көрүү</button>
-                <button id="btn-publish-test" class="primary-btn">Тестти жарыялоо</button>
-                <button id="btn-modal-cancel" class="danger-btn">Жокко чыгаруу</button>
+                <button id="btn-save-draft" class="secondary-btn" style="flex:1;">Черновик сактоо</button>
+                <button id="btn-preview-test" class="secondary-btn" style="flex:1;">Алдын ала көрүү</button>
+                <button id="btn-publish-test" class="primary-btn" style="flex:1;">Тестти жарыялоо</button>
+                <button id="btn-modal-cancel" class="danger-btn" style="flex:1;">Жокко чыгаруу</button>
             </div>
         </div>
     </div>
 
-    <!-- УНИВЕРСАЛДУУ ЫРАСТОО (CONFIRM) МОДАЛЫ -->
+    <!-- УНИВЕРСАЛДУУ CONFIRM МОДАЛЫ -->
     <div id="modal-universal-confirm" class="modal hidden">
-        <div class="modal-content text-center">
-            <h3 id="confirm-modal-title">Ишенимдүүсүзбү?</h3>
-            <p id="confirm-modal-message"></p>
-            <div class="modal-actions justify-center">
-                <button id="btn-modal-confirm-yes" class="danger-btn">Ооба</button>
+        <div class="modal-content" style="max-width:400px; text-align:center;">
+            <h3 id="confirm-modal-title">Аракетти тастыктоо</h3>
+            <p id="confirm-modal-message" style="margin:15px 0;"></p>
+            <div style="display:flex; gap:10px;">
+                <button id="btn-modal-confirm-yes" class="primary-btn">Ооба</button>
                 <button id="btn-modal-confirm-no" class="secondary-btn">Жок</button>
             </div>
         </div>
     </div>
 
-    <!-- ТОАСТ БИЛДИРҮҮЛӨР КОНТЕЙНЕРИ -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- 4. FIREBASE SDK ЖАНА СИСТЕМАЛЫК ЛОГИКА ОШОЛ ЭЛЕ ЖЕРДЕ ИШТЕЙТ -->
+    <script type="module" src="../js/app.js"></script>
 </body>
 </html>
