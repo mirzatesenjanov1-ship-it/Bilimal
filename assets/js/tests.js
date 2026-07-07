@@ -276,3 +276,84 @@ function deleteTest(testId) {
         loadMyTests();
     }
 }
+/**
+ * Bilimal.org - Мугалим үчүн окуучулардын жыйынтыктарын жана Anti-Cheat логдорун көрсөтүү модулу
+ */
+
+const BilimalAnalytics = {
+    init() {
+        // Эгер мугалимдин барагында статистика бөлүмү болсо, аны жүктөө
+        this.renderStudentResults();
+        this.renderSecurityLogs();
+    },
+
+    // 1. Окуучулардын алган бааларынын журналы
+    renderStudentResults() {
+        const resultsContainer = document.getElementById('analytics-results-table');
+        if (!resultsContainer) return;
+
+        const allResults = BilimalStorage.get(StorageKeys.RESULTS) || [];
+        
+        if (allResults.length === 0) {
+            resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">Азырынча тест тапшырган окуучулар жок.</td></tr>`;
+            return;
+        }
+
+        // Акыркы тапшыргандарды биринчи көрсөтүү
+        allResults.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+        let html = '';
+        allResults.forEach(res => {
+            // Эгер окуучу көп жолу эреже бузса, анын катарчасын кызыл кылып көрсөтүү
+            const rowClass = res.cheatsCount > 2 ? 'row-danger' : '';
+            const statusColor = res.percentage >= 80 ? '#10b981' : (res.percentage >= 50 ? '#06b6d4' : '#ef4444');
+
+            html += `
+                <tr class="${rowClass}" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                    <td style="padding:12px; font-weight:600;">${res.studentName}</td>
+                    <td style="padding:12px; color:var(--text-muted);">${res.studentClass}</td>
+                    <td style="padding:12px;">${res.testTitle}</td>
+                    <td style="padding:12px; font-weight:700; color:${statusColor}">${res.percentage}% (${res.correctAnswers}/${res.totalQuestions})</td>
+                    <td style="padding:12px; font-weight:700; color:${res.cheatsCount > 0 ? '#ef4444' : '#10b981'}">
+                        ${res.cheatsCount > 0 ? `⚠️ ${res.cheatsCount} жолу` : 'Таза (0)'}
+                    </td>
+                    <td style="padding:12px; font-size:12px; color:var(--text-muted);">${new Date(res.submittedAt).toLocaleTimeString()}</td>
+                </tr>
+            `;
+        });
+
+        resultsContainer.innerHTML = html;
+    },
+
+    // 2. Anti-Cheat реалдуу убакыттагы окуялар журналы (Логдор)
+    renderSecurityLogs() {
+        const logsContainer = document.getElementById('security-live-logs');
+        if (!logsContainer) return;
+
+        const allLogs = BilimalStorage.get(StorageKeys.ACTIVITY_LOG) || [];
+        // Физикалык түрдө жалаң гана античит бузууларын чыпкалап алуу
+        const cheatLogs = allLogs.filter(log => log.actionType === 'CHEAT_DETECTED');
+
+        if (cheatLogs.length === 0) {
+            logsContainer.innerHTML = `<p style="color:var(--accent-green); font-size:13px;">🛡️ Системага шектүү аракеттер катталган жок.</p>`;
+            return;
+        }
+
+        let html = '<div class="logs-feed-wrapper" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">';
+        cheatLogs.forEach(log => {
+            html += `
+                <div class="log-item-alert" style="background:rgba(239,68,68,0.05); border-left:3px solid #ef4444; padding:10px; border-radius:4px; font-size:12px;">
+                    <span style="color:#ef4444; font-weight:700;">[БӨГӨТТӨӨ]</span> ${log.details}
+                </div>
+            `;
+        });
+        html += '</div>';
+
+        logsContainer.innerHTML = html;
+    }
+};
+
+// Мугалимдин барагы ачылганда автоматтык түрдө иштетүү
+document.addEventListener('DOMContentLoaded', () => {
+    BilimalAnalytics.init();
+});
