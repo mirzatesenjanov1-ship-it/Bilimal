@@ -1,149 +1,135 @@
 /**
- * Bilimal.org - Маалыматтарды сактоо жана башкаруу борбору (Storage Engine)
- * Архитектуралык коопсуздук: Бардык маалыматтар teacherId/ownerId менен бөлүнөт.
+ * Bilimal.org - Борбордук коопсуз маалымат катмары (Production-ready Storage Layer)
+ * Автордук укук корголгон © 2026. Бардык укуктар сакталган.
  */
 
+window.BilimalStorageFallback = {};
+
+const StorageKeys = {
+    TEACHER_ID: 'BILIMAL_TEACHER_ID',
+    TEACHERS_DATA: 'BILIMAL_TEACHERS_DATA',
+    TESTS: 'BILIMAL_TESTS',
+    RESULTS: 'BILIMAL_RESULTS',
+    ACTIVITY_LOGS: 'BILIMAL_ACTIVITY_LOGS'
+};
+
 const BilimalStorage = {
-    // Негизги ачкычтар
-    KEYS: {
-        USERS: 'bilimal_users',
-        CURRENT_USER: 'bilimal_current_user',
-        TESTS: 'bilimal_tests',
-        RESULTS: 'bilimal_results',
-        CLASSES: 'bilimal_classes',
-        STUDENTS: 'bilimal_students',
-        ACTIVITY_LOG: 'bilimal_activity_log',
-        SETTINGS: 'bilimal_settings',
-        COOKIE_CONSENT: 'bilimal_cookie_consent'
-    },
-
-    // Базадан маалыматты коопсуз окуу
-    get(key) {
+    isAvailable() {
         try {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : [];
-        } catch (error) {
-            console.error(`Бул ачкычты окууда ката кетти: ${key}`, error);
-            return [];
-        }
-    },
-
-    // Базага маалыматты коопсуз жазуу
-    set(key, data) {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-            return true;
-        } catch (error) {
-            console.error(`Бул ачкычка жазууда ката кетти: ${key}`, error);
-            return false;
-        }
-    },
-
-    // Жалгыз объектти сактоо (мисалы, учурдагы колдонуучу же жөндөөлөр)
-    setObject(key, obj) {
-        try {
-            localStorage.setItem(key, JSON.stringify(obj));
-            return true;
-        } catch (error) {
-            console.error(`Объектти жазууда ката кетти: ${key}`, error);
-            return false;
-        }
-    },
-
-    getObject(key) {
-        try {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : null;
-        } catch (error) {
-            console.error(`Объектти окууда ката кетти: ${key}`, error);
-            return null;
-        }
-    },
-
-    // Мугалимдин аракеттер журналына (Activity Log) жазуу
-    logActivity(userId, action, details = "") {
-        try {
-            const logs = this.get(this.KEYS.ACTIVITY_LOG);
-            const newLog = {
-                id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-                userId: userId,
-                action: action,
-                details: details,
-                timestamp: new Date().toISOString()
-            };
-            logs.unshift(newLog); // Жаңы аракеттер дайыма башында турат
-            this.set(this.KEYS.ACTIVITY_LOG, logs);
-            
-            // Google Analytics окуясын чакыруу (эгер жарнама менеджери кошулган болсо)
-            if (typeof window.trackEvent === 'function') {
-                window.trackEvent('activity_logged', { action: action, user_id: userId });
-            }
+            const testKey = '__storage_test__';
+            window.localStorage.setItem(testKey, testKey);
+            window.localStorage.removeItem(testKey);
             return true;
         } catch (e) {
-            console.error("Аракеттер журналы жазылган жок:", e);
+            console.warn("Браузердин коопсуздук саясаты localStorage колдонууга уруксат берген жок. Ички fallback иштетилди.");
             return false;
         }
     },
 
-    // Мугалимдин өзүнө тиешелүү маалыматтарды гана чыпкалоо
-    getTeacherData(key, teacherId) {
-        const allData = this.get(key);
-        if (!teacherId) return [];
-        // Эгер маалымат массив болсо, анда чыпкалайбыз
-        if (Array.isArray(allData)) {
-            return allData.filter(item => item.teacherId === teacherId || item.ownerId === teacherId);
-        }
-        return [];
-    },
-
-    // Маалымат кошуу же жаңыртуу (ID боюнча)
-    saveItem(key, item, teacherId) {
-        try {
-            const allData = this.get(key);
-            if (!item.id) {
-                item.id = 'ID-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    get(key) {
+        if (this.isAvailable()) {
+            const data = window.localStorage.getItem(key);
+            try {
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                console.error("Маалыматты JSON форматына айландыруу катасы:", e);
+                return [];
             }
-            // Ар дайым коопсуздук үчүн мугалимдин ID'син байлайбыз
-            item.teacherId = teacherId;
-            item.ownerId = teacherId;
-            item.updatedAt = new Date().toISOString();
-
-            const index = allData.findIndex(d => d.id === item.id);
-            if (index > -1) {
-                allData[index] = item;
-            } else {
-                item.createdAt = new Date().toISOString();
-                allData.push(item);
-            }
-            
-            this.set(key, allData);
-            return item;
-        } catch (error) {
-            console.error(`Маалыматты сактоодо ката: ${key}`, error);
-            return null;
+        } else {
+            return window.BilimalStorageFallback[key] || [];
         }
     },
 
-    // Маалыматты өчүрүү (Коопсуздук текшерүүсү менен)
-    deleteItem(key, id, teacherId) {
-        try {
-            const allData = this.get(key);
-            const index = allData.findIndex(d => d.id === id);
-            if (index > -1) {
-                // Коопсуздук: башка мугалимдин маалыматын өчүрүүгө бөгөт коюу
-                if (allData[index].teacherId === teacherId || allData[index].ownerId === teacherId || teacherId === 'ADMIN') {
-                    allData.splice(index, 1);
-                    this.set(key, allData);
-                    return true;
-                }
-            }
-            return false;
-        } catch (error) {
-            console.error(`Маалыматты өчүрүүдө ката: ${key}`, error);
-            return false;
+    save(key, data) {
+        if (this.isAvailable()) {
+            window.localStorage.setItem(key, JSON.stringify(data));
+        } else {
+            window.BilimalStorageFallback[key] = data;
         }
+    },
+
+    getTeacherId() {
+        if (this.isAvailable()) {
+            let id = window.localStorage.getItem(StorageKeys.TEACHER_ID);
+            if (!id) {
+                id = 'PROF-' + Math.floor(100000 + Math.random() * 900000);
+                window.localStorage.setItem(StorageKeys.TEACHER_ID, id);
+                this.initDefaultTeacher(id);
+            }
+            return id;
+        } else {
+            if (!window.BilimalStorageFallback[StorageKeys.TEACHER_ID]) {
+                window.BilimalStorageFallback[StorageKeys.TEACHER_ID] = 'PROF-777888';
+                this.initDefaultTeacher('PROF-777888');
+            }
+            return window.BilimalStorageFallback[StorageKeys.TEACHER_ID];
+        }
+    },
+
+    initDefaultTeacher(id) {
+        const teachers = this.get(StorageKeys.TEACHERS_DATA);
+        const exists = teachers.find(t => t.id === id);
+        if (!exists) {
+            teachers.push({
+                id: id,
+                name: "Айбек Назаров",
+                subject: "Физика жана Астрономия",
+                school: "Т. Сатылганов атындагы лицей",
+                bio: "Физика сабагы боюнча жогорку категориядагы мугалим. 12 жылдык тажрыйба.",
+                avatar: "",
+                email: "a.nazarov@bilimal.org"
+            });
+            this.save(StorageKeys.TEACHERS_DATA, teachers);
+            this.logActivity(id, "ПРОФИЛЬ", "Жаңы мугалимдин аккаунту автоматтык түрдө ишке киргизилди.");
+        }
+    },
+
+    getTeacherProfile() {
+        const id = this.getTeacherId();
+        const teachers = this.get(StorageKeys.TEACHERS_DATA);
+        return teachers.find(t => t.id === id) || {
+            id: id,
+            name: "Аныкталбаган Мугалим",
+            subject: "Маалымат жок",
+            school: "Маалымат жок",
+            bio: "",
+            avatar: "",
+            email: "hidden@bilimal.org"
+        };
+    },
+
+    updateTeacherProfile(updatedProfile) {
+        const id = this.getTeacherId();
+        let teachers = this.get(StorageKeys.TEACHERS_DATA);
+        const index = teachers.findIndex(t => t.id === id);
+        if (index !== -1) {
+            teachers[index] = { ...teachers[index], ...updatedProfile, id: id };
+        } else {
+            teachers.push({ ...updatedProfile, id: id });
+        }
+        this.save(StorageKeys.TEACHERS_DATA, teachers);
+        this.logActivity(id, "ПРОФИЛЬ", "Мугалим жеке профилин жаңылады.");
+    },
+
+    logActivity(teacherId, actionType, details) {
+        const logs = this.get(StorageKeys.ACTIVITY_LOGS);
+        logs.push({
+            id: 'LOG-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+            teacherId: teacherId,
+            teacherName: this.getTeacherNameById(teacherId),
+            actionType: actionType,
+            details: details,
+            timestamp: new Date().toISOString()
+        });
+        this.save(StorageKeys.ACTIVITY_LOGS, logs);
+    },
+
+    getTeacherNameById(id) {
+        const teachers = this.get(StorageKeys.TEACHERS_DATA);
+        const t = teachers.find(item => item.id === id);
+        return t ? t.name : "Белгисиз Мугалим";
     }
 };
 
-// Экспорттоо
-window.BilimalStorage = BilimalStorage;
+// Алгачкы ишке киргизүү
+BilimalStorage.getTeacherId();
