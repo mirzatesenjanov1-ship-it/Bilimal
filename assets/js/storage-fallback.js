@@ -1,207 +1,206 @@
-// Safe JSON Parser to prevent parsing crashes
-export function safeJsonParse(value, fallbackValue = null) {
-  if (value === null || value === undefined || value === "") return fallbackValue;
-  if (typeof value === "object") return value;
-  try {
-    const cleaned = String(value).trim();
-    if (cleaned === "[object Object]") return fallbackValue;
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error("Error parsing JSON safely:", e, "Value was:", value);
-    return fallbackValue;
-  }
-}
+// Bilimal-AI Project - Offline Storage Fallback Engine
+(function () {
+    const BF = window.BilimalFirebase;
 
-export function safeJsonStringify(value, fallbackValue = "[]") {
-  try {
-    return JSON.stringify(value);
-  } catch (e) {
-    console.error("Error stringifying JSON safely:", e);
-    return fallbackValue;
-  }
-}
+    function getLocalData(key, fallback) {
+        return BF.safeJsonParse(localStorage.getItem(key), fallback);
+    }
 
-export function getLocalData(key, fallbackValue = null) {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? safeJsonParse(data, fallbackValue) : fallbackValue;
-  } catch (e) {
-    console.error(`Error reading key ${key} from localStorage:`, e);
-    return fallbackValue;
-  }
-}
+    function setLocalData(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+    }
 
-export function setLocalData(key, value) {
-  try {
-    const dataStr = safeJsonStringify(value);
-    localStorage.setItem(key, dataStr);
-    return true;
-  } catch (e) {
-    console.error(`Error setting key ${key} to localStorage:`, e);
-    return false;
-  }
-}
+    function removeLocalData(key) {
+        localStorage.removeItem(key);
+    }
 
-export function removeLocalData(key) {
-  try {
-    localStorage.removeItem(key);
-    return true;
-  } catch (e) {
-    console.error(`Error removing key ${key} from localStorage:`, e);
-    return false;
-  }
-}
+    function saveOfflineQueue(action) {
+        const queue = getLocalData('bilimal_offline_queue', []);
+        queue.push({
+            ...action,
+            timestamp: Date.now()
+        });
+        setLocalData('bilimal_offline_queue', queue);
+        BF.showToast("Өзгөрүү локалдык түрдө сакталды (Оффлайн)", "warning");
+    }
 
-export function generateId(prefix = "id") {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-}
+    function getOfflineQueue() {
+        return getLocalData('bilimal_offline_queue', []);
+    }
 
-export function getCurrentTeacherId() {
-  return localStorage.getItem("bilimal_current_teacher_id") || "demo-teacher-001";
-}
+    function clearOfflineQueue() {
+        setLocalData('bilimal_offline_queue', []);
+    }
 
-export function setCurrentTeacherId(teacherId) {
-  localStorage.setItem("bilimal_current_teacher_id", teacherId);
-}
+    function syncOfflineQueue() {
+        if (BF.isFirebaseAvailable()) {
+            BF.syncPendingData();
+        }
+    }
 
-export function getTeacherTestsFromLocal(teacherId) {
-  return getLocalData(`tests_${teacherId}`, {});
-}
+    function saveTestLocal(test) {
+        const tests = getLocalData('bilimal_teacher_tests', {});
+        tests[test.id] = test;
+        setLocalData('bilimal_teacher_tests', tests);
 
-export function saveTeacherTestsToLocal(teacherId, tests) {
-  return setLocalData(`tests_${teacherId}`, tests);
-}
+        if (!BF.isFirebaseAvailable()) {
+            saveOfflineQueue({
+                path: BF.paths.test(BF.getCurrentTeacherId(), test.id),
+                data: test
+            });
+        } else {
+            BF.getDatabaseInstance().ref(BF.paths.test(BF.getCurrentTeacherId(), test.id)).set(test)
+                .then(() => BF.showToast("Тест ийгиликтүү серверге сакталды", "success"))
+                .catch(() => saveOfflineQueue({ path: BF.paths.test(BF.getCurrentTeacherId(), test.id), data: test }));
+        }
+    }
 
-export function getTestFromLocal(teacherId, testId) {
-  const tests = getTeacherTestsFromLocal(teacherId);
-  return tests[testId] || null;
-}
+    function getTestsLocal() {
+        return getLocalData('bilimal_teacher_tests', {});
+    }
 
-export function saveTestToLocal(teacherId, test) {
-  const tests = getTeacherTestsFromLocal(teacherId);
-  tests[test.id] = test;
-  return saveTeacherTestsToLocal(teacherId, tests);
-}
+    function deleteTestLocal(testId) {
+        const tests = getLocalData('bilimal_teacher_tests', {});
+        if (tests[testId]) {
+            delete tests[testId];
+            setLocalData('bilimal_teacher_tests', tests);
+        }
 
-export function deleteTestFromLocal(teacherId, testId) {
-  const tests = getTeacherTestsFromLocal(teacherId);
-  if (tests[testId]) {
-    delete tests[testId];
-    return saveTeacherTestsToLocal(teacherId, tests);
-  }
-  return false;
-}
+        if (!BF.isFirebaseAvailable()) {
+            saveOfflineQueue({
+                path: BF.paths.test(BF.getCurrentTeacherId(), testId),
+                data: null
+            });
+        } else {
+            BF.getDatabaseInstance().ref(BF.paths.test(BF.getCurrentTeacherId(), testId)).remove()
+                .then(() => BF.showToast("Тест өчүрүлдү", "success"))
+                .catch(() => saveOfflineQueue({ path: BF.paths.test(BF.getCurrentTeacherId(), testId), data: null }));
+        }
+    }
 
-export function getResultsFromLocal(teacherId) {
-  return getLocalData(`results_${teacherId}`, {});
-}
+    function saveResultLocal(result) {
+        const results = getLocalData('bilimal_teacher_results', {});
+        results[result.id] = result;
+        setLocalData('bilimal_teacher_results', results);
 
-export function saveResultsToLocal(teacherId, results) {
-  return setLocalData(`results_${teacherId}`, results);
-}
+        if (!BF.isFirebaseAvailable()) {
+            saveOfflineQueue({
+                path: BF.paths.result(BF.getCurrentTeacherId(), result.id),
+                data: result
+            });
+        } else {
+            BF.getDatabaseInstance().ref(BF.paths.result(BF.getCurrentTeacherId(), result.id)).set(result);
+        }
+    }
 
-export function getTeacherSettingsFromLocal(teacherId) {
-  const defaultSettings = {
-    gradingScale: { five: 90, four: 70, three: 50, two: 0 }
-  };
-  return getLocalData(`settings_${teacherId}`, defaultSettings);
-}
+    function getResultsLocal() {
+        return getLocalData('bilimal_teacher_results', {});
+    }
 
-export function saveTeacherSettingsToLocal(teacherId, settings) {
-  return setLocalData(`settings_${teacherId}`, settings);
-}
+    function saveClassLocal(classData) {
+        const classes = getLocalData('bilimal_teacher_classes', {});
+        classes[classData.id] = classData;
+        setLocalData('bilimal_teacher_classes', classes);
 
-export function getPendingSyncQueue() {
-  return getLocalData("bilimal_sync_queue", []);
-}
+        if (!BF.isFirebaseAvailable()) {
+            saveOfflineQueue({
+                path: BF.paths.class(BF.getCurrentTeacherId(), classData.id),
+                data: classData
+            });
+        } else {
+            BF.getDatabaseInstance().ref(BF.paths.class(BF.getCurrentTeacherId(), classData.id)).set(classData);
+        }
+    }
 
-export function addToPendingSyncQueue(action) {
-  const queue = getPendingSyncQueue();
-  queue.push({ ...action, timestamp: Date.now() });
-  setLocalData("bilimal_sync_queue", queue);
-}
+    function getClassesLocal() {
+        return getLocalData('bilimal_teacher_classes', {});
+    }
 
-export function clearPendingSyncQueue() {
-  removeLocalData("bilimal_sync_queue");
-}
+    function exportAllTeacherData() {
+        const exportData = {
+            tests: getTestsLocal(),
+            results: getResultsLocal(),
+            classes: getClassesLocal(),
+            settings: getLocalData('bilimal_teacher_settings', {}),
+            exportedAt: Date.now()
+        };
 
-export function showToast(message, type = "info") {
-  let container = document.getElementById("bilimal-toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "bilimal-toast-container";
-    container.style.cssText = "position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 350px;";
-    document.body.appendChild(container);
-  }
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `Bilimal_Teacher_Backup_${Date.now()}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        BF.showToast("Бардык маалыматтар ийгиликтүү экспорттолду", "success");
+    }
 
-  const toast = document.createElement("div");
-  const colors = {
-    success: "#10b981",
-    error: "#ef4444",
-    warning: "#f59e0b",
-    info: "#3b82f6"
-  };
+    function importTeacherData(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const parsed = BF.safeJsonParse(e.target.result, null);
+            if (parsed) {
+                if (parsed.tests) setLocalData('bilimal_teacher_tests', parsed.tests);
+                if (parsed.results) setLocalData('bilimal_teacher_results', parsed.results);
+                if (parsed.classes) setLocalData('bilimal_teacher_classes', parsed.classes);
+                if (parsed.settings) setLocalData('bilimal_teacher_settings', parsed.settings);
+                
+                setLocalData('bilimal_last_backup', Date.now());
+                BF.showToast("Маалыматтар ийгиликтүү импорттолду!", "success");
+                
+                if (window.BilimalDashboard && typeof window.BilimalDashboard.refreshDashboard === 'function') {
+                    window.BilimalDashboard.refreshDashboard();
+                }
+            } else {
+                BF.showToast("Ката файл форматы", "error");
+            }
+        };
+        reader.readAsText(file);
+    }
 
-  toast.style.cssText = `
-    background: ${colors[type] || colors.info};
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  `;
-  
-  toast.innerText = message;
-  container.appendChild(toast);
+    function createBackup() {
+        const backupData = {
+            tests: getTestsLocal(),
+            results: getResultsLocal()
+        };
+        setLocalData('bilimal_last_backup', backupData);
+        setLocalData('bilimal_last_backup_time', Date.now());
+        BF.showToast("Резервдик көчүрмө локалдык сакталды", "success");
+    }
 
-  setTimeout(() => {
-    toast.style.opacity = "1";
-    toast.style.transform = "translateY(0)";
-  }, 50);
+    function restoreBackup() {
+        const backup = getLocalData('bilimal_last_backup', null);
+        if (backup) {
+            if (backup.tests) setLocalData('bilimal_teacher_tests', backup.tests);
+            if (backup.results) setLocalData('bilimal_teacher_results', backup.results);
+            BF.showToast("Калыбына келтирүү аяктады", "success");
+            if (window.BilimalDashboard && typeof window.BilimalDashboard.refreshDashboard === 'function') {
+                window.BilimalDashboard.refreshDashboard();
+            }
+        } else {
+            BF.showToast("Резервдик көчүрмө табылган жок", "error");
+        }
+    }
 
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    toast.style.transform = "translateY(-20px)";
-    setTimeout(() => toast.remove(), 300);
-  }, 4000);
-}
-
-export function escapeHtml(value) {
-  if (typeof value !== "string") return value;
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-export function formatDateTime(value) {
-  if (!value) return "---";
-  try {
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    return date.toLocaleString("ky-KG", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  } catch (e) {
-    return value;
-  }
-}
-
-export function debounce(callback, delay) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => callback(...args), delay);
-  };
-}
+    window.BilimalStorage = {
+        getLocalData,
+        setLocalData,
+        removeLocalData,
+        saveOfflineQueue,
+        getOfflineQueue,
+        clearOfflineQueue,
+        syncOfflineQueue,
+        saveTestLocal,
+        getTestsLocal,
+        deleteTestLocal,
+        saveResultLocal,
+        getResultsLocal,
+        saveClassLocal,
+        getClassesLocal,
+        exportAllTeacherData,
+        importTeacherData,
+        createBackup,
+        restoreBackup
+    };
+})();
