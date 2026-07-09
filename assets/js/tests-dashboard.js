@@ -1,547 +1,373 @@
-// FIREBASE MODULAR SDK ИНТЕГРАЦИЯСЫ ЖАНА СИСТЕМАЛЫК КООПСУЗДУК КАНАЛЫ
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { isFirebaseAvailable, db, ref, set, get, remove, push } from "./firebase-config.js";
+import { currentTeacher } from "./auth-guard.js";
+import { getTeacherTestsFromLocal, saveTeacherTestsToLocal, saveTestToLocal, deleteTestFromLocal, showToast, generateId, escapeHtml, formatDateTime } from "./storage-fallback.js";
+import { createQuestionBlock, getQuestionsFromEditor, renderQuestionEditor } from "./test-editor.js";
+import { exportResultsToCSV, exportAnnualReportToCSV, loadTeacherResults } from "./results-manager.js";
 
-// Глобалдык коопсуз JSON парсер (Unexpected end of JSON input катасын алдын алуу)
-function safeParseJSON(value, fallback = null) {
-    try {
-        if (!value || typeof value !== "string" || value.trim() === "") return fallback;
-        return JSON.parse(value);
-    } catch (error) {
-        console.warn("JSON формат катасы четтетилди:", error);
-        return fallback;
-    }
+export let activeTeacherTests = {};
+export let editingTestId = null;
+
+export function initTestsDashboard() {
+  loadAllDashboardTests();
+  setupDashboardEventListeners();
+  injectFloatingActionButton();
+  injectAdBlocks();
 }
 
-// Системалык глобалдык ката кармоочулар (Бош экран чыгуу коркунучунан коргоо)
-window.addEventListener("error", function(event) {
-    console.error("Глобалдык системалык ката:", event.error);
-    showSystemCrashOverlay("Системалык ички ката аныкталды. Сураныч, баракты жаңылаңыз.");
-});
+export function loadAllDashboardTests() {
+  const tid = currentTeacher.uid;
+  activeTeacherTests = getTeacherTestsFromLocal(tid);
+  renderTestsList();
 
-window.addEventListener("unhandledrejection", function(event) {
-    console.error("Күтүлбөгөн убада четке кагуусу:", event.reason);
-    showSystemCrashOverlay("Тармак же маалымат базасы байланыш катасы.");
-});
-
-function showSystemCrashOverlay(message) {
-    const overlay = document.getElementById("system-crash-overlay");
-    const msgElement = document.getElementById("crash-message");
-    if (overlay && msgElement) {
-        msgElement.innerText = message;
-        overlay.classList.remove("hidden");
-    }
-}
-
-// Конфигурация
-const firebaseConfig = {
-    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-    authDomain: "bilimal-org.firebaseapp.com",
-    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "bilimal-org",
-    storageBucket: "bilimal-org.firebasestorage.app",
-    messagingSenderId: "241750360816",
-    appId: "1:241750360816:web:a991434eb5afbc470d7835",
-    measurementId: "G-9GSQV60QV0"
-};
-
-// Инициализацияны коопсуз бир жолу аткаруу
-let app;
-if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-} else {
-    app = getApps()[0];
-}
-const db = getFirestore(app);
-
-// Локалдык оперативдүү структуралар
-let localTests = [];
-let activeConfirmCallback = null;
-let currentEditingTestId = null;
-
-// Колдонмо иштей баштаганда
-document.addEventListener("DOMContentLoaded", () => {
-    initControlCenter();
-});
-
-function initControlCenter() {
-    setupUIEventBindings();
-    loadProfileData();
-    loadTestsFromDatabase();
-    logActivity("Панель ийгиликтүү ишке киргизилди.");
-}
-
-// Тоаст куруучу бирдиктүү функция
-function showToast(message, type = "success") {
-    const container = document.getElementById("toast-container");
-    if (!container) return;
-    const toast = document.createElement("div");
-    toast.className = `hud-toast ${type}`;
-    toast.innerHTML = `<span>${message}</span><button style="background:transparent;border:none;color:white;cursor:pointer;font-size:1.1rem;" onclick="this.parentElement.remove()">&times;</button>`;
-    container.appendChild(toast);
-    setTimeout(() => { if (toast) toast.remove(); }, 4000);
-}
-
-// Бирдиктүү коопсуз баскыч аткаруучу курал (Loading & Disabled State & Try/Catch)
-async function executeButtonAction(buttonId, actionBlock) {
-    const btn = document.getElementById(buttonId);
-    if (!btn) return;
-    const originalHTML = btn.innerHTML;
-    try {
-        btn.disabled = true;
-        btn.innerHTML = `⏳ Күтө туруңуз...`;
-        await actionBlock();
-    } catch (err) {
-        console.error(`Ката [Баскыч: ${buttonId}]:`, err);
-        showToast(err.message, "error");
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalHTML;
+  if (isFirebaseAvailable && db) {
+    get(ref(db, `teachers/${tid}/tests`))
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          activeTeacherTests = snapshot.val();
+          saveTeacherTestsToLocal(tid, activeTeacherTests);
+          renderTestsList();
         }
-    }
+      })
+      .catch((err) => {
+        console.error("Firebase real-time fetch failed:", err);
+        showToast("Маалыматтар локалдык сактагычтан жүктөлдү", "info");
+      });
+  }
 }
 
-// Аракеттердин тарыхын жазуу логу
-function logActivity(text) {
-    const container = document.getElementById("timeline-activity-container");
-    if (!container) return;
-    const item = document.createElement("div");
-    item.className = "timeline-item";
-    const time = new Date().toLocaleTimeString();
-    item.innerText = `[${time}] ${text}`;
-    container.prepend(item);
-}
+function setupDashboardEventListeners() {
+  const newTestBtn = document.getElementById("create-new-test-btn");
+  const modalCloseBtn = document.getElementById("test-editor-modal-close");
+  const modalWrapper = document.getElementById("test-editor-modal");
+  const saveTestBtn = document.getElementById("save-complete-test-btn");
+  const importJsonInput = document.getElementById("import-json-file-input");
 
-// Профилди коопсуз жүктөө (localStorage катасыз парсинг менен)
-function loadProfileData() {
-    const profile = safeParseJSON(localStorage.getItem("B_TEACHER_PROFILE"), {
-        name: "Асанов Үсөн",
-        subject: "Физика жана Астрономия"
+  if (newTestBtn) {
+    newTestBtn.addEventListener("click", () => openTestModal(null));
+  }
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener("click", closeTestModal);
+  }
+  if (modalWrapper) {
+    modalWrapper.addEventListener("click", (e) => {
+      if (e.target === modalWrapper) closeTestModal();
     });
-    
-    const lblName = document.getElementById("lbl-teacher-name");
-    const lblSub = document.getElementById("lbl-teacher-subject");
-    if (lblName) lblName.innerText = profile.name;
-    if (lblSub) lblSub.innerText = profile.subject;
-}
-
-// Реалдуу убакытта базадан маалыматтарды алуу
-async function loadTestsFromDatabase() {
-    const skeleton = document.getElementById("hud-loading-skeleton");
-    const emptyState = document.getElementById("hud-empty-state");
-    
-    if (skeleton) skeleton.classList.remove("hidden");
-    if (emptyState) emptyState.classList.add("hidden");
-
-    try {
-        const querySnapshot = await getDocs(collection(db, "tests"));
-        localTests = [];
-        querySnapshot.forEach((docSnap) => {
-            localTests.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        
-        updateMetrics();
-        renderTestsGrid();
-    } catch (err) {
-        console.error("Базадан окуу катасы:", err);
-        showToast("Маалыматтарды жүктөөдө ката чыкты. Локалдык режим иштетилет.", "error");
-        // Локалдык резервдик маалымат
-        localTests = safeParseJSON(localStorage.getItem("B_LOCAL_TESTS_FALLBACK"), []);
-        renderTestsGrid();
-    } finally {
-        if (skeleton) skeleton.classList.add("hidden");
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalWrapper && modalWrapper.classList.contains("active")) {
+      closeTestModal();
     }
+  });
+
+  if (saveTestBtn) {
+    saveTestBtn.addEventListener("click", handleSaveTestForm);
+  }
+
+  if (importJsonInput) {
+    importJsonInput.addEventListener("change", handleJsonImport);
+  }
+
+  // Dashboard Searching and Filtering Controls
+  ["search-test-input", "filter-subject-select", "filter-class-select", "filter-status-select", "sort-tests-select"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", renderTestsList);
+  });
 }
 
-function updateMetrics() {
-    const tCount = document.getElementById("metric-total-tests");
-    const aCount = document.getElementById("metric-active-tests");
-    const sCount = document.getElementById("metric-student-submissions");
+function openTestModal(testId = null) {
+  editingTestId = testId;
+  const modal = document.getElementById("test-editor-modal");
+  if (!modal) return;
 
-    if (tCount) tCount.innerText = localTests.length;
-    if (aCount) aCount.innerText = localTests.filter(t => t.status === "active").length;
-    if (sCount) sCount.innerText = Math.floor(localTests.length * 4.2); 
-}
+  modal.classList.add("active");
+  modal.style.display = "flex";
 
-// Тесттердин карточкаларын коопсуз тартуу
-function renderTestsGrid() {
-    const container = document.getElementById("tests-list-container");
-    const emptyState = document.getElementById("hud-empty-state");
-    if (!container) return;
+  const container = document.getElementById("questions-constructor-container");
+  if (container) container.innerHTML = "";
 
-    container.innerHTML = "";
+  if (testId && activeTeacherTests[testId]) {
+    const test = activeTeacherTests[testId];
+    document.getElementById("test-title-input").value = test.title || "";
+    document.getElementById("test-subject-input").value = test.subject || "";
+    document.getElementById("test-class-input").value = test.className || "";
+    document.getElementById("test-duration-input").value = test.duration || "";
+    document.getElementById("test-status-select").value = test.status || "draft";
+    document.getElementById("test-password-input").value = test.password || "";
+    document.getElementById("test-anti-cheat-toggle").checked = !!test.antiCheat;
     
-    if (localTests.length === 0) {
-        if (emptyState) emptyState.classList.remove("hidden");
-        return;
-    } else {
-        if (emptyState) emptyState.classList.add("hidden");
+    if (test.questions && test.questions.length > 0) {
+      test.questions.forEach(q => renderQuestionEditor(q));
     }
-
-    localTests.forEach(test => {
-        const qCount = test.questions ? test.questions.length : 0;
-        const card = document.createElement("div");
-        card.className = "test-hud-card";
-        card.innerHTML = `
-            <div class="card-hud-main">
-                <span class="status-badge ${test.status || 'draft'}">${test.status || 'draft'}</span>
-                <h3 style="margin-top:0.5rem;">${test.title || 'Аталышсыз тест'}</h3>
-                <p style="font-size:0.85rem; color:var(--text-muted);">Суроолор саны: ${qCount}</p>
-            </div>
-            <div class="card-hud-actions">
-                <button id="edit-${test.id}">📝 Оңдоо</button>
-                <button id="dup-${test.id}">👥 Көчүрүү</button>
-                <button id="arc-${test.id}">📦 Архив</button>
-                <button id="del-${test.id}" style="color:var(--danger-neon);">❌ Өчүрүү</button>
-                <button id="link-${test.id}">🔗 Шилтеме</button>
-                <button id="qr-${test.id}">📱 QR Код</button>
-                <button id="wa-${test.id}">💬 WhatsApp</button>
-                <button id="tg-${test.id}">✈️ Telegram</button>
-            </div>
-        `;
-        container.appendChild(card);
-
-        // Ар бир динамикалык баскычка коопсуз окуя байлоо
-        document.getElementById(`edit-${test.id}`)?.addEventListener("click", () => openTestEditor(test.id));
-        document.getElementById(`del-${test.id}`)?.addEventListener("click", () => openDeleteConfirm(test.id));
-        document.getElementById(`dup-${test.id}`)?.addEventListener("click", () => duplicateTest(test.id));
-        document.getElementById(`arc-${test.id}`)?.addEventListener("click", () => archiveTest(test.id));
-        document.getElementById(`link-${test.id}`)?.addEventListener("click", () => copyTestLink(test.id));
-        document.getElementById(`qr-${test.id}`)?.addEventListener("click", () => generateQrCode(test.id));
-        document.getElementById(`wa-${test.id}`)?.addEventListener("click", () => shareSocial(test.id, "wa"));
-        document.getElementById(`tg-${test.id}`)?.addEventListener("click", () => shareSocial(test.id, "tg"));
-    });
+  } else {
+    document.getElementById("test-meta-form")?.reset();
+    document.getElementById("test-status-select").value = "draft";
+    document.getElementById("test-anti-cheat-toggle").checked = false;
+    renderQuestionEditor({ id: generateId("q"), type: "single", questionText: "", points: 5, options: ["", ""] });
+  }
 }
 
-// Динамикалык аракеттердин функциялары
-function openTestEditor(id = null) {
-    currentEditingTestId = id;
-    const modal = document.getElementById("modal-test-editor");
-    const titleInput = document.getElementById("input-test-title");
-    const wrapper = document.getElementById("dynamic-questions-wrapper");
-    if (!modal || !titleInput || !wrapper) return;
-
-    wrapper.innerHTML = "";
-
-    if (id) {
-        const test = localTests.find(t => t.id === id);
-        if (test) {
-            titleInput.value = test.title || "";
-            if (test.questions && Array.isArray(test.questions)) {
-                test.questions.forEach(q => addQuestionToDOM(q));
-            }
-        }
-    } else {
-        titleInput.value = "";
-        addQuestionToDOM(); // баштапкы бош суроо
-    }
-
-    modal.classList.remove("hidden");
+function closeTestModal() {
+  const modal = document.getElementById("test-editor-modal");
+  if (modal) {
+    modal.classList.remove("active");
+    modal.style.display = "none";
+  }
+  editingTestId = null;
 }
 
-function addQuestionToDOM(data = null) {
-    const wrapper = document.getElementById("dynamic-questions-wrapper");
-    if (!wrapper) return;
+function handleSaveTestForm() {
+  const title = document.getElementById("test-title-input")?.value.trim();
+  if (!title) {
+    showToast("Тесттин аталышын жазыңыз!", "warning");
+    return;
+  }
 
-    const qId = "q_" + Math.random().toString(36).substr(2, 9);
-    const qBlock = document.createElement("div");
-    qBlock.className = "question-hud-block";
-    qBlock.id = qId;
+  const questions = getQuestionsFromEditor();
+  if (questions.length === 0) {
+    showToast("Жок дегенде бир суроо кошуңуз!", "warning");
+    return;
+  }
+
+  const id = editingTestId || generateId("test");
+  const testObject = {
+    id: id,
+    title: title,
+    subject: document.getElementById("test-subject-input")?.value || "Башка",
+    className: document.getElementById("test-class-input")?.value || "Жалпы",
+    duration: parseInt(document.getElementById("test-duration-input")?.value) || 0,
+    status: document.getElementById("test-status-select")?.value || "draft",
+    password: document.getElementById("test-password-input")?.value || "",
+    antiCheat: document.getElementById("test-anti-cheat-toggle")?.checked || false,
+    questions: questions,
+    updatedAt: Date.now(),
+    createdAt: activeTeacherTests[id]?.createdAt || Date.now()
+  };
+
+  const tid = currentTeacher.uid;
+  activeTeacherTests[id] = testObject;
+  saveTestToLocal(tid, testObject);
+
+  if (isFirebaseAvailable && db) {
+    set(ref(db, `teachers/${tid}/tests/${id}`), testObject)
+      .then(() => showToast("Тест булутка ийгиликтүү сакталды", "success"))
+      .catch((e) => {
+        console.error(e);
+        showToast("Тест локалдык сакталды (Сервер оффлайн)", "warning");
+      });
+  } else {
+    showToast("Тест локалдык сакталды", "success");
+  }
+
+  closeTestModal();
+  renderTestsList();
+}
+
+export function renderTestsList() {
+  const grid = document.getElementById("tests-cards-grid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  const search = document.getElementById("search-test-input")?.value.toLowerCase() || "";
+  const subFilter = document.getElementById("filter-subject-select")?.value || "all";
+  const classFilter = document.getElementById("filter-class-select")?.value || "all";
+  const statusFilter = document.getElementById("filter-status-select")?.value || "all";
+  const sortOption = document.getElementById("sort-tests-select")?.value || "newest";
+
+  let list = Object.values(activeTeacherTests);
+
+  list = list.filter(t => {
+    const mSearch = t.title.toLowerCase().includes(search);
+    const mSub = subFilter === "all" || t.subject === subFilter;
+    const mClass = classFilter === "all" || t.className === classFilter;
+    const mStatus = statusFilter === "all" || t.status === statusFilter;
+    return mSearch && mSub && mClass && mStatus;
+  });
+
+  list.sort((a, b) => {
+    if (sortOption === "newest") return b.updatedAt - a.updatedAt;
+    if (sortOption === "oldest") return a.updatedAt - b.updatedAt;
+    return a.title.localeCompare(b.title);
+  });
+
+  if (list.length === 0) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#64748b;">Тесттер табылган жок.</div>`;
+    return;
+  }
+
+  list.forEach(test => {
+    const card = document.createElement("div");
+    card.className = `test-card status-${test.status}`;
+    card.style.cssText = "background:white; border-radius:12px; padding:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); position:relative; display:flex; flex-direction:column; gap:12px; border-left: 5px solid #3b82f6;";
     
-    qBlock.innerHTML = `
-        <div style="display:flex; gap:10px; margin-bottom:0.8rem;">
-            <input type="text" class="hud-input question-text" style="flex:1;" placeholder="Суроону жазыңыз" value="${data ? data.text : ''}">
-            <button class="danger-hud-btn" style="padding:0.5rem;" onclick="this.parentElement.parentElement.remove()">❌ Өчүрүү</button>
-        </div>
-        <button class="secondary-hud-btn btn-add-opt" style="font-size:0.8rem; padding:0.3rem 0.6rem;">+ Вариант кошуу</button>
-        <div class="options-hud-list"></div>
+    if (test.status === "active") card.style.borderColor = "#10b981";
+    if (test.status === "archived") card.style.borderColor = "#94a3b8";
+
+    const shareLink = `${window.location.origin}/quiz.html?id=${test.id}&tid=${currentTeacher.uid}`;
+
+    card.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <span style="font-size:12px; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:600; color:#475569;">${escapeHtml(test.subject)} (${escapeHtml(test.className)})</span>
+        <span style="font-size:11px; font-weight:bold; text-transform:uppercase;" class="badge-${test.status}">${test.status}</span>
+      </div>
+      <h3 style="font-size:18px; font-weight:700; color:#1e293b; margin:0;">${escapeHtml(test.title)}</h3>
+      <p style="font-size:13px; color:#64748b; margin:0;">Суроолор: <b>${test.questions ? test.questions.length : 0}</b> | Убакыт: <b>${test.duration > 0 ? test.duration + ' мүнөт' : 'Чектөөсүз'}</b></p>
+      <div style="font-size:11px; color:#94a3b8;">Өзгөртүлдү: ${formatDateTime(test.updatedAt)}</div>
+      <hr style="border:none; border-top:1px solid #f1f5f9; margin:8px 0;">
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:auto;">
+        <button class="dash-btn-edit btn-primary" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Оңдоо</button>
+        <button class="dash-btn-copy btn-secondary" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Көчүрүү</button>
+        <button class="dash-btn-link btn-info" data-link="${shareLink}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Шилтеме</button>
+        <button class="dash-btn-export btn-success" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">JSON Экспорт</button>
+        <button class="dash-btn-delete btn-danger" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer;">Өчүрүү</button>
+      </div>
     `;
+    grid.appendChild(card);
+  });
 
-    wrapper.appendChild(qBlock);
-    const optList = qBlock.querySelector(".options-hud-list");
-
-    if (data && data.options) {
-        data.options.forEach(opt => addOptionRow(optList, opt.text, opt.isCorrect));
-    } else {
-        addOptionRow(optList, "", true);
-        addOptionRow(optList, "", false);
-    }
-
-    qBlock.querySelector(".btn-add-opt").addEventListener("click", () => addOptionRow(optList, "", false));
+  bindCardActionButtons();
 }
 
-function addOptionRow(container, text = "", isCorrect = false) {
-    const row = document.createElement("div");
-    row.className = "option-hud-row";
-    row.innerHTML = `
-        <input type="radio" name="correct_${container.parentElement.id}" ${isCorrect ? 'checked' : ''}>
-        <input type="text" class="hud-input opt-text" style="flex:1; padding:0.4rem;" placeholder="Вариант тексти" value="${text}">
-        <button class="close-hud-x" onclick="this.parentElement.remove()">&times;</button>
-    `;
-    container.appendChild(row);
-}
+function bindCardActionButtons() {
+  document.querySelectorAll(".dash-btn-edit").forEach(b => {
+    b.addEventListener("click", () => openTestModal(b.getAttribute("data-id")));
+  });
 
-// Модал ичиндеги тестти сактоо коду
-async function saveTestFlow(status) {
-    const title = document.getElementById("input-test-title")?.value.trim();
-    if (!title) {
-        showToast("Сураныч, тесттин аталышын жазыңыз", "error");
-        return;
-    }
-
-    const questionBlocks = document.querySelectorAll(".question-hud-block");
-    const questions = [];
-
-    questionBlocks.forEach(block => {
-        const text = block.querySelector(".question-text").value.trim();
-        if (!text) return;
-
-        const options = [];
-        const optRows = block.querySelectorAll(".option-hud-row");
-        optRows.forEach(row => {
-            const optText = row.querySelector(".opt-text").value.trim();
-            const isCorrect = row.querySelector("input[type='radio']").checked;
-            if (optText) {
-                options.push({ text: optText, isCorrect });
-            }
-        });
-
-        questions.push({ text, options });
+  document.querySelectorAll(".dash-btn-copy").forEach(b => {
+    b.addEventListener("click", () => {
+      const originId = b.getAttribute("data-id");
+      if (activeTeacherTests[originId]) {
+        const copy = JSON.parse(JSON.stringify(activeTeacherTests[originId]));
+        copy.id = generateId("test");
+        copy.title += " (Көчүрмө)";
+        copy.updatedAt = Date.now();
+        activeTeacherTests[copy.id] = copy;
+        saveTestToLocal(currentTeacher.uid, copy);
+        showToast("Тест ийгиликтүү дубликатталды", "success");
+        renderTestsList();
+      }
     });
+  });
 
-    const testData = {
-        title,
-        status,
-        questions,
-        updatedAt: Date.now()
-    };
-
-    const targetId = currentEditingTestId || "test_" + Date.now();
-
-    await setDoc(doc(db, "tests", targetId), testData);
-    showToast(`Тест ийгиликтүү базага сакталды (${status})`, "success");
-    document.getElementById("modal-test-editor").classList.add("hidden");
-    logActivity(`Тест сакталды: ${title}`);
-    loadTestsFromDatabase();
-}
-
-function openDeleteConfirm(id) {
-    const modal = document.getElementById("modal-universal-confirm");
-    if (!modal) return;
-    modal.classList.remove("hidden");
-    activeConfirmCallback = async () => {
-        await deleteDoc(doc(db, "tests", id));
-        showToast("Тест базадан толугу менен өчүрүлдү", "success");
-        logActivity(`Тест өчүрүлдү, ID: ${id}`);
-        loadTestsFromDatabase();
-    };
-}
-
-async function duplicateTest(id) {
-    const origin = localTests.find(t => t.id === id);
-    if (!origin) return;
-    const dupData = { ...origin, title: origin.title + " (Көчүрмө)", updatedAt: Date.now() };
-    delete dupData.id;
-    const newId = "test_" + Date.now();
-    await setDoc(doc(db, "tests", newId), dupData);
-    showToast("Тесттин жаңы көчүрмөсү түзүлдү", "success");
-    loadTestsFromDatabase();
-}
-
-async function archiveTest(id) {
-    const test = localTests.find(t => t.id === id);
-    if (!test) return;
-    test.status = "archived";
-    await setDoc(doc(db, "tests", id), test);
-    showToast("Тест архивге жөнөтүлдү", "success");
-    loadTestsFromDatabase();
-}
-
-function copyTestLink(id) {
-    const link = `https://bilimal.org/sections/student-test.html?id=${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-        showToast("Тесттин шилтемеси буферге көчүрүлдү!", "success");
-    }).catch(() => {
-        showToast("Шилтемени көчүрүү мүмкүн болгон жок", "error");
+  document.querySelectorAll(".dash-btn-link").forEach(b => {
+    b.addEventListener("click", () => {
+      const link = b.getAttribute("data-link");
+      navigator.clipboard.writeText(link).then(() => {
+        showToast("Окуучулар үчүн шилтеме көчүрүлдү!", "success");
+      });
     });
+  });
+
+  document.querySelectorAll(".dash-btn-export").forEach(b => {
+    b.addEventListener("click", () => {
+      const id = b.getAttribute("data-id");
+      const targetTest = activeTeacherTests[id];
+      if (targetTest) {
+        const blob = new Blob([JSON.stringify(targetTest, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `test_${targetTest.title.replace(/\s+/g, "_")}.json`;
+        a.click();
+        showToast("Тест JSON файлы жүктөлдү", "success");
+      }
+    });
+  });
+
+  document.querySelectorAll(".dash-btn-delete").forEach(b => {
+    b.addEventListener("click", () => {
+      if (confirm("Чын эле бул тестти өчүрөсүзбү?")) {
+        const id = b.getAttribute("data-id");
+        const tid = currentTeacher.uid;
+        delete activeTeacherTests[id];
+        deleteTestFromLocal(tid, id);
+
+        if (isFirebaseAvailable && db) {
+          remove(ref(db, `teachers/${tid}/tests/${id}`))
+            .then(() => showToast("Тест базадан өчүрүлдү", "success"))
+            .catch(() => showToast("Локалдык өчүрүлдү", "info"));
+        } else {
+          showToast("Локалдык өчүрүлдү", "success");
+        }
+        renderTestsList();
+      }
+    });
+  });
 }
 
-function generateQrCode(id) {
-    const zone = document.getElementById("qr-code-render-zone");
-    const modal = document.getElementById("modal-qr-display");
-    if (!zone || !modal) return;
+function handleJsonImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
-    zone.innerHTML = "";
-    const link = `https://bilimal.org/sections/student-test.html?id=${id}`;
-    
+  const reader = new FileReader();
+  reader.onload = function(evt) {
     try {
-        const qr = qrcode(0, 'M');
-        qr.addData(link);
-        qr.make();
-        zone.innerHTML = qr.createImgTag(5);
-        modal.classList.remove("hidden");
+      const parsed = JSON.parse(evt.target.result);
+      if (!parsed.title) {
+        showToast("Ката: Файлда тесттин аталышы жок!", "error");
+        return;
+      }
+      const newId = generateId("test");
+      parsed.id = newId;
+      parsed.questions = parsed.questions || [];
+      parsed.updatedAt = Date.now();
+
+      activeTeacherTests[newId] = parsed;
+      saveTestToLocal(currentTeacher.uid, parsed);
+      
+      showToast("Импорт ийгиликтүү аяктады", "success");
+      renderTestsList();
     } catch (err) {
-        showToast("QR код түзүү үчүн CDN даяр эмес", "error");
+      showToast("JSON файлын окууда ката кетти. Файл бузулган болушу мүмкүн.", "error");
     }
+  };
+  reader.readAsText(file);
+  e.target.value = ""; 
 }
 
-function shareSocial(id, platform) {
-    const link = encodeURIComponent(`https://bilimal.org/sections/student-test.html?id=${id}`);
-    const text = encodeURIComponent("BilimAl тутумундагы жаңы тестти толтуруңуз: ");
-    let url = "";
-    if (platform === "wa") url = `https://api.whatsapp.com/send?text=${text}${link}`;
-    if (platform === "tg") url = `https://t.me/share/url?url=${link}&text=${text}`;
-    window.open(url, "_blank");
+function injectFloatingActionButton() {
+  if (document.getElementById("floating-action-add-btn")) return;
+  const fab = document.createElement("button");
+  fab.id = "floating-action-add-btn";
+  fab.innerHTML = "+";
+  fab.style.cssText = "position:fixed; bottom:30px; left:30px; width:60px; height:60px; border-radius:50%; background:#10b981; color:white; font-size:32px; border:none; box-shadow:0 4px 10px rgba(0,0,0,0.3); cursor:pointer; z-index:999; display:flex; align-items:center; justify-content:center; font-weight:bold; transition:transform 0.2s;";
+  fab.addEventListener("mouseenter", () => fab.style.transform = "scale(1.1)");
+  fab.addEventListener("mouseleave", () => fab.style.transform = "scale(1)");
+  fab.addEventListener("click", () => {
+    const modal = document.getElementById("test-editor-modal");
+    if (modal && modal.classList.contains("active")) {
+      renderQuestionEditor({ id: generateId("q"), type: "single", questionText: "", points: 5, options: ["", ""] });
+      showToast("Жаңы бош суроо аягына кошулду", "info");
+    } else {
+      openTestModal(null);
+    }
+  });
+  document.body.appendChild(fab);
 }
 
-// Статикалык интерфейстик баскычтарга окуяларды байлоо (HUD Event Listeners)
-function setupUIEventBindings() {
-    const bindings = {
-        "mobileMenuBtn": () => document.getElementById("sidebar-menu")?.classList.toggle("mobile-open"),
-        "btn-theme-toggle": () => {
-            showToast("Тема ийгиликтүү алмаштырылды (Dark Premium демейки)", "success");
-        },
-        "btn-notification-bell": () => {
-            const count = document.getElementById("noti-count");
-            if (count) count.innerText = "0";
-            showToast("Бардык жаңы билдирүүлөр окулду.", "success");
-        },
-        "btn-global-search": () => {
-            const query = document.getElementById("input-global-search")?.value.toLowerCase() || "";
-            if (query === "") {
-                loadTestsFromDatabase();
-            } else {
-                localTests = localTests.filter(t => t.title.toLowerCase().includes(query));
-                renderTestsGrid();
-                showToast(`Издөө аяктады, табылганы: ${localTests.length}`, "success");
-            }
-        },
-        "createTestBtn": () => openTestEditor(null),
-        "addQuestionBtn": () => addQuestionToDOM(null),
-        "closeModalBtn": () => document.getElementById("modal-profile-editor")?.classList.add("hidden"),
-        "cancelModalBtn": () => document.getElementById("modal-test-editor")?.classList.add("hidden"),
-        "btn-close-qr": () => document.getElementById("modal-qr-display")?.classList.add("hidden"),
-        "btn-confirm-no": () => document.getElementById("modal-universal-confirm")?.classList.add("hidden"),
-        "profileEditBtn": () => {
-            const profile = safeParseJSON(localStorage.getItem("B_TEACHER_PROFILE"), { name: "Асанов Үсөн", subject: "Физика" });
-            const nameInput = document.getElementById("input-profile-name");
-            const subInput = document.getElementById("input-profile-subject");
-            if (nameInput) nameInput.value = profile.name;
-            if (subInput) subInput.value = profile.subject;
-            document.getElementById("modal-profile-editor")?.classList.remove("hidden");
-        },
-        "clearFiltersBtn": () => {
-            document.getElementById("select-test-filter-status").value = "all";
-            document.getElementById("select-test-sort").value = "date-desc";
-            loadTestsFromDatabase();
-            showToast("Чыпкалар баштапкы абалга келтирилди", "success");
-        },
-        "btn-crash-reload": () => window.location.reload(),
-        "btn-pagination-prev": () => showToast("Сиз биринчи барактасыз"),
-        "btn-pagination-next": () => showToast("Кийинки барактар бош"),
-        "analyticsBtn": () => showToast("Акылдуу аналитикалык отчёттор даярдалууда...", "success"),
-        "adminPanelBtn": () => showToast("Администратордук укуктар текшерилүүдө...", "success"),
-        "logoutBtn": () => {
-            openDeleteConfirm(null);
-            document.getElementById("confirm-modal-title").innerText = "Сессияны жабуу";
-            document.getElementById("confirm-modal-message").innerText = "Системадан чыгууну каалайсызбы?";
-            activeConfirmCallback = () => {
-                showToast("Сессия ийгиликтүү жабылды.");
-                logActivity("Системадан чыгуу аткарылды.");
-            };
-        }
-    };
+function injectAdBlocks() {
+  const wrapperAd = document.getElementById("dashboard-footer-advertisement-block");
+  if (wrapperAd) {
+    wrapperAd.style.minHeight = "90px";
+    wrapperAd.innerHTML = `
+      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1495571814896964" data-ad-slot="1574613769"></ins>
+      <div id="adsterra-banner-space"></div>
+    `;
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+    } catch (e) {}
 
-    // Окуяларды коопсуз байлоо
-    Object.keys(bindings).forEach(id => {
-        document.getElementById(id)?.addEventListener("click", () => {
-            try { bindings[id](); } catch (e) { console.error(e); }
-        });
-    });
-
-    // Ырастоо терезесинин негизги "Ооба" баскычы
-    document.getElementById("confirmModalBtn")?.addEventListener("click", () => {
-        if (activeConfirmCallback) {
-            executeButtonAction("confirmModalBtn", async () => {
-                await activeConfirmCallback();
-                document.getElementById("modal-universal-confirm")?.classList.add("hidden");
-                activeConfirmCallback = null;
-            });
-        }
-    });
-
-    // Конструктордун сактоо баскычтары
-    document.getElementById("saveDraftBtn")?.addEventListener("click", () => {
-        executeButtonAction("saveDraftBtn", async () => { await saveTestFlow("draft"); });
-    });
-
-    document.getElementById("publishTestBtn")?.addEventListener("click", () => {
-        executeButtonAction("publishTestBtn", async () => { await saveTestFlow("active"); });
-    });
-
-    document.getElementById("previewTestBtn")?.addEventListener("click", () => {
-        showToast("Тестти алдын ала көрүү барагы курулууда.");
-    });
-
-    // Профилди сактоо
-    document.getElementById("profileSaveBtn")?.addEventListener("click", () => {
-        executeButtonAction("profileSaveBtn", async () => {
-            const name = document.getElementById("input-profile-name")?.value.trim();
-            const subject = document.getElementById("input-profile-subject")?.value.trim();
-            if(!name || !subject) throw new Error("Бардык талааларды толтуруңуз!");
-
-            const newProfile = { name, subject };
-            localStorage.setItem("B_TEACHER_PROFILE", JSON.stringify(newProfile));
-            loadProfileData();
-            document.getElementById("modal-profile-editor")?.classList.add("hidden");
-            showToast("Профиль ийгиликтүү жаңыртылды", "success");
-        });
-    });
-
-    document.getElementById("profileCancelBtn")?.addEventListener("click", () => {
-        document.getElementById("modal-profile-editor")?.classList.add("hidden");
-    });
-
-    // Экспорт жана Импорт баскычтары
-    document.getElementById("exportJsonBtn")?.addEventListener("click", () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(localTests));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", "bilimal_tests_export.json");
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-        showToast("JSON файлы ийгиликтүү экспорттолду.");
-    });
-
-    document.getElementById("exportCsvBtn")?.addEventListener("click", () => {
-        let csvContent = "data:text/csv;charset=utf-8,ID,Title,Status\n";
-        localTests.forEach(t => {
-            csvContent += `${t.id},"${t.title}",${t.status}\n`;
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "bilimal_report.csv");
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        showToast("CSV/Excel файлы ийгиликтүү жүктөлдү.");
-    });
-
-    document.getElementById("importJsonBtn")?.addEventListener("click", () => {
-        showToast("JSON Импорттоо үчүн файлды тандаңыз.");
-    });
-
-    // Чыпкалоо окуялары
-    document.getElementById("select-test-filter-status")?.addEventListener("change", (e) => {
-        const status = e.target.value;
-        loadTestsFromDatabase().then(() => {
-            if (status !== "all") {
-                localTests = localTests.filter(t => t.status === status);
-                renderTestsGrid();
-            }
-        });
-    });
+    const adOptionsScript = document.createElement("script");
+    adOptionsScript.innerHTML = `
+      atOptions = { 'key' : '230e338703bb44150336cce1f0832fe3', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };
+    `;
+    const adInvokeScript = document.createElement("script");
+    adInvokeScript.src = "https://www.highperformanceformat.com/230e338703bb44150336cce1f0832fe3/invoke.js";
+    
+    const bannerSpace = document.getElementById("adsterra-banner-space");
+    if (bannerSpace) {
+      bannerSpace.appendChild(adOptionsScript);
+      bannerSpace.appendChild(adInvokeScript);
+    }
+  }
 }
