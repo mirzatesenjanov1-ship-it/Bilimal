@@ -1,373 +1,339 @@
-import { isFirebaseAvailable, db, ref, set, get, remove, push } from "./firebase-config.js";
-import { currentTeacher } from "./auth-guard.js";
-import { getTeacherTestsFromLocal, saveTeacherTestsToLocal, saveTestToLocal, deleteTestFromLocal, showToast, generateId, escapeHtml, formatDateTime } from "./storage-fallback.js";
-import { createQuestionBlock, getQuestionsFromEditor, renderQuestionEditor } from "./test-editor.js";
-import { exportResultsToCSV, exportAnnualReportToCSV, loadTeacherResults } from "./results-manager.js";
+// Bilimal-AI Project - Teacher Tests Dashboard Control Module
+(function () {
+    const BF = window.BilimalFirebase;
+    const BS = window.BilimalStorage;
+    const BA = window.BilimalAuth;
 
-export let activeTeacherTests = {};
-export let editingTestId = null;
+    let currentTests = {};
 
-export function initTestsDashboard() {
-  loadAllDashboardTests();
-  setupDashboardEventListeners();
-  injectFloatingActionButton();
-  injectAdBlocks();
-}
-
-export function loadAllDashboardTests() {
-  const tid = currentTeacher.uid;
-  activeTeacherTests = getTeacherTestsFromLocal(tid);
-  renderTestsList();
-
-  if (isFirebaseAvailable && db) {
-    get(ref(db, `teachers/${tid}/tests`))
-      .then((snapshot) => {
-        if (snapshot.exists()) {
-          activeTeacherTests = snapshot.val();
-          saveTeacherTestsToLocal(tid, activeTeacherTests);
-          renderTestsList();
+    function loadDashboard() {
+        if (!BA.isTeacher()) {
+            BF.showToast("Бул баракка кирүүгө уруксатыңыз жок", "error");
+            return;
         }
-      })
-      .catch((err) => {
-        console.error("Firebase real-time fetch failed:", err);
-        showToast("Маалыматтар локалдык сактагычтан жүктөлдү", "info");
-      });
-  }
-}
-
-function setupDashboardEventListeners() {
-  const newTestBtn = document.getElementById("create-new-test-btn");
-  const modalCloseBtn = document.getElementById("test-editor-modal-close");
-  const modalWrapper = document.getElementById("test-editor-modal");
-  const saveTestBtn = document.getElementById("save-complete-test-btn");
-  const importJsonInput = document.getElementById("import-json-file-input");
-
-  if (newTestBtn) {
-    newTestBtn.addEventListener("click", () => openTestModal(null));
-  }
-  if (modalCloseBtn) {
-    modalCloseBtn.addEventListener("click", closeTestModal);
-  }
-  if (modalWrapper) {
-    modalWrapper.addEventListener("click", (e) => {
-      if (e.target === modalWrapper) closeTestModal();
-    });
-  }
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modalWrapper && modalWrapper.classList.contains("active")) {
-      closeTestModal();
+        loadTeacherTests();
     }
-  });
 
-  if (saveTestBtn) {
-    saveTestBtn.addEventListener("click", handleSaveTestForm);
-  }
-
-  if (importJsonInput) {
-    importJsonInput.addEventListener("change", handleJsonImport);
-  }
-
-  // Dashboard Searching and Filtering Controls
-  ["search-test-input", "filter-subject-select", "filter-class-select", "filter-status-select", "sort-tests-select"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("input", renderTestsList);
-  });
-}
-
-function openTestModal(testId = null) {
-  editingTestId = testId;
-  const modal = document.getElementById("test-editor-modal");
-  if (!modal) return;
-
-  modal.classList.add("active");
-  modal.style.display = "flex";
-
-  const container = document.getElementById("questions-constructor-container");
-  if (container) container.innerHTML = "";
-
-  if (testId && activeTeacherTests[testId]) {
-    const test = activeTeacherTests[testId];
-    document.getElementById("test-title-input").value = test.title || "";
-    document.getElementById("test-subject-input").value = test.subject || "";
-    document.getElementById("test-class-input").value = test.className || "";
-    document.getElementById("test-duration-input").value = test.duration || "";
-    document.getElementById("test-status-select").value = test.status || "draft";
-    document.getElementById("test-password-input").value = test.password || "";
-    document.getElementById("test-anti-cheat-toggle").checked = !!test.antiCheat;
-    
-    if (test.questions && test.questions.length > 0) {
-      test.questions.forEach(q => renderQuestionEditor(q));
-    }
-  } else {
-    document.getElementById("test-meta-form")?.reset();
-    document.getElementById("test-status-select").value = "draft";
-    document.getElementById("test-anti-cheat-toggle").checked = false;
-    renderQuestionEditor({ id: generateId("q"), type: "single", questionText: "", points: 5, options: ["", ""] });
-  }
-}
-
-function closeTestModal() {
-  const modal = document.getElementById("test-editor-modal");
-  if (modal) {
-    modal.classList.remove("active");
-    modal.style.display = "none";
-  }
-  editingTestId = null;
-}
-
-function handleSaveTestForm() {
-  const title = document.getElementById("test-title-input")?.value.trim();
-  if (!title) {
-    showToast("Тесттин аталышын жазыңыз!", "warning");
-    return;
-  }
-
-  const questions = getQuestionsFromEditor();
-  if (questions.length === 0) {
-    showToast("Жок дегенде бир суроо кошуңуз!", "warning");
-    return;
-  }
-
-  const id = editingTestId || generateId("test");
-  const testObject = {
-    id: id,
-    title: title,
-    subject: document.getElementById("test-subject-input")?.value || "Башка",
-    className: document.getElementById("test-class-input")?.value || "Жалпы",
-    duration: parseInt(document.getElementById("test-duration-input")?.value) || 0,
-    status: document.getElementById("test-status-select")?.value || "draft",
-    password: document.getElementById("test-password-input")?.value || "",
-    antiCheat: document.getElementById("test-anti-cheat-toggle")?.checked || false,
-    questions: questions,
-    updatedAt: Date.now(),
-    createdAt: activeTeacherTests[id]?.createdAt || Date.now()
-  };
-
-  const tid = currentTeacher.uid;
-  activeTeacherTests[id] = testObject;
-  saveTestToLocal(tid, testObject);
-
-  if (isFirebaseAvailable && db) {
-    set(ref(db, `teachers/${tid}/tests/${id}`), testObject)
-      .then(() => showToast("Тест булутка ийгиликтүү сакталды", "success"))
-      .catch((e) => {
-        console.error(e);
-        showToast("Тест локалдык сакталды (Сервер оффлайн)", "warning");
-      });
-  } else {
-    showToast("Тест локалдык сакталды", "success");
-  }
-
-  closeTestModal();
-  renderTestsList();
-}
-
-export function renderTestsList() {
-  const grid = document.getElementById("tests-cards-grid");
-  if (!grid) return;
-
-  grid.innerHTML = "";
-
-  const search = document.getElementById("search-test-input")?.value.toLowerCase() || "";
-  const subFilter = document.getElementById("filter-subject-select")?.value || "all";
-  const classFilter = document.getElementById("filter-class-select")?.value || "all";
-  const statusFilter = document.getElementById("filter-status-select")?.value || "all";
-  const sortOption = document.getElementById("sort-tests-select")?.value || "newest";
-
-  let list = Object.values(activeTeacherTests);
-
-  list = list.filter(t => {
-    const mSearch = t.title.toLowerCase().includes(search);
-    const mSub = subFilter === "all" || t.subject === subFilter;
-    const mClass = classFilter === "all" || t.className === classFilter;
-    const mStatus = statusFilter === "all" || t.status === statusFilter;
-    return mSearch && mSub && mClass && mStatus;
-  });
-
-  list.sort((a, b) => {
-    if (sortOption === "newest") return b.updatedAt - a.updatedAt;
-    if (sortOption === "oldest") return a.updatedAt - b.updatedAt;
-    return a.title.localeCompare(b.title);
-  });
-
-  if (list.length === 0) {
-    grid.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#64748b;">Тесттер табылган жок.</div>`;
-    return;
-  }
-
-  list.forEach(test => {
-    const card = document.createElement("div");
-    card.className = `test-card status-${test.status}`;
-    card.style.cssText = "background:white; border-radius:12px; padding:20px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); position:relative; display:flex; flex-direction:column; gap:12px; border-left: 5px solid #3b82f6;";
-    
-    if (test.status === "active") card.style.borderColor = "#10b981";
-    if (test.status === "archived") card.style.borderColor = "#94a3b8";
-
-    const shareLink = `${window.location.origin}/quiz.html?id=${test.id}&tid=${currentTeacher.uid}`;
-
-    card.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <span style="font-size:12px; background:#f1f5f9; padding:4px 8px; border-radius:4px; font-weight:600; color:#475569;">${escapeHtml(test.subject)} (${escapeHtml(test.className)})</span>
-        <span style="font-size:11px; font-weight:bold; text-transform:uppercase;" class="badge-${test.status}">${test.status}</span>
-      </div>
-      <h3 style="font-size:18px; font-weight:700; color:#1e293b; margin:0;">${escapeHtml(test.title)}</h3>
-      <p style="font-size:13px; color:#64748b; margin:0;">Суроолор: <b>${test.questions ? test.questions.length : 0}</b> | Убакыт: <b>${test.duration > 0 ? test.duration + ' мүнөт' : 'Чектөөсүз'}</b></p>
-      <div style="font-size:11px; color:#94a3b8;">Өзгөртүлдү: ${formatDateTime(test.updatedAt)}</div>
-      <hr style="border:none; border-top:1px solid #f1f5f9; margin:8px 0;">
-      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:auto;">
-        <button class="dash-btn-edit btn-primary" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Оңдоо</button>
-        <button class="dash-btn-copy btn-secondary" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Көчүрүү</button>
-        <button class="dash-btn-link btn-info" data-link="${shareLink}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">Шилтеме</button>
-        <button class="dash-btn-export btn-success" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; cursor:pointer;">JSON Экспорт</button>
-        <button class="dash-btn-delete btn-danger" data-id="${test.id}" style="padding:6px 12px; font-size:13px; border-radius:6px; background:#ef4444; color:white; border:none; border-radius:6px; cursor:pointer;">Өчүрүү</button>
-      </div>
-    `;
-    grid.appendChild(card);
-  });
-
-  bindCardActionButtons();
-}
-
-function bindCardActionButtons() {
-  document.querySelectorAll(".dash-btn-edit").forEach(b => {
-    b.addEventListener("click", () => openTestModal(b.getAttribute("data-id")));
-  });
-
-  document.querySelectorAll(".dash-btn-copy").forEach(b => {
-    b.addEventListener("click", () => {
-      const originId = b.getAttribute("data-id");
-      if (activeTeacherTests[originId]) {
-        const copy = JSON.parse(JSON.stringify(activeTeacherTests[originId]));
-        copy.id = generateId("test");
-        copy.title += " (Көчүрмө)";
-        copy.updatedAt = Date.now();
-        activeTeacherTests[copy.id] = copy;
-        saveTestToLocal(currentTeacher.uid, copy);
-        showToast("Тест ийгиликтүү дубликатталды", "success");
-        renderTestsList();
-      }
-    });
-  });
-
-  document.querySelectorAll(".dash-btn-link").forEach(b => {
-    b.addEventListener("click", () => {
-      const link = b.getAttribute("data-link");
-      navigator.clipboard.writeText(link).then(() => {
-        showToast("Окуучулар үчүн шилтеме көчүрүлдү!", "success");
-      });
-    });
-  });
-
-  document.querySelectorAll(".dash-btn-export").forEach(b => {
-    b.addEventListener("click", () => {
-      const id = b.getAttribute("data-id");
-      const targetTest = activeTeacherTests[id];
-      if (targetTest) {
-        const blob = new Blob([JSON.stringify(targetTest, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `test_${targetTest.title.replace(/\s+/g, "_")}.json`;
-        a.click();
-        showToast("Тест JSON файлы жүктөлдү", "success");
-      }
-    });
-  });
-
-  document.querySelectorAll(".dash-btn-delete").forEach(b => {
-    b.addEventListener("click", () => {
-      if (confirm("Чын эле бул тестти өчүрөсүзбү?")) {
-        const id = b.getAttribute("data-id");
-        const tid = currentTeacher.uid;
-        delete activeTeacherTests[id];
-        deleteTestFromLocal(tid, id);
-
-        if (isFirebaseAvailable && db) {
-          remove(ref(db, `teachers/${tid}/tests/${id}`))
-            .then(() => showToast("Тест базадан өчүрүлдү", "success"))
-            .catch(() => showToast("Локалдык өчүрүлдү", "info"));
+    function loadTeacherTests() {
+        const teacherId = BF.getCurrentTeacherId();
+        
+        if (BF.isFirebaseAvailable() && BA.canViewTeacherData(teacherId)) {
+            BF.getDatabaseInstance().ref(`/teachers/${teacherId}/tests`).once('value')
+                .then((snapshot) => {
+                    currentTests = snapshot.val() || {};
+                    BS.setLocalData('bilimal_teacher_tests', currentTests);
+                    renderDashboardAll();
+                })
+                .catch((err) => {
+                    console.error(err);
+                    currentTests = BS.getTestsLocal();
+                    renderDashboardAll();
+                });
         } else {
-          showToast("Локалдык өчүрүлдү", "success");
+            currentTests = BS.getTestsLocal();
+            renderDashboardAll();
         }
+    }
+
+    function renderDashboardAll() {
         renderTestsList();
-      }
+        renderStats();
+    }
+
+    function renderTestsList(filteredData = null) {
+        const container = document.getElementById('dashboard-tests-container');
+        if (!container) return;
+
+        const dataToRender = filteredData || Object.values(currentTests);
+        container.innerHTML = "";
+
+        if (dataToRender.length === 0) {
+            container.innerHTML = `<div class="empty-state-notice"><p>Тесттер табылган жок. Жаңы тест түзүңүз.</p></div>`;
+            return;
+        }
+
+        dataToRender.forEach(test => {
+            const testRow = document.createElement('div');
+            testRow.className = `test-item-card ${test.isArchived ? 'status-archived' : 'status-active'}`;
+            testRow.style.borderLeft = `5px solid ${test.isPublished ? '#2ec4b6' : '#ff9f1c'}`;
+            testRow.innerHTML = `
+                <div class="test-meta-info">
+                    ### ${BF.sanitizeData(test.title || 'Аталышсыз тест')}
+                    <p>Предмет: **${BF.sanitizeData(test.subject || 'Жок')}** | Класс: **${BF.sanitizeData(test.classLevel || 'Жок')}**</p>
+                    <p>Суроолор: ${test.questions ? Object.keys(test.questions).length : 0} | Өтүү упайы: ${test.passingScore || 0}</p>
+                </div>
+                <div class="test-action-buttons" style="margin-top: 10px;">
+                    <button class="btn-dashboard-action btn-edit" data-id="${test.id}">Оңдоо</button>
+                    <button class="btn-dashboard-action btn-duplicate" data-id="${test.id}">Көчүрүү</button>
+                    <button class="btn-dashboard-action btn-results" data-id="${test.id}">Жыйынтыктар</button>
+                    <button class="btn-dashboard-action ${test.isPublished ? 'btn-unpublish' : 'btn-publish'}" data-id="${test.id}">
+                        ${test.isPublished ? 'Жарыядан ал' : 'Жарыяла'}
+                    </button>
+                    <button class="btn-dashboard-action ${test.isArchived ? 'btn-restore' : 'btn-archive'}" data-id="${test.id}">
+                        ${test.isArchived ? 'Калыбына келтир' : 'Архивке'}
+                    </button>
+                    <button class="btn-dashboard-action btn-delete" data-id="${test.id}" style="background-color: #e71d36; color:#fff;">Өчүрүү</button>
+                </div>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+            `;
+            container.appendChild(testRow);
+        });
+
+        bindDynamicCardEvents();
+    }
+
+    function renderStats() {
+        const testsArray = Object.values(currentTests);
+        const results = BS.getResultsLocal();
+        const resultsArray = Object.values(results);
+
+        const totalTests = testsArray.length;
+        const activeTests = testsArray.filter(t => !t.isArchived && t.isPublished).length;
+        const archivedTests = testsArray.filter(t => t.isArchived).length;
+        const totalSubmissions = resultsArray.length;
+
+        let totalScoreSum = 0;
+        resultsArray.forEach(r => totalScoreSum += (r.finalScore || 0));
+        const avgScore = totalSubmissions > 0 ? (totalScoreSum / totalSubmissions).toFixed(1) : 0;
+
+        const statMappings = {
+            'stat-total-tests': totalTests,
+            'stat-active-tests': activeTests,
+            'stat-archived-tests': archivedTests,
+            'stat-total-submissions': totalSubmissions,
+            'stat-avg-score': avgScore,
+            'stat-today-activity': resultsArray.filter(r => new Date(r.timestamp).toDateString() === new Date().toDateString()).length
+        };
+
+        for (const [id, val] of Object.entries(statMappings)) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = val;
+        }
+    }
+
+    function createNewTest() {
+        const newId = BF.generateId('test');
+        const defaultTest = {
+            id: newId,
+            title: "Жаңы Тест (" + new Date().toLocaleDateString() + ")",
+            subject: "Физика",
+            classLevel: "7-А",
+            description: "",
+            timeLimit: 45,
+            passingScore: 60,
+            maxScore: 100,
+            isPublished: false,
+            isArchived: false,
+            questions: {},
+            antiCheatSettings: { tabTracking: true, preventCopyPaste: true, forceFullscreen: false }
+        };
+        currentTests[newId] = defaultTest;
+        BS.saveTestLocal(defaultTest);
+        BF.logSystemEvent("test_created", { testId: newId });
+        openTestEditor(newId);
+    }
+
+    function editTest(testId) {
+        openTestEditor(testId);
+    }
+
+    function duplicateTest(testId) {
+        if (!currentTests[testId]) return;
+        const source = currentTests[testId];
+        const copyId = BF.generateId('test');
+        const duplicated = {
+            ...source,
+            id: copyId,
+            title: `${source.title} (Көчүрмө)`,
+            isPublished: false
+        };
+        currentTests[copyId] = duplicated;
+        BS.saveTestLocal(duplicated);
+        BF.showToast("Тест ийгиликтүү көчүрүлдү", "success");
+        renderDashboardAll();
+    }
+
+    function deleteTest(testId) {
+        if (confirm("Бул тестти биротоло өчүрүүнү каалайсызбы?")) {
+            delete currentTests[testId];
+            BS.deleteTestLocal(testId);
+            renderDashboardAll();
+        }
+    }
+
+    function archiveTest(testId) {
+        if (currentTests[testId]) {
+            currentTests[testId].isArchived = true;
+            BS.saveTestLocal(currentTests[testId]);
+            BF.showToast("Тест архивделди", "info");
+            renderDashboardAll();
+        }
+    }
+
+    function restoreTest(testId) {
+        if (currentTests[testId]) {
+            currentTests[testId].isArchived = false;
+            BS.saveTestLocal(currentTests[testId]);
+            BF.showToast("Тест архивден чыгарылды", "success");
+            renderDashboardAll();
+        }
+    }
+
+    function publishTest(testId) {
+        if (currentTests[testId]) {
+            currentTests[testId].isPublished = true;
+            BS.saveTestLocal(currentTests[testId]);
+            BF.showToast("Тест жарыяланды", "success");
+            renderDashboardAll();
+        }
+    }
+
+    function unpublishTest(testId) {
+        if (currentTests[testId]) {
+            currentTests[testId].isPublished = false;
+            BS.saveTestLocal(currentTests[testId]);
+            BF.showToast("Тест жарыядан чыгарылды", "info");
+            renderDashboardAll();
+        }
+    }
+
+    function searchTests() {
+        const q = (document.getElementById('search-tests-input')?.value || '').toLowerCase();
+        const filtered = Object.values(currentTests).filter(t => 
+            (t.title || '').toLowerCase().includes(q) || (t.subject || '').toLowerCase().includes(q)
+        );
+        renderTestsList(filtered);
+    }
+
+    function filterAndSortTests() {
+        let list = Object.values(currentTests);
+        
+        const subjectFilter = document.getElementById('filter-subject-select')?.value;
+        const classFilter = document.getElementById('filter-class-select')?.value;
+        const statusFilter = document.getElementById('filter-status-select')?.value;
+        const sortBy = document.getElementById('sort-tests-select')?.value;
+
+        if (subjectFilter && subjectFilter !== 'all') {
+            list = list.filter(t => t.subject === subjectFilter);
+        }
+        if (classFilter && classFilter !== 'all') {
+            list = list.filter(t => t.classLevel === classFilter);
+        }
+        if (statusFilter && statusFilter !== 'all') {
+            if (statusFilter === 'published') list = list.filter(t => t.isPublished && !t.isArchived);
+            if (statusFilter === 'draft') list = list.filter(t => !t.isPublished && !t.isArchived);
+            if (statusFilter === 'archived') list = list.filter(t => t.isArchived);
+        }
+
+        if (sortBy === 'title') {
+            list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+        } else if (sortBy === 'questions') {
+            list.sort((a, b) => Object.keys(b.questions || {}).length - Object.keys(a.questions || {}).length);
+        } else {
+            list.sort((a, b) => b.id.localeCompare(a.id));
+        }
+
+        renderTestsList(list);
+    }
+
+    function openTestEditor(testId) {
+        localStorage.setItem('bilimal_editing_test_id', testId);
+        BF.showToast("Редактор ачылууда...", "info");
+        const editorTab = document.getElementById('tab-test-editor-btn');
+        if (editorTab) editorTab.click();
+        if (window.BilimalEditor && typeof window.BilimalEditor.loadEditor === 'function') {
+            window.BilimalEditor.loadEditor(testId);
+        }
+    }
+
+    function openResults(testId) {
+        localStorage.setItem('bilimal_viewing_result_test_id', testId);
+        BF.showToast("Жыйынтыктар жүктөлүүдө...", "info");
+        const resultsTab = document.getElementById('tab-results-btn');
+        if (resultsTab) resultsTab.click();
+        if (window.BilimalResults && typeof window.BilimalResults.loadTestResults === 'function') {
+            window.BilimalResults.loadTestResults(testId);
+        }
+    }
+
+    function exportTestsToJson() {
+        BS.exportAllTeacherData();
+    }
+
+    function importTestsFromJson(file) {
+        BS.importTeacherData(file);
+    }
+
+    function exportTestsToCsv() {
+        let csvContent = "\uFEFFИД,Аталышы,Предмет,Класс,Суроолор Саны,Статус\n";
+        Object.values(currentTests).forEach(t => {
+            const status = t.isArchived ? "Архив" : (t.isPublished ? "Жарыяланган" : "Черновик");
+            const qCount = t.questions ? Object.keys(t.questions).length : 0;
+            csvContent += `"${t.id}","${t.title}","${t.subject}","${t.classLevel}",${qCount},"${status}"\n`;
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Bilimal_Tests_Export_${Date.now()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    }
+
+    function downloadYearlyReport() {
+        if (window.BilimalResults && typeof window.BilimalResults.exportYearlyResultsCsv === 'function') {
+            window.BilimalResults.exportYearlyResultsCsv();
+        } else {
+            BF.showToast("Жыйынтыктар модулу табылган жок", "error");
+        }
+    }
+
+    function refreshDashboard() {
+        loadTeacherTests();
+        BF.showToast("Башкаруу панели жаңыртылды", "success");
+    }
+
+    function bindDashboardEvents() {
+        document.getElementById('btn-create-test')?.addEventListener('click', createNewTest);
+        document.getElementById('btn-refresh-dashboard')?.addEventListener('click', refreshDashboard);
+        document.getElementById('btn-export-json')?.addEventListener('click', exportTestsToJson);
+        document.getElementById('btn-export-csv')?.addEventListener('click', exportTestsToCsv);
+        document.getElementById('btn-yearly-report')?.addEventListener('click', downloadYearlyReport);
+        
+        document.getElementById('search-tests-input')?.addEventListener('input', searchTests);
+        document.getElementById('filter-subject-select')?.addEventListener('change', filterAndSortTests);
+        document.getElementById('filter-class-select')?.addEventListener('change', filterAndSortTests);
+        document.getElementById('filter-status-select')?.addEventListener('change', filterAndSortTests);
+        document.getElementById('sort-tests-select')?.addEventListener('change', filterAndSortTests);
+
+        const fileInput = document.getElementById('import-json-file-input');
+        fileInput?.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) importTestsFromJson(e.target.files[0]);
+        });
+    }
+
+    function bindDynamicCardEvents() {
+        document.querySelectorAll('.btn-edit').forEach(b => b.addEventListener('click', () => editTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-duplicate').forEach(b => b.addEventListener('click', () => duplicateTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-results').forEach(b => b.addEventListener('click', () => openResults(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-publish').forEach(b => b.addEventListener('click', () => publishTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-unpublish').forEach(b => b.addEventListener('click', () => unpublishTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-archive').forEach(b => b.addEventListener('click', () => archiveTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-restore').forEach(b => b.addEventListener('click', () => restoreTest(b.getAttribute('data-id'))));
+        document.querySelectorAll('.btn-delete').forEach(b => b.addEventListener('click', () => deleteTest(b.getAttribute('data-id'))));
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        bindDashboardEvents();
+        loadDashboard();
     });
-  });
-}
 
-function handleJsonImport(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    try {
-      const parsed = JSON.parse(evt.target.result);
-      if (!parsed.title) {
-        showToast("Ката: Файлда тесттин аталышы жок!", "error");
-        return;
-      }
-      const newId = generateId("test");
-      parsed.id = newId;
-      parsed.questions = parsed.questions || [];
-      parsed.updatedAt = Date.now();
-
-      activeTeacherTests[newId] = parsed;
-      saveTestToLocal(currentTeacher.uid, parsed);
-      
-      showToast("Импорт ийгиликтүү аяктады", "success");
-      renderTestsList();
-    } catch (err) {
-      showToast("JSON файлын окууда ката кетти. Файл бузулган болушу мүмкүн.", "error");
-    }
-  };
-  reader.readAsText(file);
-  e.target.value = ""; 
-}
-
-function injectFloatingActionButton() {
-  if (document.getElementById("floating-action-add-btn")) return;
-  const fab = document.createElement("button");
-  fab.id = "floating-action-add-btn";
-  fab.innerHTML = "+";
-  fab.style.cssText = "position:fixed; bottom:30px; left:30px; width:60px; height:60px; border-radius:50%; background:#10b981; color:white; font-size:32px; border:none; box-shadow:0 4px 10px rgba(0,0,0,0.3); cursor:pointer; z-index:999; display:flex; align-items:center; justify-content:center; font-weight:bold; transition:transform 0.2s;";
-  fab.addEventListener("mouseenter", () => fab.style.transform = "scale(1.1)");
-  fab.addEventListener("mouseleave", () => fab.style.transform = "scale(1)");
-  fab.addEventListener("click", () => {
-    const modal = document.getElementById("test-editor-modal");
-    if (modal && modal.classList.contains("active")) {
-      renderQuestionEditor({ id: generateId("q"), type: "single", questionText: "", points: 5, options: ["", ""] });
-      showToast("Жаңы бош суроо аягына кошулду", "info");
-    } else {
-      openTestModal(null);
-    }
-  });
-  document.body.appendChild(fab);
-}
-
-function injectAdBlocks() {
-  const wrapperAd = document.getElementById("dashboard-footer-advertisement-block");
-  if (wrapperAd) {
-    wrapperAd.style.minHeight = "90px";
-    wrapperAd.innerHTML = `
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1495571814896964" data-ad-slot="1574613769"></ins>
-      <div id="adsterra-banner-space"></div>
-    `;
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {}
-
-    const adOptionsScript = document.createElement("script");
-    adOptionsScript.innerHTML = `
-      atOptions = { 'key' : '230e338703bb44150336cce1f0832fe3', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };
-    `;
-    const adInvokeScript = document.createElement("script");
-    adInvokeScript.src = "https://www.highperformanceformat.com/230e338703bb44150336cce1f0832fe3/invoke.js";
-    
-    const bannerSpace = document.getElementById("adsterra-banner-space");
-    if (bannerSpace) {
-      bannerSpace.appendChild(adOptionsScript);
-      bannerSpace.appendChild(adInvokeScript);
-    }
-  }
-}
+    window.BilimalDashboard = {
+        loadDashboard,
+        refreshDashboard,
+        openTestEditor,
+        openResults
+    };
+})();
