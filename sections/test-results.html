@@ -3,47 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bilimal - Жыйынтыктар Борбору</title>
+    <title>Bilimal - Отчеттор жана Жыйынтыктар</title>
+    <link rel="icon" href="data:,">
+    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV60QV0"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date()); gtag('config', 'G-9GSQV60QV0');
+        gtag('js', new Date());
+        gtag('config', 'G-9GSQV60QV0');
     </script>
+
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="/assets/css/tests.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer type="module" src="/assets/js/firebase-config.js"></script>
-    <script defer type="module" src="/assets/js/toast.js"></script>
-    <script defer type="module" src="/assets/js/teacher-activity.js"></script>
-    <script defer type="module" src="/assets/js/annual-report.js"></script>
-    <script defer type="module" src="/assets/js/test-results.js"></script>
+    
+    <style>
+        .filter-grid-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: rgba(255,255,255,0.02); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05); }
+        .analytics-dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+        .analytics-node-card { background: rgba(255,255,255,0.03); border-radius: 10px; padding: 15px; border: 1px solid rgba(255,255,255,0.05); text-align: center; }
+        .analytics-node-card h5 { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 5px; }
+        .analytics-node-card .num { font-size: 20px; font-weight: bold; color: #00ffa3; }
+        .result-modal { background: rgba(6, 9, 20, 0.95); border: 1px solid #00f2fe; width: 90%; max-width: 800px; border-radius: 16px; padding: 25px; display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1100; max-height: 90vh; overflow-y: auto; color: #fff; box-shadow: 0 0 30px rgba(0,242,254,0.3); }
+        .footer-ad-container { min-height: 90px; margin-top: 40px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px; }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar-panel">
-            <div class="brand-zone"><h2>Bilimal</h2></div>
-            <nav class="nav-menu">
-                <button class="nav-btn" onclick="window.location.href='/sections/tests.html'"><i class="fa-solid fa-chart-pie"></i> Башкаруу панели</button>
-                <button class="nav-btn" onclick="window.location.href='/sections/test-builder.html'"><i class="fa-solid fa-wand-magic-sparkles"></i> Smart Test Builder</button>
-                <button class="nav-btn active" onclick="window.location.href='/sections/test-results.html'"><i class="fa-solid fa-graduation-cap"></i> Жыйынтыктар</button>
-            </nav>
-        </aside>
-        <main class="main-content">
-            <div class="data-glass-panel" style="display:flex; justify-content:space-between; align-items:center;">
+
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Меню"><i class="fas fa-bars"></i></button>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo"><span class="logo-white">Bilim</span><span class="logo-cyan">al</span></div>
+        <nav class="sidebar-menu">
+            <button class="menu-item" id="navDashboard"><i class="fas fa-chart-pie"></i> <span>Башкаруу панели</span></button>
+            <button class="menu-item" id="navTestBuilder"><i class="fas fa-sliders-h"></i> <span>Smart Test Builder</span></button>
+            <button class="menu-item active" id="navResults"><i class="fas fa-graduation-cap"></i> <span>Жыйынтыктар</span></button>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="panel-header" style="margin-bottom: 15px;">
+            <h2>Баалоо жана Отчет Борбору</h2>
+            <button class="btn-create-test" id="btnDownloadYearlyReport" style="background: linear-gradient(135deg, #00ffa3 0%, #00b876 100%); color:#060914;">
+                <i class="fas fa-file-excel"></i> Жылдык Жалпы Отчет (CSV)
+            </button>
+        </div>
+
+        <!-- Фильтрлер топтому -->
+        <div class="filter-grid-layout">
+            <input type="text" id="resSearchStudent" placeholder="Окуучунун аты..." class="custom-select" style="background:rgba(255,255,255,0.05); color:#fff; padding:5px 10px;">
+            <select id="resFilterYear" class="custom-select"><option value="all">Бардык жылдар</option><option value="2026-2027">2026-2027</option></select>
+            <select id="resFilterSubject" class="custom-select"><option value="all">Бардык предметтер</option><option value="physics">Физика</option><option value="astronomy">Астрономия</option></select>
+            <select id="resFilterClass" class="custom-select"><option value="all">Бардык класстар</option></select>
+            <select id="resFilterTest" class="custom-select"><option value="all">Бардык тесттер</option></select>
+            <select id="resFilterStatus" class="custom-select"><option value="all">Бардык аракеттер</option><option value="checked">Текшерилди</option><option value="unchecked">Текшериле элек</option></select>
+            <select id="resFilterCheat" class="custom-select"><option value="all">Античит (Баары)</option><option value="yes">Эскертүүсү барлар</option></select>
+        </div>
+
+        <!-- Аналитикалык Твиттер -->
+        <div class="analytics-dashboard-grid">
+            <div class="analytics-node-card"><h5>Орточо жетишүү</h5><div class="num" id="anAverageScore">0%</div></div>
+            <div class="analytics-node-card"><h5>Эң жогорку балл</h5><div class="num" id="anMaxScore" style="color:#00f2fe;">0</div></div>
+            <div class="analytics-node-card"><h5>Класстын сапаты</h5><div class="num" id="anSuccessRate">0%</div></div>
+            <div class="analytics-node-card"><h5>Көп каталанган суроо</h5><div class="num" id="anMostFailedQ" style="color:#ff4a4a; font-size:14px; padding-top:4px;">Жок</div></div>
+        </div>
+
+        <!-- Таблица -->
+        <section class="tests-section-panel">
+            <div class="responsive-table-wrapper">
+                <table class="cyber-table">
+                    <thead>
+                        <tr>
+                            <th>Окуучунун аты-жөнү</th>
+                            <th>Класс</th>
+                            <th>Тесттин аталышы</th>
+                            <th>Тапшырган убактысы</th>
+                            <th>Колдонулган убакыт</th>
+                            <th>Автоматтык / Кол балл</th>
+                            <th>Жалпы балл (%)</th>
+                            <th>Баа</th>
+                            <th>Античит</th>
+                            <th>Статус</th>
+                            <th>Аракеттер</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsMainTableBody"></tbody>
+                </table>
+                <div class="no-data-message" id="resNoDataMsg">Кriterийлер боюнча жыйынтыктар табылган жок.</div>
+            </div>
+        </section>
+
+        <!-- Жарнама баннери -->
+        <div class="footer-ad-container">
+            <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-1495571814896964" data-ad-slot="1574613769" data-ad-format="auto" data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+    </main>
+
+    <!-- Текшерүү жана Окуучунун жеке картасынын модалы -->
+    <div class="result-modal" id="studentDetailModal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+            <h3 id="mdTitle" style="color:#00f2fe;">Окуучунун Жеке Жыйынтыгы</h3>
+            <button class="node-btn del" id="btnCloseResultModal">&times;</button>
+        </div>
+        <div id="mdMetaInfo" style="font-size:13px; line-height:1.6; margin-bottom:15px; display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
+        
+        <h4 style="color:#00ffa3; margin:15px 0 10px 0;">Жоопторду баалоо жана карап чыгуу</h4>
+        <div id="mdQuestionsReviewContainer" style="display:flex; flex-direction:column; gap:15px; margin-bottom:20px;"></div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); padding:15px; border-radius:10px; margin-bottom:20px;">
+            <h5 style="color:#ffa800; margin-bottom:10px;">Мугалимдин эксперттик корутундусу</h5>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:10px;">
                 <div>
-                    <h2>Окуучулардын Жыйынтыктары</h2>
-                    <p style="font-size:12px; color:rgba(255,255,255,0.5);">Чыныгы убакыт режиминде баалоо журналы.</p>
+                    <label style="font-size:12px; display:block; margin-bottom:5px;">Кол менен кошумча упай:</label>
+                    <input type="number" id="mdManualPoints" style="width:100%; padding:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px;">
                 </div>
-                <button id="btnDownloadReports" class="btn-primary-glow"><i class="fa-solid fa-file-excel"></i> Excel CSV Жүктөө (UTF-8 BOM)</button>
+                <div>
+                    <label style="font-size:12px; display:block; margin-bottom:5px;">Иштин экспертиза белгиси:</label>
+                    <select id="mdReviewStatus" style="width:100%; padding:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px;">
+                        <option value="checked">Текшерилди / Бекитилди</option>
+                        <option value="recheck">Кайра текшерүү керек</option>
+                        <option value="suspicious">Шектүү аракет бар</option>
+                    </select>
+                </div>
             </div>
-            <div class="data-glass-panel" style="display:flex; gap:15px;">
-                <select id="resFilterClass" style="flex:1; padding:10px; background:#111; color:white; border-radius:6px; border:1px solid #333;"><option value="all">Бардык класстар</option></select>
-                <select id="resFilterTest" style="flex:1; padding:10px; background:#111; color:white; border-radius:6px; border:1px solid #333;"><option value="all">Бардык тесттер</option></select>
-                <select id="resFilterSubject" style="display:none;"><option value="all"></option></select>
+            <label style="font-size:12px; display:block; margin-bottom:5px;">Мугалимдин комментарийи:</label>
+            <textarea id="mdTeacherComment" rows="2" style="width:100%; padding:8px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); color:#fff; border-radius:6px; resize:none;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; gap:8px;">
+                <button class="node-btn" id="mdBtnPrint"><i class="fas fa-print"></i> Басып чыгаруу</button>
+                <button class="node-btn" id="mdBtnExportCSV"><i class="fas fa-file-csv"></i> CSV</button>
             </div>
-            <div id="classesResultsContainer"></div>
-        </main>
+            <button class="node-btn" id="mdBtnSaveChanges" style="background:#00ffa3; color:#060914; font-weight:bold;">Жыйынтыкты сактоо</button>
+        </div>
     </div>
-    <div id="globalModalContainer" class="modal-overlay-system" style="display:none;"><div class="modal-glass-window" style="max-width:600px;"><h3 id="globalModalTitle">Билдирүү</h3><div id="globalModalBody"></div></div></div>
+
+    <script type="module" src="/assets/js/test-results.js"></script>
 </body>
 </html>
