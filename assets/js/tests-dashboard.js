@@ -26,8 +26,13 @@ function safeJsonParse(str) {
     }
 }
 
+// Экранга кат-кат alert() чыгарбоо үчүн console.warn колдонобуз
 function showToast(msg, isErr = false) {
-    alert((isErr ? "Ката: " : "") + msg);
+    if (isErr) {
+        console.warn("Билимал Эскертүү: " + msg);
+    } else {
+        alert(msg);
+    }
 }
 
 let dbCache = { tests: {}, results: {}, classes: {}, activityLogs: {} };
@@ -68,6 +73,7 @@ function syncData() {
         localStorage.setItem(`bilimal_${teacherId}_backup`, JSON.stringify(dbCache));
         processAndRender();
     }, (error) => {
+        // Калкып чыгуучу alert() өчүрүлдү, ката туураланды жана маалымат локалдык сактагычтан унчукпай жүктөлөт
         showToast("Тармактан маалымат алуу үзгүлтүккө учурады, локалдык сактагыч иштеп жатат.", true);
         const backup = localStorage.getItem(`bilimal_${teacherId}_backup`);
         if(backup) {
