@@ -1,14 +1,22 @@
-// Centralized Monitization Verification Scripts Orchestrator Framework for BilimAl
-document.addEventListener("DOMContentLoaded", () => {
-    evaluateContextualAdRenderingRules();
-});
+const AdManager = {
+    renderBanners() {
+        if (typeof window === "undefined") return;
+        // Verify we are not in safe anti-cheat or student quiz view before executing native injectors
+        const path = window.location.pathname;
+        if (path.includes("student-test") || path.includes("quiz") || path.includes("anti-cheat")) {
+            return; 
+        }
 
-function evaluateContextualAdRenderingRules() {
-    const path = window.location.pathname;
+        try {
+            // Initialize AdSense push trigger securely
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (e) {}
 
-    // Check if the current window matches protected clean interaction parameters rules bounds
-    if (path.includes("sections/tests.html") || path.includes("student-test.html") && !document.getElementById("studentResultsBlock").classList.contains("hidden")) {
-        // Enforce script payload generation safety boundaries variables parameters rules bounds checks
-        console.log("BilimAl Security Guard: Protected Workspace Context. Dynamic ad insertion injection minimized.");
+        const slot = document.getElementById("adsterraBanner728x90");
+        if (slot) {
+            slot.innerHTML = `<div style='background:rgba(255,255,255,0.02); padding:10px; color:#666; font-size:11px;'>Рекламалык байланыш борбору</div>`;
+        }
     }
-}
+};
+document.addEventListener("DOMContentLoaded", () => AdManager.renderBanners());
+export { AdManager };
