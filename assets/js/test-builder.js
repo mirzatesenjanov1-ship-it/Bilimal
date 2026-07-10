@@ -1,271 +1,300 @@
-import { checkAuth } from "./auth-guard.js";
-import { safeFirebaseSet, safeFirebaseGet } from "./firebase-config.js";
-import { Toast } from "./toast.js";
-import { TeacherActivityLogger } from "./teacher-activity.js";
-import { StorageFallback } from "./storage-fallback.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-let currentUid = null;
-let editingTestId = null;
-let currentQuestions = [];
-
-const TestBuilder = {
-    init() {
-        checkAuth((user) => {
-            currentUid = user.uid;
-            this.detectEditMode();
-            this.bindEvents();
-            this.renderQuestions();
-        });
-    },
-    detectEditMode() {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has("edit")) {
-            editingTestId = params.get("edit");
-            this.loadExistingTest(editingTestId);
-        } else {
-            editingTestId = "test_" + Date.now();
-        }
-    },
-    async loadExistingTest(id) {
-        let test = null;
-        if (navigator.onLine) {
-            test = await safeFirebaseGet(`tests/${currentUid}/${id}`);
-        } else {
-            test = StorageFallback.getFallbackTests()[id];
-        }
-        if (test) {
-            document.getElementById("builderTestTitle").value = test.title || "";
-            document.getElementById("builderTestSubject").value = test.subject || "";
-            document.getElementById("builderTestGrades").value = test.grade || "";
-            document.getElementById("builderTimeLimit").value = test.timeLimit || 40;
-            document.getElementById("builderAttemptLimit").value = test.attempts || 1;
-            
-            if (test.antiCheat) {
-                document.getElementById("acFullscreen").checked = !!test.antiCheat.fullscreen;
-                document.getElementById("acTabSwitch").checked = !!test.antiCheat.tabSwitch;
-                document.getElementById("acBlockTab").checked = !!test.antiCheat.blockTab;
-                document.getElementById("acNoCopyPaste").checked = !!test.antiCheat.noCopy;
-                document.getElementById("acNoRightClick").checked = !!test.antiCheat.noRightClick;
-            }
-            currentQuestions = test.questions ? Object.values(test.questions) : [];
-            this.renderQuestions();
-        }
-    },
-    bindEvents() {
-        document.getElementById("testConfigForm")?.addEventListener("submit", (e) => {
-            e.preventDefault();
-            this.saveTestProcess("active");
-        });
-        document.getElementById("btnSaveDraft")?.addEventListener("click", () => {
-            this.saveTestProcess("draft");
-        });
-        
-        const blockGridButtons = document.querySelectorAll(".block-type-card");
-        blockGridButtons.forEach(btn => {
-            btn.addEventListener("click", (e) => {
-                const type = e.currentTarget.getAttribute("data-type");
-                this.addQuestionBlock(type);
-                document.getElementById("blockSelectorModal").style.display = "none";
-            });
-        });
-
-        // Trigger global block selector opening safely
-        window.uiComponents = {
-            openBlockSelector: (target) => {
-                document.getElementById("blockSelectorModal").style.display = "flex";
-            },
-            closeModal: () => {
-                document.getElementById("globalModalContainer").style.display = "none";
-            }
-        };
-
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") document.getElementById("blockSelectorModal").style.display = "none";
-        });
-    },
-    addQuestionBlock(type) {
-        const block = {
-            id: "q_" + Date.now() + Math.random().toString(36).substr(2, 5),
-            type: type,
-            text: "",
-            options: type === "question" ? ["", ""] : [],
-            correctAnswers: [],
-            points: 1
-        };
-        currentQuestions.push(block);
-        this.renderQuestions();
-        Toast.info("Жаңы суроо топтому кошулду.");
-    },
-    renderQuestions() {
-        const c = document.getElementById("builderBlocksContainer");
-        if (!c) return;
-        c.innerHTML = "";
-
-        if (currentQuestions.length === 0) {
-            c.innerHTML = `<div class="empty-state-text" style="padding:40px; border:2px dashed rgba(255,255,255,0.1); border-radius:12px;">Конструктор бош. Төмөнкү баскычтан блок кошуңуз.</div>`;
-            return;
-        }
-
-        currentQuestions.forEach((q, idx) => {
-            const div = document.createElement("div");
-            div.className = "question-editor-card data-glass-panel";
-            div.style.position = "relative";
-            div.style.marginBottom = "20px";
-            div.style.padding = "20px";
-            div.style.borderLeft = "4px solid var(--neon-cyan)";
-
-            div.innerHTML = `
-                <div class="card-controls" style="position:absolute; right:15px; top:15px;">
-                    <button class="btn-action move-up" data-idx="${idx}"><i class="fa-solid fa-arrow-up"></i></button>
-                    <button class="btn-action move-down" data-idx="${idx}"><i class="fa-solid fa-arrow-down"></i></button>
-                    <button class="btn-action del-q" data-idx="${idx}"><i class="fa-solid fa-trash" style="color:var(--neon-red);"></i></button>
-                </div>
-                <h4>#${idx + 1} Блок: ${q.type.toUpperCase()}</h4>
-                <div class="form-group-glass" style="margin-top:10px;">
-                    <label>Суроо тексти же мазмундун сыпаттамасы *</label>
-                    <textarea class="q-text-input" data-idx="${idx}" required style="width:100%; min-height:60px; background:rgba(0,0,0,0.3); color:white; border:1px solid rgba(255,255,255,0.2); border-radius:6px; padding:10px;">${q.text || ""}</textarea>
-                </div>
-                ${this.renderTypeOptions(q, idx)}
-            `;
-            c.appendChild(div);
-        });
-
-        this.bindDynamicBlockFields();
-    },
-    renderTypeOptions(q, idx) {
-        if (q.type !== "question") return "";
-        let html = `<div class="options-zone" style="margin-top:15px;"><h5>Жооп варианттары</h5>`;
-        const opts = q.options || [];
-        opts.forEach((o, oIdx) => {
-            html += `
-                <div style="display:flex; align-items:center; margin-bottom:8px;">
-                    <input type="checkbox" class="q-correct-check" data-qidx="${idx}" data-oidx="${oIdx}" ${q.correctAnswers.includes(oIdx) ? 'checked' : ''} style="margin-right:10px;">
-                    <input type="text" class="q-opt-txt" data-qidx="${idx}" data-oidx="${oIdx}" value="${o}" placeholder="Вариант ${oIdx + 1}" required style="flex:1; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); color:white; padding:6px; border-radius:4px;">
-                </div>
-            `;
-        });
-        html += `<button type="button" class="btn-secondary-glow btn-sm add-opt-btn" data-idx="${idx}" style="padding:4px 10px; font-size:12px; margin-top:5px;"><i class="fa-solid fa-plus"></i> Вариант кош</button></div>`;
-        return html;
-    },
-    bindDynamicBlockFields() {
-        document.querySelectorAll(".q-text-input").forEach(el => {
-            el.addEventListener("input", (e) => {
-                const idx = e.target.getAttribute("data-idx");
-                currentQuestions[idx].text = e.target.value;
-            });
-        });
-        document.querySelectorAll(".q-opt-txt").forEach(el => {
-            el.addEventListener("input", (e) => {
-                const qidx = e.target.getAttribute("data-qidx");
-                const oidx = e.target.getAttribute("data-oidx");
-                currentQuestions[qidx].options[oidx] = e.target.value;
-            });
-        });
-        document.querySelectorAll(".q-correct-check").forEach(el => {
-            el.addEventListener("change", (e) => {
-                const qidx = parseInt(e.target.getAttribute("data-qidx"));
-                const oidx = parseInt(e.target.getAttribute("data-oidx"));
-                let arr = currentQuestions[qidx].correctAnswers || [];
-                if (e.target.checked) {
-                    if (!arr.includes(oidx)) arr.push(oidx);
-                } else {
-                    arr = arr.filter(v => v !== oidx);
-                }
-                currentQuestions[qidx].correctAnswers = arr;
-            });
-        });
-        document.querySelectorAll(".add-opt-btn").forEach(el => {
-            el.addEventListener("click", (e) => {
-                const idx = e.currentTarget.getAttribute("data-idx");
-                currentQuestions[idx].options.push("");
-                this.renderQuestions();
-            });
-        });
-        document.querySelectorAll(".btn-action.del-q").forEach(el => {
-            el.addEventListener("click", (e) => {
-                const idx = e.currentTarget.getAttribute("data-idx");
-                currentQuestions.splice(idx, 1);
-                this.renderQuestions();
-            });
-        });
-        document.querySelectorAll(".btn-action.move-up").forEach(el => {
-            el.addEventListener("click", (e) => {
-                const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
-                if (idx > 0) {
-                    const temp = currentQuestions[idx];
-                    currentQuestions[idx] = currentQuestions[idx - 1];
-                    currentQuestions[idx - 1] = temp;
-                    this.renderQuestions();
-                }
-            });
-        });
-        document.querySelectorAll(".btn-action.move-down").forEach(el => {
-            el.addEventListener("click", (e) => {
-                const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
-                if (idx < currentQuestions.length - 1) {
-                    const temp = currentQuestions[idx];
-                    currentQuestions[idx] = currentQuestions[idx + 1];
-                    currentQuestions[idx + 1] = temp;
-                    this.renderQuestions();
-                }
-            });
-        });
-    },
-    async saveTestProcess(status) {
-        const title = document.getElementById("builderTestTitle").value.trim();
-        const subject = document.getElementById("builderTestSubject").value.trim();
-        const grade = document.getElementById("builderTestGrades").value.trim();
-        
-        if (!title || !subject) {
-            Toast.warning("Тесттин аталышы жана предмети толтурулушу керек.");
-            return;
-        }
-        if (currentQuestions.length === 0) {
-            Toast.warning("Бош тестти сактоого мүмкүн эмес. Суроолорду кошуңуз.");
-            return;
-        }
-
-        // Validate individual blocks
-        for (let i = 0; i < currentQuestions.length; i++) {
-            if (!currentQuestions[i].text.trim()) {
-                Toast.warning(`#${i + 1} Блоктун тексти бош калтырылган.`);
-                return;
-            }
-        }
-
-        const testPayload = {
-            id: editingTestId,
-            title, subject, grade,
-            timeLimit: parseInt(document.getElementById("builderTimeLimit").value) || 40,
-            attempts: parseInt(document.getElementById("builderAttemptLimit").value) || 1,
-            status: status,
-            createdAt: Date.now(),
-            antiCheat: {
-                fullscreen: document.getElementById("acFullscreen").checked,
-                tabSwitch: document.getElementById("acTabSwitch").checked,
-                blockTab: document.getElementById("acBlockTab").checked,
-                noCopy: document.getElementById("acNoCopyPaste").checked,
-                noRightClick: document.getElementById("acNoRightClick").checked
-            },
-            questions: { ...currentQuestions }
-        };
-
-        let success = false;
-        if (navigator.onLine) {
-            success = await safeFirebaseSet(`tests/${currentUid}/${editingTestId}`, testPayload);
-        } else {
-            success = StorageFallback.saveFallbackTest(editingTestId, testPayload);
-        }
-
-        if (success) {
-            Toast.success("Тест ийгиликтүү базага сакталды!");
-            TeacherActivityLogger.log("test_save", { testId: editingTestId, status });
-            setTimeout(() => { window.location.href = "/sections/tests.html"; }, 1000);
-        } else {
-            Toast.danger("Сактоо үзгүлтүккө учурады.");
-        }
-    }
+const firebaseConfig = {
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
 };
 
-document.addEventListener("DOMContentLoaded", () => TestBuilder.init());
-export { TestBuilder };
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+const teacherId = "demo_teacher_001";
+
+let activeTestId = null;
+let testQuestions = [];
+
+const QUESTION_TYPES = [
+    { type: "single", name: "Бир туура жооп", desc: "Классикалык радио баскычтуу тест" },
+    { type: "multiple", name: "Бир нече туура жооп", desc: "Чекбокстор менен көптөгөн тандоо" },
+    { type: "truefalse", name: "Туура / Туура эмес", desc: "Ооба же жок форматы" },
+    { type: "fillblank", name: "Бош жерди толтур", desc: "Тексттин ичиндеги боштуктарды жазуу" },
+    { type: "ordering", name: "Сөздөрдү иретке келтир", desc: "Логикалык туура ырааттуулук" },
+    { type: "matching", name: "Жупташтыруу", desc: "А жана Б мамычаларын дал келтирүү" },
+    { type: "image_q", name: "Сүрөт боюнча суроо", desc: "Графикалык медиа суроолору" },
+    { type: "audio_q", name: "Аудио боюнча суроо", desc: "Угуу аркылуу түшүнүү тести" },
+    { type: "video_q", name: "Видео боюнча суроо", desc: "Видео шилтемелерди талдоо" },
+    { type: "table_q", name: "Таблица менен суроо", desc: "Маалыматтар матрицасын изилдөө" },
+    { type: "formula", name: "Формула менен суроо", desc: "LaTeX же математикалык туюнтма" },
+    { type: "short_ans", name: "Кыска жооп", desc: "Бир же бир нече сөздөн турган жооп" },
+    { type: "essay", name: "Узун эссе жооп", desc: "Мугалим өзү текшерүүчү эркин текст" },
+    { type: "numeric", name: "Сандык жооп", desc: "Так сандык жыйынтыкты киргизүү" },
+    { type: "chart_q", name: "Диаграмма/график боюнча суроо", desc: "Статистикалык анализ суроолору" },
+    { type: "dragdrop", name: "Drag and Drop суроо", desc: "Элементтерди ташып жайгаштыруу" },
+    { type: "text_select", name: "Тексттен туура сөздү тандоо", desc: "Контексттик менюдан издөө" },
+    { type: "code", name: "Код жазуу суроосу", desc: "Программалоо тапшырмалары" },
+    { type: "lab", name: "Лабораториялык иш", desc: "Эксперименталдык виртуалдык суроо" },
+    { type: "ai_gen", name: "AI автоматтык суроосу", desc: "Интеллектуалдык жасалма кошумча" }
+];
+
+document.addEventListener("DOMContentLoaded", () => {
+    determineActiveTest();
+    setupCoreUiListeners();
+    buildTypeGrid();
+});
+
+function determineActiveTest() {
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get("edit");
+    if(editId) {
+        activeTestId = editId;
+        loadTestFromDb(editId);
+    } else {
+        activeTestId = "builder_draft_" + Date.now();
+        loadLocalBackupIfAny();
+    }
+}
+
+function loadTestFromDb(id) {
+    onValue(ref(database, `teachers/${teacherId}/tests/${id}`), (snap) => {
+        const test = snap.val();
+        if(test) {
+            document.getElementById("txtTestTitle").value = test.title || "";
+            document.getElementById("selTestSubject").value = test.subject || "physics";
+            document.getElementById("txtTestClass").value = test.classGroup || "";
+            document.getElementById("txtTestTopic").value = test.topic || "";
+            document.getElementById("numDuration").value = test.duration || 45;
+            document.getElementById("txtDescription").value = test.description || "";
+            
+            testQuestions = test.questions ? Object.keys(test.questions).map(k => test.questions[k]) : [];
+            renderQuestionsList();
+        }
+    });
+}
+
+function loadLocalBackupIfAny() {
+    const backup = localStorage.getItem(`bilimal_builder_backup_${activeTestId}`);
+    if(backup) {
+        try {
+            const parsed = JSON.parse(backup);
+            if(parsed) {
+                testQuestions = parsed.questions || [];
+                renderQuestionsList();
+            }
+        } catch(e){}
+    }
+}
+
+function buildTypeGrid() {
+    const grid = document.getElementById("qTypeGrid");
+    grid.innerHTML = "";
+    QUESTION_TYPES.forEach(q => {
+        const div = document.createElement("div");
+        div.className = "type-card";
+        div.innerHTML = `<h5>${q.name}</h5><p>${q.desc}</p>`;
+        div.addEventListener("click", () => {
+            addNewQuestionNode(q.type);
+            document.getElementById("qTypeModal").style.display = "none";
+        });
+        grid.appendChild(div);
+    });
+}
+
+function setupCoreUiListeners() {
+    document.getElementById("navDashboard").addEventListener("click", () => window.location.href = "/sections/tests.html");
+    document.getElementById("navTestBuilder").addEventListener("click", () => window.location.href = "/sections/test-builder.html");
+    document.getElementById("navResults").addEventListener("click", () => window.location.href = "/sections/test-results.html");
+    document.getElementById("btnBackToDashboard").addEventListener("click", () => window.location.href = "/sections/tests.html");
+
+    const modal = document.getElementById("qTypeModal");
+    document.getElementById("btnQuickAddQuestion").addEventListener("click", () => modal.style.display = "block");
+    document.getElementById("btnCloseTypeModal").addEventListener("click", () => modal.style.display = "none");
+
+    document.getElementById("btnSaveDraft").addEventListener("click", () => saveTestToFirebase("draft"));
+    document.getElementById("btnPublishTest").addEventListener("click", () => saveTestToFirebase("active"));
+    
+    document.getElementById("btnExportTestJSON").addEventListener("click", () => {
+        const payload = assemblePayload("draft");
+        const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `Test_Schema_${payload.title || 'Untitled'}.json`;
+        a.click();
+    });
+
+    document.getElementById("btnPreviewTest").addEventListener("click", () => {
+        alert("Тестти алдын ала көрүү режими: \n" + JSON.stringify(assemblePayload("draft"), null, 2));
+    });
+}
+
+function addNewQuestionNode(type) {
+    testQuestions.push({
+        id: "q_" + Date.now() + "_" + Math.floor(Math.random()*1000),
+        type: type,
+        text: "",
+        points: 5,
+        required: true,
+        options: ["А варианты", "Б варианты", "В варианты", "Г варианты"],
+        correctOptionIndex: 0,
+        explanation: ""
+    });
+    renderQuestionsList();
+    triggerAutoSave();
+}
+
+function renderQuestionsList() {
+    const container = document.getElementById("questionsListWrapper");
+    container.innerHTML = "";
+
+    testQuestions.forEach((q, idx) => {
+        const div = document.createElement("div");
+        div.className = "question-node";
+        div.innerHTML = `
+            <div class="question-node-header">
+                <strong>Суроо №${idx + 1} <span style="color:#00f2fe;">[${q.type.toUpperCase()}]</span></strong>
+                <div class="question-node-controls">
+                    <button class="node-btn move-up" data-idx="${idx}"><i class="fas fa-arrow-up"></i></button>
+                    <button class="node-btn move-down" data-idx="${idx}"><i class="fas fa-arrow-down"></i></button>
+                    <button class="node-btn del" data-idx="${idx}"><i class="fas fa-trash"></i> Өчүрүү</button>
+                </div>
+            </div>
+            <div class="rich-toolbar">
+                <button class="rich-btn" onclick="document.execCommand('bold')"><b>B</b></button>
+                <button class="rich-btn" onclick="document.execCommand('italic')"><i>I</i></button>
+                <button class="rich-btn" onclick="document.execCommand('underline')"><u>U</u></button>
+                <button class="rich-btn"><i class="fas fa-square-root-alt"></i> Формула</button>
+                <button class="rich-btn"><i class="fas fa-table"></i> Таблица</button>
+            </div>
+            <div class="editor-form-group">
+                <input type="text" class="q-text-input" data-idx="${idx}" value="${q.text}" placeholder="Суроонун текстин ушул жерге жазыңыз...">
+            </div>
+            <div class="options-list" id="options_box_${idx}"></div>
+            <div class="dropzone">Сүрөт кошуу үчүн файлды бул жерге таштаңыз же шилтеме киргизиңиз</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
+                <div class="editor-form-group"><label>Упай</label><input type="number" class="q-points" data-idx="${idx}" value="${q.points}"></div>
+                <div class="editor-form-group"><label>Түшүндүрмө</label><input type="text" class="q-exp" data-idx="${idx}" value="${q.explanation || ''}" placeholder="Туура жооптун түшүндүрмөсү"></div>
+            </div>
+        `;
+        container.appendChild(div);
+
+        const optionsBox = div.querySelector(`#options_box_${idx}`);
+        if(["single", "multiple", "truefalse"].includes(q.type)) {
+            q.options.forEach((opt, oIdx) => {
+                const optDiv = document.createElement("div");
+                optDiv.className = "option-item";
+                optDiv.innerHTML = `
+                    <input type="${q.type === 'multiple'?'checkbox':'radio'}" name="correct_${idx}" ${q.correctOptionIndex === oIdx ? 'checked':''} data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-check">
+                    <input type="text" value="${opt}" data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-text" style="background:none; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff;">
+                `;
+                optionsBox.appendChild(optDiv);
+            });
+        }
+    });
+
+    bindNodesEvents();
+}
+
+function bindNodesEvents() {
+    document.querySelectorAll(".q-text-input").forEach(input => input.addEventListener("input", (e) => {
+        testQuestions[e.target.getAttribute("data-idx")].text = e.target.value;
+        triggerAutoSave();
+    }));
+    document.querySelectorAll(".q-points").forEach(input => input.addEventListener("input", (e) => {
+        testQuestions[e.target.getAttribute("data-idx")].points = parseInt(e.target.value) || 0;
+        triggerAutoSave();
+    }));
+    document.querySelectorAll(".q-exp").forEach(input => input.addEventListener("input", (e) => {
+        testQuestions[e.target.getAttribute("data-idx")].explanation = e.target.value;
+        triggerAutoSave();
+    }));
+
+    document.querySelectorAll(".q-opt-text").forEach(input => input.addEventListener("input", (e) => {
+        const qidx = e.target.getAttribute("data-qidx");
+        const oidx = e.target.getAttribute("data-oidx");
+        testQuestions[qidx].options[oidx] = e.target.value;
+        triggerAutoSave();
+    }));
+
+    document.querySelectorAll(".q-opt-check").forEach(radio => radio.addEventListener("change", (e) => {
+        const qidx = e.target.getAttribute("data-qidx");
+        const oidx = parseInt(e.target.getAttribute("data-oidx"));
+        testQuestions[qidx].correctOptionIndex = oidx;
+        triggerAutoSave();
+    }));
+
+    document.querySelectorAll(".move-up").forEach(btn => btn.addEventListener("click", (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
+        if(idx > 0) {
+            const temp = testQuestions[idx];
+            testQuestions[idx] = testQuestions[idx-1];
+            testQuestions[idx-1] = temp;
+            renderQuestionsList();
+            triggerAutoSave();
+        }
+    }));
+
+    document.querySelectorAll(".move-down").forEach(btn => btn.addEventListener("click", (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
+        if(idx < testQuestions.length - 1) {
+            const temp = testQuestions[idx];
+            testQuestions[idx] = testQuestions[idx+1];
+            testQuestions[idx+1] = temp;
+            renderQuestionsList();
+            triggerAutoSave();
+        }
+    }));
+
+    document.querySelectorAll(".question-node .del").forEach(btn => btn.addEventListener("click", (e) => {
+        const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
+        testQuestions.splice(idx, 1);
+        renderQuestionsList();
+        triggerAutoSave();
+    }));
+}
+
+function assemblePayload(status) {
+    const qMap = {};
+    testQuestions.forEach((q, i) => { qMap["q_" + i] = q; });
+    
+    return {
+        title: document.getElementById("txtTestTitle").value || "Аталышсыз тест",
+        subject: document.getElementById("selTestSubject").value,
+        classGroup: document.getElementById("txtTestClass").value,
+        topic: document.getElementById("txtTestTopic").value,
+        duration: parseInt(document.getElementById("numDuration").value) || 45,
+        description: document.getElementById("txtDescription").value,
+        gradingSystem: document.getElementById("selGradingSystem").value,
+        passingScore: parseInt(document.getElementById("numPassingScore").value) || 60,
+        status: status,
+        createdAt: new Date().toISOString(),
+        questions: qMap,
+        security: {
+            preventCopy: document.getElementById("chkPreventCopy").checked,
+            preventPaste: document.getElementById("chkPreventPaste").checked,
+            windowSwitchTrack: document.getElementById("chkWindowSwitchTrack").checked
+        }
+    };
+}
+
+function triggerAutoSave() {
+    const statusText = document.getElementById("autosaveStatus").querySelector("span");
+    statusText.textContent = "Сакталууда...";
+    const payload = assemblePayload("draft");
+    localStorage.setItem(`bilimal_builder_backup_${activeTestId}`, JSON.stringify(payload));
+    setTimeout(() => { statusText.textContent = "Локалдык сакталды"; }, 500);
+}
+
+function saveTestToFirebase(status) {
+    const payload = assemblePayload(status);
+    set(ref(database, `teachers/${teacherId}/tests/${activeTestId}`), payload)
+        .then(() => {
+            alert("Тест ийгиликтүү базага сакталды!");
+            window.location.href = "/sections/tests.html";
+        })
+        .catch(() => alert("Базага туташууда ката кетти. Локалдык сактагыч иштеп жатат."));
+}
