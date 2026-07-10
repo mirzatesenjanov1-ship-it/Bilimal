@@ -1,192 +1,440 @@
-// Bilimal-AI Project - Firebase Realtime Database Configuration & Core Utilities
-(function () {
-    const firebaseConfig = {
-        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-        authDomain: "bilimal-org.firebaseapp.com",
-        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "bilimal-org",
-        storageBucket: "bilimal-org.firebasestorage.app",
-        messagingSenderId: "241750360816",
-        appId: "1:241750360816:web:a991434eb5afbc470d7835",
-        measurementId: "G-9GSQV60QV0"
-    };
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+import { 
+    getDatabase, 
+    ref, 
+    set, 
+    get, 
+    update, 
+    remove, 
+    push, 
+    onValue, 
+    off, 
+    serverTimestamp, 
+    runTransaction, 
+    onDisconnect 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { 
+    getAuth, 
+    onAuthStateChanged, 
+    signOut 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    let databaseInstance = null;
-    let firebaseInitialized = false;
+// Firebase Конфигурациясы
+const firebaseConfig = {
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
+};
 
-    // Load Firebase Core via dynamic module injection safely if not already present globally
-    function initializeFirebase() {
-        try {
-            if (typeof window.firebase !== 'undefined') {
-                window.firebase.initializeApp(firebaseConfig);
-                databaseInstance = window.firebase.database();
-                firebaseInitialized = true;
-                showToast("Firebase ийгиликтүү туташты", "success");
-                syncPendingData();
-            } else {
-                throw new Error("Firebase SDK missing");
-            }
-        } catch (error) {
-            firebaseInitialized = false;
-            databaseInstance = null;
-            showToast("Firebase жеткиликсиз! Локалдык режим иштеп жатат.", "warning");
+// Негизги сервистерди коопсуз демилгелөө
+let app = null;
+let analytics = null;
+let db = null;
+let auth = null;
+let isNetworkListenerAdded = false;
+
+try {
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    auth = getAuth(app);
+    
+    if (typeof window !== "undefined" && typeof window.document !== "undefined") {
+        analytics = getAnalytics(app);
+    }
+} catch (e) {
+    if (typeof console !== "undefined") {
+        console.warn("Firebase initialization failed:", e.message);
+    }
+}
+
+// 15. Коопсуз JSON Парсер
+function safeJsonParse(value, fallback = null) {
+    if (value === null || value === undefined || value === "") return fallback;
+    if (typeof value === "object") return value;
+    try {
+        if (typeof value === "string" && (value.trim() === "[object Object]" || value.includes("[object"))) {
+            return fallback;
         }
+        return JSON.parse(value);
+    } catch (e) {
+        return fallback;
     }
+}
 
-    function getDatabaseInstance() {
-        return databaseInstance;
+// 16. Коопсуз LocalStorage Окуу
+function safeLocalStorageGet(key, fallback = null) {
+    try {
+        if (typeof window === "undefined" || !window.localStorage) return fallback;
+        const value = localStorage.getItem(key);
+        return value !== null ? value : fallback;
+    } catch (e) {
+        return fallback;
     }
+}
 
-    function isFirebaseAvailable() {
-        return firebaseInitialized && databaseInstance !== null;
+// 17. Коопсуз LocalStorage Жазуу
+function safeLocalStorageSet(key, value) {
+    try {
+        if (typeof window === "undefined" || !window.localStorage) return false;
+        const stringValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+        localStorage.setItem(key, stringValue);
+        return true;
+    } catch (e) {
+        return false;
     }
+}
 
-    function safeJsonParse(value, fallbackValue) {
-        if (!value) return fallbackValue;
-        try {
-            return JSON.parse(value);
-        } catch (e) {
-            console.error("JSON талдоо катасы:", e);
-            return fallbackValue;
+// 18. Коопсуз LocalStorage Өчүрүү
+function safeLocalStorageRemove(key) {
+    try {
+        if (typeof window === "undefined" || !window.localStorage) return false;
+        localStorage.removeItem(key);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// 1. Коопсуз Колдонуучуну Алуу
+function getCurrentUserSafe() {
+    try {
+        return auth && auth.currentUser ? auth.currentUser : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// 2. Колдонуучунун ID маанисин алуу
+function getCurrentUserId() {
+    try {
+        if (auth && auth.currentUser && auth.currentUser.uid) {
+            return auth.currentUser.uid;
         }
-    }
-
-    function sanitizeData(value) {
-        if (typeof value === 'string') {
-            return value.replace(/[<>]/g, '');
+        const cached = safeLocalStorageGet("bilimal_current_user");
+        if (cached) {
+            const userObj = safeJsonParse(cached);
+            if (userObj && userObj.uid) return userObj.uid;
         }
-        return value;
+        return "guest";
+    } catch (e) {
+        return "guest";
     }
+}
 
-    function generateId(prefix) {
-        return `${prefix || 'id'}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
+// 3. Мугалимдин негизги базалык жолун түзүү
+function getTeacherRootPath() {
+    const uid = getCurrentUserId();
+    return `teachers/${uid}`;
+}
 
-    function getCurrentTeacherId() {
-        const storedId = localStorage.getItem('bilimal_current_teacher_id');
-        if (storedId) return storedId;
-        showToast("Демо режим иштеп жатат", "info");
-        return "demo-teacher-001";
-    }
+// 4. Мугалимдин ички папкаларынын жолун куруу
+function buildTeacherPath(childPath = "") {
+    const root = getTeacherRootPath();
+    if (!childPath || childPath.trim() === "") return root;
+    const cleanChild = childPath.startsWith("/") ? childPath.substring(1) : childPath;
+    return `${root}/${cleanChild}`;
+}
 
-    function getCurrentUserRole() {
-        return localStorage.getItem('bilimal_user_role') || 'teacher';
-    }
-
-    function showToast(message, type = "info") {
-        const container = document.getElementById('toast-container') || createToastContainer();
-        const toast = document.createElement('div');
-        toast.className = `toast-message toast-${type}`;
-        toast.style.margin = "10px";
-        toast.style.padding = "12px 20px";
-        toast.style.borderRadius = "6px";
-        toast.style.color = "#fff";
-        toast.style.fontWeight = "500";
-        toast.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
-        toast.style.transition = "all 0.3s ease";
-        
-        const colors = {
-            success: "#2ec4b6",
-            error: "#e71d36",
-            warning: "#ff9f1c",
-            info: "#011627"
-        };
-        toast.style.backgroundColor = colors[type] || colors.info;
-        toast.innerText = message;
-        
-        container.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = "0";
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-
-    function createToastContainer() {
-        const container = document.createElement('div');
-        container.id = 'toast-container';
-        container.style.position = 'fixed';
-        container.style.bottom = '20px';
-        container.style.right = '20px';
-        container.style.zIndex = '999999';
-        document.body.appendChild(container);
-        return container;
-    }
-
-    function logSystemEvent(eventType, details) {
-        const logData = {
-            timestamp: Date.now(),
-            teacherId: getCurrentTeacherId(),
-            eventType: sanitizeData(eventType),
-            details: details
-        };
-
-        if (isFirebaseAvailable()) {
-            const logId = generateId('log');
-            databaseInstance.ref(`/admin/activityLogs/${logId}`).set(logData)
-                .catch(err => console.error("Журнал жазуу катасы:", err));
-        } else {
-            const logs = safeJsonParse(localStorage.getItem('bilimal_offline_logs'), []);
-            logs.push(logData);
-            localStorage.setItem('bilimal_offline_logs', JSON.stringify(logs));
+// 5. Коопсуз Маалымат Окуу (Get)
+async function safeFirebaseGet(path) {
+    try {
+        if (!db) return null;
+        const snapshot = await get(ref(db, path));
+        return snapshot.exists() ? snapshot.val() : null;
+    } catch (e) {
+        if (typeof console !== "undefined") {
+            console.warn(`Firebase safeFirebaseGet failed at [${path}]:`, e.message);
         }
+        return null;
     }
+}
 
-    function syncPendingData() {
-        if (!isFirebaseAvailable()) return;
-        const teacherId = getCurrentTeacherId();
-        const pendingKey = `bilimal_offline_queue`;
-        const queue = safeJsonParse(localStorage.getItem(pendingKey), []);
-        
-        if (queue.length === 0) return;
+// 6. Коопсуз Маалымат Жазуу (Set)
+async function safeFirebaseSet(path, value) {
+    try {
+        if (!db) return false;
+        await set(ref(db, path), value);
+        return true;
+    } catch (e) {
+        if (typeof console !== "undefined") {
+            console.warn(`Firebase safeFirebaseSet failed at [${path}]:`, e.message);
+        }
+        return false;
+    }
+}
 
-        showToast("Синхрондоштуруу башталды...", "info");
+// 7. Коопсуз Маалымат Жаңыртуу (Update)
+async function safeFirebaseUpdate(path, value) {
+    try {
+        if (!db) return false;
+        await update(ref(db, path), value);
+        return true;
+    } catch (e) {
+        if (typeof console !== "undefined") {
+            console.warn(`Firebase safeFirebaseUpdate failed at [${path}]:`, e.message);
+        }
+        return false;
+    }
+}
+
+// 8. Коопсуз Маалымат Өчүрүү (Remove)
+async function safeFirebaseRemove(path) {
+    try {
+        if (!db) return false;
+        await remove(ref(db, path));
+        return true;
+    } catch (e) {
+        if (typeof console !== "undefined") {
+            console.warn(`Firebase safeFirebaseRemove failed at [${path}]:`, e.message);
+        }
+        return false;
+    }
+}
+
+// 9. Базанын Жеткиликтүүлүгүн Текшерүү
+async function isFirebaseAvailable() {
+    try {
+        if (!db || !firebaseConfig.databaseURL) return false;
+        if (typeof navigator !== "undefined" && !navigator.onLine) return false;
+        const connectedRef = ref(db, ".info/connected");
+        const snapshot = await get(connectedRef);
+        return snapshot.exists() ? !!snapshot.val() : false;
+    } catch (e) {
+        return false;
+    }
+}
+
+// 10. Мониторинг Жүргузүүчү Реалдуу Убакыт Угуучусу
+function watchTeacherPath(childPath, callback) {
+    try {
+        if (!db) {
+            callback(null, new Error("Database not available"));
+            return () => {};
+        }
+        const targetPath = buildTeacherPath(childPath);
+        const targetRef = ref(db, targetPath);
         
-        const promises = queue.map(action => {
-            if (action.path && action.data) {
-                return databaseInstance.ref(action.path).set(action.data);
-            }
-            return Promise.resolve();
+        onValue(targetRef, (snapshot) => {
+            callback(snapshot.val());
+        }, (error) => {
+            callback(null, error);
         });
 
-        Promise.all(promises)
-            .then(() => {
-                localStorage.setItem(pendingKey, JSON.stringify([]));
-                showToast("Бардык оффлайн маалыматтар серверге жүктөлдү!", "success");
-                logSystemEvent("sync_success", { count: queue.length });
-            })
-            .catch(err => {
-                console.error("Синхрондоштуруу катасы:", err);
-                showToast("Айрым маалыматтар жүктөлбөй калды.", "error");
-            });
+        return () => {
+            try {
+                off(targetRef);
+            } catch (err) {
+                if (typeof console !== "undefined") {
+                    console.warn("Failed to detach listener via off():", err.message);
+                }
+            }
+        };
+    } catch (e) {
+        callback(null, e);
+        return () => {};
+    }
+}
+
+// 11. Активдүүлүк Журналын Сактоо жана Кезекке Кошуу
+async function saveTeacherActivity(action, details = {}) {
+    const uid = getCurrentUserId();
+    const now = new Date();
+    
+    const activityData = {
+        action: action || "unknown_action",
+        details: details || {},
+        createdAt: serverTimestamp ? serverTimestamp() : now.getTime(),
+        createdAtISO: now.toISOString(),
+        userId: uid,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown_agent",
+        page: typeof window !== "undefined" && window.location ? window.location.pathname : "unknown_page"
+    };
+
+    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+    
+    if (db && isOnline) {
+        try {
+            const activityRef = ref(db, `teachers/${uid}/activityLogs`);
+            const newLogRef = push(activityRef);
+            if (activityData.createdAt && typeof activityData.createdAt === "function") {
+                activityData.createdAt = now.getTime();
+            }
+            await set(newLogRef, activityData);
+            return true;
+        } catch (e) {
+            if (typeof console !== "undefined") {
+                console.warn("Failed online write for log, caching to offline queue:", e.message);
+            }
+        }
     }
 
-    // DomContentLoaded setup
-    document.addEventListener("DOMContentLoaded", () => {
-        initializeFirebase();
-        window.addEventListener('online', syncPendingData);
-    });
-
-    // Namespace Export
-    window.BilimalFirebase = {
-        initializeFirebase,
-        getDatabaseInstance,
-        isFirebaseAvailable,
-        safeJsonParse,
-        sanitizeData,
-        generateId,
-        getCurrentTeacherId,
-        getCurrentUserRole,
-        showToast,
-        logSystemEvent,
-        syncPendingData,
-        paths: {
-            test: (teacherId, testId) => `/teachers/${teacherId}/tests/${testId}`,
-            result: (teacherId, resultId) => `/teachers/${teacherId}/results/${resultId}`,
-            class: (teacherId, classId) => `/teachers/${teacherId}/classes/${classId}`,
-            settings: (teacherId) => `/teachers/${teacherId}/settings`,
-            adminLog: (logId) => `/admin/activityLogs/${logId}`,
-            adminTeacher: (teacherId) => `/admin/teachers/${teacherId}`,
-            pending: (teacherId) => `/pendingSync/${teacherId}`
+    try {
+        if (activityData.createdAt && typeof activityData.createdAt === "function") {
+            activityData.createdAt = now.getTime();
         }
+        const existingQueueStr = safeLocalStorageGet("bilimal_activity_queue", "[]");
+        const queue = safeJsonParse(existingQueueStr, []);
+        queue.push(activityData);
+        safeLocalStorageSet("bilimal_activity_queue", queue);
+    } catch (err) {
+        if (typeof console !== "undefined") {
+            console.warn("Failed local backup write for activity queue:", err.message);
+        }
+    }
+    return false;
+}
+
+// 12. Кезектеги Оффлайн Аракеттерди Синхрондоо
+async function syncQueuedActivities() {
+    try {
+        if (!db) return;
+        if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
+        const rawQueue = safeLocalStorageGet("bilimal_activity_queue", "[]");
+        const queue = safeJsonParse(rawQueue, []);
+        if (!queue || queue.length === 0) return;
+
+        const failedItems = [];
+
+        for (const item of queue) {
+            try {
+                const uid = item.userId || getCurrentUserId();
+                const activityRef = ref(db, `teachers/${uid}/activityLogs`);
+                const newLogRef = push(activityRef);
+                
+                if (!item.createdAt || typeof item.createdAt === "object") {
+                    item.createdAt = new Date(item.createdAtISO || Date.now()).getTime();
+                }
+                
+                await set(newLogRef, item);
+            } catch (e) {
+                failedItems.push(item);
+            }
+        }
+
+        if (failedItems.length > 0) {
+            safeLocalStorageSet("bilimal_activity_queue", failedItems);
+        } else {
+            safeLocalStorageRemove("bilimal_activity_queue");
+        }
+    } catch (err) {
+        if (typeof console !== "undefined") {
+            console.warn("Error inside syncQueuedActivities:", err.message);
+        }
+    }
+}
+
+// 13. Мугалимдин Онлайн Статусун Орнотуу
+async function setTeacherPresence(status = "online") {
+    const uid = getCurrentUserId();
+    if (uid === "guest") return;
+
+    const now = new Date();
+    const presenceData = {
+        status: status,
+        lastSeen: now.getTime(),
+        lastSeenISO: now.toISOString(),
+        page: typeof window !== "undefined" && window.location ? window.location.pathname : "unknown_page"
     };
-})();
+
+    if (db && typeof navigator !== "undefined" && navigator.onLine) {
+        try {
+            const presenceRef = ref(db, `teachers/${uid}/presence`);
+            
+            if (status === "online") {
+                const disconnectRef = onDisconnect(presenceRef);
+                await disconnectRef.set({
+                    status: "offline",
+                    lastSeen: serverTimestamp ? serverTimestamp() : Date.now(),
+                    lastSeenISO: new Date().toISOString(),
+                    page: presenceData.page
+                });
+            }
+            
+            await set(presenceRef, presenceData);
+            return;
+        } catch (e) {
+            if (typeof console !== "undefined") {
+                console.warn("Failed tracking online presence status:", e.message);
+            }
+        }
+    }
+
+    safeLocalStorageSet("bilimal_presence_fallback", presenceData);
+}
+
+// 14. Firebase Кызматтарын Баштапкы Ишке Киргизүү
+async function initFirebaseServices() {
+    try {
+        if (analytics && typeof analytics.logEvent === "function") {
+            try {
+                analytics.logEvent("app_initialized");
+            } catch (ae) {
+                if (typeof console !== "undefined") console.warn("Analytics blocked or failed:", ae.message);
+            }
+        }
+
+        await setTeacherPresence("online");
+        await syncQueuedActivities();
+
+        if (typeof window !== "undefined" && window.addEventListener && !isNetworkListenerAdded) {
+            window.addEventListener("online", () => {
+                setTeacherPresence("online");
+                syncQueuedActivities();
+            });
+            window.addEventListener("offline", () => {
+                setTeacherPresence("offline");
+            });
+            isNetworkListenerAdded = true;
+        }
+    } catch (e) {
+        if (typeof console !== "undefined") {
+            console.warn("Error running global initFirebaseServices:", e.message);
+        }
+    }
+}
+
+export {
+    app,
+    analytics,
+    db,
+    auth,
+    ref,
+    set,
+    get,
+    update,
+    remove,
+    push,
+    onValue,
+    off,
+    serverTimestamp,
+    runTransaction,
+    onDisconnect,
+    onAuthStateChanged,
+    signOut,
+    firebaseConfig,
+    getCurrentUserSafe,
+    getCurrentUserId,
+    getTeacherRootPath,
+    buildTeacherPath,
+    safeFirebaseGet,
+    safeFirebaseSet,
+    safeFirebaseUpdate,
+    safeFirebaseRemove,
+    isFirebaseAvailable,
+    watchTeacherPath,
+    saveTeacherActivity,
+    syncQueuedActivities,
+    setTeacherPresence,
+    initFirebaseServices,
+    safeJsonParse,
+    safeLocalStorageGet,
+    safeLocalStorageSet,
+    safeLocalStorageRemove
+};
