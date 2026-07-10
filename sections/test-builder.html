@@ -4,80 +4,200 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bilimal - Smart Test Builder</title>
+    <link rel="icon" href="data:,">
+    
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV60QV0"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date()); gtag('config', 'G-9GSQV60QV0');
+        gtag('js', new Date());
+        gtag('config', 'G-9GSQV60QV0');
     </script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
     <link rel="stylesheet" href="/assets/css/tests.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script defer type="module" src="/assets/js/firebase-config.js"></script>
-    <script defer type="module" src="/assets/js/storage-fallback.js"></script>
-    <script defer type="module" src="/assets/js/toast.js"></script>
-    <script defer type="module" src="/assets/js/teacher-activity.js"></script>
-    <script defer type="module" src="/assets/js/test-builder.js"></script>
+    
+    <style>
+        .sticky-toolbar { position: sticky; top: 0; background: #060914; border-bottom: 2px solid #00f2fe; padding: 15px 20px; z-index: 100; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,242,254,0.15); margin-bottom: 25px; }
+        .toolbar-actions { display: flex; gap: 10px; align-items: center; }
+        .autosave-indicator { font-size: 13px; color: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 6px; }
+        .builder-layout { display: grid; grid-template-columns: 1fr 320px; gap: 25px; }
+        .builder-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 25px; margin-bottom: 25px; }
+        .builder-card h3 { font-size: 16px; color: #00f2fe; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+        .editor-form-group { margin-bottom: 15px; }
+        .editor-form-group label { display: block; margin-bottom: 6px; font-size: 13px; color: rgba(255,255,255,0.7); }
+        .editor-form-group input, .editor-form-group select, .editor-form-group textarea { width: 100%; padding: 10px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-size: 14px; }
+        .editor-form-group input:focus, .editor-form-group select:focus { border-color: #00f2fe; outline: none; }
+        .questions-container { display: flex; flex-direction: column; gap: 20px; }
+        .question-node { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 20px; position: relative; }
+        .question-node-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .question-node-controls { display: flex; gap: 8px; }
+        .node-btn { background: rgba(255,255,255,0.05); border: none; padding: 6px 10px; border-radius: 6px; color: #fff; cursor: pointer; font-size: 12px; }
+        .node-btn:hover { background: rgba(255,255,255,0.15); }
+        .node-btn.del { background: rgba(255, 74, 74, 0.1); color: #ff4a4a; }
+        .node-btn.del:hover { background: rgba(255, 74, 74, 0.25); }
+        .rich-toolbar { display: flex; gap: 5px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+        .rich-btn { background: none; border: none; color: #fff; padding: 4px 8px; cursor: pointer; border-radius: 4px; font-size: 12px; }
+        .rich-btn:hover { background: rgba(255,255,255,0.1); }
+        .options-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .option-item { display: flex; align-items: center; gap: 10px; }
+        .option-item input[type="text"] { flex: 1; }
+        .dropzone { border: 2px dashed rgba(0, 242, 254, 0.3); padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; background: rgba(0, 242, 254, 0.02); margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.6); }
+        .dropzone:hover { border-color: #00f2fe; background: rgba(0, 242, 254, 0.05); }
+        .type-selector-modal { background: rgba(6, 9, 20, 0.95); border: 1px solid #00f2fe; border-radius: 12px; padding: 20px; display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; }
+        .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+        .type-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s; }
+        .type-card:hover { background: rgba(0, 242, 254, 0.1); border-color: #00f2fe; }
+        .type-card h5 { font-size: 13px; color: #fff; margin-bottom: 3px; }
+        .type-card p { font-size: 11px; color: rgba(255,255,255,0.5); }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar-panel">
-            <div class="brand-zone"><h2>Bilimal</h2></div>
-            <nav class="nav-menu">
-                <button class="nav-btn" onclick="window.location.href='/sections/tests.html'"><i class="fa-solid fa-chart-pie"></i> Башкаруу панели</button>
-                <button class="nav-btn active" onclick="window.location.href='/sections/test-builder.html'"><i class="fa-solid fa-wand-magic-sparkles"></i> Smart Test Builder</button>
-                <button class="nav-btn" onclick="window.location.href='/sections/test-results.html'"><i class="fa-solid fa-graduation-cap"></i> Жыйынтыктар</button>
-            </nav>
-        </aside>
-        <main class="main-content" style="flex-direction:row; gap:20px;">
-            <div style="width:300px; display:flex; flex-direction:column; gap:15px;">
-                <div class="data-glass-panel">
-                    <h3>Параметрлер</h3>
-                    <form id="testConfigForm">
-                        <label style="font-size:12px;">Тесттин Аталышы *</label>
-                        <input type="text" id="builderTestTitle" required style="width:100%; padding:8px; margin-bottom:10px; background:#111; color:white; border:1px solid #333; border-radius:4px;">
-                        <label style="font-size:12px;">Предмет *</label>
-                        <input type="text" id="builderTestSubject" placeholder="Физика" required style="width:100%; padding:8px; margin-bottom:10px; background:#111; color:white; border:1px solid #333; border-radius:4px;">
-                        <label style="font-size:12px;">Класс</label>
-                        <input type="text" id="builderTestGrades" placeholder="11-А" style="width:100%; padding:8px; margin-bottom:10px; background:#111; color:white; border:1px solid #333; border-radius:4px;">
-                        <label style="font-size:12px;">Убакыт чектөөсү (мүнөт)</label>
-                        <input type="number" id="builderTimeLimit" value="40" style="width:100%; padding:8px; margin-bottom:10px; background:#111; color:white; border:1px solid #333; border-radius:4px;">
-                        <label style="font-size:12px;">Аракет чектөөсү</label>
-                        <input type="number" id="builderAttemptLimit" value="1" style="width:100%; padding:8px; margin-bottom:15px; background:#111; color:white; border:1px solid #333; border-radius:4px;">
-                        
-                        <h4 style="margin-bottom:8px;">Античит Настройкасы</h4>
-                        <label style="display:block; font-size:12px; margin-bottom:4px;"><input type="checkbox" id="acFullscreen"> Толук экран</label>
-                        <label style="display:block; font-size:12px; margin-bottom:4px;"><input type="checkbox" id="acTabSwitch" checked> Вкладка алмашууну бөгөттөө</label>
-                        <label style="display:block; font-size:12px; margin-bottom:4px;"><input type="checkbox" id="acBlockTab"> 3 жолудан кийин жабуу</label>
-                        <label style="display:block; font-size:12px; margin-bottom:4px;"><input type="checkbox" id="acNoCopyPaste" checked> Көчүрүүгө бөгөт</label>
-                        <label style="display:block; font-size:12px; margin-bottom:15px;"><input type="checkbox" id="acNoRightClick" checked> Оң кликти өчүрүү</label>
 
-                        <button type="submit" class="btn-primary-glow" style="width:100%; margin-bottom:8px;">Жарыялоо</button>
-                        <button type="button" id="btnSaveDraft" class="btn-secondary-glow" style="width:100%;">Черновик катары сактоо</button>
-                    </form>
-                </div>
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Меню">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <span class="logo-white">Bilim</span><span class="logo-cyan">al</span>
+        </div>
+        <nav class="sidebar-menu">
+            <button class="menu-item" id="navDashboard"><i class="fas fa-chart-pie"></i> <span>Башкаруу панели</span></button>
+            <button class="menu-item active" id="navTestBuilder"><i class="fas fa-sliders-h"></i> <span>Smart Test Builder</span></button>
+            <button class="menu-item" id="navResults"><i class="fas fa-graduation-cap"></i> <span>Жыйынтыктар</span></button>
+        </nav>
+    </aside>
+
+    <main class="main-content" style="padding-top: 0;">
+        <!-- Туруктуу Топбар / Куралдар панели -->
+        <div class="sticky-toolbar">
+            <div class="autosave-indicator" id="autosaveStatus">
+                <i class="fas fa-check-circle" style="color: #00ffa3;"></i> <span>Сакталды</span>
             </div>
-            <div style="flex:1; display:flex; flex-direction:column;">
-                <div class="data-glass-panel" style="flex:1; overflow-y:auto;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h2>Конструктор аянты</h2>
-                        <button class="btn-primary-glow" onclick="window.uiComponents.openBlockSelector('root')"><i class="fa-solid fa-circle-plus"></i> Жаңы блок кошуу</button>
-                    </div>
-                    <div id="builderBlocksContainer"></div>
-                </div>
-            </div>
-        </main>
-    </div>
-    <div id="blockSelectorModal" class="modal-overlay-system" style="display:none;">
-        <div class="modal-glass-window">
-            <h3>Суроонун же Блоктун Түрү</h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
-                <button class="block-type-card btn-secondary-glow" data-type="question">Стандарттык Суроо</button>
-                <button class="block-type-card btn-secondary-glow" data-type="text">Текст Блок</button>
-                <button class="block-type-card btn-secondary-glow" data-type="image">Сүрөт Блок</button>
-                <button class="block-type-card btn-secondary-glow" data-type="formula">Формула Блок</button>
+            <div class="toolbar-actions">
+                <button class="node-btn" id="btnBackToDashboard"><i class="fas fa-arrow-left"></i> Артка</button>
+                <button class="node-btn" id="btnQuickAddQuestion" style="background: #00f2fe; color: #060914; font-weight:700;"><i class="fas fa-plus"></i> Суроо кошуу</button>
+                <button class="node-btn" id="btnPreviewTest"><i class="fas fa-eye"></i> Алдын ала көрүү</button>
+                <button class="node-btn" id="btnExportTestJSON"><i class="fas fa-download"></i> Экспорт</button>
+                <button class="node-btn" id="btnImportTestJSON"><i class="fas fa-upload"></i> Импорт</button>
+                <button class="node-btn" id="btnSaveDraft" style="background: rgba(255, 168, 0, 0.2); color: #ffa800;">Черновик</button>
+                <button class="node-btn" id="btnPublishTest" style="background: #00ffa3; color: #060914; font-weight: 700;">Жарыялоо</button>
             </div>
         </div>
+
+        <div class="builder-layout">
+            <!-- Соло тарап: Тест маалыматтары жана суроолор -->
+            <div>
+                <!-- Негизги конфигурация картасы -->
+                <div class="builder-card">
+                    <h3>Тесттин негизги маалыматтары</h3>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                        <div class="editor-form-group" style="grid-column: span 2;">
+                            <label>Тесттин аталышы</label>
+                            <input type="text" id="txtTestTitle" placeholder="Маселен: Механиканын негиздери">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Предмет</label>
+                            <select id="selTestSubject">
+                                <option value="physics">Физика</option>
+                                <option value="astronomy">Астрономия</option>
+                            </select>
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Класс</label>
+                            <input type="text" id="txtTestClass" placeholder="Маселен: 10-А">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Тема</label>
+                            <input type="text" id="txtTestTopic" placeholder="Маселен: Динамика">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Окуу жылы</label>
+                            <input type="text" id="txtAcademicYear" value="2026–2027-окуу жылы">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Башталуу убактысы</label>
+                            <input type="datetime-local" id="txtStartTime">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Аяктоо убактысы</label>
+                            <input type="datetime-local" id="txtEndTime">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Убакыт чеги (мүнөт)</label>
+                            <input type="number" id="numDuration" value="45">
+                        </div>
+                        <div class="editor-form-group">
+                            <label>Аракеттердин саны</label>
+                            <select id="selAttempts">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="infinite">Чексиз</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="editor-form-group" style="margin-top: 15px;">
+                        <label>Тесттин сүрөттөмөсү / Көрсөтмө текст</label>
+                        <textarea id="txtDescription" rows="3" placeholder="Окуучулар үчүн нускамалар..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Суроолордун тизмеси динамикалык түрдө -->
+                <div class="questions-container" id="questionsListWrapper"></div>
+            </div>
+
+            <!-- Оң тарап: Чектөөлөр жана Параметрлер панелдери -->
+            <div>
+                <div class="builder-card">
+                    <h3>Баалоо системасы</h3>
+                    <div class="editor-form-group">
+                        <label>Тутум түрү</label>
+                        <select id="selGradingSystem">
+                            <option value="5">5 баллдык система</option>
+                            <option value="10">10 баллдык система</option>
+                            <option value="100">100 баллдык система</option>
+                            <option value="percent">Процент (%) менен</option>
+                            <option value="custom">Ар бир суроого өзүнчө упай</option>
+                        </select>
+                    </div>
+                    <div class="editor-form-group">
+                        <label>Өтүү балы</label>
+                        <input type="number" id="numPassingScore" value="60">
+                    </div>
+                </div>
+
+                <div class="builder-card">
+                    <h3>Античит & Коопсуздук</h3>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkShuffleQuestions"> Суроолорду аралаштыруу</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkShuffleOptions"> Жоопторду аралаштыруу</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkPreventCopy" checked> Көчүрүүгө бөгөт коюу (No Copy)</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkPreventPaste" checked> Коюуга бөгөт коюу (No Paste)</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkBlockRightClick" checked> Оң чыкылдатууну бөгөттөө</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkWindowSwitchTrack" checked> Терезе алмаштырууну көзөмөлдөө</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkRequireFullscreen"> Fullscreen талап кылуу</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkRequireCamera"> Камера талап кылуу</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkRequireMic"> Микрофон талап кылуу</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkInstantResults" checked> Натыйжаны дароо көрсөтүү</label></div>
+                    <div class="editor-form-group"><label><input type="checkbox" id="chkShowCorrectAnswers"> Туура жоопту ачыктоо</label></div>
+                    <div class="editor-form-group">
+                        <label>Тест сырсөзү (Каалоочулар үчүн)</label>
+                        <input type="text" id="txtTestPassword" placeholder="Сырсөз жок">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Суроо тибин тандоо модалдык терезеси -->
+    <div class="type-selector-modal" id="qTypeModal">
+        <h3 style="color:#00f2fe; margin-bottom:10px;">Жаңы суроонун түрүн тандаңыз</h3>
+        <button class="node-btn del" id="btnCloseTypeModal" style="position:absolute; top:15px; right:15px;">&times;</button>
+        <div class="type-grid" id="qTypeGrid"></div>
     </div>
-    <div id="globalModalContainer" class="modal-overlay-system" style="display:none;"><div class="modal-glass-window"><h3 id="globalModalTitle">Билдирүү</h3><div id="globalModalBody"></div></div></div>
+
+    <input type="file" id="builderJsonFileInput" accept=".json" style="display:none;">
+    <script type="module" src="/assets/js/test-builder.js"></script>
 </body>
 </html>
