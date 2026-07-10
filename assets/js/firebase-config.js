@@ -20,7 +20,6 @@ import {
     signOut 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// Firebase Конфигурациясы
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
     authDomain: "bilimal-org.firebaseapp.com",
@@ -32,7 +31,6 @@ const firebaseConfig = {
     measurementId: "G-9GSQV60QV0"
 };
 
-// Негизги сервистерди коопсуз демилгелөө
 let app = null;
 let analytics = null;
 let db = null;
@@ -53,21 +51,20 @@ try {
     }
 }
 
-// 15. Коопсуз JSON Парсер
 function safeJsonParse(value, fallback = null) {
     if (value === null || value === undefined || value === "") return fallback;
     if (typeof value === "object") return value;
     try {
-        if (typeof value === "string" && (value.trim() === "[object Object]" || value.includes("[object"))) {
+        const trimmed = String(value).trim();
+        if (trimmed === "[object Object]" || trimmed.startsWith("[object")) {
             return fallback;
         }
-        return JSON.parse(value);
+        return JSON.parse(trimmed);
     } catch (e) {
         return fallback;
     }
 }
 
-// 16. Коопсуз LocalStorage Окуу
 function safeLocalStorageGet(key, fallback = null) {
     try {
         if (typeof window === "undefined" || !window.localStorage) return fallback;
@@ -78,7 +75,6 @@ function safeLocalStorageGet(key, fallback = null) {
     }
 }
 
-// 17. Коопсуз LocalStorage Жазуу
 function safeLocalStorageSet(key, value) {
     try {
         if (typeof window === "undefined" || !window.localStorage) return false;
@@ -90,7 +86,6 @@ function safeLocalStorageSet(key, value) {
     }
 }
 
-// 18. Коопсуз LocalStorage Өчүрүү
 function safeLocalStorageRemove(key) {
     try {
         if (typeof window === "undefined" || !window.localStorage) return false;
@@ -101,7 +96,6 @@ function safeLocalStorageRemove(key) {
     }
 }
 
-// 1. Коопсуз Колдонуучуну Алуу
 function getCurrentUserSafe() {
     try {
         return auth && auth.currentUser ? auth.currentUser : null;
@@ -110,7 +104,6 @@ function getCurrentUserSafe() {
     }
 }
 
-// 2. Колдонуучунун ID маанисин алуу
 function getCurrentUserId() {
     try {
         if (auth && auth.currentUser && auth.currentUser.uid) {
@@ -127,13 +120,11 @@ function getCurrentUserId() {
     }
 }
 
-// 3. Мугалимдин негизги базалык жолун түзүү
 function getTeacherRootPath() {
     const uid = getCurrentUserId();
     return `teachers/${uid}`;
 }
 
-// 4. Мугалимдин ички папкаларынын жолун куруу
 function buildTeacherPath(childPath = "") {
     const root = getTeacherRootPath();
     if (!childPath || childPath.trim() === "") return root;
@@ -141,7 +132,6 @@ function buildTeacherPath(childPath = "") {
     return `${root}/${cleanChild}`;
 }
 
-// 5. Коопсуз Маалымат Окуу (Get)
 async function safeFirebaseGet(path) {
     try {
         if (!db) return null;
@@ -155,7 +145,6 @@ async function safeFirebaseGet(path) {
     }
 }
 
-// 6. Коопсуз Маалымат Жазуу (Set)
 async function safeFirebaseSet(path, value) {
     try {
         if (!db) return false;
@@ -169,7 +158,6 @@ async function safeFirebaseSet(path, value) {
     }
 }
 
-// 7. Коопсуз Маалымат Жаңыртуу (Update)
 async function safeFirebaseUpdate(path, value) {
     try {
         if (!db) return false;
@@ -183,7 +171,6 @@ async function safeFirebaseUpdate(path, value) {
     }
 }
 
-// 8. Коопсуз Маалымат Өчүрүү (Remove)
 async function safeFirebaseRemove(path) {
     try {
         if (!db) return false;
@@ -197,7 +184,6 @@ async function safeFirebaseRemove(path) {
     }
 }
 
-// 9. Базанын Жеткиликтүүлүгүн Текшерүү
 async function isFirebaseAvailable() {
     try {
         if (!db || !firebaseConfig.databaseURL) return false;
@@ -210,7 +196,6 @@ async function isFirebaseAvailable() {
     }
 }
 
-// 10. Мониторинг Жүргузүүчү Реалдуу Убакыт Угуучусу
 function watchTeacherPath(childPath, callback) {
     try {
         if (!db) {
@@ -221,7 +206,7 @@ function watchTeacherPath(childPath, callback) {
         const targetRef = ref(db, targetPath);
         
         onValue(targetRef, (snapshot) => {
-            callback(snapshot.val());
+            callback(snapshot.val(), null);
         }, (error) => {
             callback(null, error);
         });
@@ -241,7 +226,6 @@ function watchTeacherPath(childPath, callback) {
     }
 }
 
-// 11. Активдүүлүк Журналын Сактоо жана Кезекке Кошуу
 async function saveTeacherActivity(action, details = {}) {
     const uid = getCurrentUserId();
     const now = new Date();
@@ -249,7 +233,7 @@ async function saveTeacherActivity(action, details = {}) {
     const activityData = {
         action: action || "unknown_action",
         details: details || {},
-        createdAt: serverTimestamp ? serverTimestamp() : now.getTime(),
+        createdAt: now.getTime(),
         createdAtISO: now.toISOString(),
         userId: uid,
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown_agent",
@@ -262,9 +246,6 @@ async function saveTeacherActivity(action, details = {}) {
         try {
             const activityRef = ref(db, `teachers/${uid}/activityLogs`);
             const newLogRef = push(activityRef);
-            if (activityData.createdAt && typeof activityData.createdAt === "function") {
-                activityData.createdAt = now.getTime();
-            }
             await set(newLogRef, activityData);
             return true;
         } catch (e) {
@@ -275,9 +256,6 @@ async function saveTeacherActivity(action, details = {}) {
     }
 
     try {
-        if (activityData.createdAt && typeof activityData.createdAt === "function") {
-            activityData.createdAt = now.getTime();
-        }
         const existingQueueStr = safeLocalStorageGet("bilimal_activity_queue", "[]");
         const queue = safeJsonParse(existingQueueStr, []);
         queue.push(activityData);
@@ -290,7 +268,6 @@ async function saveTeacherActivity(action, details = {}) {
     return false;
 }
 
-// 12. Кезектеги Оффлайн Аракеттерди Синхрондоо
 async function syncQueuedActivities() {
     try {
         if (!db) return;
@@ -307,11 +284,6 @@ async function syncQueuedActivities() {
                 const uid = item.userId || getCurrentUserId();
                 const activityRef = ref(db, `teachers/${uid}/activityLogs`);
                 const newLogRef = push(activityRef);
-                
-                if (!item.createdAt || typeof item.createdAt === "object") {
-                    item.createdAt = new Date(item.createdAtISO || Date.now()).getTime();
-                }
-                
                 await set(newLogRef, item);
             } catch (e) {
                 failedItems.push(item);
@@ -330,7 +302,6 @@ async function syncQueuedActivities() {
     }
 }
 
-// 13. Мугалимдин Онлайн Статусун Орнотуу
 async function setTeacherPresence(status = "online") {
     const uid = getCurrentUserId();
     if (uid === "guest") return;
@@ -369,7 +340,6 @@ async function setTeacherPresence(status = "online") {
     safeLocalStorageSet("bilimal_presence_fallback", presenceData);
 }
 
-// 14. Firebase Кызматтарын Баштапкы Ишке Киргизүү
 async function initFirebaseServices() {
     try {
         if (analytics && typeof analytics.logEvent === "function") {
