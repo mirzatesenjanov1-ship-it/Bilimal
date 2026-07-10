@@ -1,169 +1,195 @@
-// Bilimal-AI Project - Student Test Results Management Module
-(function () {
-    const BF = window.BilimalFirebase;
-    const BS = window.BilimalStorage;
+import { checkAuth } from "./auth-guard.js";
+import { safeFirebaseGet, safeFirebaseSet, db, ref, onValue } from "./firebase-config.js";
+import { Toast } from "./toast.js";
+import { TeacherActivityLogger } from "./teacher-activity.js";
 
-    let currentTestId = null;
-    let currentResults = [];
-
-    function loadTestResults(testId) {
-        currentTestId = testId || localStorage.getItem('bilimal_viewing_result_test_id');
-        if (!currentTestId) return;
-
-        if (BF.isFirebaseAvailable()) {
-            BF.getDatabaseInstance().ref(`/teachers/${BF.getCurrentTeacherId()}/results`)
-                .once('value')
-                .then(snapshot => {
-                    const allResults = snapshot.val() || {};
-                    currentResults = Object.values(allResults).filter(r => r.testId === currentTestId);
-                    renderResultsTable();
-                })
-                .catch(() => {
-                    fallbackToLocalResults();
-                });
+let currentUid = null;
+const TestResults = {
+    init() {
+        checkAuth((user) => {
+            currentUid = user.uid;
+            this.bindEvents();
+            this.loadResultsStructure();
+        });
+    },
+    bindEvents() {
+        document.getElementById("resFilterClass")?.addEventListener("change", () => this.filterResultsDisplay());
+        document.getElementById("resFilterSubject")?.addEventListener("change", () => this.filterResultsDisplay());
+        document.getElementById("resFilterTest")?.addEventListener("change", () => this.filterResultsDisplay());
+        document.getElementById("btnDownloadReports")?.addEventListener("click", () => {
+            if (typeof window.AnnualReportExporter !== "undefined") {
+                window.AnnualReportExporter.exportToCSV(this.cachedResults || {});
+            } else {
+                Toast.warning("Экспорттук модуль табылган жок.");
+            }
+        });
+    },
+    loadResultsStructure() {
+        if (!currentUid) return;
+        const path = `testResults/${currentUid}`;
+        if (navigator.onLine) {
+            onValue(ref(db, path), (snapshot) => {
+                this.cachedResults = snapshot.val() || {};
+                this.buildFilterDropdowns();
+                this.renderResultsTables();
+            });
         } else {
-            fallbackToLocalResults();
+            Toast.warning("Оффлайн режимде жыйынтыктарды жүктөө мүмкүн эмес.");
         }
-    }
+    },
+    buildFilterDropdowns() {
+        const classSelect = document.getElementById("resFilterClass");
+        const testSelect = document.getElementById("resFilterTest");
+        if (!classSelect) return;
 
-    function fallbackToLocalResults() {
-        const local = BS.getResultsLocal();
-        currentResults = Object.values(local).filter(r => r.testId === currentTestId);
-        renderResultsTable();
-    }
+        const classes = new Set();
+        const tests = new Set();
 
-    function renderResultsTable() {
-        const container = document.getElementById('results-table-view-container');
+        Object.entries(this.cachedResults).forEach(([testId, studentsMap]) => {
+            tests.add(testId);
+            Object.values(studentsMap).forEach(res => {
+                if (res.studentClass) classes.add(res.studentClass);
+            });
+        });
+
+        classSelect.innerHTML = '<option value="all">Бардык класстар</option>';
+        classes.forEach(c => { classSelect.innerHTML += `<option value="${c}">${c}</option>`; });
+
+        testSelect.innerHTML = '<option value="all">Бардык тесттер</option>';
+        tests.forEach(t => { testSelect.innerHTML += `<option value="${t}">${t}</option>`; });
+    },
+    renderResultsTables() {
+        const container = document.getElementById("classesResultsContainer");
         if (!container) return;
-
         container.innerHTML = "";
-        const grouped = groupResultsByClass();
 
-        if (Object.keys(grouped).length === 0) {
-            container.innerHTML = "<p>Бул тест боюнча азырынча жыйынтыктар жок.</p>";
+        const classFilter = document.getElementById("resFilterClass")?.value || "all";
+        const testFilter = document.getElementById("resFilterTest")?.value || "all";
+
+        // Aggregate by classes safely
+        const recordsByClass = {};
+
+        Object.entries(this.cachedResults).forEach(([testId, studentsMap]) => {
+            if (testFilter !== "all" && testId !== testFilter) return;
+            Object.entries(studentsMap).forEach(([studentId, r]) => {
+                const sClass = r.studentClass || "Аныкталбаган";
+                if (classFilter !== "all" && sClass !== classFilter) return;
+                
+                if (!recordsByClass[sClass]) recordsByClass[sClass] = [];
+                recordsByClass[sClass].push({ testId, studentId, ...r });
+            });
+        });
+
+        if (Object.keys(recordsByClass).length === 0) {
+            container.innerHTML = `<div class="data-glass-panel empty-state-text">Жыйынтыктар катталган жок.</div>`;
             return;
         }
 
-        for (const [className, studentsList] of Object.entries(grouped)) {
-            const classSection = document.createElement('div');
-            classSection.className = 'results-class-group-block';
-            classSection.innerHTML = `<h3>Класс: ${BF.sanitizeData(className)}</h3>`;
+        Object.entries(recordsByClass).forEach(([className, list]) => {
+            // Alphabetical Sorting by Student Name
+            list.sort((a, b) => (a.studentName || "").localeCompare(b.studentName || ""));
 
-            const table = document.createElement('table');
-            table.style.width = "100%";
-            table.style.borderCollapse = "collapse";
-            table.innerHTML = `
-                <thead>
-                    <tr style="background:#f4f4f4; text-align:left;">
-                        <th>Окуучу</th>
-                        <th>Дата/Убакыт</th>
-                        <th>Мүнөт</th>
-                        <th>Упай</th>
-                        <th>Баа</th>
-                        <th>Античит бузуу</th>
-                        <th>Аракеттер</th>
-                    </tr>
-                </thead>
-                <tbody id="tbody-class-${className}"></tbody>
+            const div = document.createElement("div");
+            div.className = "data-glass-panel";
+            div.style.marginBottom = "25px";
+            div.innerHTML = `
+                <h3>Класс Таблицасы: ${className}</h3>
+                <div class="responsive-table-wrapper">
+                    <table class="futuristic-table">
+                        <thead>
+                            <tr>
+                                <th>Окуучунун аты-жөнү</th>
+                                <th>Упай / Пайыз</th>
+                                <th>Баа</th>
+                                <th>Античит эскертүүлөрү</th>
+                                <th>Статус</th>
+                                <th>Аракеттер</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${list.map(item => `
+                                <tr>
+                                    <td><strong>${item.studentName || "Аноним"}</strong></td>
+                                    <td>${item.score || 0} (${item.percent || 0}%)</td>
+                                    <td><span class="badge-success">${item.gradeMark || "Жок"}</span></td>
+                                    <td class="${item.antiCheatAlerts > 0 ? 'text-danger' : ''}">${item.antiCheatAlerts || 0} жолу</td>
+                                    <td><span class="badge-warning">${item.status || "күтүүдө"}</span></td>
+                                    <td>
+                                        <button class="btn-primary-glow btn-sm view-submission" data-testid="${item.testId}" data-studentid="${item.studentId}">Кароо</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
-
-            classSection.appendChild(table);
-            container.appendChild(classSection);
-
-            const tbody = document.getElementById(`tbody-class-${className}`);
-            sortStudentsAlphabetically(studentsList).forEach(res => {
-                const tr = document.createElement('tr');
-                tr.style.borderBottom = "1px solid #ddd";
-                tr.innerHTML = `
-                    <td>**${BF.sanitizeData(res.studentName || 'Белгисиз')}**</td>
-                    <td>${new Date(res.timestamp).toLocaleString()}</td>
-                    <td>${res.durationMinutes || 0}</td>
-                    <td>${res.finalScore || 0} / ${res.maxScore || 100}</td>
-                    <td><span class="grade-badge" style="padding:4px 8px; background:#eee; borderRadius:4px;">${calculateGrade(res.finalScore, res.maxScore)}</span></td>
-                    <td style="color:${res.cheatCount > 0 ? 'red' : 'green'}">${res.cheatCount || 0}</td>
-                    <td>
-                        <button class="btn-view-res-details" data-id="${res.id}">Көрүү</button>
-                        <input type="checkbox" class="chk-mark-checked" data-id="${res.id}" ${res.isChecked ? 'checked' : ''}> Текшерилди
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        }
-
-        bindResultsActionEvents();
-    }
-
-    function groupResultsByClass() {
-        const groups = {};
-        currentResults.forEach(r => {
-            const cls = r.studentClass || "Башкалар";
-            if (!groups[cls]) groups[cls] = [];
-            groups[cls].push(r);
-        });
-        return groups;
-    }
-
-    function sortStudentsAlphabetically(list) {
-        return list.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
-    }
-
-    function calculateGrade(score, maxScore) {
-        const percent = (score / (maxScore || 100)) * 100;
-        if (percent >= 85) return "5 (Эң жакшы)";
-        if (percent >= 70) return "4 (Жакшы)";
-        if (percent >= 50) return "3 (Канааттандырарлык)";
-        return "2 (Канааттандырылбайт)";
-    }
-
-    function markAsChecked(resultId, isChecked) {
-        const local = BS.getResultsLocal();
-        if (local[resultId]) {
-            local[resultId].isChecked = isChecked;
-            BS.saveResultLocal(local[resultId]);
-            BF.showToast("Статус жаңыртылды", "success");
-        }
-    }
-
-    function exportYearlyResultsCsv() {
-        let csvContent = "\uFEFFОкуучу,Класс,Тест,Жалпы Упай,Макс Упай,Баа,Дата\n";
-        const allResults = Object.values(BS.getResultsLocal());
-
-        allResults.forEach(r => {
-            csvContent += `"${r.studentName}","${r.studentClass}","${r.testTitle}",${r.finalScore},${r.maxScore},"${calculateGrade(r.finalScore, r.maxScore)}","${new Date(r.timestamp).toLocaleDateString()}"\n`;
+            container.appendChild(div);
         });
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.setAttribute("href", url);
-        link.setAttribute("download", "BilimAI_Жылдык_Отчет_2026_2027.csv");
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    }
-
-    function bindResultsActionEvents() {
-        document.querySelectorAll('.chk-mark-checked').forEach(chk => {
-            chk.addEventListener('change', (e) => {
-                markAsChecked(e.target.getAttribute('data-id'), e.target.checked);
+        this.bindTableReviewButtons();
+    },
+    bindTableReviewButtons() {
+        document.querySelectorAll(".view-submission").forEach(b => {
+            b.addEventListener("click", (e) => {
+                const tId = e.target.getAttribute("data-testid");
+                const sId = e.target.getAttribute("data-studentid");
+                this.openReviewModal(tId, sId);
             });
         });
+    },
+    openReviewModal(testId, studentId) {
+        const modal = document.getElementById("globalModalContainer");
+        const body = document.getElementById("globalModalBody");
+        document.getElementById("globalModalTitle").innerText = "Окуучунун жоопторун карап чыгуу";
+        
+        const record = this.cachedResults[testId]?.[studentId];
+        if (!record) return;
 
-        document.querySelectorAll('.btn-view-res-details').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const resId = e.target.getAttribute('data-id');
-                BF.showToast(`Жыйынтык ИД: ${resId}`, "info");
-            });
+        body.innerHTML = `
+            <div style="max-height:400px; overflow-y:auto; color:white;">
+                <p><strong>Окуучу:</strong> ${record.studentName}</p>
+                <p><strong>Упай баалоо шкаласы боюнча:</strong> ${record.score}</p>
+                <div class="form-group-glass" style="margin-top:15px;">
+                    <label>Мугалимдин чечими / Комментарий</label>
+                    <textarea id="reviewComment" style="width:100%; min-height:60px; background:rgba(0,0,0,0.5); color:white; border-radius:6px; padding:8px;">${record.comment || ""}</textarea>
+                </div>
+                <div class="form-group-glass" style="margin-top:10px;">
+                    <label>Статусту жаңыртуу</label>
+                    <select id="reviewStatus" style="width:100%; padding:8px; background:#111; color:white; border-radius:6px;">
+                        <option value="текшерилди" ${record.status === 'текшерилди' ? 'selected' : ''}>Текшерилди</option>
+                        <option value="кайра текшерүү керек" ${record.status === 'кайра текшерүү керек' ? 'selected' : ''}>Кайра текшерүү керек</option>
+                        <option value="күтүүдө" ${record.status === 'күтүүдө' ? 'selected' : ''}>Күтүүдө</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer" style="text-align:right; margin-top:20px;">
+                <button id="btnCancelReview" class="btn-secondary-glow" style="margin-right:10px;">Жабуу</button>
+                <button id="btnSaveReview" class="btn-primary-glow">Сактоо</button>
+            </div>
+        `;
+
+        modal.style.display = "flex";
+        document.getElementById("btnCancelReview").addEventListener("click", () => { modal.style.display = "none"; });
+        document.getElementById("btnSaveReview").addEventListener("click", async () => {
+            const comment = document.getElementById("reviewComment").value;
+            const status = document.getElementById("reviewStatus").value;
+            
+            if (navigator.onLine) {
+                await safeFirebaseSet(`testResults/${currentUid}/${testId}/${studentId}/comment`, comment);
+                await safeFirebaseSet(`testResults/${currentUid}/${testId}/${studentId}/status`, status);
+                Toast.success("Өзгөртүүлөр сакталды.");
+                TeacherActivityLogger.log("result_review", { testId, studentId, status });
+            } else {
+                Toast.warning("Оффлайн режимде жыйынтык баалоо жеткиликсиз.");
+            }
+            modal.style.display = "none";
+            this.loadResultsStructure();
         });
+    },
+    filterResultsDisplay() {
+        this.renderResultsTables();
     }
+};
 
-    document.addEventListener("DOMContentLoaded", () => {
-        document.getElementById('btn-export-yearly-csv')?.addEventListener('click', exportYearlyResultsCsv);
-    });
-
-    window.BilimalResults = {
-        loadTestResults,
-        exportYearlyResultsCsv,
-        calculateGrade
-    };
-})();
+document.addEventListener("DOMContentLoaded", () => TestResults.init());
+export { TestResults };
