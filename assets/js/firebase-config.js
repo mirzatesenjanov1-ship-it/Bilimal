@@ -1,24 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
 import { 
-    getDatabase, 
-    ref, 
-    set, 
-    get, 
-    update, 
-    remove, 
-    push, 
-    onValue, 
-    off, 
-    serverTimestamp, 
-    runTransaction, 
-    onDisconnect 
+    getDatabase, ref, set, get, update, remove, push, onValue, off, serverTimestamp, runTransaction, onDisconnect 
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { 
-    getAuth, 
-    onAuthStateChanged, 
-    signOut 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -31,380 +16,98 @@ const firebaseConfig = {
     measurementId: "G-9GSQV60QV0"
 };
 
-let app = null;
-let analytics = null;
-let db = null;
-let auth = null;
-let isNetworkListenerAdded = false;
-
+let app = null; let analytics = null; let db = null; let auth = null;
 try {
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
     auth = getAuth(app);
-    
-    if (typeof window !== "undefined" && typeof window.document !== "undefined") {
-        analytics = getAnalytics(app);
-    }
-} catch (e) {
-    if (typeof console !== "undefined") {
-        console.warn("Firebase initialization failed:", e.message);
-    }
-}
+    if (typeof window !== "undefined") { analytics = getAnalytics(app); }
+} catch (e) { console.warn("Firebase Init Error: ", e.message); }
 
-function safeJsonParse(value, fallback = null) {
-    if (value === null || value === undefined || value === "") return fallback;
-    if (typeof value === "object") return value;
+function safeJsonParse(val, fallback = null) {
+    if (val === null || val === undefined || val === "") return fallback;
     try {
-        const trimmed = String(value).trim();
-        if (trimmed === "[object Object]" || trimmed.startsWith("[object")) {
-            return fallback;
-        }
-        return JSON.parse(trimmed);
-    } catch (e) {
-        return fallback;
-    }
+        if (typeof val === "object") return val;
+        const s = String(val).trim();
+        if (s === "[object Object]" || s.startsWith("[object")) return fallback;
+        return JSON.parse(s);
+    } catch (e) { return fallback; }
 }
-
-function safeLocalStorageGet(key, fallback = null) {
-    try {
-        if (typeof window === "undefined" || !window.localStorage) return fallback;
-        const value = localStorage.getItem(key);
-        return value !== null ? value : fallback;
-    } catch (e) {
-        return fallback;
-    }
-}
-
-function safeLocalStorageSet(key, value) {
-    try {
-        if (typeof window === "undefined" || !window.localStorage) return false;
-        const stringValue = typeof value === "object" ? JSON.stringify(value) : String(value);
-        localStorage.setItem(key, stringValue);
-        return true;
-    } catch (e) {
-        return false;
-    }
-}
-
-function safeLocalStorageRemove(key) {
-    try {
-        if (typeof window === "undefined" || !window.localStorage) return false;
-        localStorage.removeItem(key);
-        return true;
-    } catch (e) {
-        return false;
-    }
-}
-
-function getCurrentUserSafe() {
-    try {
-        return auth && auth.currentUser ? auth.currentUser : null;
-    } catch (e) {
-        return null;
-    }
-}
-
+function safeLocalStorageGet(k, fb = null) { try { return localStorage.getItem(k) !== null ? localStorage.getItem(k) : fb; } catch(e) { return fb; } }
+function safeLocalStorageSet(k, v) { try { localStorage.setItem(k, typeof v === "object" ? JSON.stringify(v) : String(v)); return true; } catch(e) { return false; } }
+function safeLocalStorageRemove(k) { try { localStorage.removeItem(k); return true; } catch(e) { return false; } }
+function getCurrentUserSafe() { try { return auth?.currentUser || null; } catch(e) { return null; } }
 function getCurrentUserId() {
     try {
-        if (auth && auth.currentUser && auth.currentUser.uid) {
-            return auth.currentUser.uid;
-        }
-        const cached = safeLocalStorageGet("bilimal_current_user");
-        if (cached) {
-            const userObj = safeJsonParse(cached);
-            if (userObj && userObj.uid) return userObj.uid;
-        }
+        if (auth?.currentUser?.uid) return auth.currentUser.uid;
+        const c = safeLocalStorageGet("bilimal_current_user");
+        if (c) { const u = safeJsonParse(c); if (u?.uid) return u.uid; }
         return "guest";
-    } catch (e) {
-        return "guest";
-    }
+    } catch(e) { return "guest"; }
 }
-
-function getTeacherRootPath() {
-    const uid = getCurrentUserId();
-    return `teachers/${uid}`;
+function getTeacherRootPath() { return `teachers/${getCurrentUserId()}`; }
+function buildTeacherPath(cp = "") {
+    const r = getTeacherRootPath();
+    if (!cp || cp.trim() === "") return r;
+    return `${r}/${cp.startsWith("/") ? cp.substring(1) : cp}`;
 }
-
-function buildTeacherPath(childPath = "") {
-    const root = getTeacherRootPath();
-    if (!childPath || childPath.trim() === "") return root;
-    const cleanChild = childPath.startsWith("/") ? childPath.substring(1) : childPath;
-    return `${root}/${cleanChild}`;
-}
-
-async function safeFirebaseGet(path) {
+async function safeFirebaseGet(p) { try { if (!db) return null; const s = await get(ref(db, p)); return s.exists() ? s.val() : null; } catch(e) { console.warn("Get Fail:", e.message); return null; } }
+async function safeFirebaseSet(p, v) { try { if (!db) return false; await set(ref(db, p), v); return true; } catch(e) { console.warn("Set Fail:", e.message); return false; } }
+async function safeFirebaseUpdate(p, v) { try { if (!db) return false; await update(ref(db, p), v); return true; } catch(e) { console.warn("Update Fail:", e.message); return false; } }
+async function safeFirebaseRemove(p) { try { if (!db) return false; await remove(ref(db, p)); return true; } catch(e) { console.warn("Remove Fail:", e.message); return false; } }
+async function isFirebaseAvailable() { try { if (!db) return false; const s = await get(ref(db, ".info/connected")); return s.exists() ? !!s.val() : false; } catch(e) { return false; } }
+function watchTeacherPath(cp, cb) {
     try {
-        if (!db) return null;
-        const snapshot = await get(ref(db, path));
-        return snapshot.exists() ? snapshot.val() : null;
-    } catch (e) {
-        if (typeof console !== "undefined") {
-            console.warn(`Firebase safeFirebaseGet failed at [${path}]:`, e.message);
-        }
-        return null;
-    }
+        if (!db) { cb(null, new Error("No DB")); return () => {}; }
+        const r = ref(db, buildTeacherPath(cp));
+        onValue(r, (s) => cb(s.val(), null), (err) => cb(null, err));
+        return () => { try { off(r); } catch(e) {} };
+    } catch(e) { cb(null, e); return () => {}; }
 }
-
-async function safeFirebaseSet(path, value) {
-    try {
-        if (!db) return false;
-        await set(ref(db, path), value);
-        return true;
-    } catch (e) {
-        if (typeof console !== "undefined") {
-            console.warn(`Firebase safeFirebaseSet failed at [${path}]:`, e.message);
-        }
-        return false;
-    }
-}
-
-async function safeFirebaseUpdate(path, value) {
-    try {
-        if (!db) return false;
-        await update(ref(db, path), value);
-        return true;
-    } catch (e) {
-        if (typeof console !== "undefined") {
-            console.warn(`Firebase safeFirebaseUpdate failed at [${path}]:`, e.message);
-        }
-        return false;
-    }
-}
-
-async function safeFirebaseRemove(path) {
-    try {
-        if (!db) return false;
-        await remove(ref(db, path));
-        return true;
-    } catch (e) {
-        if (typeof console !== "undefined") {
-            console.warn(`Firebase safeFirebaseRemove failed at [${path}]:`, e.message);
-        }
-        return false;
-    }
-}
-
-async function isFirebaseAvailable() {
-    try {
-        if (!db || !firebaseConfig.databaseURL) return false;
-        if (typeof navigator !== "undefined" && !navigator.onLine) return false;
-        const connectedRef = ref(db, ".info/connected");
-        const snapshot = await get(connectedRef);
-        return snapshot.exists() ? !!snapshot.val() : false;
-    } catch (e) {
-        return false;
-    }
-}
-
-function watchTeacherPath(childPath, callback) {
-    try {
-        if (!db) {
-            callback(null, new Error("Database not available"));
-            return () => {};
-        }
-        const targetPath = buildTeacherPath(childPath);
-        const targetRef = ref(db, targetPath);
-        
-        onValue(targetRef, (snapshot) => {
-            callback(snapshot.val(), null);
-        }, (error) => {
-            callback(null, error);
-        });
-
-        return () => {
-            try {
-                off(targetRef);
-            } catch (err) {
-                if (typeof console !== "undefined") {
-                    console.warn("Failed to detach listener via off():", err.message);
-                }
-            }
-        };
-    } catch (e) {
-        callback(null, e);
-        return () => {};
-    }
-}
-
 async function saveTeacherActivity(action, details = {}) {
     const uid = getCurrentUserId();
-    const now = new Date();
-    
-    const activityData = {
-        action: action || "unknown_action",
-        details: details || {},
-        createdAt: now.getTime(),
-        createdAtISO: now.toISOString(),
-        userId: uid,
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown_agent",
-        page: typeof window !== "undefined" && window.location ? window.location.pathname : "unknown_page"
-    };
-
-    const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
-    
-    if (db && isOnline) {
-        try {
-            const activityRef = ref(db, `teachers/${uid}/activityLogs`);
-            const newLogRef = push(activityRef);
-            await set(newLogRef, activityData);
-            return true;
-        } catch (e) {
-            if (typeof console !== "undefined") {
-                console.warn("Failed online write for log, caching to offline queue:", e.message);
-            }
-        }
+    const l = { action, details, createdAt: Date.now(), createdAtISO: new Date().toISOString(), userId: uid, userAgent: navigator.userAgent || "unknown", page: window.location.pathname };
+    if (db && navigator.onLine) {
+        try { await set(push(ref(db, `teacherActivity/${uid}`)), l); return true; } catch(e) { console.warn("Log offline cache added", e.message); }
     }
-
-    try {
-        const existingQueueStr = safeLocalStorageGet("bilimal_activity_queue", "[]");
-        const queue = safeJsonParse(existingQueueStr, []);
-        queue.push(activityData);
-        safeLocalStorageSet("bilimal_activity_queue", queue);
-    } catch (err) {
-        if (typeof console !== "undefined") {
-            console.warn("Failed local backup write for activity queue:", err.message);
-        }
-    }
+    const q = safeJsonParse(safeLocalStorageGet("bilimal_activity_queue", "[]"), []);
+    q.push(l); safeLocalStorageSet("bilimal_activity_queue", q);
     return false;
 }
-
 async function syncQueuedActivities() {
     try {
-        if (!db) return;
-        if (typeof navigator !== "undefined" && !navigator.onLine) return;
-
-        const rawQueue = safeLocalStorageGet("bilimal_activity_queue", "[]");
-        const queue = safeJsonParse(rawQueue, []);
-        if (!queue || queue.length === 0) return;
-
-        const failedItems = [];
-
-        for (const item of queue) {
-            try {
-                const uid = item.userId || getCurrentUserId();
-                const activityRef = ref(db, `teachers/${uid}/activityLogs`);
-                const newLogRef = push(activityRef);
-                await set(newLogRef, item);
-            } catch (e) {
-                failedItems.push(item);
-            }
+        if (!db || !navigator.onLine) return;
+        const q = safeJsonParse(safeLocalStorageGet("bilimal_activity_queue", "[]"), []);
+        if (!q.length) return;
+        const remains = [];
+        for (const item of q) {
+            try { await set(push(ref(db, `teacherActivity/${item.userId}`)), item); } catch(e) { remains.push(item); }
         }
-
-        if (failedItems.length > 0) {
-            safeLocalStorageSet("bilimal_activity_queue", failedItems);
-        } else {
-            safeLocalStorageRemove("bilimal_activity_queue");
-        }
-    } catch (err) {
-        if (typeof console !== "undefined") {
-            console.warn("Error inside syncQueuedActivities:", err.message);
-        }
-    }
+        if (remains.length) safeLocalStorageSet("bilimal_activity_queue", remains);
+        else safeLocalStorageRemove("bilimal_activity_queue");
+    } catch(e) { console.warn("Sync queue fail", e.message); }
 }
-
 async function setTeacherPresence(status = "online") {
-    const uid = getCurrentUserId();
-    if (uid === "guest") return;
-
-    const now = new Date();
-    const presenceData = {
-        status: status,
-        lastSeen: now.getTime(),
-        lastSeenISO: now.toISOString(),
-        page: typeof window !== "undefined" && window.location ? window.location.pathname : "unknown_page"
-    };
-
-    if (db && typeof navigator !== "undefined" && navigator.onLine) {
+    const uid = getCurrentUserId(); if (uid === "guest") return;
+    const p = { status, lastSeen: Date.now(), lastSeenISO: new Date().toISOString(), page: window.location.pathname };
+    if (db && navigator.onLine) {
         try {
-            const presenceRef = ref(db, `teachers/${uid}/presence`);
-            
-            if (status === "online") {
-                const disconnectRef = onDisconnect(presenceRef);
-                await disconnectRef.set({
-                    status: "offline",
-                    lastSeen: serverTimestamp ? serverTimestamp() : Date.now(),
-                    lastSeenISO: new Date().toISOString(),
-                    page: presenceData.page
-                });
-            }
-            
-            await set(presenceRef, presenceData);
-            return;
-        } catch (e) {
-            if (typeof console !== "undefined") {
-                console.warn("Failed tracking online presence status:", e.message);
-            }
-        }
+            const r = ref(db, `teachers/${uid}/presence`);
+            if (status === "online") { await onDisconnect(r).set({ status: "offline", lastSeen: serverTimestamp(), lastSeenISO: new Date().toISOString(), page: window.location.pathname }); }
+            await set(r, p); return;
+        } catch(e) { console.warn("Presence err", e.message); }
     }
-
-    safeLocalStorageSet("bilimal_presence_fallback", presenceData);
+    safeLocalStorageSet("bilimal_presence_fallback", p);
 }
-
 async function initFirebaseServices() {
     try {
-        if (analytics && typeof analytics.logEvent === "function") {
-            try {
-                analytics.logEvent("app_initialized");
-            } catch (ae) {
-                if (typeof console !== "undefined") console.warn("Analytics blocked or failed:", ae.message);
-            }
-        }
-
-        await setTeacherPresence("online");
-        await syncQueuedActivities();
-
-        if (typeof window !== "undefined" && window.addEventListener && !isNetworkListenerAdded) {
-            window.addEventListener("online", () => {
-                setTeacherPresence("online");
-                syncQueuedActivities();
-            });
-            window.addEventListener("offline", () => {
-                setTeacherPresence("offline");
-            });
-            isNetworkListenerAdded = true;
-        }
-    } catch (e) {
-        if (typeof console !== "undefined") {
-            console.warn("Error running global initFirebaseServices:", e.message);
-        }
-    }
+        await setTeacherPresence("online"); await syncQueuedActivities();
+        window.addEventListener("online", () => { setTeacherPresence("online"); syncQueuedActivities(); });
+        window.addEventListener("offline", () => { setTeacherPresence("offline"); });
+    } catch(e) { console.warn("Init services failed", e.message); }
 }
 
 export {
-    app,
-    analytics,
-    db,
-    auth,
-    ref,
-    set,
-    get,
-    update,
-    remove,
-    push,
-    onValue,
-    off,
-    serverTimestamp,
-    runTransaction,
-    onDisconnect,
-    onAuthStateChanged,
-    signOut,
-    firebaseConfig,
-    getCurrentUserSafe,
-    getCurrentUserId,
-    getTeacherRootPath,
-    buildTeacherPath,
-    safeFirebaseGet,
-    safeFirebaseSet,
-    safeFirebaseUpdate,
-    safeFirebaseRemove,
-    isFirebaseAvailable,
-    watchTeacherPath,
-    saveTeacherActivity,
-    syncQueuedActivities,
-    setTeacherPresence,
-    initFirebaseServices,
-    safeJsonParse,
-    safeLocalStorageGet,
-    safeLocalStorageSet,
-    safeLocalStorageRemove
+    app, analytics, db, auth, ref, set, get, update, remove, push, onValue, off, serverTimestamp, runTransaction, onDisconnect, onAuthStateChanged, signOut, firebaseConfig,
+    getCurrentUserSafe, getCurrentUserId, getTeacherRootPath, buildTeacherPath, safeFirebaseGet, safeFirebaseSet, safeFirebaseUpdate, safeFirebaseRemove, isFirebaseAvailable, watchTeacherPath, saveTeacherActivity, syncQueuedActivities, setTeacherPresence, initFirebaseServices, safeJsonParse, safeLocalStorageGet, safeLocalStorageSet, safeLocalStorageRemove
 };
