@@ -1,195 +1,185 @@
-import { checkAuth } from "./auth-guard.js";
-import { safeFirebaseGet, safeFirebaseSet, db, ref, onValue } from "./firebase-config.js";
-import { Toast } from "./toast.js";
-import { TeacherActivityLogger } from "./teacher-activity.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { downloadYearlyReportCSV } from "./annual-report.js";
 
-let currentUid = null;
-const TestResults = {
-    init() {
-        checkAuth((user) => {
-            currentUid = user.uid;
-            this.bindEvents();
-            this.loadResultsStructure();
-        });
-    },
-    bindEvents() {
-        document.getElementById("resFilterClass")?.addEventListener("change", () => this.filterResultsDisplay());
-        document.getElementById("resFilterSubject")?.addEventListener("change", () => this.filterResultsDisplay());
-        document.getElementById("resFilterTest")?.addEventListener("change", () => this.filterResultsDisplay());
-        document.getElementById("btnDownloadReports")?.addEventListener("click", () => {
-            if (typeof window.AnnualReportExporter !== "undefined") {
-                window.AnnualReportExporter.exportToCSV(this.cachedResults || {});
-            } else {
-                Toast.warning("Экспорттук модуль табылган жок.");
-            }
-        });
-    },
-    loadResultsStructure() {
-        if (!currentUid) return;
-        const path = `testResults/${currentUid}`;
-        if (navigator.onLine) {
-            onValue(ref(db, path), (snapshot) => {
-                this.cachedResults = snapshot.val() || {};
-                this.buildFilterDropdowns();
-                this.renderResultsTables();
-            });
-        } else {
-            Toast.warning("Оффлайн режимде жыйынтыктарды жүктөө мүмкүн эмес.");
-        }
-    },
-    buildFilterDropdowns() {
-        const classSelect = document.getElementById("resFilterClass");
-        const testSelect = document.getElementById("resFilterTest");
-        if (!classSelect) return;
-
-        const classes = new Set();
-        const tests = new Set();
-
-        Object.entries(this.cachedResults).forEach(([testId, studentsMap]) => {
-            tests.add(testId);
-            Object.values(studentsMap).forEach(res => {
-                if (res.studentClass) classes.add(res.studentClass);
-            });
-        });
-
-        classSelect.innerHTML = '<option value="all">Бардык класстар</option>';
-        classes.forEach(c => { classSelect.innerHTML += `<option value="${c}">${c}</option>`; });
-
-        testSelect.innerHTML = '<option value="all">Бардык тесттер</option>';
-        tests.forEach(t => { testSelect.innerHTML += `<option value="${t}">${t}</option>`; });
-    },
-    renderResultsTables() {
-        const container = document.getElementById("classesResultsContainer");
-        if (!container) return;
-        container.innerHTML = "";
-
-        const classFilter = document.getElementById("resFilterClass")?.value || "all";
-        const testFilter = document.getElementById("resFilterTest")?.value || "all";
-
-        // Aggregate by classes safely
-        const recordsByClass = {};
-
-        Object.entries(this.cachedResults).forEach(([testId, studentsMap]) => {
-            if (testFilter !== "all" && testId !== testFilter) return;
-            Object.entries(studentsMap).forEach(([studentId, r]) => {
-                const sClass = r.studentClass || "Аныкталбаган";
-                if (classFilter !== "all" && sClass !== classFilter) return;
-                
-                if (!recordsByClass[sClass]) recordsByClass[sClass] = [];
-                recordsByClass[sClass].push({ testId, studentId, ...r });
-            });
-        });
-
-        if (Object.keys(recordsByClass).length === 0) {
-            container.innerHTML = `<div class="data-glass-panel empty-state-text">Жыйынтыктар катталган жок.</div>`;
-            return;
-        }
-
-        Object.entries(recordsByClass).forEach(([className, list]) => {
-            // Alphabetical Sorting by Student Name
-            list.sort((a, b) => (a.studentName || "").localeCompare(b.studentName || ""));
-
-            const div = document.createElement("div");
-            div.className = "data-glass-panel";
-            div.style.marginBottom = "25px";
-            div.innerHTML = `
-                <h3>Класс Таблицасы: ${className}</h3>
-                <div class="responsive-table-wrapper">
-                    <table class="futuristic-table">
-                        <thead>
-                            <tr>
-                                <th>Окуучунун аты-жөнү</th>
-                                <th>Упай / Пайыз</th>
-                                <th>Баа</th>
-                                <th>Античит эскертүүлөрү</th>
-                                <th>Статус</th>
-                                <th>Аракеттер</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${list.map(item => `
-                                <tr>
-                                    <td><strong>${item.studentName || "Аноним"}</strong></td>
-                                    <td>${item.score || 0} (${item.percent || 0}%)</td>
-                                    <td><span class="badge-success">${item.gradeMark || "Жок"}</span></td>
-                                    <td class="${item.antiCheatAlerts > 0 ? 'text-danger' : ''}">${item.antiCheatAlerts || 0} жолу</td>
-                                    <td><span class="badge-warning">${item.status || "күтүүдө"}</span></td>
-                                    <td>
-                                        <button class="btn-primary-glow btn-sm view-submission" data-testid="${item.testId}" data-studentid="${item.studentId}">Кароо</button>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-
-        this.bindTableReviewButtons();
-    },
-    bindTableReviewButtons() {
-        document.querySelectorAll(".view-submission").forEach(b => {
-            b.addEventListener("click", (e) => {
-                const tId = e.target.getAttribute("data-testid");
-                const sId = e.target.getAttribute("data-studentid");
-                this.openReviewModal(tId, sId);
-            });
-        });
-    },
-    openReviewModal(testId, studentId) {
-        const modal = document.getElementById("globalModalContainer");
-        const body = document.getElementById("globalModalBody");
-        document.getElementById("globalModalTitle").innerText = "Окуучунун жоопторун карап чыгуу";
-        
-        const record = this.cachedResults[testId]?.[studentId];
-        if (!record) return;
-
-        body.innerHTML = `
-            <div style="max-height:400px; overflow-y:auto; color:white;">
-                <p><strong>Окуучу:</strong> ${record.studentName}</p>
-                <p><strong>Упай баалоо шкаласы боюнча:</strong> ${record.score}</p>
-                <div class="form-group-glass" style="margin-top:15px;">
-                    <label>Мугалимдин чечими / Комментарий</label>
-                    <textarea id="reviewComment" style="width:100%; min-height:60px; background:rgba(0,0,0,0.5); color:white; border-radius:6px; padding:8px;">${record.comment || ""}</textarea>
-                </div>
-                <div class="form-group-glass" style="margin-top:10px;">
-                    <label>Статусту жаңыртуу</label>
-                    <select id="reviewStatus" style="width:100%; padding:8px; background:#111; color:white; border-radius:6px;">
-                        <option value="текшерилди" ${record.status === 'текшерилди' ? 'selected' : ''}>Текшерилди</option>
-                        <option value="кайра текшерүү керек" ${record.status === 'кайра текшерүү керек' ? 'selected' : ''}>Кайра текшерүү керек</option>
-                        <option value="күтүүдө" ${record.status === 'күтүүдө' ? 'selected' : ''}>Күтүүдө</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer" style="text-align:right; margin-top:20px;">
-                <button id="btnCancelReview" class="btn-secondary-glow" style="margin-right:10px;">Жабуу</button>
-                <button id="btnSaveReview" class="btn-primary-glow">Сактоо</button>
-            </div>
-        `;
-
-        modal.style.display = "flex";
-        document.getElementById("btnCancelReview").addEventListener("click", () => { modal.style.display = "none"; });
-        document.getElementById("btnSaveReview").addEventListener("click", async () => {
-            const comment = document.getElementById("reviewComment").value;
-            const status = document.getElementById("reviewStatus").value;
-            
-            if (navigator.onLine) {
-                await safeFirebaseSet(`testResults/${currentUid}/${testId}/${studentId}/comment`, comment);
-                await safeFirebaseSet(`testResults/${currentUid}/${testId}/${studentId}/status`, status);
-                Toast.success("Өзгөртүүлөр сакталды.");
-                TeacherActivityLogger.log("result_review", { testId, studentId, status });
-            } else {
-                Toast.warning("Оффлайн режимде жыйынтык баалоо жеткиликсиз.");
-            }
-            modal.style.display = "none";
-            this.loadResultsStructure();
-        });
-    },
-    filterResultsDisplay() {
-        this.renderResultsTables();
-    }
+const firebaseConfig = {
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
 };
 
-document.addEventListener("DOMContentLoaded", () => TestResults.init());
-export { TestResults };
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+const teacherId = "demo_teacher_001";
+
+let resultsData = [];
+let activeResultNode = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupNavigation();
+    loadResultsData();
+    setupFilters();
+    
+    if(window.location.search.includes("triggerReport")) {
+        setTimeout(() => { downloadYearlyReportCSV(resultsData); }, 1500);
+    }
+});
+
+function setupNavigation() {
+    document.getElementById("navDashboard").addEventListener("click", () => window.location.href = "/sections/tests.html");
+    document.getElementById("navTestBuilder").addEventListener("click", () => window.location.href = "/sections/test-builder.html");
+    document.getElementById("navResults").addEventListener("click", () => window.location.href = "/sections/test-results.html");
+    document.getElementById("btnCloseResultModal").addEventListener("click", () => document.getElementById("studentDetailModal").style.display = "none");
+    document.getElementById("btnDownloadYearlyReport").addEventListener("click", () => downloadYearlyReportCSV(resultsData));
+}
+
+function loadResultsData() {
+    onValue(ref(database, `teachers/${teacherId}/results`), (snapshot) => {
+        const val = snapshot.val();
+        resultsData = val ? Object.keys(val).map(k => ({ id: k, ...val[k] })) : [];
+        populateFilterSelectors();
+        calculateAnalytics();
+        renderResultsTable();
+    });
+}
+
+function populateFilterSelectors() {
+    const classSel = document.getElementById("resFilterClass");
+    const testSel = document.getElementById("resFilterTest");
+    
+    const classes = new Set();
+    const tests = new Set();
+    
+    resultsData.forEach(r => {
+        if(r.classGroup) classes.add(r.classGroup);
+        if(r.testTitle) tests.add(r.testTitle);
+    });
+
+    classSel.innerHTML = '<option value="all">Бардык класстар</option>';
+    classes.forEach(c => classSel.innerHTML += `<option value="${c}">${c}</option>`);
+
+    testSel.innerHTML = '<option value="all">Бардык тесттер</option>';
+    tests.forEach(t => testSel.innerHTML += `<option value="${t}">${t}</option>`);
+}
+
+function calculateAnalytics() {
+    if(resultsData.length === 0) return;
+    let scoreSum = 0;
+    let max = 0;
+    resultsData.forEach(r => {
+        scoreSum += parseFloat(r.finalPercentage || 0);
+        if((r.score || 0) > max) max = r.score;
+    });
+    document.getElementById("anAverageScore").textContent = Math.round(scoreSum / resultsData.length) + "%";
+    document.getElementById("anMaxScore").textContent = max;
+    document.getElementById("anSuccessRate").textContent = Math.round(scoreSum / resultsData.length) >= 60 ? "Жогору" : "Орто";
+}
+
+function setupFilters() {
+    const triggers = ["resSearchStudent", "resFilterYear", "resFilterSubject", "resFilterClass", "resFilterTest", "resFilterStatus", "resFilterCheat"];
+    triggers.forEach(id => document.getElementById(id).addEventListener("change", renderResultsTable));
+    document.getElementById("resSearchStudent").addEventListener("input", renderResultsTable);
+}
+
+function renderResultsTable() {
+    const tbody = document.getElementById("resultsMainTableBody");
+    tbody.innerHTML = "";
+
+    const nameQuery = document.getElementById("resSearchStudent").value.toLowerCase();
+    const classQuery = document.getElementById("resFilterClass").value;
+    const testQuery = document.getElementById("resFilterTest").value;
+    const statusQuery = document.getElementById("resFilterStatus").value;
+    const cheatQuery = document.getElementById("resFilterCheat").value;
+
+    const filtered = resultsData.filter(r => {
+        if(nameQuery && !r.studentName?.toLowerCase().includes(nameQuery)) return false;
+        if(classQuery !== "all" && r.classGroup !== classQuery) return false;
+        if(testQuery !== "all" && r.testTitle !== testQuery) return false;
+        if(statusQuery !== "all" && r.reviewStatus !== statusQuery) return false;
+        if(cheatQuery === "yes" && !r.hasCheatWarning) return false;
+        return true;
+    });
+
+    if(filtered.length === 0) {
+        document.getElementById("resNoDataMsg").style.display = "block";
+        return;
+    }
+    document.getElementById("resNoDataMsg").style.display = "none";
+
+    filtered.forEach(r => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${r.studentName || "Белгисиз"}</strong></td>
+            <td>${r.classGroup || "—"}</td>
+            <td>${r.testTitle || "—"}</td>
+            <td>${r.endTime ? new Date(r.endTime).toLocaleDateString() : "—"}</td>
+            <td>${r.durationUsed || 0} мүн</td>
+            <td>${r.score || 0} / ${r.manualPoints || 0}</td>
+            <td>${r.finalPercentage || 0}%</td>
+            <td><span style="font-weight:bold; color:#00f2fe;">${r.grade || '3'}</span></td>
+            <td>${r.hasCheatWarning ? '<span style="color:#ff4a4a;">Шектүү</span>' : 'Таза'}</td>
+            <td>${r.reviewStatus === 'checked' ? 'Бекитилди' : 'Каралууда'}</td>
+            <td><button class="node-btn open-detail" data-id="${r.id}"><i class="fas fa-search-plus"></i> Текшерүү</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll(".open-detail").forEach(b => b.addEventListener("click", (e) => {
+        openStudentDetail(e.target.getAttribute("data-id"));
+    }));
+}
+
+function openStudentDetail(id) {
+    activeResultNode = resultsData.find(r => r.id === id);
+    if(!activeResultNode) return;
+
+    document.getElementById("studentDetailModal").style.display = "block";
+    document.getElementById("mdTitle").textContent = activeResultNode.studentName;
+    
+    document.getElementById("mdMetaInfo").innerHTML = `
+        <div><strong>Тест:</strong> ${activeResultNode.testTitle}</div>
+        <div><strong>Класс:</strong> ${activeResultNode.classGroup}</div>
+        <div><strong>Датасы:</strong> ${new Date(activeResultNode.endTime).toLocaleString()}</div>
+        <div><strong>Автоматтык упай:</strong> ${activeResultNode.score}</div>
+    `;
+
+    document.getElementById("mdManualPoints").value = activeResultNode.manualPoints || 0;
+    document.getElementById("mdTeacherComment").value = activeResultNode.teacherComment || "";
+    document.getElementById("mdReviewStatus").value = activeResultNode.reviewStatus || "checked";
+
+    const qBox = document.getElementById("mdQuestionsReviewContainer");
+    qBox.innerHTML = "";
+    
+    if(activeResultNode.responses) {
+        Object.keys(activeResultNode.responses).forEach((k, i) => {
+            const resp = activeResultNode.responses[k];
+            qBox.innerHTML += `
+                <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px;">
+                    <div><strong>Суроо №${i+1}:</strong> ${resp.questionText || 'Эссе форматындагы суроо'}</div>
+                    <div style="color:#ffa800;">Окуучунун жообу: ${resp.studentAnswer || 'Жооп берилген эмес'}</div>
+                    <div style="color:#00ffa3;">Туура жооп модели: ${resp.correctAnswer || 'Мугалимдин кароосунда'}</div>
+                </div>
+            `;
+        });
+    }
+
+    document.getElementById("mdBtnSaveChanges").onclick = saveReviewChanges;
+}
+
+function saveReviewChanges() {
+    if(!activeResultNode) return;
+    activeResultNode.manualPoints = parseInt(document.getElementById("mdManualPoints").value) || 0;
+    activeResultNode.teacherComment = document.getElementById("mdTeacherComment").value;
+    activeResultNode.reviewStatus = document.getElementById("mdReviewStatus").value;
+
+    set(ref(database, `teachers/${teacherId}/results/${activeResultNode.id}`), activeResultNode)
+        .then(() => {
+            document.getElementById("studentDetailModal").style.display = "none";
+            alert("Баалоо маалыматтары базага ийгиликтүү бекитилди!");
+        });
+}
