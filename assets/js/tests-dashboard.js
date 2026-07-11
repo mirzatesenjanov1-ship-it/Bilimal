@@ -26,7 +26,6 @@ function safeJsonParse(str) {
     }
 }
 
-// Экранга кат-кат alert() чыгарбоо үчүн console.warn колдонобуз
 function showToast(msg, isErr = false) {
     if (isErr) {
         console.warn("Билимал Эскертүү: " + msg);
@@ -73,7 +72,6 @@ function syncData() {
         localStorage.setItem(`bilimal_${teacherId}_backup`, JSON.stringify(dbCache));
         processAndRender();
     }, (error) => {
-        // Калкып чыгуучу alert() өчүрүлдү, ката туураланды жана маалымат локалдык сактагычтан унчукпай жүктөлөт
         showToast("Тармактан маалымат алуу үзгүлтүккө учурады, локалдык сактагыч иштеп жатат.", true);
         const backup = localStorage.getItem(`bilimal_${teacherId}_backup`);
         if(backup) {
@@ -85,13 +83,11 @@ function syncData() {
 }
 
 function processAndRender() {
-    // "Демо Мугалим" деген жазуу "Мугалим" деп гана оңдолду
     document.getElementById("lblTeacherName").textContent = "Мугалим: Мугалим";
     
     const testsArr = Object.keys(dbCache.tests).map(k => ({id: k, ...dbCache.tests[k]}));
     const resultsArr = Object.keys(dbCache.results).map(k => ({id: k, ...dbCache.results[k]}));
 
-    // Статистика эсептөө
     const totalTests = testsArr.length;
     const activeTests = testsArr.filter(t => t.status === "active").length;
     const draftTests = testsArr.filter(t => t.status === "draft").length;
@@ -128,10 +124,21 @@ function renderTestsTable(tests, results) {
 
     tests.forEach(t => {
         const countSub = results.filter(r => r.testId === t.id).length;
+        
+        // ПРЕДМЕТТИ ТЕКШЕРҮҮ ОҢДОЛДУ: Эгер базадагы текст 'physics' болсо же түз эле 'Физика' деп жазылса Физика деп чыгат
+        let subjectDisplay = "Астрономия";
+        if (t.subject && (t.subject.toLowerCase() === "physics" || t.subject.includes("Физика") || t.subject.includes("физика"))) {
+            subjectDisplay = "Физика";
+        } else if (t.subject && (t.subject.toLowerCase() === "astronomy" || t.subject.includes("Астрономия") || t.subject.includes("астрономия"))) {
+            subjectDisplay = "Астрономия";
+        } else if (t.subject) {
+            subjectDisplay = t.subject; // Башка предмет жазылган болсо өзүн көрсөтөт
+        }
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${t.title || "Аталышсыз"}</strong></td>
-            <td>${t.subject === "physics" ? "Физика" : "Астрономия"}</td>
+            <td>${subjectDisplay}</td>
             <td>${t.classGroup || "—"}</td>
             <td>${t.questions ? Object.keys(t.questions).length : 0}</td>
             <td>${t.duration || 0} мүн</td>
@@ -147,19 +154,18 @@ function renderTestsTable(tests, results) {
         tbody.appendChild(tr);
     });
 
-    // Ссылканы көчүрүү баскычынын логикасы
+    // ШИЛТЕМЕГЕ МУГАЛИМДИН IDси КОШУЛДУ (Окуучудагы катаны чечет)
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
-        const testLink = `https://bilimal.org/sections/take-test.html?id=${id}`;
+        const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
         
         navigator.clipboard.writeText(testLink).then(() => {
-            showToast("Тесттин шилтемеси көчүрүлдү!");
+            showToast("Тесттин шилтемеси көчүрүлдү! Окуучуларга жибере берсеңиз болот.");
         }).catch(err => {
             console.error("Шилтемени көчүрүү ишке ашкан жок: ", err);
         });
     }));
 
-    // Редакциялоо баскычынын логикасы
     tbody.querySelectorAll(".edit-t").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         window.location.href = `/sections/test-builder.html?edit=${id}`;
