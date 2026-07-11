@@ -85,7 +85,8 @@ function syncData() {
 }
 
 function processAndRender() {
-    document.getElementById("lblTeacherName").textContent = "Мугалим: Демо Мугалим";
+    // "Демо Мугалим" деген жазуу "Мугалим" деп гана оңдолду
+    document.getElementById("lblTeacherName").textContent = "Мугалим: Мугалим";
     
     const testsArr = Object.keys(dbCache.tests).map(k => ({id: k, ...dbCache.tests[k]}));
     const resultsArr = Object.keys(dbCache.results).map(k => ({id: k, ...dbCache.results[k]}));
@@ -138,13 +139,27 @@ function renderTestsTable(tests, results) {
             <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString() : "—"}</td>
             <td>${countSub} окуучу</td>
             <td>
-                <button class="action-btn edit-t" data-id="${t.id}"><i class="fas fa-edit"></i></button>
-                <button class="action-btn delete-t" style="color:#ff4a4a;" data-id="${t.id}"><i class="fas fa-trash"></i></button>
+                <button class="table-action-btn copy-link-btn" data-id="${t.id}"><i class="fas fa-link"></i> Ссылка</button>
+                <button class="table-action-btn edit-btn edit-t" data-id="${t.id}"><i class="fas fa-edit"></i> Редакциялоо</button>
+                <button class="action-btn delete-t" style="color:#ff4a4a; margin-left: 5px; background: none; border: none; cursor: pointer;" data-id="${t.id}"><i class="fas fa-trash"></i></button>
             </td>
         `;
         tbody.appendChild(tr);
     });
 
+    // Ссылканы көчүрүү баскычынын логикасы
+    tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const testLink = `https://bilimal.org/sections/take-test.html?id=${id}`;
+        
+        navigator.clipboard.writeText(testLink).then(() => {
+            showToast("Тесттин шилтемеси көчүрүлдү!");
+        }).catch(err => {
+            console.error("Шилтемени көчүрүү ишке ашкан жок: ", err);
+        });
+    }));
+
+    // Редакциялоо баскычынын логикасы
     tbody.querySelectorAll(".edit-t").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         window.location.href = `/sections/test-builder.html?edit=${id}`;
