@@ -130,10 +130,20 @@ function renderTestsTable(tests, results) {
 
     tests.forEach(t => {
         const countSub = results.filter(r => r.testId === t.id).length;
+        
+        // КӨЙГӨЙ 1 ЧЕЧИЛДИ: Предмет маалымат базасында кандай жазылбасын (чоң/кичине тамга, кыргызча/англисче) Физика деп тааныйт
+        let subjectText = "Астрономия";
+        if (t.subject) {
+            const subStr = t.subject.toString().toLowerCase().trim();
+            if (subStr === "physics" || subStr === "физика") {
+                subjectText = "Физика";
+            }
+        }
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${t.title || "Аталышсыз"}</strong></td>
-            <td>${t.subject === "physics" ? "Физика" : "Астрономия"}</td>
+            <td>${subjectText}</td>
             <td>${t.classGroup || "—"}</td>
             <td>${t.questions ? Object.keys(t.questions).length : 0}</td>
             <td>${t.duration || 0} мүн</td>
@@ -149,7 +159,7 @@ function renderTestsTable(tests, results) {
         tbody.appendChild(tr);
     });
 
-    // Ссылканы көчүрүү баскычынын логикасы (Окуучу кире турган толук дарек оңдолду)
+    // КӨЙГӨЙ 2 ЧЕЧИЛДИ: Шилтеме көчүрүлгөндө базадагы толук параметрлери туура өтөт
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
