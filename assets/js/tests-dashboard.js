@@ -26,7 +26,6 @@ function safeJsonParse(str) {
     }
 }
 
-// Экранга кат-кат alert() чыгарбоо үчүн console.warn колдонобуз
 function showToast(msg, isErr = false) {
     if (isErr) {
         console.warn("Билимал Эскертүү: " + msg);
@@ -93,7 +92,6 @@ function processAndRender() {
     const testsArr = Object.keys(dbCache.tests).map(k => ({id: k, ...dbCache.tests[k]}));
     const resultsArr = Object.keys(dbCache.results).map(k => ({id: k, ...dbCache.results[k]}));
 
-    // Статистика эсептөө
     const totalTests = testsArr.length;
     const activeTests = testsArr.filter(t => t.status === "active").length;
     const draftTests = testsArr.filter(t => t.status === "draft").length;
@@ -131,13 +129,17 @@ function renderTestsTable(tests, results) {
     tests.forEach(t => {
         const countSub = results.filter(r => r.testId === t.id).length;
         
-        // КӨЙГӨЙ 1 ЧЕЧИЛДИ: Предмет маалымат базасында кандай жазылбасын (чоң/кичине тамга, кыргызча/англисче) Физика деп тааныйт
+        // 1-КӨЙГӨЙДҮН ЧЕЧИЛИШИ: Аталышында "механика" же "физика" сөзү болсо же базада предмет көрсөтүлсө, Физика деп тааныйт. Калган учурда гана Астрономия болот.
         let subjectText = "Астрономия";
+        const testTitleLower = (t.title || "").toString().toLowerCase();
+        
         if (t.subject) {
             const subStr = t.subject.toString().toLowerCase().trim();
             if (subStr === "physics" || subStr === "физика") {
                 subjectText = "Физика";
             }
+        } else if (testTitleLower.includes("механика") || testTitleLower.includes("физика")) {
+            subjectText = "Физика";
         }
 
         const tr = document.createElement("tr");
@@ -159,7 +161,7 @@ function renderTestsTable(tests, results) {
         tbody.appendChild(tr);
     });
 
-    // КӨЙГӨЙ 2 ЧЕЧИЛДИ: Шилтеме көчүрүлгөндө базадагы толук параметрлери туура өтөт
+    // 2-КӨЙГӨЙДҮН ЧЕЧИЛИШИ: JSON parse катасын айланып өтүү жана туура синхронизацияланган толук шилтеме берүү
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
@@ -171,7 +173,6 @@ function renderTestsTable(tests, results) {
         });
     }));
 
-    // Редакциялоо баскычынын логикасы
     tbody.querySelectorAll(".edit-t").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         window.location.href = `/sections/test-builder.html?edit=${id}`;
