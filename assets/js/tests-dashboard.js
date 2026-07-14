@@ -17,7 +17,7 @@ const database = getDatabase(app);
 const teacherId = "demo_teacher_001";
 
 function safeJsonParse(str) {
-    if (!str) return null;
+    if (!str || str.trim() === "") return null;
     try {
         const p = JSON.parse(str);
         return (typeof p === 'object' && p !== null) ? p : null;
@@ -69,7 +69,11 @@ function syncData() {
         dbCache.classes = data.classes || {};
         dbCache.activityLogs = data.activityLogs || {};
 
-        localStorage.setItem(`bilimal_${teacherId}_backup`, JSON.stringify(dbCache));
+        try {
+            localStorage.setItem(`bilimal_${teacherId}_backup`, JSON.stringify(dbCache));
+        } catch(e) {
+            console.error("Бэкап сактоодо ката: ", e);
+        }
         processAndRender();
     }, (error) => {
         showToast("Тармактан маалымат алуу үзгүлтүккө учурады, локалдык сактагыч иштеп жатат.", true);
@@ -125,20 +129,23 @@ function renderTestsTable(tests, results) {
     tests.forEach(t => {
         const countSub = results.filter(r => r.testId === t.id).length;
         
-        // ПРЕДМЕТТИ ТЕКШЕРҮҮ ОҢДОЛДУ: Эгер базадагы текст 'physics' болсо же түз эле 'Физика' деп жазылса Физика деп чыгат
-        let subjectDisplay = "Астрономия";
-        if (t.subject && (t.subject.toLowerCase() === "physics" || t.subject.includes("Физика") || t.subject.includes("физика"))) {
-            subjectDisplay = "Физика";
-        } else if (t.subject && (t.subject.toLowerCase() === "astronomy" || t.subject.includes("Астрономия") || t.subject.includes("астрономия"))) {
-            subjectDisplay = "Астрономия";
-        } else if (t.subject) {
-            subjectDisplay = t.subject; // Башка предмет жазылган болсо өзүн көрсөтөт
+        // 1-КӨЙГӨЙДҮН ЧЕЧИЛИШИ: Аталышында "механика" же "физика" сөзү болсо же базада предмет көрсөтүлсө, Физика деп тааныйт. Калган учурда гана Астрономия болот.
+        let subjectText = "Астрономия";
+        const testTitleLower = (t.title || "").toString().toLowerCase();
+        
+        if (t.subject) {
+            const subStr = t.subject.toString().toLowerCase().trim();
+            if (subStr === "physics" || subStr === "физика") {
+                subjectText = "Физика";
+            }
+        } else if (testTitleLower.includes("механика") || testTitleLower.includes("физика")) {
+            subjectText = "Физика";
         }
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td><strong>${t.title || "Аталышсыз"}</strong></td>
-            <td>${subjectDisplay}</td>
+            <td>${subjectText}</td>
             <td>${t.classGroup || "—"}</td>
             <td>${t.questions ? Object.keys(t.questions).length : 0}</td>
             <td>${t.duration || 0} мүн</td>
@@ -154,13 +161,13 @@ function renderTestsTable(tests, results) {
         tbody.appendChild(tr);
     });
 
-    // ШИЛТЕМЕГЕ МУГАЛИМДИН IDси КОШУЛДУ (Окуучудагы катаны чечет)
+    // 2-КӨЙГӨЙДҮН ЧЕЧИЛИШИ: JSON parse катасын айланып өтүү жана туура синхронизацияланган толук шилтеме берүү
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
         
         navigator.clipboard.writeText(testLink).then(() => {
-            showToast("Тесттин шилтемеси көчүрүлдү! Окуучуларга жибере берсеңиз болот.");
+            showToast("Тесттин шилтемеси көчүрүлдү!");
         }).catch(err => {
             console.error("Шилтемени көчүрүү ишке ашкан жок: ", err);
         });
