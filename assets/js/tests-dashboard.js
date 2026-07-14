@@ -16,7 +16,6 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 const teacherId = "demo_teacher_001";
 
-// JSON окуудагы каталарды толук алдын алуучу коопсуз функция
 function safeJsonParse(str) {
     if (!str || typeof str !== 'string' || str.trim() === "" || str === "undefined") {
         return null;
@@ -41,7 +40,6 @@ function showToast(msg, isErr = false) {
 let dbCache = { tests: {}, results: {}, classes: {}, activityLogs: {} };
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Системада эски ката таштандылар калса тазалайбыз
     const localKey = `bilimal_${teacherId}_backup`;
     const checkStorage = localStorage.getItem(localKey);
     if (checkStorage && (checkStorage === "undefined" || checkStorage.trim() === "")) {
@@ -98,7 +96,6 @@ function syncData() {
 }
 
 function processAndRender() {
-    // Сүрөттө "Мугалим: Жүктөлүүдө.." деп туруп калган катаны ушул жерден чечебиз
     const teacherNameEl = document.getElementById("lblTeacherName");
     if (teacherNameEl) {
         teacherNameEl.textContent = "Мугалим: Мугалим";
@@ -119,7 +116,6 @@ function processAndRender() {
         totalScoreSum += parseFloat(r.finalPercentage || 0);
     });
     
-    // Элементтердин бар-жогун текшерип анан жазабыз
     const el1 = document.getElementById("statTotalTests"); if(el1) el1.textContent = totalTests;
     const el2 = document.getElementById("statActiveTests"); if(el2) el2.textContent = activeTests;
     const el3 = document.getElementById("statDraftTests"); if(el3) el3.textContent = draftTests;
@@ -146,7 +142,6 @@ function renderTestsTable(tests, results) {
     tests.forEach(t => {
         const countSub = results.filter(r => r.testId === t.id).length;
         
-        // Предметти туура аныктоо логикасы
         let subjectText = "Астрономия";
         const testTitleLower = (t.title || "").toString().toLowerCase();
         
@@ -178,7 +173,6 @@ function renderTestsTable(tests, results) {
         tbody.appendChild(tr);
     });
 
-    // Шилтемени туура түзүп көчүрүү
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
