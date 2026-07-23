@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getDatabase, ref, set, push, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -74,6 +74,18 @@ function determineActiveTest() {
     }
 }
 
+// Суроолорду массивге коопсуз айландыруучу функция
+function normalizeQuestions(rawQuestions) {
+    if (!rawQuestions) return [];
+    if (Array.isArray(rawQuestions)) {
+        return rawQuestions.filter(q => q !== null && q !== undefined);
+    }
+    if (typeof rawQuestions === "object") {
+        return Object.keys(rawQuestions).map(key => rawQuestions[key]).filter(q => q !== null && q !== undefined);
+    }
+    return [];
+}
+
 async function loadTestFromDb(id) {
     try {
         const dbRef = ref(database);
@@ -92,7 +104,14 @@ async function loadTestFromDb(id) {
             setInputValue("numDuration", test.duration || 45);
             setInputValue("txtDescription", test.description || "");
             
-            testQuestions = test.questions ? Object.keys(test.questions).map(k => test.questions[k]) : [];
+            // Суроолорду аман-эсен жүктөп алуу
+            const extractedQuestions = normalizeQuestions(test.questions);
+            if (extractedQuestions.length > 0) {
+                testQuestions = extractedQuestions;
+            } else {
+                // Эгер базада бош болсо, локалдык бэкаптан издейбиз
+                loadLocalBackupIfAny();
+            }
             renderQuestionsList();
         } else {
             loadLocalBackupIfAny();
@@ -108,8 +127,8 @@ function loadLocalBackupIfAny() {
         const backup = localStorage.getItem(`bilimal_builder_backup_${activeTestId}`);
         if (backup) {
             const parsed = JSON.parse(backup);
-            if (parsed) {
-                testQuestions = parsed.questions ? Object.keys(parsed.questions).map(k => parsed.questions[k]) : [];
+            if (parsed && parsed.questions) {
+                testQuestions = normalizeQuestions(parsed.questions);
                 renderQuestionsList();
             }
         }
@@ -145,7 +164,6 @@ function setupCoreUiListeners() {
     bindClick("btnQuickAddQuestion", () => { if (modal) modal.style.display = "block"; });
     bindClick("btnCloseTypeModal", () => { if (modal) modal.style.display = "none"; });
 
-    // Саат/Жарыялоо Баскычтары (Коопсуз иштетүү)
     bindClick("btnSaveDraft", (e) => {
         if(e) e.preventDefault();
         saveTestToFirebase("draft");
@@ -193,7 +211,7 @@ function getChkValue(id) {
 function addNewQuestionNode(type) {
     testQuestions.push({
         id: "q_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-        type: type,
+        type: type || "single",
         text: "",
         points: 5,
         required: true,
@@ -210,12 +228,21 @@ function renderQuestionsList() {
     if (!container) return;
     container.innerHTML = "";
 
+    if (testQuestions.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding: 40px; color: #888;">
+            <i class="fas fa-folder-open" style="font-size: 40px; margin-bottom: 10px;"></i>
+            <p>Азырынча суроолор кошула элек. Төмөнкү баскычты басып суроо кошуңуз.</p>
+        </div>`;
+        return;
+    }
+
     testQuestions.forEach((q, idx) => {
+        const typeName = q.type ? q.type.toUpperCase() : "SINGLE";
         const div = document.createElement("div");
         div.className = "question-node";
         div.innerHTML = `
             <div class="question-node-header">
-                <strong>Суроо №${idx + 1} <span style="color:#00f2fe;">[${q.type.toUpperCase()}]</span></strong>
+                <strong>Суроо №${idx + 1} <span style="color:#00f2fe;">[${typeName}]</span></strong>
                 <div class="question-node-controls">
                     <button class="node-btn move-up" data-idx="${idx}"><i class="fas fa-arrow-up"></i></button>
                     <button class="node-btn move-down" data-idx="${idx}"><i class="fas fa-arrow-down"></i></button>
@@ -239,13 +266,14 @@ function renderQuestionsList() {
         container.appendChild(div);
 
         const optionsBox = div.querySelector(`#options_box_${idx}`);
-        if (optionsBox && ["single", "multiple", "truefalse"].includes(q.type) && q.options) {
-            q.options.forEach((opt, oIdx) => {
+        const opts = q.options || ["А варианты", "Б варианты", "В варианты", "Г варианты"];
+        if (optionsBox && ["single", "multiple", "truefalse"].includes(q.type || "single")) {
+            opts.forEach((opt, oIdx) => {
                 const optDiv = document.createElement("div");
                 optDiv.className = "option-item";
                 optDiv.innerHTML = `
                     <input type="${q.type === 'multiple' ? 'checkbox' : 'radio'}" name="correct_${idx}" ${q.correctOptionIndex === oIdx ? 'checked' : ''} data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-check">
-                    <input type="text" value="${opt}" data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-text" style="background:none; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff;">
+                    <input type="text" value="${opt || ''}" data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-text" style="background:none; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff;">
                 `;
                 optionsBox.appendChild(optDiv);
             });
@@ -257,29 +285,36 @@ function renderQuestionsList() {
 
 function bindNodesEvents() {
     document.querySelectorAll(".q-text-input").forEach(input => input.addEventListener("input", (e) => {
-        testQuestions[e.target.getAttribute("data-idx")].text = e.target.value;
+        const idx = e.target.getAttribute("data-idx");
+        if(testQuestions[idx]) testQuestions[idx].text = e.target.value;
         triggerAutoSave();
     }));
+
     document.querySelectorAll(".q-points").forEach(input => input.addEventListener("input", (e) => {
-        testQuestions[e.target.getAttribute("data-idx")].points = parseInt(e.target.value) || 0;
+        const idx = e.target.getAttribute("data-idx");
+        if(testQuestions[idx]) testQuestions[idx].points = parseInt(e.target.value) || 0;
         triggerAutoSave();
     }));
+
     document.querySelectorAll(".q-exp").forEach(input => input.addEventListener("input", (e) => {
-        testQuestions[e.target.getAttribute("data-idx")].explanation = e.target.value;
+        const idx = e.target.getAttribute("data-idx");
+        if(testQuestions[idx]) testQuestions[idx].explanation = e.target.value;
         triggerAutoSave();
     }));
 
     document.querySelectorAll(".q-opt-text").forEach(input => input.addEventListener("input", (e) => {
         const qidx = e.target.getAttribute("data-qidx");
         const oidx = e.target.getAttribute("data-oidx");
-        testQuestions[qidx].options[oidx] = e.target.value;
+        if(testQuestions[qidx] && testQuestions[qidx].options) {
+            testQuestions[qidx].options[oidx] = e.target.value;
+        }
         triggerAutoSave();
     }));
 
     document.querySelectorAll(".q-opt-check").forEach(radio => radio.addEventListener("change", (e) => {
         const qidx = e.target.getAttribute("data-qidx");
         const oidx = parseInt(e.target.getAttribute("data-oidx"));
-        testQuestions[qidx].correctOptionIndex = oidx;
+        if(testQuestions[qidx]) testQuestions[qidx].correctOptionIndex = oidx;
         triggerAutoSave();
     }));
 
@@ -352,7 +387,6 @@ function triggerAutoSave() {
 }
 
 async function saveTestToFirebase(status) {
-    // 1. Тартиптүү ID түзүү (draft сөзүнөн арылуу)
     let finalTestId = activeTestId;
     if (status === "active" && activeTestId.startsWith("builder_draft_")) {
         finalTestId = "test_" + Date.now();
@@ -362,29 +396,28 @@ async function saveTestToFirebase(status) {
     payload.id = finalTestId;
 
     try {
-        // 2. Базага сактоо
+        // 1. Базага сактоо
         const teacherTestRef = ref(database, `teachers_data/${teacherId}/tests/${finalTestId}`);
         await set(teacherTestRef, payload);
 
-        // 3. Глобалдык lookup'ка каттоо (Окуучулар шилтеме аркылуу таба алуусу үчүн)
+        // 2. Глобалдык lookup каттоосу
         const globalLookupRef = ref(database, `global_test_lookup/${finalTestId}`);
         await set(globalLookupRef, { teacherUid: teacherId });
 
-        // 4. Убактылуу файлдарды тазалоо
         try {
             localStorage.removeItem(`bilimal_builder_backup_${activeTestId}`);
         } catch (e) {}
 
         if (status === "active") {
             const shareUrl = `https://bilimal.org/sections/take-test.html?id=${finalTestId}`;
-            prompt("Тест ийгиликтүү жарыяланды! Окуучуларга жөнөтүлүүчү шилтеме:", shareUrl);
+            prompt("Тест жана анын БАРДЫК суроолору ийгиликтүү жарыяланды! Окуучуларга жөнөтүлүүчү шилтеме:", shareUrl);
             window.location.href = "/sections/tests.html";
         } else {
-            alert("Тест черновик катары сакталды!");
+            alert("Тест жана суроолор черновик катары сакталды!");
             window.location.href = "/sections/tests.html";
         }
     } catch (error) {
         console.error("Firebase сактоо катасы:", error);
-        alert("Базага сактоодо ката кетти. Интернет байланышыңызды текшериңиз.");
+        alert("Базага сактоодо ката кетти. Сураныч, интернет байланышыңызды текшериңиз.");
     }
 }
