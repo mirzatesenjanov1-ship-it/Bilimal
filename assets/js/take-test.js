@@ -16,13 +16,13 @@ const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
 let currentTest = null;
-let teacherId = "";
+let teacherUid = "";
 let testId = "";
 
 document.addEventListener("DOMContentLoaded", () => {
     const urlParams = new URLSearchParams(window.location.search);
-    teacherId = urlParams.get("teacherId") || "demo_teacher_001";
     testId = urlParams.get("id");
+    teacherUid = urlParams.get("teacherId"); // URL'де эгер мугалим UID келсе
 
     if (!testId) {
         alert("Ката: Тесттин идентификатору табылган жок!");
@@ -33,20 +33,35 @@ document.addEventListener("DOMContentLoaded", () => {
     setupStartButton();
 });
 
-function loadTestFromDatabase() {
-    const testRef = ref(database, `teachers/${teacherId}/tests/${testId}`);
-    
-    get(testRef).then((snapshot) => {
+async function loadTestFromDatabase() {
+    try {
+        // 1. Эгер teacherUid белгисиз болсо, глобалдык lookup'тан издейбиз
+        if (!teacherUid) {
+            const lookupRef = ref(database, `global_test_lookup/${testId}`);
+            const lookupSnap = await get(lookupRef);
+            
+            if (lookupSnap.exists()) {
+                teacherUid = lookupSnap.val().teacherUid;
+            } else {
+                alert("Ката: Бул тесттин шилтемеси туура эмес же өчүрүлгөн!");
+                return;
+            }
+        }
+
+        // 2. Табылган teacherUid боюнча мугалимдин папкасынан тестти жүктөйбүз
+        const testRef = ref(database, `teachers_data/${teacherUid}/tests/${testId}`);
+        const snapshot = await get(testRef);
+
         if (snapshot.exists()) {
             currentTest = snapshot.val();
             console.log("Тест жүктөлдү:", currentTest);
         } else {
             alert("Ката: Бул тест табылган жок же өчүрүлгөн!");
         }
-    }).catch((error) => {
+    } catch (error) {
         console.error("Ката кетти:", error);
         alert("Тармак катасы: Тест маалыматтарын жүктөө мүмкүн болгон жок.");
-    });
+    }
 }
 
 function setupStartButton() {
@@ -73,11 +88,12 @@ function setupStartButton() {
             localStorage.setItem("current_student_name", studentName);
             localStorage.setItem("current_student_class", selectedClass);
             localStorage.setItem("current_test_data", JSON.stringify(currentTest));
+            localStorage.setItem("current_teacher_uid", teacherUid);
 
             if (typeof startActualTest === "function") {
-                startActualTest(currentTest, studentName, selectedClass);
+                startActualTest(currentTest, studentName, selectedClass, teacherUid);
             } else {
-                window.location.href = `/sections/do-test.html?teacherId=${teacherId}&id=${testId}`;
+                window.location.href = `/sections/do-test.html?teacherUid=${teacherUid}&id=${testId}`;
             }
         });
     }
