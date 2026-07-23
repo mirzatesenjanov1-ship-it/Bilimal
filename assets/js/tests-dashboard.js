@@ -1,4 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase, ref, onValue, push, set, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -14,7 +15,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-const teacherId = "demo_teacher_001";
+const auth = getAuth(app);
+
+let currentTeacherUid = null;
+let dbCache = { tests: {}, results: {}, classes: {}, activityLogs: {} };
 
 function safeJsonParse(str) {
     if (!str || typeof str !== 'string' || str.trim() === "" || str === "undefined") {
@@ -37,19 +41,27 @@ function showToast(msg, isErr = false) {
     }
 }
 
-let dbCache = { tests: {}, results: {}, classes: {}, activityLogs: {} };
-
 document.addEventListener("DOMContentLoaded", () => {
-    const localKey = `bilimal_${teacherId}_backup`;
-    const checkStorage = localStorage.getItem(localKey);
-    if (checkStorage && (checkStorage === "undefined" || checkStorage.trim() === "")) {
-        localStorage.removeItem(localKey);
-    }
-
     initClock();
     setupNavigation();
     setupActionListeners();
-    syncData();
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentTeacherUid = user.uid;
+        } else {
+            // Эгер авторизациядан өтпөгөн болсо, убактылуу локалдык/демо ID же авторизация бетине багыттоо
+            currentTeacherUid = localStorage.getItem("bilimal_teacher_uid") || "demo_teacher_001";
+        }
+        
+        const localKey = `bilimal_${currentTeacherUid}_backup`;
+        const checkStorage = localStorage.getItem(localKey);
+        if (checkStorage && (checkStorage === "undefined" || checkStorage.trim() === "")) {
+            localStorage.removeItem(localKey);
+        }
+
+        syncData();
+    });
 });
 
 function initClock() {
@@ -70,7 +82,10 @@ function setupNavigation() {
 }
 
 function syncData() {
-    const rootRef = ref(database, `teachers/${teacherId}`);
+    if (!currentTeacherUid) return;
+
+    // Ар бир мугалимдин жеке папкасына туташуу: teachers_data/$uid
+    const rootRef = ref(database, `teachers_data/${currentTeacherUid}`);
     onValue(rootRef, (snapshot) => {
         const data = snapshot.val() || {};
         dbCache.tests = data.tests || {};
@@ -79,14 +94,14 @@ function syncData() {
         dbCache.activityLogs = data.activityLogs || {};
 
         try {
-            localStorage.setItem(`bilimal_${teacherId}_backup`, JSON.stringify(dbCache));
+            localStorage.setItem(`bilimal_${currentTeacherUid}_backup`, JSON.stringify(dbCache));
         } catch(e) {
             console.error("Бэкап сактоодо ката: ", e);
         }
         processAndRender();
     }, (error) => {
         showToast("Тармактан маалымат алуу үзгүлтүккө учурады, локалдык сактагыч иштеп жатат.", true);
-        const backup = localStorage.getItem(`bilimal_${teacherId}_backup`);
+        const backup = localStorage.getItem(`bilimal_${currentTeacherUid}_backup`);
         if(backup) {
             const parsed = safeJsonParse(backup);
             if(parsed) dbCache = parsed;
@@ -98,7 +113,7 @@ function syncData() {
 function processAndRender() {
     const teacherNameEl = document.getElementById("lblTeacherName");
     if (teacherNameEl) {
-        teacherNameEl.textContent = "Мугалим: Мугалим";
+        teacherNameEl.textContent = "Мугалим: Башкаруу Панели";
     }
     
     const testsArr = Object.keys(dbCache.tests).map(k => ({id: k, ...dbCache.tests[k]}));
@@ -175,7 +190,8 @@ function renderTestsTable(tests, results) {
 
     tbody.querySelectorAll(".copy-link-btn").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
-        const testLink = `https://bilimal.org/sections/take-test.html?teacherId=${teacherId}&id=${id}`;
+        // Шилтемени оңой түзүү (Окуучу глобалдык издөө аркылуу да таба алат)
+        const testLink = `${window.location.origin}/sections/take-test.html?id=${id}`;
         
         navigator.clipboard.writeText(testLink).then(() => {
             showToast("Тесттин шилтемеси көчүрүлдү!");
@@ -192,7 +208,12 @@ function renderTestsTable(tests, results) {
     tbody.querySelectorAll(".delete-t").forEach(b => b.addEventListener("click", (e) => {
         const id = e.currentTarget.getAttribute("data-id");
         if(confirm("Тестти өчүрүүнү каалайсызбы?")) {
-            remove(ref(database, `teachers/${teacherId}/tests/${id}`)).then(() => showToast("Тест өчүрүлдү."));
+            // Тестти мугалимдин папкасынан өчүрүү
+            remove(ref(database, `teachers_data/${currentTeacherUid}/tests/${id}`)).then(() => {
+                // Глобалдык lookup'тан да өчүрүү
+                remove(ref(database, `global_test_lookup/${id}`));
+                showToast("Тест өчүрүлдү.");
+            });
         }
     }));
 }
@@ -243,14 +264,17 @@ function setupActionListeners() {
     document.getElementById("actImportJSON")?.addEventListener("click", () => fileInput.click());
     fileInput?.addEventListener("change", (e) => {
         const file = e.target.files[0];
-        if(!file) return;
+        if(!file || !currentTeacherUid) return;
         const reader = new FileReader();
         reader.onload = function(evt) {
             const parsed = safeJsonParse(evt.target.result);
             if(!parsed) { showToast("Ката: Бузулган JSON файл", true); return; }
             Object.keys(parsed).forEach(k => {
-                const newRef = push(ref(database, `teachers/${teacherId}/tests`));
+                const newRef = push(ref(database, `teachers_data/${currentTeacherUid}/tests`));
+                const testId = newRef.key;
                 set(newRef, parsed[k]);
+                // Глобалдыкlookup'ка кошуу
+                set(ref(database, `global_test_lookup/${testId}`), { teacherUid: currentTeacherUid });
             });
             showToast("Тесттер ийгиликтүү импорттолду.");
         };
@@ -259,8 +283,8 @@ function setupActionListeners() {
 
     document.getElementById("actAddClass")?.addEventListener("click", () => {
         const clsName = prompt("Жаңы класстын аталышын жазыңыз (Мисалы: 11-Б):");
-        if(clsName) {
-            const newClassRef = push(ref(database, `teachers/${teacherId}/classes`));
+        if(clsName && currentTeacherUid) {
+            const newClassRef = push(ref(database, `teachers_data/${currentTeacherUid}/classes`));
             set(newClassRef, { className: clsName, createdAt: new Date().toISOString() })
                 .then(() => showToast(`Класс ${clsName} кошулду.`));
         }
