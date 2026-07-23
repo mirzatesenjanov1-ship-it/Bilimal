@@ -25,14 +25,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     teacherUid = urlParams.get("teacherId");
 
     if (!testId) {
-        showStatusError("Ката: Тесттин идентификатору (ID) шилтемеде табылган жок!");
+        alert("Тесттин коду табылган жок! Шилтемени туура көчүргөнүңүздү текшериңиз.");
         return;
     }
 
-    // Баскычка окуучу маалыматын текшерүү эвентин туташтыруу
     setupStartButton();
-
-    // Тестти базадан жүктөө
     await fetchTestContent();
 });
 
@@ -40,7 +37,7 @@ async function fetchTestContent() {
     const dbRef = ref(database);
 
     try {
-        // 1. Эгер teacherUid шилтемеде жок болсо, глобалдык издөөдөн анын мугалимин табабыз
+        // 1. Глобалдык таблицадан мугалимдин IDси изделет
         if (!teacherUid) {
             const lookupSnap = await get(child(dbRef, `global_test_lookup/${testId}`));
             if (lookupSnap.exists()) {
@@ -48,66 +45,29 @@ async function fetchTestContent() {
             }
         }
 
-        // 2. Мугалимдин UIDинде дагы эле жок болсо, дефолттук же туруктуу IDлерди текшеребиз
-        const possibleTeachers = teacherUid 
-            ? [teacherUid, "demo_teacher_001"] 
-            : ["demo_teacher_001"];
+        // Издөө жүргүзүлүүчү IDлер
+        const teachersToSearch = teacherUid ? [teacherUid, "demo_teacher_001"] : ["demo_teacher_001"];
 
-        let found = false;
-
-        for (const tid of possibleTeachers) {
+        for (const tid of teachersToSearch) {
             const testSnap = await get(child(dbRef, `teachers_data/${tid}/tests/${testId}`));
             if (testSnap.exists()) {
                 currentTest = testSnap.val();
                 teacherUid = tid;
-                found = true;
                 break;
             }
         }
 
-        // 3. Эгерде тест дагы эле табылбаса (мисалы, черновик ID же өчүрүлгөн болсо)
-        if (!found) {
-            // Браузердин локалдык бэкабынан издеп көрүү
-            try {
-                const localData = localStorage.getItem(`bilimal_builder_backup_${testId}`) || localStorage.getItem(`bilimal_test_draft_${testId}`);
-                if (localData) {
-                    currentTest = JSON.parse(localData);
-                    found = true;
-                }
-            } catch (e) {
-                console.warn("Storage купуялуулук чектөөсүнөн улам окулбады:", e);
-            }
-        }
-
-        if (found && currentTest) {
-            console.log("Тест ийгиликтүү жүктөлдү:", currentTest);
-            updateUIWithTestInfo(currentTest);
+        if (currentTest) {
+            const titleEl = document.getElementById("lblTestTitle") || document.querySelector("h2");
+            if (titleEl && currentTest.title) titleEl.textContent = currentTest.title;
         } else {
-            showStatusError("Ката: Бул тест серверде табылган жок же мугалим тарабынан али жарыялана элек (Черновик режиминде).");
+            alert("Бул тест базада табылган жок! Мугалим тестти сактап, 'Жарыялоо' баскычын басканын текшериңиз.");
         }
 
     } catch (err) {
         console.error("Firebase тармактык катасы:", err);
-        showStatusError("Тармактык ката: Базадан тестти жүктөө мүмкүн болгон жок. Жүктөөнү кайрадан аракет кылыңыз.");
+        alert("Сервер менен байланыш үзүлдү. Баракты жаңыртып көрүңүз.");
     }
-}
-
-function updateUIWithTestInfo(test) {
-    // Тесттин аталышын же маалыматтарын баракчага чагылдыруу
-    const titleEl = document.getElementById("lblTestTitle") || document.querySelector("h2") || document.querySelector("h1");
-    if (titleEl && test.title) {
-        titleEl.textContent = test.title;
-    }
-}
-
-function showStatusError(msg) {
-    const startBtn = document.getElementById("btnStartTest") || document.querySelector("button.btn-primary") || document.querySelector("button");
-    if (startBtn) {
-        startBtn.disabled = true;
-        startBtn.style.opacity = "0.5";
-        startBtn.style.cursor = "not-allowed";
-    }
-    alert(msg);
 }
 
 function setupStartButton() {
@@ -118,7 +78,7 @@ function setupStartButton() {
             e.preventDefault();
 
             if (!currentTest) {
-                alert("Тест толук жүктөлө элек же базада табылган жок. Баракты жаңыртып көрүңүз.");
+                alert("Тест толук жүктөлө элек же базада табылган жок.");
                 return;
             }
 
@@ -130,20 +90,12 @@ function setupStartButton() {
                 return;
             }
 
-            const studentName = nameInput.value.trim();
-            const selectedClass = classSelect ? classSelect.value : "11-класс";
-
-            // Сактагычка жазуу (Safe setItem)
             try {
-                localStorage.setItem("current_student_name", studentName);
-                localStorage.setItem("current_student_class", selectedClass);
+                localStorage.setItem("current_student_name", nameInput.value.trim());
+                localStorage.setItem("current_student_class", classSelect ? classSelect.value : "");
                 localStorage.setItem("current_test_data", JSON.stringify(currentTest));
-                localStorage.setItem("current_teacher_uid", teacherUid);
-            } catch (storageErr) {
-                console.warn("Локалдык сактагычка жазуу бөгөттөлгөн:", storageErr);
-            }
+            } catch (e) {}
 
-            // Тест тапшыруу баракчасына багыттоо
             window.location.href = `/sections/do-test.html?teacherUid=${teacherUid}&id=${testId}`;
         });
     }
