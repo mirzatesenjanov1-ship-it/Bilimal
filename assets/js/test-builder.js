@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, set, push, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getDatabase, ref, set, push, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -14,8 +15,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
-const teacherId = "demo_teacher_001";
+const auth = getAuth(app);
 
+let teacherId = "demo_teacher_001";
 let activeTestId = null;
 let testQuestions = [];
 
@@ -43,7 +45,16 @@ const QUESTION_TYPES = [
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
-    determineActiveTest();
+    // Firebase Auth аркылуу кирип турган мугалимдин UIDин аныктоо
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            teacherId = user.uid;
+        } else {
+            teacherId = localStorage.getItem("bilimal_teacher_uid") || "demo_teacher_001";
+        }
+        determineActiveTest();
+    });
+
     setupCoreUiListeners();
     buildTypeGrid();
 });
@@ -61,20 +72,21 @@ function determineActiveTest() {
 }
 
 function loadTestFromDb(id) {
-    onValue(ref(database, `teachers/${teacherId}/tests/${id}`), (snap) => {
+    // Жандуу убактагы маалыматты алуу
+    onValue(ref(database, `teachers_data/${teacherId}/tests/${id}`), (snap) => {
         const test = snap.val();
         if(test) {
-            document.getElementById("txtTestTitle").value = test.title || "";
-            document.getElementById("selTestSubject").value = test.subject || "physics";
-            document.getElementById("txtTestClass").value = test.classGroup || "";
-            document.getElementById("txtTestTopic").value = test.topic || "";
-            document.getElementById("numDuration").value = test.duration || 45;
-            document.getElementById("txtDescription").value = test.description || "";
+            if(document.getElementById("txtTestTitle")) document.getElementById("txtTestTitle").value = test.title || "";
+            if(document.getElementById("selTestSubject")) document.getElementById("selTestSubject").value = test.subject || "physics";
+            if(document.getElementById("txtTestClass")) document.getElementById("txtTestClass").value = test.classGroup || "";
+            if(document.getElementById("txtTestTopic")) document.getElementById("txtTestTopic").value = test.topic || "";
+            if(document.getElementById("numDuration")) document.getElementById("numDuration").value = test.duration || 45;
+            if(document.getElementById("txtDescription")) document.getElementById("txtDescription").value = test.description || "";
             
             testQuestions = test.questions ? Object.keys(test.questions).map(k => test.questions[k]) : [];
             renderQuestionsList();
         }
-    });
+    }, { onlyOnce: true });
 }
 
 function loadLocalBackupIfAny() {
@@ -83,7 +95,7 @@ function loadLocalBackupIfAny() {
         try {
             const parsed = JSON.parse(backup);
             if(parsed) {
-                testQuestions = parsed.questions || [];
+                testQuestions = parsed.questions ? Object.keys(parsed.questions).map(k => parsed.questions[k]) : [];
                 renderQuestionsList();
             }
         } catch(e){}
@@ -92,6 +104,7 @@ function loadLocalBackupIfAny() {
 
 function buildTypeGrid() {
     const grid = document.getElementById("qTypeGrid");
+    if(!grid) return;
     grid.innerHTML = "";
     QUESTION_TYPES.forEach(q => {
         const div = document.createElement("div");
@@ -99,26 +112,27 @@ function buildTypeGrid() {
         div.innerHTML = `<h5>${q.name}</h5><p>${q.desc}</p>`;
         div.addEventListener("click", () => {
             addNewQuestionNode(q.type);
-            document.getElementById("qTypeModal").style.display = "none";
+            const modal = document.getElementById("qTypeModal");
+            if(modal) modal.style.display = "none";
         });
         grid.appendChild(div);
     });
 }
 
 function setupCoreUiListeners() {
-    document.getElementById("navDashboard").addEventListener("click", () => window.location.href = "/sections/tests.html");
-    document.getElementById("navTestBuilder").addEventListener("click", () => window.location.href = "/sections/test-builder.html");
-    document.getElementById("navResults").addEventListener("click", () => window.location.href = "/sections/test-results.html");
-    document.getElementById("btnBackToDashboard").addEventListener("click", () => window.location.href = "/sections/tests.html");
+    document.getElementById("navDashboard")?.addEventListener("click", () => window.location.href = "/sections/tests.html");
+    document.getElementById("navTestBuilder")?.addEventListener("click", () => window.location.href = "/sections/test-builder.html");
+    document.getElementById("navResults")?.addEventListener("click", () => window.location.href = "/sections/test-results.html");
+    document.getElementById("btnBackToDashboard")?.addEventListener("click", () => window.location.href = "/sections/tests.html");
 
     const modal = document.getElementById("qTypeModal");
-    document.getElementById("btnQuickAddQuestion").addEventListener("click", () => modal.style.display = "block");
-    document.getElementById("btnCloseTypeModal").addEventListener("click", () => modal.style.display = "none");
+    document.getElementById("btnQuickAddQuestion")?.addEventListener("click", () => { if(modal) modal.style.display = "block"; });
+    document.getElementById("btnCloseTypeModal")?.addEventListener("click", () => { if(modal) modal.style.display = "none"; });
 
-    document.getElementById("btnSaveDraft").addEventListener("click", () => saveTestToFirebase("draft"));
-    document.getElementById("btnPublishTest").addEventListener("click", () => saveTestToFirebase("active"));
+    document.getElementById("btnSaveDraft")?.addEventListener("click", () => saveTestToFirebase("draft"));
+    document.getElementById("btnPublishTest")?.addEventListener("click", () => saveTestToFirebase("active"));
     
-    document.getElementById("btnExportTestJSON").addEventListener("click", () => {
+    document.getElementById("btnExportTestJSON")?.addEventListener("click", () => {
         const payload = assemblePayload("draft");
         const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
         const a = document.createElement('a');
@@ -127,7 +141,7 @@ function setupCoreUiListeners() {
         a.click();
     });
 
-    document.getElementById("btnPreviewTest").addEventListener("click", () => {
+    document.getElementById("btnPreviewTest")?.addEventListener("click", () => {
         alert("Тестти алдын ала көрүү режими: \n" + JSON.stringify(assemblePayload("draft"), null, 2));
     });
 }
@@ -149,6 +163,7 @@ function addNewQuestionNode(type) {
 
 function renderQuestionsList() {
     const container = document.getElementById("questionsListWrapper");
+    if(!container) return;
     container.innerHTML = "";
 
     testQuestions.forEach((q, idx) => {
@@ -171,19 +186,19 @@ function renderQuestionsList() {
                 <button class="rich-btn"><i class="fas fa-table"></i> Таблица</button>
             </div>
             <div class="editor-form-group">
-                <input type="text" class="q-text-input" data-idx="${idx}" value="${q.text}" placeholder="Суроонун текстин ушул жерге жазыңыз...">
+                <input type="text" class="q-text-input" data-idx="${idx}" value="${q.text || ''}" placeholder="Суроонун текстин ушул жерге жазыңыз...">
             </div>
             <div class="options-list" id="options_box_${idx}"></div>
             <div class="dropzone">Сүрөт кошуу үчүн файлды бул жерге таштаңыз же шилтеме киргизиңиз</div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-                <div class="editor-form-group"><label>Упай</label><input type="number" class="q-points" data-idx="${idx}" value="${q.points}"></div>
+                <div class="editor-form-group"><label>Упай</label><input type="number" class="q-points" data-idx="${idx}" value="${q.points || 5}"></div>
                 <div class="editor-form-group"><label>Түшүндүрмө</label><input type="text" class="q-exp" data-idx="${idx}" value="${q.explanation || ''}" placeholder="Туура жооптун түшүндүрмөсү"></div>
             </div>
         `;
         container.appendChild(div);
 
         const optionsBox = div.querySelector(`#options_box_${idx}`);
-        if(["single", "multiple", "truefalse"].includes(q.type)) {
+        if(optionsBox && ["single", "multiple", "truefalse"].includes(q.type) && q.options) {
             q.options.forEach((opt, oIdx) => {
                 const optDiv = document.createElement("div");
                 optDiv.className = "option-item";
@@ -261,40 +276,61 @@ function assemblePayload(status) {
     const qMap = {};
     testQuestions.forEach((q, i) => { qMap["q_" + i] = q; });
     
+    const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : "";
+    const getChk = (id) => document.getElementById(id) ? document.getElementById(id).checked : false;
+
     return {
-        title: document.getElementById("txtTestTitle").value || "Аталышсыз тест",
-        subject: document.getElementById("selTestSubject").value,
-        classGroup: document.getElementById("txtTestClass").value,
-        topic: document.getElementById("txtTestTopic").value,
-        duration: parseInt(document.getElementById("numDuration").value) || 45,
-        description: document.getElementById("txtDescription").value,
-        gradingSystem: document.getElementById("selGradingSystem").value,
-        passingScore: parseInt(document.getElementById("numPassingScore").value) || 60,
+        id: activeTestId,
+        teacherUid: teacherId,
+        title: getVal("txtTestTitle") || "Аталышсыз тест",
+        subject: getVal("selTestSubject") || "physics",
+        classGroup: getVal("txtTestClass") || "",
+        topic: getVal("txtTestTopic") || "",
+        duration: parseInt(getVal("numDuration")) || 45,
+        description: getVal("txtDescription") || "",
+        gradingSystem: getVal("selGradingSystem") || "standard",
+        passingScore: parseInt(getVal("numPassingScore")) || 60,
         status: status,
         createdAt: new Date().toISOString(),
         questions: qMap,
         security: {
-            preventCopy: document.getElementById("chkPreventCopy").checked,
-            preventPaste: document.getElementById("chkPreventPaste").checked,
-            windowSwitchTrack: document.getElementById("chkWindowSwitchTrack").checked
+            preventCopy: getChk("chkPreventCopy"),
+            preventPaste: getChk("chkPreventPaste"),
+            windowSwitchTrack: getChk("chkWindowSwitchTrack")
         }
     };
 }
 
 function triggerAutoSave() {
-    const statusText = document.getElementById("autosaveStatus").querySelector("span");
+    const statusBox = document.getElementById("autosaveStatus");
+    if(!statusBox) return;
+    const statusText = statusBox.querySelector("span") || statusBox;
     statusText.textContent = "Сакталууда...";
     const payload = assemblePayload("draft");
     localStorage.setItem(`bilimal_builder_backup_${activeTestId}`, JSON.stringify(payload));
     setTimeout(() => { statusText.textContent = "Локалдык сакталды"; }, 500);
 }
 
-function saveTestToFirebase(status) {
+async function saveTestToFirebase(status) {
     const payload = assemblePayload(status);
-    set(ref(database, `teachers/${teacherId}/tests/${activeTestId}`), payload)
-        .then(() => {
-            alert("Тест ийгиликтүү базага сакталды!");
-            window.location.href = "/sections/tests.html";
-        })
-        .catch(() => alert("Базага туташууда ката кетти. Локалдык сактагыч иштеп жатат."));
+
+    try {
+        // 1. Мугалимдин жеке туура папкасына сактоо: teachers_data/$uid/tests/$testId
+        const teacherTestRef = ref(database, `teachers_data/${teacherId}/tests/${activeTestId}`);
+        await set(teacherTestRef, payload);
+
+        // 2. Окуучулар тесттин шилтемесин ача алышы үчүн глобалдык lookup таблицасына каттоо
+        const globalLookupRef = ref(database, `global_test_lookup/${activeTestId}`);
+        await set(globalLookupRef, { teacherUid: teacherId });
+
+        // 3. Тазалоо жана багыттоо
+        localStorage.removeItem(`bilimal_builder_backup_${activeTestId}`);
+        alert(status === "active" ? "Тест ийгиликтүү базага сакталды жана жарыяланды!" : "Тест черновик катары сакталды!");
+        window.location.href = "/sections/tests.html";
+    } catch (error) {
+        console.error("Базага сактоодо ката чыкты:", error);
+        // Бузулган учурда локалдык сактагычка да камсыздоо
+        localStorage.setItem(`bilimal_offline_test_${activeTestId}`, JSON.stringify(payload));
+        alert("Базага сактоодо ката кетти. Сураныч, байланышты текшериңиз.");
+    }
 }
