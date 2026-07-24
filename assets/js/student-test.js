@@ -28,7 +28,7 @@ let metaStudentName = "";
 let metaStudentClass = "";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Алгач тест баштала электе ашыкча блокторду жашыруу
+    // Алгач тест баштала электе ашыкча блокторду толугу менен жашыруу
     toggleElementVisibility("studentAuthBlock", true);
     toggleElementVisibility("studentTestingBlock", false);
     toggleElementVisibility("studentResultsBlock", false);
@@ -435,15 +435,15 @@ function safeUpdateInnerText(id, outputText) {
     if (node) node.innerText = outputText;
 }
 
-// Блокторду экранда көрсөтүү/жашыруу функциясы оңдолду
+// Элементтердин чыгып/жашырылуусун көзөмөлдөөчү негизги оңдолгон функция
 function toggleElementVisibility(id, shouldBeVisible) {
     const node = document.getElementById(id);
     if (node) {
         if (shouldBeVisible) {
-            node.style.display = "block";
+            node.style.setProperty("display", "block", "important");
             node.classList.remove("hidden");
         } else {
-            node.style.display = "none";
+            node.style.setProperty("display", "none", "important");
             node.classList.add("hidden");
         }
     }
