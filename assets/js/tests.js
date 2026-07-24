@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getDatabase, ref, get, query, orderByChild, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getDatabase, ref, get, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 window.loadTests = async function() {
     if (!currentUser) return;
     try {
-        // ТАЛАП 1: Ар бир мугалим өзүнүн маалыматтарын гана көрөт (Isolation)
+        // Ар бир мугалимдин өзүнүн маалыматы
         const testsRef = ref(database, `teachers_data/${currentUser.uid}/tests`);
         const snapshot = await get(testsRef);
         
@@ -46,12 +46,18 @@ window.loadTests = async function() {
             const data = snapshot.val();
             for (let id in data) {
                 const test = data[id];
-                // Double check for security requirement
-                if (test.ownerId === currentUser.uid) {
-                    allTests.push(test);
-                    if (test.settings && test.settings.isPublic) activeCount++;
-                    // Assume test.submissionsCount exists or calculate from results
-                    totalSubmits += test.submissionsCount || 0; 
+                allTests.push(test);
+                
+                // Статусту же settings.isPublic'ти текшерүү
+                if (test.status === "active" || (test.settings && test.settings.isPublic)) {
+                    activeCount++;
+                }
+                
+                // Жыйынтыктар санын эсептөө
+                if (test.results) {
+                    totalSubmits += Object.keys(test.results).length;
+                } else if (test.submissionsCount) {
+                    totalSubmits += test.submissionsCount;
                 }
             }
         }
@@ -62,38 +68,52 @@ window.loadTests = async function() {
     } catch (error) {
         console.error("Маалымат алууда ката кетти:", error);
     }
-}
+};
 
 function updateDashboardStats(total, active, submits) {
-    document.getElementById("statTotal").innerText = total;
-    document.getElementById("statActive").innerText = active;
-    document.getElementById("statSubmits").innerText = submits;
-    document.getElementById("statAvg").innerText = "0%"; // Requires result aggregation logic
+    const elTotal = document.getElementById("statTotal");
+    const elActive = document.getElementById("statActive");
+    const elSubmits = document.getElementById("statSubmits");
+    const elAvg = document.getElementById("statAvg");
+
+    if (elTotal) elTotal.innerText = total;
+    if (elActive) elActive.innerText = active;
+    if (elSubmits) elSubmits.innerText = submits;
+    if (elAvg) elAvg.innerText = "0%";
 }
 
 function renderTests(tests) {
     const container = document.getElementById("testListContainer");
+    if (!container) return;
     container.innerHTML = "";
     
     if (tests.length === 0) {
-        container.innerHTML = "<p>Сизде азырынча тесттер жок.</p>";
+        container.innerHTML = "<p style='text-align:center; padding: 20px; color:#aaa;'>Сизде азырынча тесттер жок.</p>";
         return;
     }
 
-    tests.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(test => {
+    tests.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).forEach(test => {
         const div = document.createElement("div");
         div.className = "test-card";
+        const createdDate = test.createdAt ? new Date(test.createdAt).toLocaleDateString() : "Белгисиз";
+        const statusBadge = test.status === "active" 
+            ? '<span style="color:#00f2fe; font-size:12px;">● Активдүү</span>' 
+            : '<span style="color:#ffaa00; font-size:12px;">● Черновик</span>';
+
         div.innerHTML = `
-            <h4>${test.title}</h4>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4>${test.title || 'Аталышсыз тест'}</h4>
+                ${statusBadge}
+            </div>
             <div class="test-meta">
-                <i class="fas fa-book"></i> ${test.subject} | 
-                <i class="fas fa-clock"></i> ${new Date(test.createdAt).toLocaleDateString()}
+                <i class="fas fa-book"></i> ${test.subject || 'Предмет'} | 
+                <i class="fas fa-clock"></i> ${createdDate}
             </div>
             <div class="test-meta">
                 ID: ${test.id}
             </div>
-            <div class="btn-group">
-                <button class="btn btn-primary" onclick="openTestModal('${test.id}', '${test.title}')">
+            <div class="btn-group" style="margin-top:10px;">
+                <button class="btn btn-primary" onclick="openTestModal('${test.id}', '${test.title || ''}')">
                     <i class="fas fa-cog"></i> Башкаруу
                 </button>
                 <button class="btn btn-outline" onclick="window.location.href='/sections/test-builder.html?edit=${test.id}'">
@@ -107,38 +127,52 @@ function renderTests(tests) {
 
 window.openTestModal = function(testId, title) {
     currentActiveTestId = testId;
-    document.getElementById("modalTestTitle").innerText = title;
+    const titleEl = document.getElementById("modalTestTitle");
+    if (titleEl) titleEl.innerText = title;
     
-    // ТАЛАП 2: Уникалдуу шилтеме
-    const shareUrl = `${window.location.origin}/sections/play-test.html?id=${testId}`;
-    document.getElementById("shareLinkInput").value = shareUrl;
+    // Окуучулар үчүн иштөөчү шилтеме форматы
+    const shareUrl = `${window.location.origin}/student-test.html?teacher=${currentUser.uid}&test=${testId}`;
+    const shareInput = document.getElementById("shareLinkInput");
+    if (shareInput) shareInput.value = shareUrl;
     
-    // ТАЛАП 7: QR Code автоматтык түзүлөт
+    // QR Code түзүү
     const qrContainer = document.getElementById("qrcode");
-    qrContainer.innerHTML = "";
-    new QRCode(qrContainer, {
-        text: shareUrl,
-        width: 150,
-        height: 150,
-        colorDark : "#000000",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
-    });
+    if (qrContainer) {
+        qrContainer.innerHTML = "";
+        if (typeof QRCode !== "undefined") {
+            new QRCode(qrContainer, {
+                text: shareUrl,
+                width: 150,
+                height: 150,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+    }
 
-    document.getElementById("testModal").style.display = "flex";
-}
+    const modal = document.getElementById("testModal");
+    if (modal) modal.style.display = "flex";
+};
 
 window.closeModal = function() {
-    document.getElementById("testModal").style.display = "none";
+    const modal = document.getElementById("testModal");
+    if (modal) modal.style.display = "none";
     currentActiveTestId = null;
-}
+};
 
 window.copyLink = function() {
     const input = document.getElementById("shareLinkInput");
-    input.select();
-    document.execCommand("copy");
-    alert("Шилтеме көчүрүлдү!");
-}
+    if (input) {
+        input.select();
+        navigator.clipboard.writeText(input.value).then(() => {
+            alert("Шилтеме көчүрүлдү!");
+        }).catch(() => {
+            document.execCommand("copy");
+            alert("Шилтеме көчүрүлдү!");
+        });
+    }
+};
 
 window.deleteTest = async function() {
     if (!currentActiveTestId || !currentUser) return;
@@ -154,7 +188,7 @@ window.deleteTest = async function() {
             loadTests();
         } catch (error) {
             console.error("Өчүрүү катасы:", error);
-            alert("Коопсуздук эрежесине ылайык өчүрүү мүмкүн эмес же ката кетти.");
+            alert("Өчүрүүдө ката кетти же уруксат берилген жок.");
         }
     }
-}
+};
