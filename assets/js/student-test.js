@@ -28,6 +28,11 @@ let metaStudentName = "";
 let metaStudentClass = "";
 
 document.addEventListener("DOMContentLoaded", () => {
+    // Алгач тест баштала электе ашыкча блокторду жашыруу
+    toggleElementVisibility("studentAuthBlock", true);
+    toggleElementVisibility("studentTestingBlock", false);
+    toggleElementVisibility("studentResultsBlock", false);
+
     extractTestContextParametersFromUrl();
 });
 
@@ -46,7 +51,6 @@ function extractTestContextParametersFromUrl() {
 
 async function fetchTestPayloadFromDatabase() {
     try {
-        // 1. Эгер Teacher ID дароо шилтемеде жок болсо, Глобалдык lookup реестрден издөө
         if (!activeTeacherUid) {
             const lookupSnap = await get(ref(database, `global_test_lookup/${evaluationActiveTestId}`));
             if (lookupSnap.exists()) {
@@ -56,7 +60,6 @@ async function fetchTestPayloadFromDatabase() {
 
         if (!activeTeacherUid) activeTeacherUid = "demo_teacher_001";
 
-        // 2. Тесттин өзүн алуу
         const testSnap = await get(ref(database, `teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}`));
         
         if (!testSnap.exists()) {
@@ -66,7 +69,6 @@ async function fetchTestPayloadFromDatabase() {
 
         currentLoadedTestStructure = testSnap.val();
         
-        // Суроолорду массив форматына келтирүү
         if (currentLoadedTestStructure.questions) {
             if (!Array.isArray(currentLoadedTestStructure.questions)) {
                 currentLoadedTestStructure.questions = Object.keys(currentLoadedTestStructure.questions).map(k => currentLoadedTestStructure.questions[k]);
@@ -94,8 +96,9 @@ function renderGateAuthScreenMetaInfo() {
     }
     
     if (currentLoadedTestStructure.pinCode) {
-        const wrapper = document.getElementById("gatePinWrapper");
-        if (wrapper) wrapper.classList.remove("hidden");
+        toggleElementVisibility("gatePinWrapper", true);
+    } else {
+        toggleElementVisibility("gatePinWrapper", false);
     }
 }
 
@@ -129,6 +132,7 @@ function getInputValue(id) {
 function transitionWorkspaceToActiveTestMode() {
     toggleElementVisibility("studentAuthBlock", false);
     toggleElementVisibility("studentTestingBlock", true);
+    toggleElementVisibility("studentResultsBlock", false);
 
     safeUpdateInnerText("runtimeStudentInfo", `Окуучу: ${metaStudentName} (${metaStudentClass})`);
     safeUpdateInnerText("runtimeTestTitle", currentLoadedTestStructure.title || "Тест");
@@ -357,6 +361,7 @@ async function processAutomatedTestSubmissionWorkflow() {
 
 function renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount) {
     toggleElementVisibility("studentTestingBlock", false);
+    toggleElementVisibility("studentAuthBlock", false);
     toggleElementVisibility("studentResultsBlock", true);
 
     safeUpdateInnerText("resultPercentValue", `${resultRecord.percentage}%`);
@@ -430,10 +435,16 @@ function safeUpdateInnerText(id, outputText) {
     if (node) node.innerText = outputText;
 }
 
+// Блокторду экранда көрсөтүү/жашыруу функциясы оңдолду
 function toggleElementVisibility(id, shouldBeVisible) {
     const node = document.getElementById(id);
     if (node) {
-        if (shouldBeVisible) node.classList.remove("hidden");
-        else node.classList.add("hidden");
+        if (shouldBeVisible) {
+            node.style.display = "block";
+            node.classList.remove("hidden");
+        } else {
+            node.style.display = "none";
+            node.classList.add("hidden");
+        }
     }
 }
