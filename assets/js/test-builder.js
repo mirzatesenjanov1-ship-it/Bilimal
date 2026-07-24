@@ -26,22 +26,8 @@ const QUESTION_TYPES = [
     { type: "multiple", name: "Бир нече туура жооп", desc: "Чекбокстор менен көптөгөн тандоо" },
     { type: "truefalse", name: "Туура / Туура эмес", desc: "Ооба же жок форматы" },
     { type: "fillblank", name: "Бош жерди толтур", desc: "Тексттин ичиндеги боштуктарды жазуу" },
-    { type: "ordering", name: "Сөздөрдү иретке келтир", desc: "Логикалык туура ырааттуулук" },
-    { type: "matching", name: "Жупташтыруу", desc: "А жана Б мамычаларын дал келтирүү" },
-    { type: "image_q", name: "Сүрөт боюнча суроо", desc: "Графикалык медиа суроолору" },
-    { type: "audio_q", name: "Аудио боюнча суроо", desc: "Угуу аркылуу түшүнүү тести" },
-    { type: "video_q", name: "Видео боюнча суроо", desc: "Видео шилтемелерди талдоо" },
-    { type: "table_q", name: "Таблица менен суроо", desc: "Маалыматтар матрицасын изилдөө" },
-    { type: "formula", name: "Формула менен суроо", desc: "LaTeX же математикалык туюнтма" },
     { type: "short_ans", name: "Кыска жооп", desc: "Бир же бир нече сөздөн турган жооп" },
-    { type: "essay", name: "Узун эссе жооп", desc: "Мугалим өзү текшерүүчү эркин текст" },
-    { type: "numeric", name: "Сандык жооп", desc: "Так сандык жыйынтыкты киргизүү" },
-    { type: "chart_q", name: "Диаграмма/график боюнча суроо", desc: "Статистикалык анализ суроолору" },
-    { type: "dragdrop", name: "Drag and Drop суроо", desc: "Элементтерди ташып жайгаштыруу" },
-    { type: "text_select", name: "Тексттен туура сөздү тандоо", desc: "Контексттик менюдан издөө" },
-    { type: "code", name: "Код жазуу суроосу", desc: "Программалоо тапшырмалары" },
-    { type: "lab", name: "Лабораториялык иш", desc: "Эксперименталдык виртуалдык суроо" },
-    { type: "ai_gen", name: "AI автоматтык суроосу", desc: "Интеллектуалдык жасалма кошумча" }
+    { type: "essay", name: "Узун эссе жооп", desc: "Мугалим өзү текшерүүчү эркин текст" }
 ];
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -74,7 +60,6 @@ function determineActiveTest() {
     }
 }
 
-// Суроолорду массивге коопсуз айландыруучу функция
 function normalizeQuestions(rawQuestions) {
     if (!rawQuestions) return [];
     if (Array.isArray(rawQuestions)) {
@@ -104,12 +89,10 @@ async function loadTestFromDb(id) {
             setInputValue("numDuration", test.duration || 45);
             setInputValue("txtDescription", test.description || "");
             
-            // Суроолорду аман-эсен жүктөп алуу
             const extractedQuestions = normalizeQuestions(test.questions);
             if (extractedQuestions.length > 0) {
                 testQuestions = extractedQuestions;
             } else {
-                // Эгер базада бош болсо, локалдык бэкаптан издейбиз
                 loadLocalBackupIfAny();
             }
             renderQuestionsList();
@@ -144,7 +127,8 @@ function buildTypeGrid() {
     QUESTION_TYPES.forEach(q => {
         const div = document.createElement("div");
         div.className = "type-card";
-        div.innerHTML = `<h5>${q.name}</h5><p>${q.desc}</p>`;
+        div.style.cssText = "padding:10px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; margin-bottom:8px;";
+        div.innerHTML = `<h5 style="margin:0; color:#00f2fe;">${q.name}</h5><p style="margin:4px 0 0; font-size:12px; color:#aaa;">${q.desc}</p>`;
         div.addEventListener("click", () => {
             addNewQuestionNode(q.type);
             const modal = document.getElementById("qTypeModal");
@@ -209,16 +193,18 @@ function getChkValue(id) {
 }
 
 function addNewQuestionNode(type) {
-    testQuestions.push({
+    const newQ = {
         id: "q_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
         type: type || "single",
         text: "",
         points: 5,
         required: true,
-        options: ["А варианты", "Б варианты", "В варианты", "Г варианты"],
+        options: type === "truefalse" ? ["Туура", "Туура эмес"] : ["А варианты", "Б варианты", "В варианты", "Г варианты"],
         correctOptionIndex: 0,
+        correctOptionIndices: [0], // Multiple тандалган учурлар үчүн
         explanation: ""
-    });
+    };
+    testQuestions.push(newQ);
     renderQuestionsList();
     triggerAutoSave();
 }
@@ -240,40 +226,45 @@ function renderQuestionsList() {
         const typeName = q.type ? q.type.toUpperCase() : "SINGLE";
         const div = document.createElement("div");
         div.className = "question-node";
+        div.style.cssText = "background: rgba(255, 255, 255, 0.05); padding: 15px; margin-bottom: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);";
+        
         div.innerHTML = `
-            <div class="question-node-header">
+            <div class="question-node-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <strong>Суроо №${idx + 1} <span style="color:#00f2fe;">[${typeName}]</span></strong>
                 <div class="question-node-controls">
                     <button class="node-btn move-up" data-idx="${idx}"><i class="fas fa-arrow-up"></i></button>
                     <button class="node-btn move-down" data-idx="${idx}"><i class="fas fa-arrow-down"></i></button>
-                    <button class="node-btn del" data-idx="${idx}"><i class="fas fa-trash"></i> Өчүрүү</button>
+                    <button class="node-btn del" data-idx="${idx}" style="color:#ff4757;"><i class="fas fa-trash"></i> Өчүрүү</button>
                 </div>
             </div>
-            <div class="rich-toolbar">
-                <button class="rich-btn" type="button" onclick="document.execCommand('bold')"><b>B</b></button>
-                <button class="rich-btn" type="button" onclick="document.execCommand('italic')"><i>I</i></button>
-                <button class="rich-btn" type="button" onclick="document.execCommand('underline')"><u>U</u></button>
+            <div class="editor-form-group" style="margin-bottom:10px;">
+                <input type="text" class="q-text-input" data-idx="${idx}" value="${q.text || ''}" placeholder="Суроонун текстин ушул жерге жазыңыз..." style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#222; color:#fff;">
             </div>
-            <div class="editor-form-group">
-                <input type="text" class="q-text-input" data-idx="${idx}" value="${q.text || ''}" placeholder="Суроонун текстин ушул жерге жазыңыз...">
-            </div>
-            <div class="options-list" id="options_box_${idx}"></div>
+            <div class="options-list" id="options_box_${idx}" style="margin-bottom:10px;"></div>
+            ${["single", "multiple"].includes(q.type) ? `<button type="button" class="add-opt-btn" data-idx="${idx}" style="font-size:12px; padding:4px 8px; margin-bottom:10px;">+ Вариант кошуу</button>` : ''}
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;">
-                <div class="editor-form-group"><label>Упай</label><input type="number" class="q-points" data-idx="${idx}" value="${q.points || 5}"></div>
-                <div class="editor-form-group"><label>Түшүндүрмө</label><input type="text" class="q-exp" data-idx="${idx}" value="${q.explanation || ''}" placeholder="Туура жооптун түшүндүрмөсү"></div>
+                <div class="editor-form-group"><label style="font-size:12px;">Упай:</label> <input type="number" class="q-points" data-idx="${idx}" value="${q.points || 5}" style="width:100%; padding:5px; background:#222; color:#fff; border:1px solid #444;"></div>
+                <div class="editor-form-group"><label style="font-size:12px;">Түшүндүрмө:</label> <input type="text" class="q-exp" data-idx="${idx}" value="${q.explanation || ''}" placeholder="Туура жооптун түшүндүрмөсү" style="width:100%; padding:5px; background:#222; color:#fff; border:1px solid #444;"></div>
             </div>
         `;
         container.appendChild(div);
 
         const optionsBox = div.querySelector(`#options_box_${idx}`);
-        const opts = q.options || ["А варианты", "Б варианты", "В варианты", "Г варианты"];
+        const opts = q.options || [];
+
         if (optionsBox && ["single", "multiple", "truefalse"].includes(q.type || "single")) {
             opts.forEach((opt, oIdx) => {
+                const isChecked = q.type === 'multiple' 
+                    ? (q.correctOptionIndices && q.correctOptionIndices.includes(oIdx))
+                    : q.correctOptionIndex === oIdx;
+
                 const optDiv = document.createElement("div");
                 optDiv.className = "option-item";
+                optDiv.style.cssText = "display:flex; align-items:center; gap:8px; margin-bottom:5px;";
                 optDiv.innerHTML = `
-                    <input type="${q.type === 'multiple' ? 'checkbox' : 'radio'}" name="correct_${idx}" ${q.correctOptionIndex === oIdx ? 'checked' : ''} data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-check">
-                    <input type="text" value="${opt || ''}" data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-text" style="background:none; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff;">
+                    <input type="${q.type === 'multiple' ? 'checkbox' : 'radio'}" name="correct_${idx}" ${isChecked ? 'checked' : ''} data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-check">
+                    <input type="text" value="${opt || ''}" data-qidx="${idx}" data-oidx="${oIdx}" class="q-opt-text" style="flex:1; background:none; border:none; border-bottom:1px solid rgba(255,255,255,0.2); color:#fff; padding:4px;">
+                    ${opts.length > 2 && q.type !== 'truefalse' ? `<button type="button" class="del-opt-btn" data-qidx="${idx}" data-oidx="${oIdx}" style="color:#ff4757; background:none; border:none; cursor:pointer;">&times;</button>` : ''}
                 `;
                 optionsBox.appendChild(optDiv);
             });
@@ -311,13 +302,47 @@ function bindNodesEvents() {
         triggerAutoSave();
     }));
 
-    document.querySelectorAll(".q-opt-check").forEach(radio => radio.addEventListener("change", (e) => {
+    document.querySelectorAll(".q-opt-check").forEach(elem => elem.addEventListener("change", (e) => {
         const qidx = e.target.getAttribute("data-qidx");
         const oidx = parseInt(e.target.getAttribute("data-oidx"));
-        if(testQuestions[qidx]) testQuestions[qidx].correctOptionIndex = oidx;
+        const q = testQuestions[qidx];
+        if(!q) return;
+
+        if (q.type === 'multiple') {
+            if (!q.correctOptionIndices) q.correctOptionIndices = [];
+            if (e.target.checked) {
+                if (!q.correctOptionIndices.includes(oidx)) q.correctOptionIndices.push(oidx);
+            } else {
+                q.correctOptionIndices = q.correctOptionIndices.filter(i => i !== oidx);
+            }
+        } else {
+            q.correctOptionIndex = oidx;
+        }
         triggerAutoSave();
     }));
 
+    // Вариант кошуу
+    document.querySelectorAll(".add-opt-btn").forEach(btn => btn.addEventListener("click", (e) => {
+        const idx = e.target.getAttribute("data-idx");
+        if(testQuestions[idx]) {
+            testQuestions[idx].options.push(`Жаңы вариант ${testQuestions[idx].options.length + 1}`);
+            renderQuestionsList();
+            triggerAutoSave();
+        }
+    }));
+
+    // Вариант өчүрүү
+    document.querySelectorAll(".del-opt-btn").forEach(btn => btn.addEventListener("click", (e) => {
+        const qidx = e.target.getAttribute("data-qidx");
+        const oidx = parseInt(e.target.getAttribute("data-oidx"));
+        if(testQuestions[qidx] && testQuestions[qidx].options) {
+            testQuestions[qidx].options.splice(oidx, 1);
+            renderQuestionsList();
+            triggerAutoSave();
+        }
+    }));
+
+    // Өйдө/ылдый жылдыруу
     document.querySelectorAll(".move-up").forEach(btn => btn.addEventListener("click", (e) => {
         const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
         if (idx > 0) {
@@ -340,6 +365,7 @@ function bindNodesEvents() {
         }
     }));
 
+    // Суроону өчүрүү
     document.querySelectorAll(".question-node .del").forEach(btn => btn.addEventListener("click", (e) => {
         const idx = parseInt(e.currentTarget.getAttribute("data-idx"));
         testQuestions.splice(idx, 1);
@@ -396,11 +422,11 @@ async function saveTestToFirebase(status) {
     payload.id = finalTestId;
 
     try {
-        // 1. Базага сактоо
+        // 1. Мугалимдин базасына сактоо
         const teacherTestRef = ref(database, `teachers_data/${teacherId}/tests/${finalTestId}`);
         await set(teacherTestRef, payload);
 
-        // 2. Глобалдык lookup каттоосу
+        // 2. Глобалдык издөө реестрине сактоо
         const globalLookupRef = ref(database, `global_test_lookup/${finalTestId}`);
         await set(globalLookupRef, { teacherUid: teacherId });
 
@@ -409,15 +435,15 @@ async function saveTestToFirebase(status) {
         } catch (e) {}
 
         if (status === "active") {
-            const shareUrl = `https://bilimal.org/sections/take-test.html?id=${finalTestId}`;
-            prompt("Тест жана анын БАРДЫК суроолору ийгиликтүү жарыяланды! Окуучуларга жөнөтүлүүчү шилтеме:", shareUrl);
+            const shareUrl = `${window.location.origin}/student-test.html?teacher=${teacherId}&test=${finalTestId}`;
+            alert("Тест ийгиликтүү жарыяланды!\nОкуучулар үчүн шилтеме: " + shareUrl);
             window.location.href = "/sections/tests.html";
         } else {
-            alert("Тест жана суроолор черновик катары сакталды!");
+            alert("Тест черновик катары сакталды!");
             window.location.href = "/sections/tests.html";
         }
     } catch (error) {
         console.error("Firebase сактоо катасы:", error);
-        alert("Базага сактоодо ката кетти. Сураныч, интернет байланышыңызды текшериңиз.");
+        alert("Базага сактоодо ката кетти. Интернет байланышыңызды текшериңиз.");
     }
 }
