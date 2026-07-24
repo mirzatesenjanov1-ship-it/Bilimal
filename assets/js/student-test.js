@@ -1,10 +1,22 @@
-// Master Application Execution Engines logic framework for the Students test execution runtimes
-import { 
-    db, ref, set, push, update, get, onValue
-} from "./firebase-config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// Active Runtime Storage Memory State Matrix Configurations
+const firebaseConfig = {
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
 let evaluationActiveTestId = null;
+let activeTeacherUid = null;
 let currentLoadedTestStructure = null;
 let compiledStudentAnswersBuffer = {};
 let trackingActiveQuestionIndex = 0;
@@ -12,56 +24,75 @@ let computedTimeRemainingSeconds = 0;
 let securityViolationCounters = 0;
 let localTimerIntervalReference = null;
 
-// Registry structures data details
 let metaStudentName = "";
 let metaStudentClass = "";
 
-// Workspace Core System Lifecycle Trigger entry pointers execution bounds
 document.addEventListener("DOMContentLoaded", () => {
     extractTestContextParametersFromUrl();
-    initializeAntiCheatSecurityGuards();
 });
 
 function extractTestContextParametersFromUrl() {
-    const urlQuerySearchParameters = new URLSearchParams(window.location.search);
-    evaluationActiveTestId = urlQuerySearchParameters.get("test");
+    const urlParams = new URLSearchParams(window.location.search);
+    evaluationActiveTestId = urlParams.get("test");
+    activeTeacherUid = urlParams.get("teacher");
 
     if (!evaluationActiveTestId) {
         renderFatalErrorWorkspaceState("Тесттин уникалдуу идентификатору шилтемеде табылбады. Ссылканы текшериңиз.");
         return;
     }
 
-    fetchTestPayloadFromDatabase(evaluationActiveTestId);
+    fetchTestPayloadFromDatabase();
 }
 
-// Fetch Payload structures parameters properties bindings configurations asynchronously handles
-async function fetchTestPayloadFromDatabase(testId) {
+async function fetchTestPayloadFromDatabase() {
     try {
-        const testSnapshot = await get(ref(db, `publicTests/${testId}`));
-        if (!testSnapshot.exists()) {
-            renderFatalErrorWorkspaceState("Суралган тест системалык базадан табылган жок же мугалим тарабынан тазаланган.");
+        // 1. Эгер Teacher ID дароо шилтемеде жок болсо, Глобалдык lookup реестрден издөө
+        if (!activeTeacherUid) {
+            const lookupSnap = await get(ref(database, `global_test_lookup/${evaluationActiveTestId}`));
+            if (lookupSnap.exists()) {
+                activeTeacherUid = lookupSnap.val().teacherUid;
+            }
+        }
+
+        if (!activeTeacherUid) activeTeacherUid = "demo_teacher_001";
+
+        // 2. Тесттин өзүн алуу
+        const testSnap = await get(ref(database, `teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}`));
+        
+        if (!testSnap.exists()) {
+            renderFatalErrorWorkspaceState("Суралган тест базадан табылган жок же мугалим тарабынан өчүрүлгөн.");
             return;
         }
 
-        currentLoadedTestStructure = testSnapshot.val();
+        currentLoadedTestStructure = testSnap.val();
+        
+        // Суроолорду массив форматына келтирүү
+        if (currentLoadedTestStructure.questions) {
+            if (!Array.isArray(currentLoadedTestStructure.questions)) {
+                currentLoadedTestStructure.questions = Object.keys(currentLoadedTestStructure.questions).map(k => currentLoadedTestStructure.questions[k]);
+            }
+        } else {
+            currentLoadedTestStructure.questions = [];
+        }
+
         renderGateAuthScreenMetaInfo();
         registerStudentRegistrationFormHandler();
-        trackGoogleAnalyticsEvent("student_test_opened");
+        initializeAntiCheatSecurityGuards();
 
     } catch (err) {
-        renderFatalErrorWorkspaceState("Маалыматтар базасынан ката катталды: " + err.message);
+        console.error(err);
+        renderFatalErrorWorkspaceState("Маалымат базасы менен байланышууда ката кетти: " + err.message);
     }
 }
 
 function renderGateAuthScreenMetaInfo() {
-    const titleNode = document.getElementById("gateTestTitle");
+    safeUpdateInnerText("gateTestTitle", currentLoadedTestStructure.title || "Тест");
+    
     const metaNode = document.getElementById("gateTestMeta");
-    if (titleNode) titleNode.innerText = currentLoadedTestStructure.title;
     if (metaNode) {
-        metaNode.innerHTML = `Сабак: <strong>${currentLoadedTestStructure.subject}</strong> | Класс: <strong>${currentLoadedTestStructure.class}</strong><br>Мугалим: ${currentLoadedTestStructure.teacherName}`;
+        metaNode.innerHTML = `Сабак: <strong>${currentLoadedTestStructure.subject || 'Жалпы'}</strong> | Класс: <strong>${currentLoadedTestStructure.classGroup || 'Бардыгы'}</strong>`;
     }
     
-    // Evaluate if PIN security protocol fields requirements is enforced configuration structure
     if (currentLoadedTestStructure.pinCode) {
         const wrapper = document.getElementById("gatePinWrapper");
         if (wrapper) wrapper.classList.remove("hidden");
@@ -75,42 +106,40 @@ function registerStudentRegistrationFormHandler() {
     form.addEventListener("submit", (e) => {
         e.preventDefault();
         
-        metaStudentName = document.getElementById("studentInputName").value.trim();
-        metaStudentClass = document.getElementById("studentInputClass").value.trim();
+        metaStudentName = getInputValue("studentInputName").trim();
+        metaStudentClass = getInputValue("studentInputClass").trim();
 
         if (currentLoadedTestStructure.pinCode) {
-            const enteredPin = document.getElementById("studentInputPin").value.trim();
+            const enteredPin = getInputValue("studentInputPin").trim();
             if (enteredPin !== currentLoadedTestStructure.pinCode) {
                 showStudentToastMessage("Тестке кирүү үчүн туура эмес PIN-код жаздыңыз!", "error");
                 return;
             }
         }
 
-        // Initialize Workspace configuration fields execution sequences transitions states rules
         transitionWorkspaceToActiveTestMode();
     });
 }
 
+function getInputValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : "";
+}
+
 function transitionWorkspaceToActiveTestMode() {
-    document.getElementById("studentAuthBlock").classList.add("hidden");
-    document.getElementById("studentTestingBlock").classList.remove("hidden");
+    toggleElementVisibility("studentAuthBlock", false);
+    toggleElementVisibility("studentTestingBlock", true);
 
-    // Display identifiers items indicators titles
-    const labelNode = document.getElementById("runtimeStudentInfo");
-    if (labelNode) labelNode.innerText = `Окуучу: ${metaStudentName} (${metaStudentClass})`;
-    const runtimeTitle = document.getElementById("runtimeTestTitle");
-    if (runtimeTitle) runtimeTitle.innerText = currentLoadedTestStructure.title;
+    safeUpdateInnerText("runtimeStudentInfo", `Окуучу: ${metaStudentName} (${metaStudentClass})`);
+    safeUpdateInnerText("runtimeTestTitle", currentLoadedTestStructure.title || "Тест");
 
-    // Evaluate configurations fields requirements boundaries for full screen operations triggers controls safely
-    if (currentLoadedTestStructure.fullscreen) {
+    if (currentLoadedTestStructure.security && currentLoadedTestStructure.security.fullscreen) {
         requestFullscreenWindowViewportMode();
     }
 
-    // Trigger Timers engine instances operations allocations definitions safely
-    computedTimeRemainingSeconds = (currentLoadedTestStructure.timeLimit || 20) * 60;
+    computedTimeRemainingSeconds = (currentLoadedTestStructure.duration || 45) * 60;
     startTestingSessionCountdownTimer();
 
-    // Map base allocations elements array fields arrays matrices components grids maps references objects variables
     generateQuestionsMatrixHUDNodes();
     displayTargetQuestionContentPane();
     registerWorkspaceNavigationControls();
@@ -124,7 +153,7 @@ function startTestingSessionCountdownTimer() {
         if (computedTimeRemainingSeconds <= 0) {
             clearInterval(localTimerIntervalReference);
             processAutomatedTestSubmissionWorkflow();
-            showStudentToastMessage("Убакыт лимити аяктады! Тест автоматтык түрдө тапшырылды.", "warning");
+            showStudentToastMessage("Убакыт аяктады! Тест автоматтык түрдө тапшырылды.", "warning");
             return;
         }
 
@@ -133,9 +162,9 @@ function startTestingSessionCountdownTimer() {
         const secs = computedTimeRemainingSeconds % 60;
         displayNode.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-        // Color warnings thresholds alert zones triggers configurations safely
         if (computedTimeRemainingSeconds < 60) {
-            document.getElementById("hudTimerWidget").style.borderColor = "#ff1744";
+            const hud = document.getElementById("hudTimerWidget");
+            if (hud) hud.style.borderColor = "#ff1744";
         }
     }, 1000);
 }
@@ -164,38 +193,58 @@ function displayTargetQuestionContentPane() {
     if (!currentLoadedTestStructure || !currentLoadedTestStructure.questions[trackingActiveQuestionIndex]) return;
     const qData = currentLoadedTestStructure.questions[trackingActiveQuestionIndex];
 
-    // Synchronize current matrix item selections visual styles states boundaries properties allocations configurations
     document.querySelectorAll(".matrix-node").forEach((n, idx) => {
         n.classList.remove("active");
         if (idx === trackingActiveQuestionIndex) n.classList.add("active");
     });
 
     safeUpdateInnerText("currentQuestionNumberLabel", `Суроо #${trackingActiveQuestionIndex + 1}`);
-    safeUpdateInnerText("currentQuestionPointsLabel", `${qData.points || 1} балл`);
+    safeUpdateInnerText("currentQuestionPointsLabel", `${qData.points || 5} балл`);
     
     const textContainer = document.getElementById("currentQuestionTextContainer");
-    if (textContainer) textContainer.innerText = qData.text;
+    if (textContainer) textContainer.innerText = qData.text || "";
 
-    // Render configuration fields arrays variants values parameters variables layouts blocks options entries
     const optionsContainer = document.getElementById("questionOptionsContainer");
     if (optionsContainer) {
         optionsContainer.innerHTML = "";
         
-        qData.options.forEach((opt, oIdx) => {
-            const isSelected = compiledStudentAnswersBuffer[trackingActiveQuestionIndex] === oIdx;
+        const opts = qData.options || [];
+        opts.forEach((opt, oIdx) => {
+            const currentSavedAnswer = compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
+            let isSelected = false;
+
+            if (qData.type === 'multiple') {
+                isSelected = Array.isArray(currentSavedAnswer) && currentSavedAnswer.includes(oIdx);
+            } else {
+                isSelected = currentSavedAnswer === oIdx;
+            }
+
             const optionRow = document.createElement("div");
             optionRow.className = `option-variant-row ${isSelected ? 'selected' : ''}`;
+            optionRow.style.cssText = "padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:10px;";
+            
             optionRow.innerHTML = `
-                <div class="variant-indicator"><i class="fa-solid fa-check"></i></div>
+                <div class="variant-indicator" style="width:18px; height:18px; border:1px solid #00f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${isSelected ? '#00f2fe' : 'transparent'};">
+                    ${isSelected ? '<i class="fa-solid fa-check" style="font-size:10px; color:#000;"></i>' : ''}
+                </div>
                 <div class="variant-text-string">${opt}</div>
             `;
 
             optionRow.addEventListener("click", () => {
-                compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = oIdx;
+                if (qData.type === 'multiple') {
+                    if (!Array.isArray(compiledStudentAnswersBuffer[trackingActiveQuestionIndex])) {
+                        compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = [];
+                    }
+                    const arr = compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
+                    const pos = arr.indexOf(oIdx);
+                    if (pos > -1) arr.splice(pos, 1);
+                    else arr.push(oIdx);
+                } else {
+                    compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = oIdx;
+                }
                 
-                // Track visually that answer has been populated elements matrices nodes classes parameters rules
-                const node = document.querySelector(`.matrix-node.n-idx-${trackingActiveQuestionIndex}`);
-                if (node) node.classList.add("answered");
+                const matrixNode = document.querySelector(`.matrix-node.n-idx-${trackingActiveQuestionIndex}`);
+                if (matrixNode) matrixNode.classList.add("answered");
 
                 displayTargetQuestionContentPane();
             });
@@ -204,9 +253,9 @@ function displayTargetQuestionContentPane() {
         });
     }
 
-    // Evaluate step edge visibility boundaries conditions properties settings structures fields values handles
     const totalQCount = currentLoadedTestStructure.questions.length;
-    document.getElementById("studentPrevQuestionBtn").disabled = trackingActiveQuestionIndex === 0;
+    const btnPrev = document.getElementById("studentPrevQuestionBtn");
+    if (btnPrev) btnPrev.disabled = trackingActiveQuestionIndex === 0;
     
     toggleElementVisibility("studentNextQuestionBtn", trackingActiveQuestionIndex < totalQCount - 1);
     toggleElementVisibility("studentSubmitTestBtn", trackingActiveQuestionIndex === totalQCount - 1);
@@ -228,11 +277,12 @@ function registerWorkspaceNavigationControls() {
     });
 
     safeBindClickEvent("studentSubmitTestBtn", () => {
-        processAutomatedTestSubmissionWorkflow();
+        if (confirm("Тестти аяктоону каалайсызбы?")) {
+            processAutomatedTestSubmissionWorkflow();
+        }
     });
 }
 
-// Compute metrics, evaluate metrics arrays grades and sync values datasets transactions objects updates
 async function processAutomatedTestSubmissionWorkflow() {
     clearInterval(localTimerIntervalReference);
     if (document.fullscreenElement) {
@@ -242,76 +292,98 @@ async function processAutomatedTestSubmissionWorkflow() {
     let accumulatedPointsEarned = 0;
     let maximumPointsPossible = 0;
     let totalCorrectAnswersCount = 0;
+    const responsesDetailedMap = {};
 
     currentLoadedTestStructure.questions.forEach((q, idx) => {
-        maximumPointsPossible += (q.points || 1);
-        const givenAnsIdx = compiledStudentAnswersBuffer[idx];
-        if (givenAnsIdx !== undefined && givenAnsIdx === q.correctAnswer) {
-            accumulatedPointsEarned += (q.points || 1);
+        const points = q.points || 5;
+        maximumPointsPossible += points;
+        const studentAns = compiledStudentAnswersBuffer[idx];
+
+        let isCorrect = false;
+
+        if (q.type === 'multiple') {
+            const correctArr = q.correctOptionIndices || [q.correctOptionIndex || 0];
+            if (Array.isArray(studentAns) && studentAns.length === correctArr.length && studentAns.every(v => correctArr.includes(v))) {
+                isCorrect = true;
+            }
+        } else {
+            if (studentAns !== undefined && studentAns === q.correctOptionIndex) {
+                isCorrect = true;
+            }
+        }
+
+        if (isCorrect) {
+            accumulatedPointsEarned += points;
             totalCorrectAnswersCount++;
         }
+
+        responsesDetailedMap[`q_${idx}`] = {
+            questionText: q.text,
+            studentAnswer: Array.isArray(studentAns) ? studentAns.map(i => q.options[i]).join(", ") : (q.options ? q.options[studentAns] : studentAns),
+            correctAnswer: q.type === 'multiple' 
+                ? (q.correctOptionIndices || []).map(i => q.options[i]).join(", ") 
+                : (q.options ? q.options[q.correctOptionIndex] : ""),
+            isCorrect: isCorrect
+        };
     });
 
-    const overallPercentageGrade = maximumPointsPossible > 0 ? 
-        Math.round((accumulatedPointsEarned / maximumPointsPossible) * 100) : 0;
+    const overallPercentage = maximumPointsPossible > 0 ? Math.round((accumulatedPointsEarned / maximumPointsPossible) * 100) : 0;
+    const durationUsed = Math.ceil(((currentLoadedTestStructure.duration * 60) - computedTimeRemainingSeconds) / 60);
 
-    const runtimePayloadResultRecord = {
+    const resultRecord = {
         studentName: metaStudentName,
         studentClass: metaStudentClass,
-        testTitle: currentLoadedTestStructure.title,
-        teacherId: currentLoadedTestStructure.teacherId,
+        testTitle: currentLoadedTestStructure.title || "Тест",
         score: accumulatedPointsEarned,
         totalPoints: maximumPointsPossible,
-        percentage: overallPercentageGrade,
+        percentage: overallPercentage,
+        durationUsed: durationUsed,
         antiCheatViolations: securityViolationCounters,
+        reviewStatus: "pending",
+        responses: responsesDetailedMap,
         timestamp: Date.now()
     };
 
     try {
-        const resultPushKeyId = push(ref(db, `testResults/${evaluationActiveTestId}`)).key;
-        await set(ref(db, `testResults/${evaluationActiveTestId}/${resultPushKeyId}`), runtimePayloadResultRecord);
+        const resultsRef = ref(database, `teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}/results`);
+        const newResRef = push(resultsRef);
+        await set(newResRef, resultRecord);
         
-        // Render Final Results visual displays boards blocks configurations
-        renderPostTestResultsDashboard(runtimePayloadResultRecord, totalCorrectAnswersCount);
-        trackGoogleAnalyticsEvent("student_test_completed");
-
+        renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount);
     } catch (err) {
         showStudentToastMessage("Жыйынтыкты сактоодо ката: " + err.message, "error");
     }
 }
 
 function renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount) {
-    document.getElementById("studentTestingBlock").classList.add("hidden");
-    document.getElementById("studentResultsBlock").classList.remove("hidden");
+    toggleElementVisibility("studentTestingBlock", false);
+    toggleElementVisibility("studentResultsBlock", true);
 
     safeUpdateInnerText("resultPercentValue", `${resultRecord.percentage}%`);
     safeUpdateInnerText("resultCorrectCount", `${totalCorrectAnswersCount}/${currentLoadedTestStructure.questions.length}`);
-    safeUpdateInnerText("resultPointsEarned", resultRecord.score);
-    
-    const timeSpentMins = Math.ceil(((currentLoadedTestStructure.timeLimit * 60) - computedTimeRemainingSeconds) / 60);
-    safeUpdateInnerText("resultTimeSpent", `${timeSpentMins} мүнөт`);
+    safeUpdateInnerText("resultPointsEarned", `${resultRecord.score} / ${resultRecord.totalPoints}`);
+    safeUpdateInnerText("resultTimeSpent", `${resultRecord.durationUsed} мүнөт`);
 }
 
-// Integrated Anti-cheat Security Shield Engine parameters structures variables logic handles
 function initializeAntiCheatSecurityGuards() {
-    // Visibility Changes Triggers event handlers catch actions
+    const security = currentLoadedTestStructure.security || {};
+
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden" && currentLoadedTestStructure && currentLoadedTestStructure.antiCheat) {
+        if (document.visibilityState === "hidden" && security.windowSwitchTrack) {
             securityViolationCounters++;
-            showStudentToastMessage(`Эскертүү! Башка терезеге өтүүгө тыюу салынат! Эскертүү саясаты: ${securityViolationCounters}`, "warning");
+            showStudentToastMessage(`Эскертүү! Башка терезеге өтүүгө тыюу салынат! Жалпы катталган бузуулар: ${securityViolationCounters}`, "warning");
         }
     });
 
-    // Copy Paste context boundaries blocks events prevention rules
     document.addEventListener("copy", (e) => {
-        if (currentLoadedTestStructure && currentLoadedTestStructure.antiCheat) {
+        if (security.preventCopy) {
             e.preventDefault();
             showStudentToastMessage("Текстти көчүрүүгө бөгөт коюлган!", "error");
         }
     });
 
     document.addEventListener("paste", (e) => {
-        if (currentLoadedTestStructure && currentLoadedTestStructure.antiCheat) {
+        if (security.preventPaste) {
             e.preventDefault();
             showStudentToastMessage("Текст кошууга бөгөт коюлган!", "error");
         }
@@ -321,55 +393,47 @@ function initializeAntiCheatSecurityGuards() {
 function requestFullscreenWindowViewportMode() {
     const el = document.documentElement;
     if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (el.mozRequestFullScreen) el.mozRequestFullScreen().catch(() => {});
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {});
 }
 
-// Application Interface Utilities Abstractions helpers functions elements variables bindings logic
-function renderFatalErrorWorkspaceState(errorMessageContentStringText) {
-    const container = document.querySelector(".student-container");
-    if (!container) return;
-
+function renderFatalErrorWorkspaceState(errorMessage) {
+    const container = document.querySelector(".student-container") || document.body;
     container.innerHTML = `
-        <div class="hud-card text-center p-5 border-danger-glow">
-            <i class="fa-solid fa-circle-exclamation text-danger fa-4x mb-3 animate-pulse"></i>
-            <h2 class="text-danger">Системалык Ката Ката Катталды</h2>
-            <p class="text-main mt-3">${errorMessageContentStringText}</p>
-            <button class="hud-btn btn-secondary mt-4" onclick="window.location.reload()"><i class="fa-solid fa-rotate-right"></i> Кайра жүктөө</button>
+        <div style="text-align:center; padding: 50px; color: #ff4757;">
+            <h2>Системалык ката</h2>
+            <p style="color:#fff; margin-top:15px;">${errorMessage}</p>
+            <button onclick="window.location.reload()" style="padding:10px 20px; margin-top:20px; cursor:pointer;">Кайра жүктөө</button>
         </div>
     `;
 }
 
 function showStudentToastMessage(messageTextContent, typeCategoryClass = "success") {
     const container = document.getElementById("studentToastContainer");
-    if (!container) return;
+    if (!container) {
+        alert(messageTextContent);
+        return;
+    }
     const toast = document.createElement("div");
     toast.className = `hud-toast ${typeCategoryClass}`;
-    toast.innerHTML = `<i class="fa-solid ${typeCategoryClass === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i> <span>${messageTextContent}</span>`;
+    toast.style.cssText = "padding:10px 15px; margin-bottom:10px; border-radius:4px; background:#333; color:#fff;";
+    toast.innerHTML = `<span>${messageTextContent}</span>`;
     container.appendChild(toast);
     setTimeout(() => { toast.remove(); }, 4000);
 }
 
-function safeBindClickEvent(elementIdString, callbackFunction) {
-    const targetNode = document.getElementById(elementIdString);
-    if (targetNode) targetNode.addEventListener("click", callbackFunction);
+function safeBindClickEvent(id, callback) {
+    const targetNode = document.getElementById(id);
+    if (targetNode) targetNode.addEventListener("click", callback);
 }
 
-function safeUpdateInnerText(elementIdString, outputText) {
-    const node = document.getElementById(elementIdString);
+function safeUpdateInnerText(id, outputText) {
+    const node = document.getElementById(id);
     if (node) node.innerText = outputText;
 }
 
-function toggleElementVisibility(elementIdString, shouldBeVisibleConditionBoolean) {
-    const node = document.getElementById(elementIdString);
+function toggleElementVisibility(id, shouldBeVisible) {
+    const node = document.getElementById(id);
     if (node) {
-        if (shouldBeVisibleConditionBoolean) node.classList.remove("hidden");
+        if (shouldBeVisible) node.classList.remove("hidden");
         else node.classList.add("hidden");
-    }
-}
-
-function trackGoogleAnalyticsEvent(eventNameString) {
-    if (typeof gtag === 'function') {
-        gtag('event', eventNameString);
     }
 }
