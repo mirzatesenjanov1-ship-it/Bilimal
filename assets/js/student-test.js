@@ -1,6 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
+// Firebase Инициализациясы (Compat варианты)
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
     authDomain: "bilimal-org.firebaseapp.com",
@@ -12,8 +10,10 @@ const firebaseConfig = {
     measurementId: "G-9GSQV60QV0"
 };
 
-const app = initializeApp(firebaseConfig);
-const database = getDatabase(app);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const database = firebase.database();
 
 let evaluationActiveTestId = null;
 let activeTeacherUid = null;
@@ -27,8 +27,7 @@ let localTimerIntervalReference = null;
 let metaStudentName = "";
 let metaStudentClass = "";
 
-document.addEventListener("DOMContentLoaded", () => {
-    // Алгач тест баштала электе ашыкча блокторду толугу менен жашыруу
+document.addEventListener("DOMContentLoaded", function () {
     toggleElementVisibility("studentAuthBlock", true);
     toggleElementVisibility("studentTestingBlock", false);
     toggleElementVisibility("studentResultsBlock", false);
@@ -49,42 +48,52 @@ function extractTestContextParametersFromUrl() {
     fetchTestPayloadFromDatabase();
 }
 
-async function fetchTestPayloadFromDatabase() {
-    try {
-        if (!activeTeacherUid) {
-            const lookupSnap = await get(ref(database, `global_test_lookup/${evaluationActiveTestId}`));
-            if (lookupSnap.exists()) {
-                activeTeacherUid = lookupSnap.val().teacherUid;
-            }
-        }
-
-        if (!activeTeacherUid) activeTeacherUid = "demo_teacher_001";
-
-        const testSnap = await get(ref(database, `teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}`));
-        
-        if (!testSnap.exists()) {
-            renderFatalErrorWorkspaceState("Суралган тест базадан табылган жок же мугалим тарабынан өчүрүлгөн.");
-            return;
-        }
-
-        currentLoadedTestStructure = testSnap.val();
-        
-        if (currentLoadedTestStructure.questions) {
-            if (!Array.isArray(currentLoadedTestStructure.questions)) {
-                currentLoadedTestStructure.questions = Object.keys(currentLoadedTestStructure.questions).map(k => currentLoadedTestStructure.questions[k]);
-            }
-        } else {
-            currentLoadedTestStructure.questions = [];
-        }
-
-        renderGateAuthScreenMetaInfo();
-        registerStudentRegistrationFormHandler();
-        initializeAntiCheatSecurityGuards();
-
-    } catch (err) {
-        console.error(err);
-        renderFatalErrorWorkspaceState("Маалымат базасы менен байланышууда ката кетти: " + err.message);
+function fetchTestPayloadFromDatabase() {
+    if (!activeTeacherUid) {
+        database.ref(`global_test_lookup/${evaluationActiveTestId}`).once('value')
+            .then(function(lookupSnap) {
+                if (lookupSnap.exists()) {
+                    activeTeacherUid = lookupSnap.val().teacherUid;
+                }
+                loadMainTestData();
+            })
+            .catch(function(err) {
+                renderFatalErrorWorkspaceState("Маалымат алууда ката: " + err.message);
+            });
+    } else {
+        loadMainTestData();
     }
+}
+
+function loadMainTestData() {
+    if (!activeTeacherUid) activeTeacherUid = "demo_teacher_001";
+
+    database.ref(`teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}`).once('value')
+        .then(function(testSnap) {
+            if (!testSnap.exists()) {
+                renderFatalErrorWorkspaceState("Суралган тест базадан табылган жок же өчүрүлгөн.");
+                return;
+            }
+
+            currentLoadedTestStructure = testSnap.val();
+
+            if (currentLoadedTestStructure.questions) {
+                if (!Array.isArray(currentLoadedTestStructure.questions)) {
+                    currentLoadedTestStructure.questions = Object.keys(currentLoadedTestStructure.questions).map(function(k) {
+                        return currentLoadedTestStructure.questions[k];
+                    });
+                }
+            } else {
+                currentLoadedTestStructure.questions = [];
+            }
+
+            renderGateAuthScreenMetaInfo();
+            registerStudentRegistrationFormHandler();
+            initializeAntiCheatSecurityGuards();
+        })
+        .catch(function(err) {
+            renderFatalErrorWorkspaceState("База менен байланышуу катасы: " + err.message);
+        });
 }
 
 function renderGateAuthScreenMetaInfo() {
@@ -106,7 +115,7 @@ function registerStudentRegistrationFormHandler() {
     const form = document.getElementById("studentRegistrationForm");
     if (!form) return;
 
-    form.addEventListener("submit", (e) => {
+    form.onsubmit = function (e) {
         e.preventDefault();
         
         metaStudentName = getInputValue("studentInputName").trim();
@@ -121,7 +130,7 @@ function registerStudentRegistrationFormHandler() {
         }
 
         transitionWorkspaceToActiveTestMode();
-    });
+    };
 }
 
 function getInputValue(id) {
@@ -153,7 +162,7 @@ function startTestingSessionCountdownTimer() {
     const displayNode = document.getElementById("runtimeCountdown");
     if (!displayNode) return;
 
-    localTimerIntervalReference = setInterval(() => {
+    localTimerIntervalReference = setInterval(function () {
         if (computedTimeRemainingSeconds <= 0) {
             clearInterval(localTimerIntervalReference);
             processAutomatedTestSubmissionWorkflow();
@@ -178,16 +187,16 @@ function generateQuestionsMatrixHUDNodes() {
     if (!container) return;
     container.innerHTML = "";
 
-    currentLoadedTestStructure.questions.forEach((q, idx) => {
+    currentLoadedTestStructure.questions.forEach(function (q, idx) {
         const node = document.createElement("button");
         node.type = "button";
         node.className = `matrix-node n-idx-${idx}`;
         node.innerText = idx + 1;
 
-        node.addEventListener("click", () => {
+        node.onclick = function () {
             trackingActiveQuestionIndex = idx;
             displayTargetQuestionContentPane();
-        });
+        };
 
         container.appendChild(node);
     });
@@ -197,7 +206,7 @@ function displayTargetQuestionContentPane() {
     if (!currentLoadedTestStructure || !currentLoadedTestStructure.questions[trackingActiveQuestionIndex]) return;
     const qData = currentLoadedTestStructure.questions[trackingActiveQuestionIndex];
 
-    document.querySelectorAll(".matrix-node").forEach((n, idx) => {
+    document.querySelectorAll(".matrix-node").forEach(function (n, idx) {
         n.classList.remove("active");
         if (idx === trackingActiveQuestionIndex) n.classList.add("active");
     });
@@ -213,7 +222,7 @@ function displayTargetQuestionContentPane() {
         optionsContainer.innerHTML = "";
         
         const opts = qData.options || [];
-        opts.forEach((opt, oIdx) => {
+        opts.forEach(function (opt, oIdx) {
             const currentSavedAnswer = compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
             let isSelected = false;
 
@@ -234,7 +243,7 @@ function displayTargetQuestionContentPane() {
                 <div class="variant-text-string">${opt}</div>
             `;
 
-            optionRow.addEventListener("click", () => {
+            optionRow.onclick = function () {
                 if (qData.type === 'multiple') {
                     if (!Array.isArray(compiledStudentAnswersBuffer[trackingActiveQuestionIndex])) {
                         compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = [];
@@ -251,7 +260,7 @@ function displayTargetQuestionContentPane() {
                 if (matrixNode) matrixNode.classList.add("answered");
 
                 displayTargetQuestionContentPane();
-            });
+            };
 
             optionsContainer.appendChild(optionRow);
         });
@@ -266,31 +275,31 @@ function displayTargetQuestionContentPane() {
 }
 
 function registerWorkspaceNavigationControls() {
-    safeBindClickEvent("studentPrevQuestionBtn", () => {
+    safeBindClickEvent("studentPrevQuestionBtn", function () {
         if (trackingActiveQuestionIndex > 0) {
             trackingActiveQuestionIndex--;
             displayTargetQuestionContentPane();
         }
     });
 
-    safeBindClickEvent("studentNextQuestionBtn", () => {
+    safeBindClickEvent("studentNextQuestionBtn", function () {
         if (trackingActiveQuestionIndex < currentLoadedTestStructure.questions.length - 1) {
             trackingActiveQuestionIndex++;
             displayTargetQuestionContentPane();
         }
     });
 
-    safeBindClickEvent("studentSubmitTestBtn", () => {
+    safeBindClickEvent("studentSubmitTestBtn", function () {
         if (confirm("Тестти аяктоону каалайсызбы?")) {
             processAutomatedTestSubmissionWorkflow();
         }
     });
 }
 
-async function processAutomatedTestSubmissionWorkflow() {
+function processAutomatedTestSubmissionWorkflow() {
     clearInterval(localTimerIntervalReference);
     if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(function () {});
     }
 
     let accumulatedPointsEarned = 0;
@@ -298,7 +307,7 @@ async function processAutomatedTestSubmissionWorkflow() {
     let totalCorrectAnswersCount = 0;
     const responsesDetailedMap = {};
 
-    currentLoadedTestStructure.questions.forEach((q, idx) => {
+    currentLoadedTestStructure.questions.forEach(function (q, idx) {
         const points = q.points || 5;
         maximumPointsPossible += points;
         const studentAns = compiledStudentAnswersBuffer[idx];
@@ -307,7 +316,7 @@ async function processAutomatedTestSubmissionWorkflow() {
 
         if (q.type === 'multiple') {
             const correctArr = q.correctOptionIndices || [q.correctOptionIndex || 0];
-            if (Array.isArray(studentAns) && studentAns.length === correctArr.length && studentAns.every(v => correctArr.includes(v))) {
+            if (Array.isArray(studentAns) && studentAns.length === correctArr.length && studentAns.every(function (v) { return correctArr.includes(v); })) {
                 isCorrect = true;
             }
         } else {
@@ -323,9 +332,9 @@ async function processAutomatedTestSubmissionWorkflow() {
 
         responsesDetailedMap[`q_${idx}`] = {
             questionText: q.text,
-            studentAnswer: Array.isArray(studentAns) ? studentAns.map(i => q.options[i]).join(", ") : (q.options ? q.options[studentAns] : studentAns),
+            studentAnswer: Array.isArray(studentAns) ? studentAns.map(function (i) { return q.options[i]; }).join(", ") : (q.options ? q.options[studentAns] : studentAns),
             correctAnswer: q.type === 'multiple' 
-                ? (q.correctOptionIndices || []).map(i => q.options[i]).join(", ") 
+                ? (q.correctOptionIndices || []).map(function (i) { return q.options[i]; }).join(", ") 
                 : (q.options ? q.options[q.correctOptionIndex] : ""),
             isCorrect: isCorrect
         };
@@ -348,15 +357,15 @@ async function processAutomatedTestSubmissionWorkflow() {
         timestamp: Date.now()
     };
 
-    try {
-        const resultsRef = ref(database, `teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}/results`);
-        const newResRef = push(resultsRef);
-        await set(newResRef, resultRecord);
-        
-        renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount);
-    } catch (err) {
-        showStudentToastMessage("Жыйынтыкты сактоодо ката: " + err.message, "error");
-    }
+    const resultsRef = database.ref(`teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}/results`);
+    const newResRef = resultsRef.push();
+    newResRef.set(resultRecord)
+        .then(function () {
+            renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount);
+        })
+        .catch(function (err) {
+            showStudentToastMessage("Жыйынтыкты сактоодо ката: " + err.message, "error");
+        });
 }
 
 function renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount) {
@@ -373,21 +382,21 @@ function renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount) 
 function initializeAntiCheatSecurityGuards() {
     const security = currentLoadedTestStructure.security || {};
 
-    document.addEventListener("visibilitychange", () => {
+    document.addEventListener("visibilitychange", function () {
         if (document.visibilityState === "hidden" && security.windowSwitchTrack) {
             securityViolationCounters++;
-            showStudentToastMessage(`Эскертүү! Башка терезеге өтүүгө тыюу салынат! Жалпы катталган бузуулар: ${securityViolationCounters}`, "warning");
+            showStudentToastMessage(`Эскертүү! Башка терезеге өтүүгө тыюу салынат! Жалпы бузуулар: ${securityViolationCounters}`, "warning");
         }
     });
 
-    document.addEventListener("copy", (e) => {
+    document.addEventListener("copy", function (e) {
         if (security.preventCopy) {
             e.preventDefault();
             showStudentToastMessage("Текстти көчүрүүгө бөгөт коюлган!", "error");
         }
     });
 
-    document.addEventListener("paste", (e) => {
+    document.addEventListener("paste", function (e) {
         if (security.preventPaste) {
             e.preventDefault();
             showStudentToastMessage("Текст кошууга бөгөт коюлган!", "error");
@@ -397,7 +406,7 @@ function initializeAntiCheatSecurityGuards() {
 
 function requestFullscreenWindowViewportMode() {
     const el = document.documentElement;
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
 }
 
 function renderFatalErrorWorkspaceState(errorMessage) {
@@ -411,23 +420,23 @@ function renderFatalErrorWorkspaceState(errorMessage) {
     `;
 }
 
-function showStudentToastMessage(messageTextContent, typeCategoryClass = "success") {
+function showStudentToastMessage(messageTextContent, typeCategoryClass) {
     const container = document.getElementById("studentToastContainer");
     if (!container) {
         alert(messageTextContent);
         return;
     }
     const toast = document.createElement("div");
-    toast.className = `hud-toast ${typeCategoryClass}`;
+    toast.className = `hud-toast ${typeCategoryClass || 'success'}`;
     toast.style.cssText = "padding:10px 15px; margin-bottom:10px; border-radius:4px; background:#333; color:#fff;";
     toast.innerHTML = `<span>${messageTextContent}</span>`;
     container.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 4000);
+    setTimeout(function () { toast.remove(); }, 4000);
 }
 
 function safeBindClickEvent(id, callback) {
     const targetNode = document.getElementById(id);
-    if (targetNode) targetNode.addEventListener("click", callback);
+    if (targetNode) targetNode.onclick = callback;
 }
 
 function safeUpdateInnerText(id, outputText) {
@@ -435,7 +444,6 @@ function safeUpdateInnerText(id, outputText) {
     if (node) node.innerText = outputText;
 }
 
-// Элементтердин чыгып/жашырылуусун көзөмөлдөөчү негизги оңдолгон функция
 function toggleElementVisibility(id, shouldBeVisible) {
     const node = document.getElementById(id);
     if (node) {
