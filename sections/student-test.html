@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* CSS ЖАШЫРУУ: Скрипт жүктөлгөнгө чейин блоктор чыгып кетпейт */
+        /* Скрипт жүктөлгөнгө чейин 2-жана 3-блокторду таптакыр көргөзбөө */
         .hidden, #studentTestingBlock, #studentResultsBlock {
             display: none !important;
         }
@@ -21,10 +21,10 @@
         }
 
         .student-container {
-            max-width: 900px;
-            margin: 0 auto;
+            max-width: 800px;
+            margin: 30px auto;
             background: #161b22;
-            padding: 25px;
+            padding: 30px;
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
             border: 1px solid #30363d;
@@ -56,8 +56,8 @@
         }
 
         .matrix-node {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             margin: 4px;
             display: inline-flex;
             align-items: center;
@@ -66,6 +66,7 @@
             background: #21262d;
             cursor: pointer;
             color: #fff;
+            border: 1px solid #30363d;
         }
 
         .matrix-node.active {
@@ -84,7 +85,7 @@
         }
     </style>
 
-    <!-- Firebase Compat SDKs (import кылбастан түз колдонуу үчүн) -->
+    <!-- Firebase SDK (Тура ирети менен биринчи жүктөлүшү КЕРЕК) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
@@ -94,10 +95,10 @@
 
     <div class="student-container">
         
-        <!-- 1-БЛОК: Кирүү экраны -->
+        <!-- 1-БЛОК: Авторизация -->
         <div id="studentAuthBlock">
-            <h2 id="gateTestTitle">Тестке кош келиңиз</h2>
-            <p id="gateTestMeta">Жүктөлүүдө...</p>
+            <h2 id="gateTestTitle" style="margin-top: 0;">Тестке кош келиңиз</h2>
+            <p id="gateTestMeta" style="color: #8b949e;">Жүктөлүүдө...</p>
             <hr style="border-color: #30363d; margin-bottom: 20px;">
             
             <form id="studentRegistrationForm">
@@ -109,16 +110,16 @@
 
                 <div id="gatePinWrapper" class="hidden">
                     <label>Тесттин PIN-коду *</label>
-                    <input type="password" id="studentInputPin" placeholder="Мугалим берген PIN-кодду жазыңыз">
+                    <input type="password" id="studentInputPin" placeholder="Мугалим берген PIN-код">
                 </div>
 
-                <button type="submit">Тестти баштоо</button>
+                <button type="submit" style="margin-top: 10px;">Тестти баштоо</button>
             </form>
         </div>
 
-        <!-- 2-БЛОК: Тест тапшыруу экраны -->
+        <!-- 2-БЛОК: Тест тапшыруу -->
         <div id="studentTestingBlock" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 12px;">
                 <div>
                     <h3 id="runtimeTestTitle" style="margin: 0;">Тест</h3>
                     <small id="runtimeStudentInfo" style="color: #8b949e;"></small>
@@ -128,20 +129,17 @@
                 </div>
             </div>
 
-            <!-- Суроолордун матрицасы -->
             <div id="studentQuestionsMatrix" style="margin: 15px 0;"></div>
 
-            <!-- Активдүү суроо -->
-            <div style="background: #21262d; padding: 20px; border-radius: 8px; margin-top: 15px;">
-                <div style="display: flex; justify-content: space-between; color: #58a6ff;">
+            <div style="background: #21262d; padding: 20px; border-radius: 8px; margin-top: 15px; border: 1px solid #30363d;">
+                <div style="display: flex; justify-content: space-between; color: #58a6ff; font-weight: bold;">
                     <span id="currentQuestionNumberLabel">Суроо #1</span>
                     <span id="currentQuestionPointsLabel">5 балл</span>
                 </div>
-                <h3 id="currentQuestionTextContainer" style="margin-top: 10px;">Суроонун тексти...</h3>
+                <h3 id="currentQuestionTextContainer" style="margin-top: 12px; font-weight: 500;">Суроо жүктөлүүдө...</h3>
                 <div id="questionOptionsContainer" style="margin-top: 15px;"></div>
             </div>
 
-            <!-- Навигация -->
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button type="button" id="studentPrevQuestionBtn" style="background: #30363d;">Мурункусу</button>
                 <button type="button" id="studentNextQuestionBtn" style="background: #1f6beb;">Кийинкиси</button>
@@ -149,23 +147,23 @@
             </div>
         </div>
 
-        <!-- 3-БЛОК: Жыйынтык экраны -->
+        <!-- 3-БЛОК: Жыйынтык -->
         <div id="studentResultsBlock" class="hidden" style="text-align: center; padding: 20px;">
             <i class="fa-solid fa-circle-check" style="font-size: 60px; color: #238636; margin-bottom: 15px;"></i>
-            <h2>Тест ийгиликтүү аяктады!</h2>
-            <p>Жоопторуңуз сакталды жана мугалимдин журналына жөнөтүлдү.</p>
+            <h2 style="margin: 0;">Тест ийгиликтүү аяктады!</h2>
+            <p style="color: #8b949e;">Жоопторуңуз сакталды жана мугалимдин журналына жөнөтүлдү.</p>
             
-            <div style="background: #21262d; padding: 20px; border-radius: 8px; max-width: 400px; margin: 20px auto; text-align: left;">
-                <p>Топтолгон балл: <strong id="resultPointsEarned">0 / 0</strong></p>
-                <p>Пайыздык көрсөткүч: <strong id="resultPercentValue">0%</strong></p>
-                <p>Туура жооптор: <strong id="resultCorrectCount">0/0</strong></p>
-                <p>Колдонулган убакыт: <strong id="resultTimeSpent">0 мүнөт</strong></p>
+            <div style="background: #21262d; padding: 20px; border-radius: 8px; max-width: 400px; margin: 20px auto; text-align: left; border: 1px solid #30363d;">
+                <p style="margin: 8px 0;">Топтолгон балл: <strong id="resultPointsEarned">0 / 0</strong></p>
+                <p style="margin: 8px 0;">Пайыздык көрсөткүч: <strong id="resultPercentValue">0%</strong></p>
+                <p style="margin: 8px 0;">Туура жооптор: <strong id="resultCorrectCount">0/0</strong></p>
+                <p style="margin: 8px 0;">Колдонулган убакыт: <strong id="resultTimeSpent">0 мүнөт</strong></p>
             </div>
         </div>
 
     </div>
 
-    <!-- Кэштен айланып өтүү үчүн скриптке версия номери кошулду -->
-    <script src="/assets/js/student-test.js?v=2.0"></script>
+    <!-- Кэшти айланып өтүү үчүн катуу версия жазылды (v=9.9) -->
+    <script src="/assets/js/student-test.js?v=9.9"></script>
 </body>
 </html>
