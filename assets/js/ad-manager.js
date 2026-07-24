@@ -1,22 +1,37 @@
-const AdManager = {
-    renderBanners() {
-        if (typeof window === "undefined") return;
-        // Verify we are not in safe anti-cheat or student quiz view before executing native injectors
-        const path = window.location.pathname;
-        if (path.includes("student-test") || path.includes("quiz") || path.includes("anti-cheat")) {
-            return; 
-        }
+// AdManager - Жарнамаларды жана эскертүүлөрдү башкаруу модулу
+(function () {
+    'use strict';
 
-        try {
-            // Initialize AdSense push trigger securely
-            (window.adsbygoogle = window.adsbygoogle || []).push({});
-        } catch (e) {}
+    window.AdManager = {
+        init: function () {
+            console.log("AdManager ийгиликтүү ишке түштү.");
+            this.renderAdBanner();
+        },
 
-        const slot = document.getElementById("adsterraBanner728x90");
-        if (slot) {
-            slot.innerHTML = `<div style='background:rgba(255,255,255,0.02); padding:10px; color:#666; font-size:11px;'>Рекламалык байланыш борбору</div>`;
+        renderAdBanner: function () {
+            const adContainer = document.getElementById("adBannerContainer");
+            if (!adContainer) return;
+
+            // Жарнама же баннер блогун түзүү
+            adContainer.innerHTML = `
+                <div class="ad-box" style="background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 15px; text-align: center; margin: 15px 0;">
+                    <span style="color: #8b949e; font-size: 12px; display: block; margin-bottom: 5px;">ЖАРНАМА / АННОНС</span>
+                    <h4 style="color: #58a6ff; margin: 5px 0;">БилимАл платформасына кош келиңиз!</h4>
+                    <p style="color: #c9d1d9; font-size: 14px; margin: 0;">Онлайн тесттерди оңой жана коопсуз тапшырыңыз.</p>
+                </div>
+            `;
+        },
+
+        hideAds: function () {
+            const adContainer = document.getElementById("adBannerContainer");
+            if (adContainer) {
+                adContainer.style.display = 'none';
+            }
         }
-    }
-};
-document.addEventListener("DOMContentLoaded", () => AdManager.renderBanners());
-export { AdManager };
+    };
+
+    // Баракча жүктөлгөндө автоматтык түрдө иштетүү
+    document.addEventListener("DOMContentLoaded", function () {
+        window.AdManager.init();
+    });
+})();
