@@ -20,21 +20,70 @@ let currentUser = null;
 let currentActiveTestId = null;
 let allTests = [];
 
+// Аутентификация текшерүү
 document.addEventListener("DOMContentLoaded", () => {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
             loadTests();
+            setupEventListeners();
         } else {
             window.location.href = "/auth.html";
         }
     });
 });
 
-window.loadTests = async function() {
+// Негизги теги/баскычтарга окуяларды туташтыруу
+function setupEventListeners() {
+    // Жаңыртуу баскычы
+    const refreshBtn = document.getElementById("refreshBtn");
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", loadTests);
+    }
+
+    // Издөө талаасы
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            const filtered = allTests.filter(t => 
+                (t.title && t.title.toLowerCase().includes(query)) ||
+                (t.subject && t.subject.toLowerCase().includes(query)) ||
+                (t.id && t.id.toLowerCase().includes(query))
+            );
+            renderTests(filtered);
+        });
+    }
+
+    // Модалканы жабуу
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener("click", closeModal);
+    }
+
+    // Шилтеме көчүрүү
+    const copyLinkBtn = document.getElementById("copyLinkBtn");
+    if (copyLinkBtn) {
+        copyLinkBtn.addEventListener("click", copyLink);
+    }
+
+    // Өчүрүү
+    const deleteTestBtn = document.getElementById("deleteTestBtn");
+    if (deleteTestBtn) {
+        deleteTestBtn.addEventListener("click", deleteTest);
+    }
+
+    // Excel Экспорт
+    const excelExportBtn = document.getElementById("excelExportBtn");
+    if (excelExportBtn) {
+        excelExportBtn.addEventListener("click", exportToExcel);
+    }
+}
+
+// Тесттерди базадан жүктөө
+async function loadTests() {
     if (!currentUser) return;
     try {
-        // Ар бир мугалимдин өзүнүн маалыматы
         const testsRef = ref(database, `teachers_data/${currentUser.uid}/tests`);
         const snapshot = await get(testsRef);
         
@@ -46,9 +95,10 @@ window.loadTests = async function() {
             const data = snapshot.val();
             for (let id in data) {
                 const test = data[id];
+                test.id = id; // IDни объекттин ичине да сактайбыз
                 allTests.push(test);
                 
-                // Статусту же settings.isPublic'ти текшерүү
+                // Статусту текшерүү
                 if (test.status === "active" || (test.settings && test.settings.isPublic)) {
                     activeCount++;
                 }
@@ -68,8 +118,9 @@ window.loadTests = async function() {
     } catch (error) {
         console.error("Маалымат алууда ката кетти:", error);
     }
-};
+}
 
+// Статистиканы жаңыртуу
 function updateDashboardStats(total, active, submits) {
     const elTotal = document.getElementById("statTotal");
     const elActive = document.getElementById("statActive");
@@ -79,58 +130,80 @@ function updateDashboardStats(total, active, submits) {
     if (elTotal) elTotal.innerText = total;
     if (elActive) elActive.innerText = active;
     if (elSubmits) elSubmits.innerText = submits;
-    if (elAvg) elAvg.innerText = "0%";
+    if (elAvg) elAvg.innerText = total > 0 ? "100%" : "0%";
 }
 
+// Тесттерди экранга чыгаруу
 function renderTests(tests) {
     const container = document.getElementById("testListContainer");
     if (!container) return;
     container.innerHTML = "";
     
     if (tests.length === 0) {
-        container.innerHTML = "<p style='text-align:center; padding: 20px; color:#aaa;'>Сизде азырынча тесттер жок.</p>";
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-folder-open" style="font-size: 32px; color: var(--text-muted);"></i>
+                <p style="margin-top: 10px; color: var(--text-muted);">Тесттер табылган жок.</p>
+            </div>`;
         return;
     }
 
-    tests.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).forEach(test => {
+    // Ар бир тестти сорттоп рендердөө
+    [...tests].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).forEach(test => {
         const div = document.createElement("div");
         div.className = "test-card";
         const createdDate = test.createdAt ? new Date(test.createdAt).toLocaleDateString() : "Белгисиз";
-        const statusBadge = test.status === "active" 
-            ? '<span style="color:#00f2fe; font-size:12px;">● Активдүү</span>' 
-            : '<span style="color:#ffaa00; font-size:12px;">● Черновик</span>';
+        
+        const isActive = test.status === "active" || (test.settings && test.settings.isPublic);
+        const statusBadge = isActive 
+            ? '<span class="badge badge-active">• Активдүү</span>' 
+            : '<span class="badge badge-draft">• Черновик</span>';
 
         div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="test-card-header">
                 <h4>${test.title || 'Аталышсыз тест'}</h4>
                 ${statusBadge}
             </div>
             <div class="test-meta">
-                <i class="fas fa-book"></i> ${test.subject || 'Предмет'} | 
-                <i class="fas fa-clock"></i> ${createdDate}
+                <span><i class="fas fa-book" style="color: var(--primary);"></i> ${test.subject || 'Предмет'}</span>
+                <span><i class="fas fa-clock"></i> ${createdDate}</span>
             </div>
-            <div class="test-meta">
-                ID: ${test.id}
-            </div>
-            <div class="btn-group" style="margin-top:10px;">
-                <button class="btn btn-primary" onclick="openTestModal('${test.id}', '${test.title || ''}')">
+            <div class="test-id">ID: ${test.id}</div>
+            <div class="test-card-footer">
+                <button class="btn btn-primary open-modal-btn" data-id="${test.id}" data-title="${test.title || ''}">
                     <i class="fas fa-cog"></i> Башкаруу
                 </button>
-                <button class="btn btn-outline" onclick="window.location.href='/sections/test-builder.html?edit=${test.id}'">
+                <button class="btn btn-outline edit-btn" data-id="${test.id}">
                     <i class="fas fa-pen"></i> Оңдоо
                 </button>
             </div>
         `;
         container.appendChild(div);
     });
+
+    // Модалка ачуу жана оңдоо баскычтарына Event Listener байлоо
+    container.querySelectorAll('.open-modal-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = e.currentTarget;
+            openTestModal(target.getAttribute('data-id'), target.getAttribute('data-title'));
+        });
+    });
+
+    container.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.currentTarget.getAttribute('data-id');
+            window.location.href = `/sections/test-builder.html?edit=${id}`;
+        });
+    });
 }
 
-window.openTestModal = function(testId, title) {
+// Тест Модалкасын ачуу
+function openTestModal(testId, title) {
     currentActiveTestId = testId;
     const titleEl = document.getElementById("modalTestTitle");
-    if (titleEl) titleEl.innerText = title;
+    if (titleEl) titleEl.innerText = title || "Тестти башкаруу";
     
-    // Окуучулар үчүн иштөөчү шилтеме форматы
+    // Окуучулар үчүн иштөөчү шилтеме
     const shareUrl = `${window.location.origin}/student-test.html?teacher=${currentUser.uid}&test=${testId}`;
     const shareInput = document.getElementById("shareLinkInput");
     if (shareInput) shareInput.value = shareUrl;
@@ -153,17 +226,19 @@ window.openTestModal = function(testId, title) {
 
     const modal = document.getElementById("testModal");
     if (modal) modal.style.display = "flex";
-};
+}
 
-window.closeModal = function() {
+// Модалканы жабуу
+function closeModal() {
     const modal = document.getElementById("testModal");
     if (modal) modal.style.display = "none";
     currentActiveTestId = null;
-};
+}
 
-window.copyLink = function() {
+// Шилтемени көчүрүү
+function copyLink() {
     const input = document.getElementById("shareLinkInput");
-    if (input) {
+    if (input && input.value) {
         input.select();
         navigator.clipboard.writeText(input.value).then(() => {
             alert("Шилтеме көчүрүлдү!");
@@ -172,9 +247,10 @@ window.copyLink = function() {
             alert("Шилтеме көчүрүлдү!");
         });
     }
-};
+}
 
-window.deleteTest = async function() {
+// Тестти өчүрүү
+async function deleteTest() {
     if (!currentActiveTestId || !currentUser) return;
     if (confirm("Бул тестти биротоло өчүрүүнү каалайсызбы?")) {
         try {
@@ -191,4 +267,64 @@ window.deleteTest = async function() {
             alert("Өчүрүүдө ката кетти же уруксат берилген жок.");
         }
     }
-};
+}
+
+// Excel-ге экспорттоо
+async function exportToExcel() {
+    if (!currentActiveTestId || !currentUser) return;
+
+    if (typeof XLSX === "undefined") {
+        alert("Excel китепканасы (SheetJS) жүктөлгөн эмес!");
+        return;
+    }
+
+    try {
+        const resultsRef = ref(database, `teachers_data/${currentUser.uid}/tests/${currentActiveTestId}/results`);
+        const snapshot = await get(resultsRef);
+
+        let exportData = [];
+
+        if (snapshot.exists()) {
+            const results = snapshot.val();
+            let index = 1;
+            for (let key in results) {
+                const res = results[key];
+                exportData.push({
+                    "№": index++,
+                    "Окуучу": res.studentName || "Белгисиз",
+                    "Класс": res.studentClass || "-",
+                    "Упай": res.score || 0,
+                    "Жалпы суроо": res.totalQuestions || 0,
+                    "Пайыз": res.percentage ? res.percentage + "%" : "0%",
+                    "Убакыт": res.timestamp || "-"
+                });
+            }
+        } else {
+            exportData.push({
+                "№": 1,
+                "Окуучу": "Тест тапшырган окуучу жок",
+                "Класс": "-",
+                "Упай": 0,
+                "Жалпы суроо": 0,
+                "Пайыз": "0%",
+                "Убакыт": "-"
+            });
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Жыйынтыктар");
+
+        XLSX.writeFile(workbook, `Test_Results_${currentActiveTestId}.xlsx`);
+    } catch (err) {
+        console.error("Excel экспортто ката кетти:", err);
+        alert("Экспорттоодо ката чыкты.");
+    }
+}
+
+// HTML тараптан window аркылуу чакыруу зарыл болсо:
+window.loadTests = loadTests;
+window.openTestModal = openTestModal;
+window.closeModal = closeModal;
+window.copyLink = copyLink;
+window.deleteTest = deleteTest;
