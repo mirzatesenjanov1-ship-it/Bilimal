@@ -3,167 +3,518 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>БилимАл - Онлайн Тест Тапшыруу</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Онлайн Тест - Bilimal</title>
     
+    <!-- FontAwesome & Fonts -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        /* Скрипт жүктөлгөнгө чейин 2-жана 3-блокторду таптакыр көргөзбөө */
-        .hidden, #studentTestingBlock, #studentResultsBlock {
-            display: none !important;
+        :root {
+            --bg-color: #070b19;
+            --surface-color: #111827;
+            --surface-card: #1f2937;
+            --primary: #00f2fe;
+            --primary-glow: rgba(0, 242, 254, 0.25);
+            --success: #00e676;
+            --danger: #ff4b4b;
+            --warning: #f59e0b;
+            --text-main: #ffffff;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --radius: 16px;
         }
-        
-        body {
-            background-color: #0d1117;
-            color: #c9d1d9;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             padding: 20px;
         }
 
-        .student-container {
-            max-width: 800px;
-            margin: 30px auto;
-            background: #161b22;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            border: 1px solid #30363d;
-        }
-
-        input, button {
+        .container {
             width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            margin-bottom: 16px;
-            border-radius: 6px;
-            border: 1px solid #30363d;
-            background: #0d1117;
-            color: #fff;
-            box-sizing: border-box;
+            max-width: 680px;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
         }
 
-        button {
-            background: #238636;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            transition: 0.2s;
+        /* SECTION VISIBILITY CONTROL */
+        .step-section {
+            display: none;
+        }
+        .step-section.active {
+            display: block;
+            animation: fadeIn 0.4s ease;
         }
 
-        button:hover {
-            background: #2ea043;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .matrix-node {
-            width: 38px;
-            height: 38px;
-            margin: 4px;
-            display: inline-flex;
+        /* HEADER & TILES */
+        .header-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+            display: flex;
             align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            background: #21262d;
-            cursor: pointer;
+            gap: 10px;
+        }
+
+        .anti-cheat-alert {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            color: #fbbf24;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        /* FORM CONTROLS */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
             color: #fff;
-            border: 1px solid #30363d;
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s ease;
         }
 
-        .matrix-node.active {
-            border: 2px solid #58a6ff;
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
         }
 
-        .matrix-node.answered {
-            background: #238636;
+        /* BUTTONS */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
 
-        #studentToastContainer {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 9999;
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px var(--primary-glow);
+        }
+
+        /* TEST BAR */
+        .test-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-card);
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+        }
+
+        .timer {
+            font-weight: 700;
+            color: var(--warning);
+            font-size: 18px;
+            font-family: monospace;
+        }
+
+        .warning-banner {
+            display: none;
+            background: rgba(255, 75, 75, 0.15);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        /* QUESTIONS */
+        .question-card {
+            background: var(--surface-card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .question-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .option-item:hover {
+            border-color: var(--primary);
+            background: rgba(0, 242, 254, 0.05);
+        }
+
+        .option-item input[type="radio"] {
+            accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
+        }
+
+        /* RESULT CARD */
+        .result-box {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .result-icon {
+            font-size: 60px;
+            color: var(--success);
+            margin-bottom: 15px;
+        }
+
+        .result-score {
+            font-size: 42px;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 15px 0;
+        }
+
+        .result-details {
+            background: var(--surface-card);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: left;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 14px;
         }
     </style>
-
-    <!-- Firebase SDK (Тура ирети менен биринчи жүктөлүшү КЕРЕК) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
-    <div id="studentToastContainer"></div>
+<div class="container">
 
-    <div class="student-container">
-        
-        <!-- 1-БЛОК: Авторизация -->
-        <div id="studentAuthBlock">
-            <h2 id="gateTestTitle" style="margin-top: 0;">Тестке кош келиңиз</h2>
-            <p id="gateTestMeta" style="color: #8b949e;">Жүктөлүүдө...</p>
-            <hr style="border-color: #30363d; margin-bottom: 20px;">
-            
-            <form id="studentRegistrationForm">
-                <label>Окуучунун аты-жөнү *</label>
-                <input type="text" id="studentInputName" placeholder="Мисалы: Асанов Үсөн" required>
+    <!-- 1-БАП: ОКУУЧУНУ КАТТОО ЭКРАНЫ -->
+    <div id="startSection" class="step-section active">
+        <div class="header-title">
+            <i class="fas fa-shield-alt"></i> Коопсуз Тест Тутуму
+        </div>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;" id="testSubjectTitle">Тест жүктөлүүдө...</p>
 
-                <label>Классы *</label>
-                <input type="text" id="studentInputClass" placeholder="Мисалы: 10-Б" required>
-
-                <div id="gatePinWrapper" class="hidden">
-                    <label>Тесттин PIN-коду *</label>
-                    <input type="password" id="studentInputPin" placeholder="Мугалим берген PIN-код">
-                </div>
-
-                <button type="submit" style="margin-top: 10px;">Тестти баштоо</button>
-            </form>
+        <div class="anti-cheat-alert">
+            <i class="fas fa-exclamation-triangle"></i> <b>Anti-Cheat Бузууларды Көзөмөлдөө:</b> Башка терезеге өтүүгө же экранды жабууга болбойт! Бардык аракеттер мугалимдин журналына сакталат.
         </div>
 
-        <!-- 2-БЛОК: Тест тапшыруу -->
-        <div id="studentTestingBlock" class="hidden">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 12px;">
-                <div>
-                    <h3 id="runtimeTestTitle" style="margin: 0;">Тест</h3>
-                    <small id="runtimeStudentInfo" style="color: #8b949e;"></small>
-                </div>
-                <div id="hudTimerWidget" style="border: 1px solid #238636; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 18px;">
-                    <i class="fa-regular fa-clock"></i> <span id="runtimeCountdown">00:00</span>
-                </div>
+        <form id="startForm">
+            <div class="form-group">
+                <label for="studentName">Окуучунун Аты-Жөнү <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="studentName" class="form-control" placeholder="Мисалы: Асанов Үсөн" required>
             </div>
-
-            <div id="studentQuestionsMatrix" style="margin: 15px 0;"></div>
-
-            <div style="background: #21262d; padding: 20px; border-radius: 8px; margin-top: 15px; border: 1px solid #30363d;">
-                <div style="display: flex; justify-content: space-between; color: #58a6ff; font-weight: bold;">
-                    <span id="currentQuestionNumberLabel">Суроо #1</span>
-                    <span id="currentQuestionPointsLabel">5 балл</span>
-                </div>
-                <h3 id="currentQuestionTextContainer" style="margin-top: 12px; font-weight: 500;">Суроо жүктөлүүдө...</h3>
-                <div id="questionOptionsContainer" style="margin-top: 15px;"></div>
+            <div class="form-group">
+                <label for="studentClass">Классы <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="studentClass" class="form-control" placeholder="Мисалы: 10-Б" required>
             </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="button" id="studentPrevQuestionBtn" style="background: #30363d;">Мурункусу</button>
-                <button type="button" id="studentNextQuestionBtn" style="background: #1f6beb;">Кийинкиси</button>
-                <button type="button" id="studentSubmitTestBtn" class="hidden" style="background: #238636;">Тестти аяктоо</button>
-            </div>
-        </div>
-
-        <!-- 3-БЛОК: Жыйынтык -->
-        <div id="studentResultsBlock" class="hidden" style="text-align: center; padding: 20px;">
-            <i class="fa-solid fa-circle-check" style="font-size: 60px; color: #238636; margin-bottom: 15px;"></i>
-            <h2 style="margin: 0;">Тест ийгиликтүү аяктады!</h2>
-            <p style="color: #8b949e;">Жоопторуңуз сакталды жана мугалимдин журналына жөнөтүлдү.</p>
-            
-            <div style="background: #21262d; padding: 20px; border-radius: 8px; max-width: 400px; margin: 20px auto; text-align: left; border: 1px solid #30363d;">
-                <p style="margin: 8px 0;">Топтолгон балл: <strong id="resultPointsEarned">0 / 0</strong></p>
-                <p style="margin: 8px 0;">Пайыздык көрсөткүч: <strong id="resultPercentValue">0%</strong></p>
-                <p style="margin: 8px 0;">Туура жооптор: <strong id="resultCorrectCount">0/0</strong></p>
-                <p style="margin: 8px 0;">Колдонулган убакыт: <strong id="resultTimeSpent">0 мүнөт</strong></p>
-            </div>
-        </div>
-
+            <button type="submit" class="btn">
+                Тестти Баштоо <i class="fas fa-arrow-right"></i>
+            </button>
+        </form>
     </div>
 
-    <!-- Кэшти айланып өтүү үчүн катуу версия жазылды (v=9.9) -->
-    <script src="/assets/js/student-test.js?v=9.9"></script>
+    <!-- 2-БАП: ТЕСТ СУРООЛОРУ ЭКРАНЫ -->
+    <div id="testSection" class="step-section">
+        <div class="test-top-bar">
+            <div>
+                <div style="font-size: 12px; color: var(--text-muted);">Окуучу:</div>
+                <div id="displayStudentInfo" style="font-weight: 600;">-</div>
+            </div>
+            <div class="timer">
+                <i class="fas fa-clock"></i> <span id="timerDisplay">00:00</span>
+            </div>
+        </div>
+
+        <div id="warningBanner" class="warning-banner">
+            <i class="fas fa-bell"></i> ЭСКЕРТҮҮ: Сиз башка терезеге өтпөңүз! Бул аракет катталды.
+        </div>
+
+        <div id="questionsContainer">
+            <!-- Суроолор JS аркылуу жүктөлөт -->
+        </div>
+
+        <button id="submitTestBtn" class="btn" style="background: var(--success); margin-top: 20px;">
+            <i class="fas fa-paper-plane"></i> Тестти аяктоо жана жиберүү
+        </button>
+    </div>
+
+    <!-- 3-БАП: ЖЫЙЫНТЫК ЭКРАНЫ -->
+    <div id="resultSection" class="step-section">
+        <div class="result-box">
+            <div class="result-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Тест Ийгиликтүү Аяктады!</h2>
+            <p style="color: var(--text-muted); font-size: 14px; margin-top: 5px;">Жыйынтык Мугалимге Жиберилди</p>
+            
+            <div class="result-score" id="resultPercentage">0%</div>
+
+            <div class="result-details">
+                <div><b>Туура жооптор:</b> <span id="resultScore">0/0</span></div>
+                <div><b>Anti-Cheat бузуулары:</b> <span id="resultViolations" style="color: var(--danger);">0 жолу</span></div>
+                <div><b>Убакыт:</b> <span id="resultTime">-</span></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Firebase JS & Engine -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, get, push, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // URL Параметрлерди алуу
+    const urlParams = new URLSearchParams(window.location.search);
+    const teacherId = urlParams.get('teacher');
+    const testId = urlParams.get('test');
+
+    let currentTestData = null;
+    let studentData = { name: '', class: '' };
+    let antiCheatViolations = 0;
+    let timerInterval = null;
+    let secondsLeft = 0;
+
+    // Инициализация
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (!teacherId || !testId) {
+            alert("Ката: Шилтеме туура эмес!");
+            return;
+        }
+        
+        try {
+            const testRef = ref(db, `teachers_data/${teacherId}/tests/${testId}`);
+            const snapshot = await get(testRef);
+
+            if (snapshot.exists()) {
+                currentTestData = snapshot.val();
+                document.getElementById('testSubjectTitle').innerText = `${currentTestData.subject || 'Предмет'} - ${currentTestData.title || 'Тест'}`;
+            } else {
+                alert("Тест табылган жок же өчүрүлгөн.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Маалымат жүктөөдө ката кетти.");
+        }
+    });
+
+    // 1-Кадам: Каттоо
+    document.getElementById('startForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        studentData.name = document.getElementById('studentName').value.trim();
+        studentData.class = document.getElementById('studentClass').value.trim();
+
+        if (!studentData.name || !studentData.class) return;
+
+        // Экраны алмаштыруу
+        document.getElementById('startSection').classList.remove('active');
+        document.getElementById('testSection').classList.add('active');
+
+        document.getElementById('displayStudentInfo').innerText = `${studentData.name} (${studentData.class})`;
+
+        initTestScreen();
+    });
+
+    // 2-Кадам: Тест экран
+    function initTestScreen() {
+        renderQuestions();
+        setupAntiCheat();
+        
+        // Таймер (дефолт 20 мүнөт)
+        secondsLeft = (currentTestData.timeLimit || 20) * 60;
+        startTimer();
+    }
+
+    function renderQuestions() {
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = '';
+
+        if (!currentTestData.questions || currentTestData.questions.length === 0) {
+            container.innerHTML = '<p>Суроолор табылган жок.</p>';
+            return;
+        }
+
+        currentTestData.questions.forEach((q, qIndex) => {
+            const qCard = document.createElement('div');
+            qCard.className = 'question-card';
+            
+            let optionsHtml = '';
+            q.options.forEach((opt, oIndex) => {
+                optionsHtml += `
+                    <label class="option-item">
+                        <input type="radio" name="q_${qIndex}" value="${oIndex}">
+                        <span>${opt}</span>
+                    </label>
+                `;
+            });
+
+            qCard.innerHTML = `
+                <div class="question-title">${qIndex + 1}. ${q.question}</div>
+                <div class="options-list">${optionsHtml}</div>
+            `;
+            container.appendChild(qCard);
+        });
+    }
+
+    // Anti-Cheat Механизми
+    function setupAntiCheat() {
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                antiCheatViolations++;
+                const banner = document.getElementById('warningBanner');
+                banner.style.display = 'block';
+                setTimeout(() => { banner.style.display = 'none'; }, 5000);
+            }
+        });
+    }
+
+    // Таймер
+    function startTimer() {
+        const display = document.getElementById('timerDisplay');
+        timerInterval = setInterval(() => {
+            secondsLeft--;
+            const mins = Math.floor(secondsLeft / 60);
+            const secs = secondsLeft % 60;
+            display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+            if (secondsLeft <= 0) {
+                clearInterval(timerInterval);
+                finishTest();
+            }
+        }, 1000);
+    }
+
+    // Тестти аяктоо
+    document.getElementById('submitTestBtn').addEventListener('click', finishTest);
+
+    async function finishTest() {
+        clearInterval(timerInterval);
+
+        let score = 0;
+        const total = currentTestData.questions ? currentTestData.questions.length : 0;
+
+        if (total > 0) {
+            currentTestData.questions.forEach((q, qIndex) => {
+                const selected = document.querySelector(`input[name="q_${qIndex}"]:checked`);
+                if (selected && parseInt(selected.value) === parseInt(q.correct)) {
+                    score++;
+                }
+            });
+        }
+
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+
+        // Жыйынтыкты Firebase базасына сактоо
+        const resultData = {
+            studentName: studentData.name,
+            studentClass: studentData.class,
+            score: score,
+            totalQuestions: total,
+            percentage: percentage,
+            violations: antiCheatViolations,
+            timestamp: new Date().toLocaleString()
+        };
+
+        try {
+            const resultsRef = ref(db, `teachers_data/${teacherId}/tests/${testId}/results`);
+            const newResRef = push(resultsRef);
+            await set(newResRef, resultData);
+        } catch (err) {
+            console.error("Жыйынтыкты сактоодо ката:", err);
+        }
+
+        // Жыйынтык экранды ачуу
+        document.getElementById('testSection').classList.remove('active');
+        document.getElementById('resultSection').classList.add('active');
+
+        document.getElementById('resultPercentage').innerText = `${percentage}%`;
+        document.getElementById('resultScore').innerText = `${score} / ${total}`;
+        document.getElementById('resultViolations').innerText = `${antiCheatViolations} жолу`;
+        document.getElementById('resultTime').innerText = new Date().toLocaleTimeString();
+    }
+</script>
+
 </body>
 </html>
