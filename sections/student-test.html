@@ -346,7 +346,6 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // URL Параметрлерди алуу
     const urlParams = new URLSearchParams(window.location.search);
     const teacherId = urlParams.get('teacher');
     const testId = urlParams.get('test');
@@ -355,9 +354,9 @@
     let studentData = { name: '', class: '' };
     let antiCheatViolations = 0;
     let timerInterval = null;
-    let secondsLeft = 0;
+    let totalTimeLimit = 20; // Мүнөт
+    let startTimeMs = 0;
 
-    // Инициализация
     window.addEventListener('DOMContentLoaded', async () => {
         if (!teacherId || !testId) {
             alert("Ката: Шилтеме туура эмес!");
@@ -380,7 +379,6 @@
         }
     });
 
-    // 1-Кадам: Каттоо
     document.getElementById('startForm').addEventListener('submit', (e) => {
         e.preventDefault();
         studentData.name = document.getElementById('studentName').value.trim();
@@ -388,7 +386,6 @@
 
         if (!studentData.name || !studentData.class) return;
 
-        // Экраны алмаштыруу
         document.getElementById('startSection').classList.remove('active');
         document.getElementById('testSection').classList.add('active');
 
@@ -397,14 +394,15 @@
         initTestScreen();
     });
 
-    // 2-Кадам: Тест экран
     function initTestScreen() {
+        startTimeMs = Date.now();
         renderQuestions();
         setupAntiCheat();
         
-        // Таймер (дефолт 20 мүнөт)
-        secondsLeft = (currentTestData.timeLimit || 20) * 60;
-        startTimer();
+        totalTimeLimit = parseInt(currentTestData.timeLimit || currentTestData.duration || 20);
+        let secondsLeft = totalTimeLimit * 60;
+        
+        startTimer(secondsLeft);
     }
 
     function renderQuestions() {
@@ -421,7 +419,8 @@
             qCard.className = 'question-card';
             
             let optionsHtml = '';
-            q.options.forEach((opt, oIndex) => {
+            const options = q.options || q.answers || [];
+            options.forEach((opt, oIndex) => {
                 optionsHtml += `
                     <label class="option-item">
                         <input type="radio" name="q_${qIndex}" value="${oIndex}">
@@ -431,33 +430,35 @@
             });
 
             qCard.innerHTML = `
-                <div class="question-title">${qIndex + 1}. ${q.question}</div>
+                <div class="question-title">${qIndex + 1}. ${q.question || q.title || 'Суроо'}</div>
                 <div class="options-list">${optionsHtml}</div>
             `;
             container.appendChild(qCard);
         });
     }
 
-    // Anti-Cheat Механизми
     function setupAntiCheat() {
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 antiCheatViolations++;
                 const banner = document.getElementById('warningBanner');
-                banner.style.display = 'block';
-                setTimeout(() => { banner.style.display = 'none'; }, 5000);
+                if (banner) {
+                    banner.style.display = 'block';
+                    setTimeout(() => { banner.style.display = 'none'; }, 5000);
+                }
             }
         });
     }
 
-    // Таймер
-    function startTimer() {
+    function startTimer(secondsLeft) {
         const display = document.getElementById('timerDisplay');
         timerInterval = setInterval(() => {
             secondsLeft--;
             const mins = Math.floor(secondsLeft / 60);
             const secs = secondsLeft % 60;
-            display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            if (display) {
+                display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
 
             if (secondsLeft <= 0) {
                 clearInterval(timerInterval);
@@ -466,35 +467,73 @@
         }, 1000);
     }
 
-    // Тестти аяктоо
     document.getElementById('submitTestBtn').addEventListener('click', finishTest);
 
     async function finishTest() {
         clearInterval(timerInterval);
 
         let score = 0;
-        const total = currentTestData.questions ? currentTestData.questions.length : 0;
+        const questions = currentTestData.questions || [];
+        const total = questions.length;
+        const responses = {};
 
         if (total > 0) {
-            currentTestData.questions.forEach((q, qIndex) => {
+            questions.forEach((q, qIndex) => {
                 const selected = document.querySelector(`input[name="q_${qIndex}"]:checked`);
-                if (selected && parseInt(selected.value) === parseInt(q.correct)) {
-                    score++;
+                const studentVal = selected ? parseInt(selected.value) : -1;
+                const options = q.options || q.answers || [];
+                const studentAnswerText = studentVal !== -1 ? options[studentVal] : "Жооп берилген эмес";
+
+                // АДАПТИВДҮҮ ТҮРДӨ ТУУРА ЖООПТУ АНЫКТОО
+                let isCorrect = false;
+                let correctAnswerText = "";
+
+                if (q.correct !== undefined) {
+                    if (typeof q.correct === "number" || !isNaN(q.correct)) {
+                        isCorrect = (studentVal === parseInt(q.correct));
+                        correctAnswerText = options[parseInt(q.correct)] || q.correct;
+                    } else if (typeof q.correct === "string") {
+                        isCorrect = (studentAnswerText.trim().toLowerCase() === q.correct.trim().toLowerCase());
+                        correctAnswerText = q.correct;
+                    }
+                } else if (q.correctAnswer !== undefined) {
+                    isCorrect = (studentAnswerText.trim().toLowerCase() === String(q.correctAnswer).trim().toLowerCase());
+                    correctAnswerText = q.correctAnswer;
+                } else if (q.correctOption !== undefined) {
+                    isCorrect = (studentVal === parseInt(q.correctOption));
+                    correctAnswerText = options[parseInt(q.correctOption)];
                 }
+
+                if (isCorrect) score++;
+
+                responses[`q_${qIndex}`] = {
+                    questionText: q.question || q.title || `Суроо №${qIndex + 1}`,
+                    studentAnswer: studentAnswerText,
+                    correctAnswer: correctAnswerText,
+                    isCorrect: isCorrect
+                };
             });
         }
 
         const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
+        const durationUsed = Math.ceil((Date.now() - startTimeMs) / 60000); // Кеткен убакыт мүнөт менен
 
-        // Жыйынтыкты Firebase базасына сактоо
+        // Мугалимдин панелина дал келүүчү толук формат
         const resultData = {
             studentName: studentData.name,
             studentClass: studentData.class,
+            classGroup: studentData.class,
             score: score,
+            totalPoints: total,
             totalQuestions: total,
             percentage: percentage,
+            finalPercentage: percentage,
+            antiCheatViolations: antiCheatViolations,
             violations: antiCheatViolations,
-            timestamp: new Date().toLocaleString()
+            durationUsed: durationUsed,
+            timestamp: Date.now(), // 100% туура ISO/миллисекундалык дата
+            reviewStatus: 'checked',
+            responses: responses
         };
 
         try {
@@ -505,7 +544,6 @@
             console.error("Жыйынтыкты сактоодо ката:", err);
         }
 
-        // Жыйынтык экранды ачуу
         document.getElementById('testSection').classList.remove('active');
         document.getElementById('resultSection').classList.add('active');
 
