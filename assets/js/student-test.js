@@ -1,7 +1,7 @@
 /**
  * BilimAl Educational Platform - Student Testing Engine
- * Security Level: Production Grade
- * Architecture: Event-Driven Standard Vanilla JS
+ * Security Level: Production Grade Architecture
+ * Standard: Event-Driven Vanilla JavaScript
  */
 
 (function () {
@@ -19,12 +19,13 @@
         measurementId: "G-9GSQV60QV0"
     };
 
-    if (!firebase.apps || !firebase.apps.length) {
+    if (typeof firebase !== "undefined" && (!firebase.apps || !firebase.apps.length)) {
         firebase.initializeApp(firebaseConfig);
     }
-    const database = firebase.database();
+    
+    const database = (typeof firebase !== "undefined") ? firebase.database() : null;
 
-    // Системдик глобалдык өзгөрмөлөр
+    // Глобалдык жумушчу абалынын өзгөрмөлөрү
     let evaluationActiveTestId = null;
     let activeTeacherUid = null;
     let currentLoadedTestStructure = null;
@@ -37,9 +38,11 @@
     let metaStudentName = "";
     let metaStudentClass = "";
 
-    // HTML Escape (XSS коопсуздугу үчүн)
+    /**
+     * XSS чабуулдарынан коргоо үчүн тексттерди коопсуз формага келтирүү
+     */
     function escapeHTML(str) {
-        if (!str) return "";
+        if (str === null || str === undefined) return "";
         return String(str)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -48,11 +51,13 @@
             .replace(/'/g, "&#039;");
     }
 
-    // Таймаут башкаруучу Promise
+    /**
+     * Тармактык асылууларды (Infinite Loading) алдын алуучу Таймаут-контейнер
+     */
     function fetchWithTimeout(promise, ms = 10000) {
         return new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
-                reject(new Error("Тармактын жооп берүү убактысы аяктады (Timeout). Интернет байланышыңызды текшериңиз."));
+                reject(new Error("Серверден жооп алуу убактысы аяктады. Интернет байланышыңызды текшерип, кайра аракет кылыңыз."));
             }, ms);
 
             promise.then(
@@ -73,6 +78,11 @@
         toggleElementVisibility("studentTestingBlock", false);
         toggleElementVisibility("studentResultsBlock", false);
 
+        if (!database) {
+            renderFatalErrorWorkspaceState("Firebase SDK жүктөлгөн жок. Баракчаны кайра жүктөңүз же HTML китепканаларын текшериңиз.");
+            return;
+        }
+
         extractTestContextParametersFromUrl();
     });
 
@@ -82,7 +92,7 @@
         activeTeacherUid = urlParams.get("teacher");
 
         if (!evaluationActiveTestId) {
-            renderFatalErrorWorkspaceState("Тесттин уникалдуу идентификатору шилтемеде табылбады. Ссылканы текшериңиз.");
+            renderFatalErrorWorkspaceState("Тесттин уникалдуу идентификатору шилтемеде табылбады. Шилтемени тууралыгын текшериңиз (URL ичинде ?test= ID болушу керек).");
             return;
         }
 
@@ -100,7 +110,7 @@
                     loadMainTestData();
                 })
                 .catch(function (err) {
-                    renderFatalErrorWorkspaceState("Маалымат алууда ката же интернет чабалдыгы: " + err.message);
+                    renderFatalErrorWorkspaceState("Маалымат алууда ката же интернет байланышы начар: " + err.message);
                 });
         } else {
             loadMainTestData();
@@ -557,9 +567,14 @@
     }
 
     function renderFatalErrorWorkspaceState(errorMessage) {
-        const authCard = document.getElementById("studentAuthBlock");
+        const authCard = document.getElementById("gateTestTitle");
         if (authCard) {
-            authCard.innerHTML = `
+            authCard.innerText = "Тест табылган жок";
+        }
+        
+        const mainContainer = document.getElementById("studentAuthBlock");
+        if (mainContainer) {
+            mainContainer.innerHTML = `
                 <div style="text-align:center; padding: 30px 20px; color: #ff4757;">
                     <i class="fa-solid fa-triangle-exclamation" style="font-size: 48px; margin-bottom: 15px;"></i>
                     <h3 style="margin-bottom: 10px; color: #fff;">Тестти жүктөө мүмкүн эмес</h3>
