@@ -150,7 +150,8 @@ function transitionWorkspaceToActiveTestMode() {
         requestFullscreenWindowViewportMode();
     }
 
-    computedTimeRemainingSeconds = (currentLoadedTestStructure.duration || 45) * 60;
+    const durationMin = parseInt(currentLoadedTestStructure.duration || currentLoadedTestStructure.timeLimit || 45);
+    computedTimeRemainingSeconds = durationMin * 60;
     startTestingSessionCountdownTimer();
 
     generateQuestionsMatrixHUDNodes();
@@ -215,13 +216,15 @@ function displayTargetQuestionContentPane() {
     safeUpdateInnerText("currentQuestionPointsLabel", `${qData.points || 5} балл`);
     
     const textContainer = document.getElementById("currentQuestionTextContainer");
-    if (textContainer) textContainer.innerText = qData.text || "";
+    if (textContainer) {
+        textContainer.innerText = qData.text || qData.question || qData.title || "";
+    }
 
     const optionsContainer = document.getElementById("questionOptionsContainer");
     if (optionsContainer) {
         optionsContainer.innerHTML = "";
         
-        const opts = qData.options || [];
+        const opts = qData.options || qData.answers || [];
         opts.forEach(function (opt, oIdx) {
             const currentSavedAnswer = compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
             let isSelected = false;
@@ -234,13 +237,13 @@ function displayTargetQuestionContentPane() {
 
             const optionRow = document.createElement("div");
             optionRow.className = `option-variant-row ${isSelected ? 'selected' : ''}`;
-            optionRow.style.cssText = "padding:10px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.2); border-radius:6px; cursor:pointer; display:flex; align-items:center; gap:10px;";
+            optionRow.style.cssText = "padding:12px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:12px; background: rgba(255,255,255,0.03);";
             
             optionRow.innerHTML = `
-                <div class="variant-indicator" style="width:18px; height:18px; border:1px solid #00f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${isSelected ? '#00f2fe' : 'transparent'};">
-                    ${isSelected ? '<i class="fa-solid fa-check" style="font-size:10px; color:#000;"></i>' : ''}
+                <div class="variant-indicator" style="width:20px; height:20px; border:1px solid #00f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${isSelected ? '#00f2fe' : 'transparent'};">
+                    ${isSelected ? '<i class="fa-solid fa-check" style="font-size:11px; color:#000;"></i>' : ''}
                 </div>
-                <div class="variant-text-string">${opt}</div>
+                <div class="variant-text-string" style="font-size:15px; color:#fff;">${opt}</div>
             `;
 
             optionRow.onclick = function () {
@@ -311,17 +314,39 @@ function processAutomatedTestSubmissionWorkflow() {
         const points = q.points || 5;
         maximumPointsPossible += points;
         const studentAns = compiledStudentAnswersBuffer[idx];
+        const opts = q.options || q.answers || [];
 
         let isCorrect = false;
+        let correctAnswerText = "";
 
+        // АДАПТИВДҮҮ ТҮРДӨ ТУУРА ЖООПТУ ТЕКШЕРҮҮ LOGIC
         if (q.type === 'multiple') {
-            const correctArr = q.correctOptionIndices || [q.correctOptionIndex || 0];
+            const correctArr = q.correctOptionIndices || (q.correct !== undefined ? (Array.isArray(q.correct) ? q.correct : [q.correct]) : [0]);
             if (Array.isArray(studentAns) && studentAns.length === correctArr.length && studentAns.every(function (v) { return correctArr.includes(v); })) {
                 isCorrect = true;
             }
+            correctAnswerText = correctArr.map(function (i) { return opts[i] || i; }).join(", ");
         } else {
-            if (studentAns !== undefined && studentAns === q.correctOptionIndex) {
-                isCorrect = true;
+            // Жөнөкөй жалгыз тандоо
+            let targetCorrectIdx = null;
+
+            if (q.correctOptionIndex !== undefined) targetCorrectIdx = parseInt(q.correctOptionIndex);
+            else if (q.correctOption !== undefined) targetCorrectIdx = parseInt(q.correctOption);
+            else if (q.correct !== undefined && !isNaN(q.correct)) targetCorrectIdx = parseInt(q.correct);
+
+            if (targetCorrectIdx !== null && !isNaN(targetCorrectIdx)) {
+                if (studentAns !== undefined && studentAns === targetCorrectIdx) {
+                    isCorrect = true;
+                }
+                correctAnswerText = opts[targetCorrectIdx] || targetCorrectIdx;
+            } else {
+                // Текст түрүндө сакталган болсо
+                const rawCorrect = q.correct || q.correctAnswer || "";
+                const studentAnswerText = studentAns !== undefined ? opts[studentAns] : "";
+                if (studentAnswerText && String(studentAnswerText).trim().toLowerCase() === String(rawCorrect).trim().toLowerCase()) {
+                    isCorrect = true;
+                }
+                correctAnswerText = rawCorrect;
             }
         }
 
@@ -330,29 +355,40 @@ function processAutomatedTestSubmissionWorkflow() {
             totalCorrectAnswersCount++;
         }
 
+        let studentAnswerDisplay = "Жооп берилген эмес";
+        if (Array.isArray(studentAns)) {
+            studentAnswerDisplay = studentAns.map(function (i) { return opts[i]; }).join(", ");
+        } else if (studentAns !== undefined && opts[studentAns] !== undefined) {
+            studentAnswerDisplay = opts[studentAns];
+        }
+
         responsesDetailedMap[`q_${idx}`] = {
-            questionText: q.text,
-            studentAnswer: Array.isArray(studentAns) ? studentAns.map(function (i) { return q.options[i]; }).join(", ") : (q.options ? q.options[studentAns] : studentAns),
-            correctAnswer: q.type === 'multiple' 
-                ? (q.correctOptionIndices || []).map(function (i) { return q.options[i]; }).join(", ") 
-                : (q.options ? q.options[q.correctOptionIndex] : ""),
+            questionText: q.text || q.question || q.title || `Суроо №${idx + 1}`,
+            studentAnswer: studentAnswerDisplay,
+            correctAnswer: correctAnswerText,
             isCorrect: isCorrect
         };
     });
 
     const overallPercentage = maximumPointsPossible > 0 ? Math.round((accumulatedPointsEarned / maximumPointsPossible) * 100) : 0;
-    const durationUsed = Math.ceil(((currentLoadedTestStructure.duration * 60) - computedTimeRemainingSeconds) / 60);
+    const totalDuration = parseInt(currentLoadedTestStructure.duration || currentLoadedTestStructure.timeLimit || 45) * 60;
+    const durationUsed = Math.max(1, Math.ceil((totalDuration - computedTimeRemainingSeconds) / 60));
 
+    // Мугалимдин панелина 100% шайкеш келтирилген базалык жазуу
     const resultRecord = {
         studentName: metaStudentName,
         studentClass: metaStudentClass,
+        classGroup: metaStudentClass,
         testTitle: currentLoadedTestStructure.title || "Тест",
         score: accumulatedPointsEarned,
         totalPoints: maximumPointsPossible,
+        totalQuestions: currentLoadedTestStructure.questions.length,
         percentage: overallPercentage,
+        finalPercentage: overallPercentage,
         durationUsed: durationUsed,
         antiCheatViolations: securityViolationCounters,
-        reviewStatus: "pending",
+        violations: securityViolationCounters,
+        reviewStatus: "checked",
         responses: responsesDetailedMap,
         timestamp: Date.now()
     };
@@ -383,7 +419,7 @@ function initializeAntiCheatSecurityGuards() {
     const security = currentLoadedTestStructure.security || {};
 
     document.addEventListener("visibilitychange", function () {
-        if (document.visibilityState === "hidden" && security.windowSwitchTrack) {
+        if (document.visibilityState === "hidden" && (security.windowSwitchTrack !== false)) {
             securityViolationCounters++;
             showStudentToastMessage(`Эскертүү! Башка терезеге өтүүгө тыюу салынат! Жалпы бузуулар: ${securityViolationCounters}`, "warning");
         }
