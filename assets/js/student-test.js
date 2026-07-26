@@ -123,7 +123,7 @@ function registerStudentRegistrationFormHandler() {
 
         if (currentLoadedTestStructure.pinCode) {
             const enteredPin = getInputValue("studentInputPin").trim();
-            if (enteredPin !== currentLoadedTestStructure.pinCode) {
+            if (enteredPin !== String(currentLoadedTestStructure.pinCode).trim()) {
                 showStudentToastMessage("Тестке кирүү үчүн туура эмес PIN-код жаздыңыз!", "error");
                 return;
             }
@@ -291,7 +291,7 @@ function displayTargetQuestionContentPane() {
                     
                     if (arr.length === 0) delete compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
                 } else {
-                    compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = oIdx;
+                    compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = Number(oIdx);
                 }
                 
                 const matrixNode = document.querySelector(`.matrix-node.n-idx-${trackingActiveQuestionIndex}`);
@@ -356,7 +356,7 @@ function processAutomatedTestSubmissionWorkflow() {
         let isCorrect = false;
         let correctAnswerText = "";
 
-        // 1. КӨП ТАНДООЛУУ СУРООЛОР
+        // 1. КӨП ТАНДООЛУУ СУРООЛОР (MULTIPLE CHOICE)
         if (qType === 'multiple') {
             let correctArr = [];
             if (Array.isArray(q.correctOptionIndices)) correctArr = q.correctOptionIndices;
@@ -373,7 +373,7 @@ function processAutomatedTestSubmissionWorkflow() {
             }
             correctAnswerText = normCorrect.map(i => opts[i] !== undefined ? opts[i] : i).join(", ");
 
-        // 2. АЧЫК (ТЕКСТ ТҮРҮНДӨГҮ) СУРООЛОР
+        // 2. АЧЫК ТЕКСТТИК СУРООЛОР (TEXT / SHORT)
         } else if (qType === 'text' || qType === 'short' || opts.length === 0) {
             const rawCorrect = String(q.correct || q.correctAnswer || q.answer || "").trim().toLowerCase();
             const rawStudent = String(studentAns || "").trim().toLowerCase();
@@ -383,26 +383,35 @@ function processAutomatedTestSubmissionWorkflow() {
             }
             correctAnswerText = q.correct || q.correctAnswer || q.answer || "";
 
-        // 3. БИР ЖООПТУУ ЖӨНӨКӨЙ СУРООЛОР (Дефолт)
+        // 3. БИР ЖООПТУУ БҮТКҮЛ СУРООЛОР (SINGLE CHOICE - УНИВЕРСАЛДЫУУ ТЕКШЕРҮҮ)
         } else {
-            let targetCorrectIdx = null;
+            // Базадан келиши мүмкүн болгон туура индекс касиеттерин издейбиз
+            let rawCorrectVal = undefined;
+            if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) rawCorrectVal = q.correctOptionIndex;
+            else if (q.correctOption !== undefined && q.correctOption !== null) rawCorrectVal = q.correctOption;
+            else if (q.correct !== undefined && q.correct !== null) rawCorrectVal = q.correct;
+            else if (q.correctAnswer !== undefined && q.correctAnswer !== null) rawCorrectVal = q.correctAnswer;
 
-            if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) targetCorrectIdx = Number(q.correctOptionIndex);
-            else if (q.correctOption !== undefined && q.correctOption !== null) targetCorrectIdx = Number(q.correctOption);
-            else if (q.correct !== undefined && !isNaN(q.correct)) targetCorrectIdx = Number(q.correct);
+            let studentIdx = (studentAns !== undefined && studentAns !== null) ? Number(studentAns) : null;
 
-            if (targetCorrectIdx !== null && !isNaN(targetCorrectIdx)) {
-                if (studentAns !== undefined && studentAns !== null && Number(studentAns) === targetCorrectIdx) {
+            // Эгер rawCorrectVal сан болсо же сан сап болсо (мис: "0", 0)
+            if (rawCorrectVal !== undefined && !isNaN(rawCorrectVal) && String(rawCorrectVal).trim() !== "") {
+                const targetIdx = Number(rawCorrectVal);
+                if (studentIdx !== null && studentIdx === targetIdx) {
                     isCorrect = true;
                 }
-                correctAnswerText = opts[targetCorrectIdx] !== undefined ? opts[targetCorrectIdx] : targetCorrectIdx;
+                correctAnswerText = opts[targetIdx] !== undefined ? opts[targetIdx] : targetIdx;
             } else {
-                const rawCorrect = String(q.correct || q.correctAnswer || "").trim().toLowerCase();
-                const studentAnswerText = (studentAns !== undefined && opts[studentAns] !== undefined) ? String(opts[studentAns]).trim().toLowerCase() : "";
-                if (studentAnswerText.length > 0 && studentAnswerText === rawCorrect) {
+                // Эгер туура жооп варианттын ТЕКСТИ катары сакталган болсо (мис: "Бишкек")
+                const targetText = String(rawCorrectVal || "").trim().toLowerCase();
+                const studentSelectedText = (studentIdx !== null && opts[studentIdx] !== undefined) 
+                    ? String(opts[studentIdx]).trim().toLowerCase() 
+                    : String(studentAns || "").trim().toLowerCase();
+
+                if (studentSelectedText.length > 0 && studentSelectedText === targetText) {
                     isCorrect = true;
                 }
-                correctAnswerText = q.correct || q.correctAnswer || "";
+                correctAnswerText = rawCorrectVal || "";
             }
         }
 
