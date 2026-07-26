@@ -44,10 +44,12 @@ function setupNavigation() {
     bindClick("navDashboard", () => window.location.href = "/sections/tests.html");
     bindClick("navTestBuilder", () => window.location.href = "/sections/test-builder.html");
     bindClick("navResults", () => window.location.href = "/sections/test-results.html");
+    
     bindClick("btnCloseResultModal", () => {
         const modal = document.getElementById("studentDetailModal");
         if (modal) modal.style.display = "none";
     });
+
     bindClick("btnDownloadYearlyReport", () => downloadYearlyReportCSV(resultsData));
 }
 
@@ -57,7 +59,6 @@ function bindClick(id, handler) {
 }
 
 function loadResultsData() {
-    // Мугалимдин бардык тесттеринен натыйжаларды чогултуу
     const testsRef = ref(database, `teachers_data/${teacherId}/tests`);
     onValue(testsRef, (snapshot) => {
         resultsData = [];
@@ -104,7 +105,14 @@ function populateFilterSelectors() {
 }
 
 function calculateAnalytics() {
-    if (resultsData.length === 0) return;
+    if (resultsData.length === 0) {
+        safeSetText("anAverageScore", "0%");
+        safeSetText("anMaxScore", "0");
+        safeSetText("anSuccessRate", "0%");
+        safeSetText("anMostFailedQ", "Жок");
+        return;
+    }
+
     let scoreSum = 0;
     let max = 0;
     resultsData.forEach(r => {
@@ -126,7 +134,7 @@ function safeSetText(id, txt) {
 }
 
 function setupFilters() {
-    const triggers = ["resSearchStudent", "resFilterYear", "resFilterSubject", "resFilterClass", "resFilterTest", "resFilterStatus", "resFilterCheat"];
+    const triggers = ["resSearchStudent", "resFilterYear", "resFilterSubject", "resFilterClass", "resFilterTest"];
     triggers.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
@@ -144,8 +152,6 @@ function renderResultsTable() {
     const nameQuery = getVal("resSearchStudent").toLowerCase();
     const classQuery = getVal("resFilterClass");
     const testQuery = getVal("resFilterTest");
-    const statusQuery = getVal("resFilterStatus");
-    const cheatQuery = getVal("resFilterCheat");
 
     const filtered = resultsData.filter(r => {
         const sName = (r.studentName || "").toLowerCase();
@@ -154,8 +160,6 @@ function renderResultsTable() {
         if (nameQuery && !sName.includes(nameQuery)) return false;
         if (classQuery !== "all" && sClass !== classQuery) return false;
         if (testQuery !== "all" && r.testTitle !== testQuery) return false;
-        if (statusQuery !== "all" && r.reviewStatus !== statusQuery) return false;
-        if (cheatQuery === "yes" && !(r.antiCheatViolations > 0 || r.hasCheatWarning)) return false;
         return true;
     });
 
@@ -179,8 +183,8 @@ function renderResultsTable() {
             <td>${r.durationUsed || 0} мүн</td>
             <td>${r.score || 0} / ${r.totalPoints || r.manualPoints || 0}</td>
             <td>${r.percentage || r.finalPercentage || 0}%</td>
-            <td><span style="font-weight:bold; color:#00f2fe;">${r.grade || calculateGrade(r.percentage || 0)}</span></td>
-            <td>${hasViolations ? `<span style="color:#ff4a4a;">Шектүү (${r.antiCheatViolations || 1})</span>` : '<span style="color:#00ffa3;">Таза</span>'}</td>
+            <td><span style="font-weight:bold; color:var(--primary);">${r.grade || calculateGrade(r.percentage || 0)}</span></td>
+            <td>${hasViolations ? `<span style="color:var(--danger);">Шектүү (${r.antiCheatViolations || 1})</span>` : '<span style="color:var(--success);">Таза</span>'}</td>
             <td>${r.reviewStatus === 'checked' ? 'Бекитилди' : 'Каралууда'}</td>
             <td><button class="node-btn open-detail" data-id="${r.id}"><i class="fas fa-search-plus"></i> Текшерүү</button></td>
         `;
@@ -209,7 +213,7 @@ function openStudentDetail(id) {
     if (!activeResultNode) return;
 
     const modal = document.getElementById("studentDetailModal");
-    if (modal) modal.style.display = "block";
+    if (modal) modal.style.display = "flex";
 
     safeSetText("mdTitle", activeResultNode.studentName || "Окуучу");
     
@@ -234,13 +238,15 @@ function openStudentDetail(id) {
             Object.keys(activeResultNode.responses).forEach((k, i) => {
                 const resp = activeResultNode.responses[k];
                 qBox.innerHTML += `
-                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; margin-bottom:10px;">
+                    <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:6px; margin-bottom:10px; border: 1px solid var(--border-color);">
                         <div><strong>Суроо №${i+1}:</strong> ${resp.questionText || 'Суроо'}</div>
-                        <div style="color:#ffa800;">Окуучунун жообу: ${resp.studentAnswer || 'Жооп берилген эмес'}</div>
-                        <div style="color:#00ffa3;">Туура жооп модели: ${resp.correctAnswer || 'Мугалимдин кароосунда'}</div>
+                        <div style="color:var(--warning); margin-top:3px;">Окуучунун жообу: ${resp.studentAnswer || 'Жооп берилген эмес'}</div>
+                        <div style="color:var(--success); margin-top:3px;">Туура жооп модели: ${resp.correctAnswer || 'Мугалимдин кароосунда'}</div>
                     </div>
                 `;
             });
+        } else {
+            qBox.innerHTML = "<p style='color: var(--text-muted); font-size:13px;'>Толук суроо жооптор катталган эмес.</p>";
         }
     }
 
