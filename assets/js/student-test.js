@@ -194,6 +194,10 @@ function generateQuestionsMatrixHUDNodes() {
         node.className = `matrix-node n-idx-${idx}`;
         node.innerText = idx + 1;
 
+        if (compiledStudentAnswersBuffer[idx] !== undefined) {
+            node.classList.add("answered");
+        }
+
         node.onclick = function () {
             trackingActiveQuestionIndex = idx;
             displayTargetQuestionContentPane();
@@ -221,33 +225,62 @@ function displayTargetQuestionContentPane() {
     }
 
     const optionsContainer = document.getElementById("questionOptionsContainer");
-    if (optionsContainer) {
-        optionsContainer.innerHTML = "";
-        
-        const opts = qData.options || qData.answers || [];
+    if (!optionsContainer) return;
+    optionsContainer.innerHTML = "";
+
+    const qType = (qData.type || 'single').toLowerCase();
+    const opts = qData.options || qData.answers || [];
+
+    // Тексттик / Ачык суроо болсо
+    if (qType === 'text' || qType === 'short' || opts.length === 0) {
+        const currentAnswerText = compiledStudentAnswersBuffer[trackingActiveQuestionIndex] || "";
+        const textarea = document.createElement("textarea");
+        textarea.className = "student-open-input";
+        textarea.placeholder = "Жообуңузду ушул жерге жазыңыз...";
+        textarea.value = currentAnswerText;
+        textarea.style.cssText = "width:100%; min-height:100px; padding:12px; border-radius:8px; background:rgba(255,255,255,0.05); color:#fff; border:1px solid rgba(255,255,255,0.2); font-size:15px; outline:none; resize:vertical;";
+
+        textarea.oninput = function () {
+            const val = textarea.value.trim();
+            if (val.length > 0) {
+                compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = val;
+            } else {
+                delete compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
+            }
+            
+            const matrixNode = document.querySelector(`.matrix-node.n-idx-${trackingActiveQuestionIndex}`);
+            if (matrixNode) {
+                if (val.length > 0) matrixNode.classList.add("answered");
+                else matrixNode.classList.remove("answered");
+            }
+        };
+
+        optionsContainer.appendChild(textarea);
+    } else {
+        // Тандоолуу варианты бар суроолор
         opts.forEach(function (opt, oIdx) {
             const currentSavedAnswer = compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
             let isSelected = false;
 
-            if (qData.type === 'multiple') {
-                isSelected = Array.isArray(currentSavedAnswer) && currentSavedAnswer.includes(oIdx);
+            if (qType === 'multiple') {
+                isSelected = Array.isArray(currentSavedAnswer) && currentSavedAnswer.map(Number).includes(oIdx);
             } else {
-                isSelected = currentSavedAnswer === oIdx;
+                isSelected = currentSavedAnswer !== undefined && Number(currentSavedAnswer) === oIdx;
             }
 
             const optionRow = document.createElement("div");
             optionRow.className = `option-variant-row ${isSelected ? 'selected' : ''}`;
-            optionRow.style.cssText = "padding:12px; margin-bottom:8px; border:1px solid rgba(255,255,255,0.15); border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:12px; background: rgba(255,255,255,0.03);";
+            optionRow.style.cssText = `padding:12px; margin-bottom:8px; border:1px solid ${isSelected ? '#00f2fe' : 'rgba(255,255,255,0.15)'}; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:12px; background:${isSelected ? 'rgba(0,242,254,0.1)' : 'rgba(255,255,255,0.03)'}; transition:all 0.2s ease;`;
             
             optionRow.innerHTML = `
-                <div class="variant-indicator" style="width:20px; height:20px; border:1px solid #00f2fe; border-radius:50%; display:flex; align-items:center; justify-content:center; background:${isSelected ? '#00f2fe' : 'transparent'};">
+                <div class="variant-indicator" style="width:20px; height:20px; border:1px solid #00f2fe; border-radius:${qType === 'multiple' ? '4px' : '50%'}; display:flex; align-items:center; justify-content:center; background:${isSelected ? '#00f2fe' : 'transparent'};">
                     ${isSelected ? '<i class="fa-solid fa-check" style="font-size:11px; color:#000;"></i>' : ''}
                 </div>
                 <div class="variant-text-string" style="font-size:15px; color:#fff;">${opt}</div>
             `;
 
             optionRow.onclick = function () {
-                if (qData.type === 'multiple') {
+                if (qType === 'multiple') {
                     if (!Array.isArray(compiledStudentAnswersBuffer[trackingActiveQuestionIndex])) {
                         compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = [];
                     }
@@ -255,6 +288,8 @@ function displayTargetQuestionContentPane() {
                     const pos = arr.indexOf(oIdx);
                     if (pos > -1) arr.splice(pos, 1);
                     else arr.push(oIdx);
+                    
+                    if (arr.length === 0) delete compiledStudentAnswersBuffer[trackingActiveQuestionIndex];
                 } else {
                     compiledStudentAnswersBuffer[trackingActiveQuestionIndex] = oIdx;
                 }
@@ -308,58 +343,83 @@ function processAutomatedTestSubmissionWorkflow() {
     let accumulatedPointsEarned = 0;
     let maximumPointsPossible = 0;
     let totalCorrectAnswersCount = 0;
+    let totalIncorrectAnswersCount = 0;
     const responsesDetailedMap = {};
 
     currentLoadedTestStructure.questions.forEach(function (q, idx) {
-        const points = q.points || 5;
+        const points = Number(q.points || 5);
         maximumPointsPossible += points;
         const studentAns = compiledStudentAnswersBuffer[idx];
         const opts = q.options || q.answers || [];
+        const qType = (q.type || 'single').toLowerCase();
 
         let isCorrect = false;
         let correctAnswerText = "";
 
-        // АДАПТИВДҮҮ ТҮРДӨ ТУУРА ЖООПТУ ТЕКШЕРҮҮ LOGIC
-        if (q.type === 'multiple') {
-            const correctArr = q.correctOptionIndices || (q.correct !== undefined ? (Array.isArray(q.correct) ? q.correct : [q.correct]) : [0]);
-            if (Array.isArray(studentAns) && studentAns.length === correctArr.length && studentAns.every(function (v) { return correctArr.includes(v); })) {
+        // 1. КӨП ТАНДООЛУУ СУРООЛОР
+        if (qType === 'multiple') {
+            let correctArr = [];
+            if (Array.isArray(q.correctOptionIndices)) correctArr = q.correctOptionIndices;
+            else if (Array.isArray(q.correctOption)) correctArr = q.correctOption;
+            else if (Array.isArray(q.correct)) correctArr = q.correct;
+            else if (q.correctOptionIndex !== undefined) correctArr = [q.correctOptionIndex];
+            else if (q.correct !== undefined) correctArr = [q.correct];
+
+            const normStudent = (Array.isArray(studentAns) ? studentAns : []).map(Number).sort((a, b) => a - b);
+            const normCorrect = correctArr.map(Number).sort((a, b) => a - b);
+
+            if (normStudent.length > 0 && normStudent.length === normCorrect.length && normStudent.every((val, i) => val === normCorrect[i])) {
                 isCorrect = true;
             }
-            correctAnswerText = correctArr.map(function (i) { return opts[i] || i; }).join(", ");
+            correctAnswerText = normCorrect.map(i => opts[i] !== undefined ? opts[i] : i).join(", ");
+
+        // 2. АЧЫК (ТЕКСТ ТҮРҮНДӨГҮ) СУРООЛОР
+        } else if (qType === 'text' || qType === 'short' || opts.length === 0) {
+            const rawCorrect = String(q.correct || q.correctAnswer || q.answer || "").trim().toLowerCase();
+            const rawStudent = String(studentAns || "").trim().toLowerCase();
+
+            if (rawStudent.length > 0 && rawStudent === rawCorrect) {
+                isCorrect = true;
+            }
+            correctAnswerText = q.correct || q.correctAnswer || q.answer || "";
+
+        // 3. БИР ЖООПТУУ ЖӨНӨКӨЙ СУРООЛОР (Дефолт)
         } else {
-            // Жөнөкөй жалгыз тандоо
             let targetCorrectIdx = null;
 
-            if (q.correctOptionIndex !== undefined) targetCorrectIdx = parseInt(q.correctOptionIndex);
-            else if (q.correctOption !== undefined) targetCorrectIdx = parseInt(q.correctOption);
-            else if (q.correct !== undefined && !isNaN(q.correct)) targetCorrectIdx = parseInt(q.correct);
+            if (q.correctOptionIndex !== undefined && q.correctOptionIndex !== null) targetCorrectIdx = Number(q.correctOptionIndex);
+            else if (q.correctOption !== undefined && q.correctOption !== null) targetCorrectIdx = Number(q.correctOption);
+            else if (q.correct !== undefined && !isNaN(q.correct)) targetCorrectIdx = Number(q.correct);
 
             if (targetCorrectIdx !== null && !isNaN(targetCorrectIdx)) {
-                if (studentAns !== undefined && studentAns === targetCorrectIdx) {
+                if (studentAns !== undefined && studentAns !== null && Number(studentAns) === targetCorrectIdx) {
                     isCorrect = true;
                 }
-                correctAnswerText = opts[targetCorrectIdx] || targetCorrectIdx;
+                correctAnswerText = opts[targetCorrectIdx] !== undefined ? opts[targetCorrectIdx] : targetCorrectIdx;
             } else {
-                // Текст түрүндө сакталган болсо
-                const rawCorrect = q.correct || q.correctAnswer || "";
-                const studentAnswerText = studentAns !== undefined ? opts[studentAns] : "";
-                if (studentAnswerText && String(studentAnswerText).trim().toLowerCase() === String(rawCorrect).trim().toLowerCase()) {
+                const rawCorrect = String(q.correct || q.correctAnswer || "").trim().toLowerCase();
+                const studentAnswerText = (studentAns !== undefined && opts[studentAns] !== undefined) ? String(opts[studentAns]).trim().toLowerCase() : "";
+                if (studentAnswerText.length > 0 && studentAnswerText === rawCorrect) {
                     isCorrect = true;
                 }
-                correctAnswerText = rawCorrect;
+                correctAnswerText = q.correct || q.correctAnswer || "";
             }
         }
 
+        // Жыйынтыкты эсептөө
         if (isCorrect) {
             accumulatedPointsEarned += points;
             totalCorrectAnswersCount++;
+        } else {
+            totalIncorrectAnswersCount++;
         }
 
+        // Окуучунун жообун дисплейге даярдоо
         let studentAnswerDisplay = "Жооп берилген эмес";
         if (Array.isArray(studentAns)) {
-            studentAnswerDisplay = studentAns.map(function (i) { return opts[i]; }).join(", ");
-        } else if (studentAns !== undefined && opts[studentAns] !== undefined) {
-            studentAnswerDisplay = opts[studentAns];
+            studentAnswerDisplay = studentAns.length > 0 ? studentAns.map(i => opts[i] !== undefined ? opts[i] : i).join(", ") : "Жооп берилген эмес";
+        } else if (studentAns !== undefined && studentAns !== null && String(studentAns).trim() !== "") {
+            studentAnswerDisplay = opts[studentAns] !== undefined ? opts[studentAns] : String(studentAns);
         }
 
         responsesDetailedMap[`q_${idx}`] = {
@@ -370,11 +430,12 @@ function processAutomatedTestSubmissionWorkflow() {
         };
     });
 
+    const totalQuestions = currentLoadedTestStructure.questions.length;
     const overallPercentage = maximumPointsPossible > 0 ? Math.round((accumulatedPointsEarned / maximumPointsPossible) * 100) : 0;
     const totalDuration = parseInt(currentLoadedTestStructure.duration || currentLoadedTestStructure.timeLimit || 45) * 60;
     const durationUsed = Math.max(1, Math.ceil((totalDuration - computedTimeRemainingSeconds) / 60));
 
-    // Мугалимдин панелина 100% шайкеш келтирилген базалык жазуу
+    // Мугалимдин панелина 100% шайкеш келтирилген толук объект
     const resultRecord = {
         studentName: metaStudentName,
         studentClass: metaStudentClass,
@@ -382,7 +443,9 @@ function processAutomatedTestSubmissionWorkflow() {
         testTitle: currentLoadedTestStructure.title || "Тест",
         score: accumulatedPointsEarned,
         totalPoints: maximumPointsPossible,
-        totalQuestions: currentLoadedTestStructure.questions.length,
+        totalQuestions: totalQuestions,
+        correctCount: totalCorrectAnswersCount,
+        incorrectCount: totalIncorrectAnswersCount,
         percentage: overallPercentage,
         finalPercentage: overallPercentage,
         durationUsed: durationUsed,
@@ -397,20 +460,21 @@ function processAutomatedTestSubmissionWorkflow() {
     const newResRef = resultsRef.push();
     newResRef.set(resultRecord)
         .then(function () {
-            renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount);
+            renderPostTestResultsDashboard(resultRecord);
         })
         .catch(function (err) {
             showStudentToastMessage("Жыйынтыкты сактоодо ката: " + err.message, "error");
         });
 }
 
-function renderPostTestResultsDashboard(resultRecord, totalCorrectAnswersCount) {
+function renderPostTestResultsDashboard(resultRecord) {
     toggleElementVisibility("studentTestingBlock", false);
     toggleElementVisibility("studentAuthBlock", false);
     toggleElementVisibility("studentResultsBlock", true);
 
     safeUpdateInnerText("resultPercentValue", `${resultRecord.percentage}%`);
-    safeUpdateInnerText("resultCorrectCount", `${totalCorrectAnswersCount}/${currentLoadedTestStructure.questions.length}`);
+    safeUpdateInnerText("resultCorrectCount", `${resultRecord.correctCount} / ${resultRecord.totalQuestions}`);
+    safeUpdateInnerText("resultIncorrectCount", `${resultRecord.incorrectCount} / ${resultRecord.totalQuestions}`);
     safeUpdateInnerText("resultPointsEarned", `${resultRecord.score} / ${resultRecord.totalPoints}`);
     safeUpdateInnerText("resultTimeSpent", `${resultRecord.durationUsed} мүнөт`);
 }
