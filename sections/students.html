@@ -4,12 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BilimAl - Окуучулардын Рейтинги жана Аналитикасы</title>
-    
+
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV60QV0"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-9GSQV60QV0');
+    </script>
+
+    <!-- Google AdSense Auto Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
+
+    <!-- Adsterra Social Bar -->
+    <script src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js"></script>
+
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK (Compat v9) -->
+    <!-- Firebase SDK (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -31,6 +46,15 @@
         .main-container {
             max-width: 1200px;
             margin: 0 auto;
+        }
+
+        .ad-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 15px 0;
+            overflow: hidden;
+            width: 100%;
         }
 
         .page-header {
@@ -247,6 +271,19 @@
 <body>
 
 <div class="main-container">
+    <!-- Google AdSense Banner Place -->
+    <div class="ad-container">
+        <ins class="adsbygoogle"
+             style="display:block; width:100%; text-align:center;"
+             data-ad-client="ca-pub-1495571814896964"
+             data-ad-slot="1574613769"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+    </div>
+
     <div class="page-header">
         <div class="page-title">
             <h2><i class="fa-solid fa-user-graduate"></i> Окуучулардын Рейтинги жана Аналитикасы</h2>
@@ -256,6 +293,20 @@
             <button class="btn btn-excel" onclick="exportToCSV()"><i class="fa-solid fa-file-excel"></i> Excel'ге жүктөө</button>
             <button class="btn btn-reset" onclick="resetAcademicYear()"><i class="fa-solid fa-trash-can"></i> Окуу жылын тазалоо</button>
         </div>
+    </div>
+
+    <!-- Adsterra 728x90 Banner Place -->
+    <div class="ad-container">
+        <script>
+            atOptions = {
+                'key' : '230e338703bb44150336cce1f0832fe3',
+                'format' : 'iframe',
+                'height' : 90,
+                'width' : 728,
+                'params' : {}
+            };
+        </script>
+        <script src="https://www.highperformanceformat.com/230e338703bb44150336cce1f0832fe3/invoke.js"></script>
     </div>
 
     <div class="controls-card">
@@ -330,7 +381,7 @@
 
 <script>
     // -------------------------------------------------------------
-    // ЧЫНЫГЫ FIREBASE КОНФИГУРАЦИЯСЫ
+    // FIREBASE КОНФИГУРАЦИЯСЫ
     // -------------------------------------------------------------
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -356,34 +407,43 @@
     });
 
     function loadStudentData() {
-        // Базанын тамырынан жыйынтыктарды окуу
-        db.ref().once('value').then(snapshot => {
-            const rootData = snapshot.val() || {};
-            
-            // Жыйынтыктар 'results' же 'test_results' же түз тамырында сакталышы мүмкүн
-            const data = rootData.results || rootData.test_results || rootData;
+        // Эрежедеги ачык жайга (`global_test_lookup/results`) жана калган бардык жайларга кайрылуу
+        db.ref('global_test_lookup/results').once('value').then(snapshot => {
+            let data = snapshot.val();
 
-            if (!data || typeof data !== 'object') {
-                renderEmptyTable();
-                return;
-            }
-
-            rawResultsData = [];
-            Object.keys(data).forEach(key => {
-                if (data[key] && typeof data[key] === 'object') {
-                    rawResultsData.push(data[key]);
-                }
-            });
-
-            if (rawResultsData.length === 0) {
-                renderEmptyTable();
+            if (!data) {
+                // Эгер ал жер бош болсо, кадимки 'results' же 'test_results' түйүндөрүн текшерет
+                db.ref('results').once('value').then(resSnap => {
+                    data = resSnap.val();
+                    parseAndProcess(data);
+                }).catch(() => renderEmptyTable());
             } else {
-                processData();
+                parseAndProcess(data);
             }
         }).catch(err => {
-            console.error("Firebase катасы:", err);
+            console.error("Firebase маалымат алуу катасы:", err);
             renderEmptyTable();
         });
+    }
+
+    function parseAndProcess(data) {
+        if (!data || typeof data !== 'object') {
+            renderEmptyTable();
+            return;
+        }
+
+        rawResultsData = [];
+        Object.keys(data).forEach(key => {
+            if (data[key] && typeof data[key] === 'object') {
+                rawResultsData.push(data[key]);
+            }
+        });
+
+        if (rawResultsData.length === 0) {
+            renderEmptyTable();
+        } else {
+            processData();
+        }
     }
 
     function processData() {
@@ -578,13 +638,11 @@
 
         const pwd = prompt("Коопсуздук үчүн паролду жазыңыз (Пароль: admin):");
         if (pwd === "admin") {
-            db.ref('results').remove().then(() => {
-                db.ref('test_results').remove().then(() => {
+            db.ref('global_test_lookup/results').remove().then(() => {
+                db.ref('results').remove().then(() => {
                     alert("Жаңы окуу жылы үчүн база ийгиликтүү тазаланды!");
                     location.reload();
                 });
-            }).catch(err => {
-                alert("Өчүрүүдө каталык болду: " + err.message);
             });
         } else {
             alert("Пароль туура эмес! Тазалоо токтотулду.");
