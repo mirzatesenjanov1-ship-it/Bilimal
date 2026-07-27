@@ -22,7 +22,7 @@
     if (typeof firebase !== "undefined" && (!firebase.apps || !firebase.apps.length)) {
         firebase.initializeApp(firebaseConfig);
     }
-    
+
     const database = (typeof firebase !== "undefined") ? firebase.database() : null;
 
     // Глобалдык жумушчу абалынын өзгөрмөлөрү
@@ -92,7 +92,7 @@
         activeTeacherUid = urlParams.get("teacher");
 
         if (!evaluationActiveTestId) {
-            renderFatalErrorWorkspaceState("Тесттин уникалдуу идентификатору шилтемеде табылбады. Шилтемени тууралыгын текшериңиз (URL ичинде ?test= ID болушу керек).");
+            renderFatalErrorWorkspaceState("Тесттин уникалдуу идентификатору шилтемеде табылбады. Шилтеменин тууралыгын текшериңиз (URL ичинде ?test= ID болушу керек).");
             return;
         }
 
@@ -121,7 +121,7 @@
         if (!activeTeacherUid) activeTeacherUid = "demo_teacher_001";
 
         const testDataPromise = database.ref(`teachers_data/${activeTeacherUid}/tests/${evaluationActiveTestId}`).once('value');
-        
+
         fetchWithTimeout(testDataPromise, 10000)
             .then(function (testSnap) {
                 if (!testSnap.exists()) {
@@ -559,11 +559,19 @@
                 showStudentToastMessage("Текст кошууга бөгөт коюлган!", "error");
             }
         });
+
+        document.addEventListener("contextmenu", function (e) {
+            if (security.preventCopy || security.preventPaste) {
+                e.preventDefault();
+            }
+        });
     }
 
     function requestFullscreenWindowViewportMode() {
         const el = document.documentElement;
-        if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+        if (el.requestFullscreen) {
+            el.requestFullscreen().catch(function () {});
+        }
     }
 
     function renderFatalErrorWorkspaceState(errorMessage) {
@@ -571,7 +579,7 @@
         if (authCard) {
             authCard.innerText = "Тест табылган жок";
         }
-        
+
         const mainContainer = document.getElementById("studentAuthBlock");
         if (mainContainer) {
             mainContainer.innerHTML = `
