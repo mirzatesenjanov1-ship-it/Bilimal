@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BilimAl - Окуучулардын Статистикасы жана Рейтинги</title>
+    <title>BilimAl - Окуучулардын Рейтинги жана Аналитикасы</title>
     
     <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Firebase SDK (Compat) -->
+    <!-- Firebase SDK (Compat v9) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -33,7 +33,6 @@
             margin: 0 auto;
         }
 
-        /* Header Styles */
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -86,7 +85,6 @@
         .btn-reset { background: #ef4444; color: #fff; }
         .btn-reset:hover { background: #dc2626; }
 
-        /* Filter Controls */
         .controls-card {
             background: #1e293b;
             padding: 16px 20px;
@@ -121,7 +119,6 @@
             border-color: #38bdf8;
         }
 
-        /* Analytics Overview Cards */
         .stats-summary {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -148,7 +145,6 @@
             color: #f8fafc;
         }
 
-        /* Table Styles */
         .table-wrapper {
             background: #1e293b;
             border-radius: 16px;
@@ -182,7 +178,6 @@
             background: #24334a;
         }
 
-        /* Badges for Levels */
         .badge {
             padding: 4px 10px;
             border-radius: 20px;
@@ -207,7 +202,6 @@
         }
         .btn-view:hover { background: #0284c7; color: #fff; }
 
-        /* Modal Styles */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -253,8 +247,6 @@
 <body>
 
 <div class="main-container">
-    
-    <!-- PAGE HEADER -->
     <div class="page-header">
         <div class="page-title">
             <h2><i class="fa-solid fa-user-graduate"></i> Окуучулардын Рейтинги жана Аналитикасы</h2>
@@ -266,7 +258,6 @@
         </div>
     </div>
 
-    <!-- CONTROLS & FILTERS -->
     <div class="controls-card">
         <div class="filter-group">
             <label style="font-size: 14px; color: #cbd5e1;">Класс:</label>
@@ -286,7 +277,6 @@
         </div>
     </div>
 
-    <!-- STATS OVERVIEW -->
     <div class="stats-summary">
         <div class="summary-card">
             <span>Жалпы Окуучулар:</span>
@@ -306,7 +296,6 @@
         </div>
     </div>
 
-    <!-- DATA TABLE -->
     <div class="table-wrapper">
         <table>
             <thead>
@@ -327,27 +316,33 @@
             </tbody>
         </table>
     </div>
-
 </div>
 
-<!-- STUDENT DETAILS MODAL -->
 <div id="detailsModal" class="modal-overlay hidden">
     <div class="modal-card">
         <div class="modal-header">
             <h3 id="modalStudentName" style="color: #38bdf8;">Окуучунун жыйынтыктары</h3>
             <button class="close-btn" onclick="closeModal()">&times;</button>
         </div>
-        <div id="modalHistoryContent">
-            <!-- Дүкөндөлгөн тесттердин тарыхы ушул жерге түшөт -->
-        </div>
+        <div id="modalHistoryContent"></div>
     </div>
 </div>
 
 <script>
-    // Firebase Конфигурациясы
+    // -------------------------------------------------------------
+    // ЧЫНЫГЫ FIREBASE КОНФИГУРАЦИЯСЫ
+    // -------------------------------------------------------------
     const firebaseConfig = {
-        databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835",
+        measurementId: "G-9GSQV60QV0"
     };
+
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
@@ -356,63 +351,72 @@
     let rawResultsData = [];
     let processedStudents = [];
 
-    // Базадан тест жыйынтыктарын тартуу
     window.addEventListener('DOMContentLoaded', () => {
         loadStudentData();
     });
 
     function loadStudentData() {
-        // 'results' же 'test_results' түйүнүнөн окуп алуу
-        db.ref('results').once('value').then(snapshot => {
-            const data = snapshot.val();
-            if (!data) {
+        // Базанын тамырынан жыйынтыктарды окуу
+        db.ref().once('value').then(snapshot => {
+            const rootData = snapshot.val() || {};
+            
+            // Жыйынтыктар 'results' же 'test_results' же түз тамырында сакталышы мүмкүн
+            const data = rootData.results || rootData.test_results || rootData;
+
+            if (!data || typeof data !== 'object') {
                 renderEmptyTable();
                 return;
             }
 
             rawResultsData = [];
             Object.keys(data).forEach(key => {
-                rawResultsData.push(data[key]);
+                if (data[key] && typeof data[key] === 'object') {
+                    rawResultsData.push(data[key]);
+                }
             });
 
-            processData();
+            if (rawResultsData.length === 0) {
+                renderEmptyTable();
+            } else {
+                processData();
+            }
         }).catch(err => {
-            console.error(err);
+            console.error("Firebase катасы:", err);
             renderEmptyTable();
         });
     }
 
-    // Маалыматты окуучулар боюнча бириктирип, суммалоо
     function processData() {
         const studentMap = {};
 
         rawResultsData.forEach(item => {
-            if (!item.studentName || !item.studentClass) return;
+            const sName = item.studentName || item.name || item.fio;
+            const sClass = item.studentClass || item.className || item.class;
 
-            // Окуучуну ФИО жана Классы боюнча идентификациялоо
-            const uniqueKey = `${item.studentName.trim().toLowerCase()}_${item.studentClass.trim().toLowerCase()}`;
+            if (!sName || !sClass) return;
+
+            const uniqueKey = `${sName.trim().toLowerCase()}_${sClass.trim().toLowerCase()}`;
 
             if (!studentMap[uniqueKey]) {
                 studentMap[uniqueKey] = {
-                    name: item.studentName.trim(),
-                    studentClass: item.studentClass.trim().toUpperCase(),
+                    name: sName.trim(),
+                    studentClass: sClass.trim().toUpperCase(),
                     tests: []
                 };
             }
 
             studentMap[uniqueKey].tests.push({
-                testTitle: item.testTitle || 'Индекссиз тест',
+                testTitle: item.testTitle || item.title || 'Тест',
                 score: item.score || 0,
                 maxScore: item.maxScore || 0,
                 percent: parseFloat(item.percent || 0),
-                date: item.date || 'Көрсөтүлгөн эмес'
+                date: item.date || item.timestamp || 'Көрсөтүлгөн эмес'
             });
         });
 
-        // Ар бир окуучунун жылдык орточосун эсептөө
         processedStudents = Object.values(studentMap).map(std => {
             const totalPercent = std.tests.reduce((sum, t) => sum + t.percent, 0);
-            const avgPercent = Math.round(totalPercent / std.tests.length);
+            const avgPercent = std.tests.length > 0 ? Math.round(totalPercent / std.tests.length) : 0;
             
             return {
                 ...std,
@@ -421,11 +425,15 @@
             };
         });
 
+        if (processedStudents.length === 0) {
+            renderEmptyTable();
+            return;
+        }
+
         populateClassFilter();
         applyFilters();
     }
 
-    // Класстар фильтринин тизмесин толтуруу
     function populateClassFilter() {
         const select = document.getElementById('classFilterSelect');
         const classes = [...new Set(processedStudents.map(s => s.studentClass))].sort();
@@ -439,7 +447,6 @@
         });
     }
 
-    // Фильтрлерди колдонуу жана сорттоо
     function applyFilters() {
         const selectedClass = document.getElementById('classFilterSelect').value;
         const sortType = document.getElementById('sortSelect').value;
@@ -451,7 +458,6 @@
             return matchClass && matchSearch;
         });
 
-        // Сорттоо
         if (sortType === 'NAME_ASC') {
             filtered.sort((a, b) => a.name.localeCompare(b.name));
         } else if (sortType === 'RANK_DESC') {
@@ -462,7 +468,6 @@
         updateSummaryStats(filtered);
     }
 
-    // Таблицаны тартуу
     function renderTable(data) {
         const tbody = document.getElementById('studentsTableBody');
         tbody.innerHTML = '';
@@ -500,7 +505,6 @@
         });
     }
 
-    // Жалпы статистикалык блокторду жаңылоо
     function updateSummaryStats(data) {
         document.getElementById('statTotalStudents').innerText = data.length;
         document.getElementById('statHighLevel').innerText = data.filter(s => s.avgPercent >= 85).length;
@@ -512,7 +516,6 @@
         document.getElementById('studentsTableBody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 30px;">Базада азырынча окуучулардын тест жыйынтыктары жок.</td></tr>';
     }
 
-    // Модальное окно (Ар бир окуучунун тарыхы)
     function openModal(student) {
         document.getElementById('modalStudentName').innerText = `${student.name} (${student.studentClass})`;
         const container = document.getElementById('modalHistoryContent');
@@ -546,14 +549,13 @@
         document.getElementById('detailsModal').classList.add('hidden');
     }
 
-    // Excel (CSV) Экспорттоо функциясы
     function exportToCSV() {
         if (processedStudents.length === 0) {
             alert("Экспорттоо үчүн маалымат жок!");
             return;
         }
 
-        let csv = '\uFEFF'; // UTF-8 BOM туура кириллица көрсөтүү үчүн
+        let csv = '\uFEFF';
         csv += '№,ФИО,Классы,Тесттердин саны,Жылдык Орточо %,Деңгээли\n';
 
         processedStudents.forEach((std, i) => {
@@ -570,7 +572,6 @@
         document.body.removeChild(link);
     }
 
-    // Окуу жылын аяктоо (Базаны тазалоо)
     function resetAcademicYear() {
         const confirm1 = confirm("КӨҢҮЛ БУРУҢУЗ!\nОкуу жылын тазалоо бардык окуучулардын мурунку тест жыйынтыктарын базадан биротоло өчүрөт.\n\nУлантууну каалайсызбы?");
         if (!confirm1) return;
@@ -578,8 +579,10 @@
         const pwd = prompt("Коопсуздук үчүн паролду жазыңыз (Пароль: admin):");
         if (pwd === "admin") {
             db.ref('results').remove().then(() => {
-                alert("Жаңы окуу жылы үчүн база ийгиликтүү тазаланды!");
-                location.reload();
+                db.ref('test_results').remove().then(() => {
+                    alert("Жаңы окуу жылы үчүн база ийгиликтүү тазаланды!");
+                    location.reload();
+                });
             }).catch(err => {
                 alert("Өчүрүүдө каталык болду: " + err.message);
             });
