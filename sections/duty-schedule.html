@@ -437,7 +437,7 @@
                     <div>
                         <h4 style="font-size: 14px; margin-bottom: 10px;">Массалык импорт (Катар боюнча):</h4>
                         <div class="form-group">
-                            <textarea id="input-bulk-students" rows="3" placeholder="Асанов Асан&#10;Усенова Айпери (кыз)&#10;Бекзатов Бекзат"></textarea>
+                            <textarea id="input-bulk-students" rows="3" placeholder="Адылбекова Гүлжан&#10;Анарбаев Адилет (уул)&#10;Аскарова Элмина"></textarea>
                         </div>
                         <button class="btn-secondary" onclick="importBulkStudents()" style="width: 100%;">Тизмени Киргизүү</button>
                     </div>
@@ -687,17 +687,19 @@
                 const parsed = JSON.parse(stored);
                 studentsList = parsed.students || [];
                 generatedSchedule = parsed.schedule || [];
-            } else {
-                studentsList = [
-                    { id: 1, name: "Асанов Асан", gender: "m", dutyCount: 2, score: 98, punc: 100, abs: 0, status: 'активдүү' },
-                    { id: 2, name: "Усенова Айпери", gender: "f", dutyCount: 2, score: 95, punc: 95, abs: 0, status: 'активдүү' },
-                    { id: 3, name: "Бекзатов Бекзат", gender: "m", dutyCount: 1, score: 90, punc: 90, abs: 1, status: 'активдүү' },
-                    { id: 4, name: "Эркинова Динара", gender: "f", dutyCount: 1, score: 99, punc: 100, abs: 0, status: 'активдүү' }
-                ];
             }
+
+            // Тизмедеги окуучулардын аты-жөнү графикке туура келерин автоматтык текшерүү
+            const activeNames = studentsList.map(s => s.name);
+            const isScheduleOutdated = generatedSchedule.some(item => {
+                const dutyNames = item.duty.split(', ');
+                return dutyNames.some(name => !activeNames.includes(name.replace(' (Резерв алмашты)', '')));
+            });
+
             renderStudentsTable();
-            if (generatedSchedule.length === 0 && studentsList.length > 0) {
-                generateSmartSchedule();
+
+            if (studentsList.length > 0 && (generatedSchedule.length === 0 || isScheduleOutdated)) {
+                generateSmartSchedule(false); // Жаңы тизме боюнча графикти дароо түзүү
             } else {
                 renderScheduleTable();
             }
@@ -731,7 +733,7 @@
             studentsList.push(newStudent);
             nameInput.value = '';
             renderStudentsTable();
-            saveData();
+            generateSmartSchedule(false); // Графикти автоматтык жаңылоо
         }
 
         function importBulkStudents() {
@@ -764,14 +766,14 @@
             document.getElementById('input-bulk-students').value = '';
             alert(`${addedCount} окуучу ийгиликтүү кошулду!`);
             renderStudentsTable();
-            saveData();
+            generateSmartSchedule(false); // Графикти автоматтык жаңылоо
         }
 
         function deleteStudent(id) {
             if (confirm('Окуучуну өчүрүүнү каалайсызбы?')) {
                 studentsList = studentsList.filter(s => s.id !== id);
                 renderStudentsTable();
-                saveData();
+                generateSmartSchedule(false);
             }
         }
 
@@ -802,10 +804,14 @@
         }
 
         // Smart Distribution Algorithm
-        function generateSmartSchedule() {
+        function generateSmartSchedule(showAlert = true) {
             if (studentsList.length === 0) {
-                return alert('Ага чейин журналга окуучуларды киргизиңиз!');
+                if (showAlert) alert('Ага чейин журналга окуучуларды киргизиңиз!');
+                return;
             }
+
+            // Бардык окуучулардын кезмет санын нөлгө түшүрүп кайра баштоо
+            studentsList.forEach(s => s.dutyCount = 0);
 
             const mode = document.getElementById('gen-mode').value;
             generatedSchedule = [];
@@ -818,19 +824,24 @@
             let taskIdx = 0;
 
             while (addedDays < 10) {
-                date.setDate(date.getDate() + 1);
-                if (date.getDay() === 0 || date.getDay() === 6) continue;
-
                 let pair = [];
-                if (mode === 'm_f' && males.length && females.length) {
+                if (mode === 'm_f' && males.length > 0 && females.length > 0) {
                     pair = [males[addedDays % males.length], females[addedDays % females.length]];
                 } else if (mode === '2m' && males.length >= 2) {
-                    pair = [males[addedDays % males.length], males[(addedDays + 1) % males.length]];
+                    pair = [males[(addedDays * 2) % males.length], males[(addedDays * 2 + 1) % males.length]];
                 } else {
-                    pair = [studentsList[addedDays % studentsList.length], studentsList[(addedDays + 1) % studentsList.length]];
+                    pair = [
+                        studentsList[(addedDays * 2) % studentsList.length],
+                        studentsList[(addedDays * 2 + 1) % studentsList.length]
+                    ];
                 }
 
-                pair.forEach(p => p.dutyCount++);
+                // Эгерде 1 ээлешүүдө окшош окуучу тандалып калса (мисалы 1 эле окуучу калганда)
+                if (pair[0] && pair[1] && pair[0].id === pair[1].id && studentsList.length > 1) {
+                    pair[1] = studentsList[(addedDays * 2 + 2) % studentsList.length];
+                }
+
+                pair.forEach(p => { if (p) p.dutyCount++; });
 
                 const tasks = defaultTasks[taskIdx % defaultTasks.length];
                 const dateStr = date.toLocaleDateString('ky-KG');
@@ -844,14 +855,16 @@
                     status: 'План боюнча'
                 });
 
+                date.setDate(date.getDate() + 1);
                 addedDays++;
                 taskIdx++;
             }
 
             renderScheduleTable();
-            saveData();
             renderStudentsTable();
+            saveData();
             updateAnalytics();
+            if (showAlert) alert('График ийгиликтүү түзүлдү!');
         }
 
         function renderScheduleTable() {
@@ -870,9 +883,10 @@
                 tbody.appendChild(tr);
             });
 
+            // Виджеттеги Бүгүнкү жана Ертеңки кезметчилердин атын жаңылоо
             if (generatedSchedule.length > 0) {
-                document.getElementById('stat-today-duty').innerText = generatedSchedule[0].duty;
-                document.getElementById('stat-tomorrow-duty').innerText = generatedSchedule[1] ? generatedSchedule[1].duty : 'жок';
+                document.getElementById('stat-today-duty').innerText = generatedSchedule[0].duty || 'Дайындала элек';
+                document.getElementById('stat-tomorrow-duty').innerText = generatedSchedule[1] ? generatedSchedule[1].duty : '--';
             }
         }
 
