@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Окуучулардын катышуусу (Attendance Management) - Bilimal</title>
+    <!-- FontAwesome & Chart.js Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #111827;
+            --border-color: #1f2937;
+            --accent-color: #00d2ff;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-gold: #f59e0b;
+            --text-main: #f9fafb;
+            --text-muted: #9ca3af;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
+        .container { max-width: 1300px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;
+            flex-wrap: wrap; gap: 15px;
+        }
+
+        .header-title h1 { font-size: 22px; color: var(--accent-color); display: flex; align-items: center; gap: 10px; }
+        .btn-secondary {
+            background: #374151; color: #fff; border: none; padding: 8px 16px; border-radius: 6px;
+            cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 14px;
+        }
+        .btn-secondary:hover { background: #4b5563; }
+
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: var(--card-bg); border: 1px solid var(--border-color); padding: 18px; border-radius: 10px; position: relative;
+        }
+        .stat-card h4 { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+        .stat-card .val { font-size: 24px; font-weight: bold; }
+
+        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+        @media(max-width: 950px) { .main-layout { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .card-title { font-size: 16px; color: var(--accent-color); margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+        th { background: #1f2937; color: var(--text-muted); font-weight: 600; }
+
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-present { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .badge-late { background: rgba(245, 158, 11, 0.2); color: var(--accent-gold); }
+        .badge-absent { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        .qr-box {
+            background: #000; border: 2px dashed var(--accent-color); border-radius: 10px;
+            padding: 20px; text-align: center; margin-bottom: 15px;
+        }
+        .qr-box input {
+            width: 100%; padding: 10px; background: #1f2937; border: 1px solid var(--border-color);
+            color: #fff; border-radius: 6px; margin-top: 10px; text-align: center; font-size: 14px;
+        }
+
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: var(--accent-green);
+            color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold;
+            display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-title">
+            <a href="/sections/curators.html" class="btn-secondary"><i class="fas fa-arrow-left"></i> Башкы бетке</a>
+            <h1><i class="fas fa-user-check"></i> ОКУУЧУЛАРДЫ ЖОКТОО ЖАНА КАТЫШУУ МАТРИЦАСЫ</h1>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <input type="date" id="selectedDate" class="btn-secondary" style="background: var(--card-bg);">
+            <button class="btn-secondary" id="refreshBtn"><i class="fas fa-sync"></i> Жаңыртуу</button>
+        </div>
+    </header>
+
+    <!-- STATS DASHBOARD -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h4>ЖАЛПЫ ОКУУЧУЛАР</h4>
+            <div class="val" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+            <h4>КЕЛГЕНДЕР</h4>
+            <div class="val" id="stat-present" style="color: var(--accent-green);">0</div>
+        </div>
+        <div class="stat-card">
+            <h4>КЕЧИКТИ</h4>
+            <div class="val" id="stat-late" style="color: var(--accent-gold);">0</div>
+        </div>
+        <div class="stat-card">
+            <h4>КЕЛГЕН ЖОК</h4>
+            <div class="val" id="stat-absent" style="color: var(--accent-red);">0</div>
+        </div>
+    </div>
+
+    <div class="main-layout">
+        <!-- LEFT TABLE AREA -->
+        <div class="card">
+            <div class="card-title">
+                <span><i class="fas fa-list"></i> Катышуу журналы (<span id="currentClassName">Жүктөлүүдө...</span>)</span>
+                <input type="text" id="searchInput" placeholder="Окуучуну издөө..." style="padding: 6px 12px; background: #1f2937; border: 1px solid var(--border-color); color:#fff; border-radius: 6px;">
+            </div>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Окуучунун Аты-Жөнү</th>
+                            <th>ID Коду</th>
+                            <th>Кирген убактысы</th>
+                            <th>Чыккан убактысы</th>
+                            <th>Статусу</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendanceTbody">
+                        <tr><td colspan="6" style="text-align:center;">Маалымат жүктөлүүдө...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDEBAR (QR SCANNER & ANALYTICS) -->
+        <div>
+            <div class="card">
+                <div class="card-title"><i class="fas fa-qrcode"></i> QR Сканер Терминалы</div>
+                <div class="qr-box">
+                    <i class="fas fa-camera fa-2x" style="color: var(--accent-color);"></i>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">QR Токенди сканерлеңиз же киргизиңиз:</p>
+                    <input type="text" id="qrInput" placeholder="Сканерден киргизүү..." autofocus>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title"><i class="fas fa-chart-pie"></i> Бүгүнкү статистика</div>
+                <canvas id="attendanceChart" style="max-height: 220px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toastMsg">Билдирүү</div>
+
+<script>
+    const API_BASE = '/api/attendance';
+    let chartInstance = null;
+    let attendanceData = [];
+
+    document.getElementById('selectedDate').valueAsDate = new Date();
+
+    // Токен жана колдонуучунун маалыматын алуу
+    const token = localStorage.getItem('bilimal_token') || '';
+    const userClass = localStorage.getItem('bilimal_user_class') || '9-Б'; 
+
+    document.getElementById('currentClassName').innerText = userClass + ' классы';
+
+    // 1. Катышуу тизмесин жуктоо
+    async function loadAttendance() {
+        const date = document.getElementById('selectedDate').value;
+        try {
+            const res = await fetch(`${API_BASE}/class/${userClass}?date=${date}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.status === 403) {
+                alert('403 Forbidden: Сиз бул класстын маалыматын көрө албайсыз!');
+                return;
+            }
+
+            const result = await res.json();
+            if (result.success) {
+                attendanceData = result.data;
+                renderTable(attendanceData);
+                updateStats(attendanceData);
+            }
+        } catch (err) {
+            console.error('Ката:', err);
+        }
+    }
+
+    // 2. Таблицага чыгаруу
+    function renderTable(data) {
+        const tbody = document.getElementById('attendanceTbody');
+        tbody.innerHTML = '';
+
+        if(data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Окуучулар табылган жок</td></tr>';
+            return;
+        }
+
+        data.forEach((item, index) => {
+            let badgeClass = 'badge-absent';
+            let statusText = 'Келген жок';
+
+            if(item.status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
+            if(item.status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td><strong>${item.full_name}</strong></td>
+                <td><code>${item.student_id_code}</code></td>
+                <td>${item.check_in_time || '-'}</td>
+                <td>${item.check_out_time || '-'}</td>
+                <td><span class="badge ${badgeClass}">${statusText}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 3. Статистиканы оңдоо
+    function updateStats(data) {
+        const total = data.length;
+        const present = data.filter(d => d.status === 'PRESENT').length;
+        const late = data.filter(d => d.status === 'LATE').length;
+        const absent = data.filter(d => d.status === 'ABSENT').length;
+
+        document.getElementById('stat-total').innerText = total;
+        document.getElementById('stat-present').innerText = present;
+        document.getElementById('stat-late').innerText = late;
+        document.getElementById('stat-absent').innerText = absent;
+
+        renderChart(present, late, absent);
+    }
+
+    // 4. Диаграмма
+    function renderChart(p, l, a) {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        if(chartInstance) chartInstance.destroy();
+
+        chartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Келгендер', 'Кечиккендер', 'Келбегендер'],
+                datasets: [{
+                    data: [p, l, a],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                }]
+            },
+            options: { plugins: { legend: { labels: { color: '#f9fafb' } } } }
+        });
+    }
+
+    // 5. QR Иштетүү
+    document.getElementById('qrInput').addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const qrToken = e.target.value.trim();
+            if (!qrToken) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/qr-check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ qrToken })
+                });
+
+                const result = await res.json();
+                showToast(result.message);
+                e.target.value = '';
+                loadAttendance();
+            } catch (err) {
+                showToast('QR Текшерүүдө ката чыкты');
+            }
+        }
+    });
+
+    function showToast(msg) {
+        const toast = document.getElementById('toastMsg');
+        toast.innerText = msg;
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadAttendance);
+    document.getElementById('selectedDate').addEventListener('change', loadAttendance);
+
+    window.addEventListener('DOMContentLoaded', loadAttendance);
+</script>
+</body>
+</html>
