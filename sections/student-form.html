@@ -61,11 +61,6 @@
                     <input type="text" id="status" placeholder="Мисалы: КНУга тапшырдым же Жатак-мектепте улантам" required>
                 </div>
 
-                <div class="form-group" id="institutionGroup" style="display: none;">
-                    <label><i class="fas fa-university"></i> Кайсы окуу жайга жана кесипке тапшырдыңыз?</label>
-                    <input type="text" id="institution" placeholder="Мисалы: КНУ, Компьютердик инженерия">
-                </div>
-
                 <div class="form-group">
                     <label><i class="fas fa-comment-alt"></i> Кошумча маалымат же эскертүү:</label>
                     <textarea id="notes" rows="3" placeholder="Мисалы: Контракт түрүндө өттүм..."></textarea>
@@ -85,14 +80,6 @@
     </div>
 
     <script>
-        // ⚠️ ЖОГОРУДАН АЛГАН GOOGLE APPS SCRIPT URL ШИЛТЕМЕСИН БУЛ ЖЕРГЕ КОЮҢУЗ:
-        const GOOGLE_SCRIPT_URL = "СИЗДИН_GOOGLE_SCRIPT_URL";
-
-        function toggleInstitutionField() {
-            const status = document.getElementById('status').value;
-            document.getElementById('institutionGroup').style.display = (status === 'Тапшырдым') ? 'block' : 'none';
-        }
-
         function sendData(e) {
             e.preventDefault();
 
@@ -100,29 +87,42 @@
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Жөнөтүлүүдө...';
 
-            const payload = {
-                fullName: document.getElementById('fullName').value.trim(),
-                studentClass: document.getElementById('studentClass').value.trim(),
-                status: document.getElementById('status').value.trim(),
-                institution: document.getElementById('institution').value.trim(),
-                notes: document.getElementById('notes').value.trim()
+            const name = document.getElementById('fullName').value.trim();
+            const studentClass = document.getElementById('studentClass').value.trim();
+            const status = document.getElementById('status').value.trim();
+            const notes = document.getElementById('notes').value.trim() || 'Окуучу өзү толтурду';
+
+            // Мурдагы сакталган жазууларды алуу
+            let currentRecords = [];
+            const stored = localStorage.getItem('bilimal_student_movements');
+            if (stored) {
+                try {
+                    currentRecords = JSON.parse(stored);
+                } catch (err) {
+                    currentRecords = [];
+                }
+            }
+
+            // Жаңы жазууну түзүү
+            const newRecord = {
+                id: Date.now(),
+                name: name,
+                class: studentClass,
+                type: 'self',
+                school: status,
+                date: new Date().toISOString().split('T')[0],
+                reason: notes
             };
 
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
+            // Маалыматты башына кошуп сактоо
+            currentRecords.unshift(newRecord);
+            localStorage.setItem('bilimal_student_movements', JSON.stringify(currentRecords));
+
+            // Секцияны ийгиликтүү алмаштыруу
+            setTimeout(() => {
                 document.getElementById('form-content').style.display = 'none';
                 document.getElementById('successBox').style.display = 'block';
-            })
-            .catch(err => {
-                alert('Ката чыкты, кайра аракет кылып көрүңүз!');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Жөнөтүү';
-            });
+            }, 300);
         }
     </script>
 </body>
