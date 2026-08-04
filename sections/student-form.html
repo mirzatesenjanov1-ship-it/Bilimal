@@ -45,7 +45,7 @@
                 <p>Сураныч, маалыматты так жана туура толтуруңуз</p>
             </div>
 
-            <form id="studentSurveyForm" onsubmit="sendData(event)">
+            <form id="studentSurveyForm">
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Фамилияңыз жана Атыңыз:</label>
                     <input type="text" id="fullName" placeholder="Мисалы: Асанов Арсен" required>
@@ -79,51 +79,54 @@
         </div>
     </div>
 
-    <script>
-        function sendData(e) {
+    <!-- Firebase SDK модулдары -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        const form = document.getElementById('studentSurveyForm');
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const btn = document.getElementById('submitBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Жөнөтүлүүдө...';
 
-            const name = document.getElementById('fullName').value.trim();
-            const studentClass = document.getElementById('studentClass').value.trim();
-            const status = document.getElementById('status').value.trim();
-            const notes = document.getElementById('notes').value.trim() || 'Окуучу өзү толтурду';
-
-            // Мурдагы сакталган жазууларды алуу
-            let currentRecords = [];
-            const stored = localStorage.getItem('bilimal_student_movements');
-            if (stored) {
-                try {
-                    currentRecords = JSON.parse(stored);
-                } catch (err) {
-                    currentRecords = [];
-                }
-            }
-
-            // Жаңы жазууну түзүү
-            const newRecord = {
-                id: Date.now(),
-                name: name,
-                class: studentClass,
-                type: 'self',
-                school: status,
-                date: new Date().toISOString().split('T')[0],
-                reason: notes
+            const payload = {
+                fullName: document.getElementById('fullName').value.trim(),
+                studentClass: document.getElementById('studentClass').value.trim(),
+                status: document.getElementById('status').value.trim(),
+                notes: document.getElementById('notes').value.trim() || 'Кошумча маалымат жок',
+                timestamp: new Date().toISOString()
             };
 
-            // Маалыматты башына кошуп сактоо
-            currentRecords.unshift(newRecord);
-            localStorage.setItem('bilimal_student_movements', JSON.stringify(currentRecords));
+            try {
+                const movementsRef = ref(database, 'movements');
+                await push(movementsRef, payload);
 
-            // Секцияны ийгиликтүү алмаштыруу
-            setTimeout(() => {
                 document.getElementById('form-content').style.display = 'none';
                 document.getElementById('successBox').style.display = 'block';
-            }, 300);
-        }
+            } catch (err) {
+                console.error(err);
+                alert('Ката чыкты. Сураныч кайрадан аракет кылып көрүңүз!');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> Жөнөтүү';
+            }
+        });
     </script>
 </body>
 </html>
