@@ -115,7 +115,7 @@
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
-                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Жүктөлүүдө...</td></tr>
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Маалыматтар жүктөлүүдө...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -170,7 +170,7 @@
     const database = getDatabase(app);
     const auth = getAuth(app);
 
-    let currentTeacherId = null;
+    let activeTeacherId = null;
     const todayStr = new Date().toISOString().split('T')[0];
 
     const attendanceTableBody = document.getElementById('attendanceTableBody');
@@ -178,24 +178,44 @@
 
     onAuthStateChanged(auth, (user) => {
         if (user) {
-            currentTeacherId = user.uid;
-            loadAttendanceData();
-        } else {
-            currentTeacherId = "default_teacher";
-            loadAttendanceData();
+            activeTeacherId = user.uid;
         }
+        // Колдонуучу кирсе да, кирбесе да базадагы бардык окуучуларды издеп табуу
+        loadGlobalAttendanceData();
     });
 
-    function loadAttendanceData() {
-        const studentsRef = ref(database, `teachers/${currentTeacherId}/students`);
-        const attendanceRef = ref(database, `teachers/${currentTeacherId}/attendance/${todayStr}`);
+    // БАЗАДАГЫ БАРДЫК МУГАЛИМДЕРДИН ОКУУЧУЛАРЫН ТАППАК ЖААЛЫМ САКТАП ИШТӨӨ
+    function loadGlobalAttendanceData() {
+        const teachersRef = ref(database, `teachers`);
 
-        onValue(studentsRef, (snapshot) => {
-            const students = snapshot.val() || {};
-            onValue(attendanceRef, (attSnapshot) => {
-                const attendance = attSnapshot.val() || {};
-                renderTable(students, attendance);
-            });
+        onValue(teachersRef, (snapshot) => {
+            if (!snapshot.exists()) {
+                renderTable({}, {});
+                return;
+            }
+
+            const teachersData = snapshot.val();
+            let aggregatedStudents = {};
+            let aggregatedAttendance = {};
+
+            // Бардык мугалимдердин астындагы окуучуларды жана катышууну топтоо
+            for (const [tId, tData] of Object.entries(teachersData)) {
+                if (!activeTeacherId) activeTeacherId = tId; // биринчи табылган IDни активдүү кылуу
+
+                if (tData.students) {
+                    for (const [sId, sData] of Object.entries(tData.students)) {
+                        aggregatedStudents[sId] = { ...sData, teacherOwnerId: tId };
+                    }
+                }
+
+                if (tData.attendance && tData.attendance[todayStr]) {
+                    for (const [sId, attData] of Object.entries(tData.attendance[todayStr])) {
+                        aggregatedAttendance[sId] = attData;
+                    }
+                }
+            }
+
+            renderTable(aggregatedStudents, aggregatedAttendance);
         });
     }
 
@@ -216,17 +236,20 @@
             const att = attendance[sId] || {};
             const status = att.status || 'ABSENT';
             const checkInTime = att.checkIn || '-';
+            const teacherId = sData.teacherOwnerId || activeTeacherId;
             
-            // GPS Маалыматын Табуу
+            // GPS Маалыматын Табуу жана Онлайн Карта шилтемесин түзүү
             let geoHTML = `<span class="no-geo">-</span>`;
-            let rawGeo = att.geolocation || att.mapUrl || att.location || att.coordinates || "";
+            let rawGeo = att.geolocation || att.mapUrl || att.coordinates || "";
 
-            if (rawGeo && rawGeo !== "-" && !rawGeo.includes("эмес") && !rawGeo.includes("өчүрүлгөн")) {
+            if (rawGeo && rawGeo !== "-" && !rawGeo.includes("берилген эмес") && !rawGeo.includes("өчүрүлгөн")) {
                 if (rawGeo.startsWith('http://') || rawGeo.startsWith('https://')) {
                     geoHTML = `<a href="${rawGeo}" target="_blank" class="map-btn"><i class="fas fa-map-marked-alt"></i> Картадан көрүү</a>`;
                 } else if (rawGeo.includes(',')) {
                     const cleanCoords = rawGeo.replace(/\s+/g, '');
                     geoHTML = `<a href="https://www.google.com/maps?q=${cleanCoords}" target="_blank" class="map-btn"><i class="fas fa-map-pin"></i> ${cleanCoords}</a>`;
+                } else {
+                    geoHTML = `<span class="no-geo">${rawGeo}</span>`;
                 }
             } else if (rawGeo) {
                 geoHTML = `<span class="no-geo" style="font-size:11px;">${rawGeo}</span>`;
@@ -254,9 +277,9 @@
                 <td>${statusBadge}</td>
                 <td>
                     <div class="action-btns">
-                        <button class="act-btn green" title="Келди" onclick="setStatus('${sId}', 'PRESENT')"><i class="fas fa-check"></i></button>
-                        <button class="act-btn yellow" title="Кечикти" onclick="setStatus('${sId}', 'LATE')"><i class="fas fa-clock"></i></button>
-                        <button class="act-btn red" title="Келген жок" onclick="setStatus('${sId}', 'ABSENT')"><i class="fas fa-times"></i></button>
+                        <button class="act-btn green" title="Келди" onclick="setStatus('${teacherId}', '${sId}', 'PRESENT')"><i class="fas fa-check"></i></button>
+                        <button class="act-btn yellow" title="Кечикти" onclick="setStatus('${teacherId}', '${sId}', 'LATE')"><i class="fas fa-clock"></i></button>
+                        <button class="act-btn red" title="Келген жок" onclick="setStatus('${teacherId}', '${sId}', 'ABSENT')"><i class="fas fa-times"></i></button>
                     </div>
                 </td>
             `;
@@ -273,9 +296,10 @@
         document.getElementById('statAbsent').innerText = absent;
     }
 
-    window.setStatus = async function(studentId, newStatus) {
+    window.setStatus = async function(tId, studentId, newStatus) {
+        const targetTeacherId = tId || activeTeacherId || 'default_teacher';
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const attRef = ref(database, `teachers/${currentTeacherId}/attendance/${todayStr}/${studentId}`);
+        const attRef = ref(database, `teachers/${targetTeacherId}/attendance/${todayStr}/${studentId}`);
         await update(attRef, {
             status: newStatus,
             checkIn: newStatus !== 'ABSENT' ? nowTime : '-',
@@ -288,9 +312,10 @@
         e.preventDefault();
         const name = document.getElementById('newStudentName').value.trim();
         const email = document.getElementById('newStudentEmail').value.trim().toLowerCase();
+        const targetTeacherId = activeTeacherId || 'default_teacher';
 
         const sId = 'std_' + Date.now();
-        const studentRef = ref(database, `teachers/${currentTeacherId}/students/${sId}`);
+        const studentRef = ref(database, `teachers/${targetTeacherId}/students/${sId}`);
 
         await set(studentRef, {
             name: name,
@@ -299,7 +324,7 @@
         });
 
         document.getElementById('addStudentForm').reset();
-        showToast('Окуучу кошулду!');
+        showToast('Жаңы окуучу ийгиликтүү кошулду!');
     });
 
     function showToast(msg) {
