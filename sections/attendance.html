@@ -3,165 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Окуучулардын катышуусу (Attendance Management) - Bilimal</title>
-    <!-- FontAwesome, Chart.js & QRCode.js -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Окуучулардын катышуусу - Bilimal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --card-bg: #111827;
-            --border-color: #1f2937;
+            --bg-color: #0b0e14;
+            --card-bg: #111622;
+            --border-color: #1e2640;
             --accent-color: #00d2ff;
             --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
             --accent-red: #ef4444;
-            --accent-gold: #f59e0b;
-            --text-main: #f9fafb;
-            --text-muted: #9ca3af;
+            --text-main: #ffffff;
+            --text-muted: #7f8c8d;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
-        .container { max-width: 1350px; margin: 0 auto; }
-
-        header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-bottom: 20px; border-bottom: 1px solid var(--border-color); margin-bottom: 20px;
-            flex-wrap: wrap; gap: 15px;
-        }
-
-        .header-title h1 { font-size: 22px; color: var(--accent-color); display: flex; align-items: center; gap: 10px; }
-        .btn-secondary {
-            background: #374151; color: #fff; border: none; padding: 8px 16px; border-radius: 6px;
-            cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 14px;
-            transition: 0.2s;
-        }
-        .btn-secondary:hover { background: #4b5563; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; min-height: 100vh; }
+        .container { max-width: 1300px; margin: 0 auto; }
 
         .stats-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px;
         }
 
         .stat-card {
-            background: var(--card-bg); border: 1px solid var(--border-color); padding: 18px; border-radius: 10px; position: relative;
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px;
         }
-        .stat-card h4 { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-        .stat-card .val { font-size: 24px; font-weight: bold; }
 
-        .main-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
-        @media(max-width: 950px) { .main-layout { grid-template-columns: 1fr; } }
+        .stat-card h4 { font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+        .stat-card .val { font-size: 26px; font-weight: bold; }
 
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .card-title { font-size: 16px; color: var(--accent-color); margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .main-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 992px) { .main-layout { grid-template-columns: 1fr; } }
+
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .card-title { font-size: 18px; color: var(--accent-color); font-weight: 600; display: flex; align-items: center; gap: 10px; }
+
+        .search-input {
+            background: #0b0e14; border: 1px solid var(--border-color); padding: 8px 14px; border-radius: 6px; color: #fff; outline: none; font-size: 14px;
+        }
 
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
-        th { background: #1f2937; color: var(--text-muted); font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { background: #0b0e14; color: var(--text-muted); padding: 12px 14px; font-weight: 500; border-bottom: 1px solid var(--border-color); }
+        td { padding: 14px; border-bottom: 1px solid var(--border-color); vertical-align: middle; }
 
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
-        .badge-present { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
-        .badge-late { background: rgba(245, 158, 11, 0.2); color: var(--accent-gold); }
-        .badge-absent { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        .status-btn { display: inline-block; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; text-align: center; }
+        .status-present { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .status-late { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); }
+        .status-absent { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
 
-        .action-btn {
-            background: #1f2937; border: 1px solid var(--border-color); color: #fff;
-            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 4px;
+        .map-btn {
+            display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 210, 255, 0.15);
+            color: var(--accent-color); border: 1px solid var(--accent-color); padding: 6px 10px;
+            border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; transition: 0.2s;
         }
-        .action-btn:hover { border-color: var(--accent-color); }
+        .map-btn:hover { background: var(--accent-color); color: #0b0e14; }
 
-        .geo-link {
-            color: var(--accent-color); text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;
-        }
+        .no-geo { color: var(--text-muted); font-size: 13px; }
 
-        .qr-box {
-            background: #000; border: 2px dashed var(--accent-color); border-radius: 10px;
-            padding: 20px; text-align: center; margin-bottom: 15px;
+        .action-btns { display: flex; flex-direction: column; gap: 4px; }
+        .act-btn {
+            background: #1e2640; border: none; color: #fff; width: 24px; height: 24px;
+            border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px;
         }
-        .qr-box input {
-            width: 100%; padding: 10px; background: #1f2937; border: 1px solid var(--border-color);
-            color: #fff; border-radius: 6px; margin-top: 10px; text-align: center; font-size: 14px; outline: none;
-        }
-        .qr-box input:focus { border-color: var(--accent-color); }
+        .act-btn.green:hover { background: var(--accent-green); }
+        .act-btn.yellow:hover { background: var(--accent-yellow); }
+        .act-btn.red:hover { background: var(--accent-red); }
 
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-        .form-group input {
-            width: 100%; padding: 8px 12px; background: #1f2937; border: 1px solid var(--border-color);
-            color: #fff; border-radius: 6px; outline: none; font-size: 13px;
-        }
+        .form-group input { width: 100%; padding: 10px; background: #0b0e14; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; font-size: 14px; outline: none; }
 
-        .btn-primary {
-            background: var(--accent-color); color: #000; border: none; padding: 9px 15px;
-            border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;
-        }
-        .btn-primary:hover { opacity: 0.9; }
+        .btn-add { width: 100%; background: var(--accent-color); color: #0b0e14; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { opacity: 0.9; }
 
-        .toast {
-            position: fixed; bottom: 20px; right: 20px; background: var(--accent-green);
-            color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold;
-            display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1000;
-        }
-
-        .modal {
-            display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.8); overflow-y: auto; padding: 20px;
-        }
-        .modal-content {
-            background: var(--card-bg); margin: 30px auto; padding: 25px; border: 1px solid var(--accent-color);
-            border-radius: 12px; max-width: 900px; color: var(--text-main);
-        }
-        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-        .qr-card { background: #fff; color: #000; padding: 15px; border-radius: 8px; text-align: center; }
-        .qr-card h5 { margin-bottom: 4px; font-size: 14px; font-weight: bold; color: #111; }
-        .qr-card p.email { font-size: 11px; color: #666; margin-bottom: 8px; word-break: break-all; }
-        .qr-card div { display: flex; justify-content: center; margin-bottom: 8px; }
-        .qr-card p.token { font-size: 10px; color: #444; font-family: monospace; word-break: break-all; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: var(--accent-color); color: #0b0e14; padding: 12px 20px; border-radius: 8px; font-weight: bold; display: none; z-index: 9999; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header>
-        <div class="header-title">
-            <a href="/sections/curators.html" class="btn-secondary"><i class="fas fa-arrow-left"></i> Башкы бетке</a>
-            <h1><i class="fas fa-user-check"></i> ОКУУЧУЛАРДЫ ЖОКТОО ЖАНА КАТЫШУУ МАТРИЦАСЫ</h1>
-        </div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-secondary" id="generateQRCodesBtn" style="background: var(--accent-color); color: #000; font-weight: bold;"><i class="fas fa-qrcode"></i> Күнүмдүк QR Коддорду Алуу</button>
-            <input type="date" id="selectedDate" class="btn-secondary" style="background: var(--card-bg);">
-            <button class="btn-secondary" id="refreshBtn"><i class="fas fa-sync"></i> Жаңыртуу</button>
-        </div>
-    </header>
-
-    <!-- STATS DASHBOARD -->
     <div class="stats-grid">
-        <div class="stat-card">
-            <h4>ЖАЛПЫ ОКУУЧУЛАР</h4>
-            <div class="val" id="stat-total">0</div>
-        </div>
-        <div class="stat-card">
-            <h4>КЕЛГЕНДЕР</h4>
-            <div class="val" id="stat-present" style="color: var(--accent-green);">0</div>
-        </div>
-        <div class="stat-card">
-            <h4>КЕЧИКТИ</h4>
-            <div class="val" id="stat-late" style="color: var(--accent-gold);">0</div>
-        </div>
-        <div class="stat-card">
-            <h4>КЕЛГЕН ЖОК</h4>
-            <div class="val" id="stat-absent" style="color: var(--accent-red);">0</div>
-        </div>
+        <div class="stat-card"><h4>Жалпы Окуучулар</h4><div class="val" id="statTotal">0</div></div>
+        <div class="stat-card"><h4>Келгендер</h4><div class="val" style="color: var(--accent-green);" id="statPresent">0</div></div>
+        <div class="stat-card"><h4>Кечикти</h4><div class="val" style="color: var(--accent-yellow);" id="statLate">0</div></div>
+        <div class="stat-card"><h4>Келген жок</h4><div class="val" style="color: var(--accent-red);" id="statAbsent">0</div></div>
     </div>
 
     <div class="main-layout">
-        <!-- LEFT TABLE AREA -->
         <div class="card">
-            <div class="card-title">
-                <span><i class="fas fa-list"></i> Катышуу журналы (<span id="currentClassName">9-Б классы</span>)</span>
-                <input type="text" id="searchInput" placeholder="Окуучуну издөө..." style="padding: 6px 12px; background: #1f2937; border: 1px solid var(--border-color); color:#fff; border-radius: 6px; outline:none;">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-list-check"></i> Катышуу журналы</div>
+                <input type="text" id="searchInput" class="search-input" placeholder="Окуучуну издөө...">
             </div>
 
             <div class="table-responsive">
@@ -172,34 +109,30 @@
                             <th>Окуучунун Аты-Жөнү</th>
                             <th>Электрондук Почтасы</th>
                             <th>Кирген убактысы</th>
-                            <th>Чыккан убактысы</th>
                             <th>Геолокация (GPS)</th>
                             <th>Статусу</th>
                             <th>Белгилөө</th>
                         </tr>
                     </thead>
-                    <tbody id="attendanceTbody">
-                        <tr><td colspan="8" style="text-align:center; padding: 20px;">Firebase базасынан маалымат жүктөлүүдө...</td></tr>
+                    <tbody id="attendanceTableBody">
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Жүктөлүүдө...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR (GLOBAL QR SCANNER & ADD STUDENT) -->
         <div>
-            <!-- GLOBAL QR SCANNER TERMINAL -->
             <div class="card">
-                <div class="card-title"><i class="fas fa-qrcode"></i> Жалпы QR Сканер Терминалы</div>
-                <div class="qr-box">
-                    <i class="fas fa-camera fa-2x" style="color: var(--accent-color);"></i>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Окуучунун QR Токенин же Эл. почтасын киргизиңиз:</p>
-                    <input type="text" id="qrInput" placeholder="Сканерден өткөрүү..." autofocus>
+                <div class="card-title" style="font-size: 15px;"><i class="fas fa-qrcode"></i> Жалпы QR Сканер Терминалы</div>
+                <div style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 20px; text-align: center; margin-top: 15px;">
+                    <i class="fas fa-camera" style="font-size: 32px; color: var(--accent-color); margin-bottom: 10px;"></i>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Окуучунун QR Токенин киргизиңиз:</p>
+                    <input type="text" id="manualTokenInput" class="search-input" placeholder="Сканерден өткөрүү..." style="width: 100%; text-align: center;">
                 </div>
             </div>
 
-            <!-- ADD STUDENT FORM (FOR CLASS TEACHER) -->
             <div class="card">
-                <div class="card-title"><i class="fas fa-user-plus"></i> Окуучу кошуу (Класс жетекчи)</div>
+                <div class="card-title" style="font-size: 15px;"><i class="fas fa-user-plus"></i> Окуучу кошуу</div>
                 <form id="addStudentForm">
                     <div class="form-group">
                         <label>Окуучунун Аты-Жөнү:</label>
@@ -209,41 +142,20 @@
                         <label>Электрондук Почтасы (Email):</label>
                         <input type="email" id="newStudentEmail" placeholder="Мисалы: student@gmail.com" required>
                     </div>
-                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Базага кошуу</button>
+                    <button type="submit" class="btn-add">+ Базага кошуу</button>
                 </form>
             </div>
-
-            <!-- CHART ANALYTICS -->
-            <div class="card">
-                <div class="card-title"><i class="fas fa-chart-pie"></i> Бүгүнкү статистика</div>
-                <canvas id="attendanceChart" style="max-height: 220px;"></canvas>
-            </div>
         </div>
-    </div>
-</div>
-
-<!-- MODAL FOR DAILY QR CODES -->
-<div id="qrModal" class="modal">
-    <div class="modal-content">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2><i class="fas fa-qrcode"></i> Күнүмдүк QR Карточкалар (<span id="modalDateStr"></span>)</h2>
-            <button onclick="document.getElementById('qrModal').style.display='none'" class="btn-secondary" style="background:#ef4444;"><i class="fas fa-times"></i> Жабуу</button>
-        </div>
-        <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">
-            Ар бир QR код окуучунун эл. почтасы менен байланышкан жана күн сайын автоматтык түрдө өзгөрүп турат.
-        </p>
-        <div id="modalQrGrid" class="qr-grid"></div>
     </div>
 </div>
 
 <div class="toast" id="toastMsg">Билдирүү</div>
 
-<!-- FIREBASE INTEGRATION (v10 Modular SDK) -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-    // Firebase Конфигурациясы
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -251,327 +163,150 @@
         projectId: "bilimal-org",
         storageBucket: "bilimal-org.firebasestorage.app",
         messagingSenderId: "241750360816",
-        appId: "1:241750360816:web:a991434eb5afbc470d7835",
-        measurementId: "G-9GSQV60QV0"
+        appId: "1:241750360816:web:a991434eb5afbc470d7835"
     };
 
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
+    const auth = getAuth(app);
 
-    // КЛАСС ЖЕТЕКЧИНИН ID ИДЕНТИФИКАТОРУ (АР БИР МУГАЛИМДИН АРАЛАШПАГАН ӨЗ БАЗАСЫ БОЛОТ)
-    const teacherId = localStorage.getItem('bilimal_teacher_id') || 'teacher_9b';
-    const userClass = localStorage.getItem('bilimal_user_class') || '9-Б';
-    
-    document.getElementById('currentClassName').innerText = `${userClass} классы`;
+    let currentTeacherId = null;
+    const todayStr = new Date().toISOString().split('T')[0];
 
-    const selectedDateInput = document.getElementById('selectedDate');
-    selectedDateInput.valueAsDate = new Date();
+    const attendanceTableBody = document.getElementById('attendanceTableBody');
+    const toastMsg = document.getElementById('toastMsg');
 
-    let myStudentsList = [];
-    let attendanceLogs = {};
-    let chartInstance = null;
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentTeacherId = user.uid;
+            loadAttendanceData();
+        } else {
+            currentTeacherId = "default_teacher";
+            loadAttendanceData();
+        }
+    });
 
-    // Эл. почта жана дата боюнча күнүмдүк динамикалык QR токен түзүү
-    function getDailyEmailToken(email, dateStr) {
-        const cleanEmail = (email || '').toLowerCase().trim();
-        return `${cleanEmail}_${dateStr}`;
-    }
+    function loadAttendanceData() {
+        const studentsRef = ref(database, `teachers/${currentTeacherId}/students`);
+        const attendanceRef = ref(database, `teachers/${currentTeacherId}/attendance/${todayStr}`);
 
-    // Түзмөктөн Геолокация аныктоо
-    function getCurrentLocation() {
-        return new Promise((resolve) => {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => resolve({ lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }),
-                    () => resolve(null),
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-            } else {
-                resolve(null);
-            }
+        onValue(studentsRef, (snapshot) => {
+            const students = snapshot.val() || {};
+            onValue(attendanceRef, (attSnapshot) => {
+                const attendance = attSnapshot.val() || {};
+                renderTable(students, attendance);
+            });
         });
     }
 
-    // 1. АКТИВДҮҮ КЛАСС ЖЕТЕКЧИНИН ОКУУЧУЛАРЫН ГАНА АЛУУ (Маалыматтар коопсуз бөлүнөт)
-    const teacherStudentsRef = ref(database, `teachers/${teacherId}/students`);
-    
-    onValue(teacherStudentsRef, (snapshot) => {
-        myStudentsList = [];
-        if (snapshot.exists()) {
-            const data = snapshot.val();
-            Object.entries(data).forEach(([key, val]) => {
-                myStudentsList.push({ id: key, ...val });
-            });
-        }
-        fetchLogsAndRender();
-    });
+    function renderTable(students, attendance) {
+        attendanceTableBody.innerHTML = '';
+        let total = 0, present = 0, late = 0, absent = 0;
+        const studentEntries = Object.entries(students);
+        total = studentEntries.length;
 
-    // 2. Класс жетекчинин тандалган дата боюнча журналын алуу
-    function fetchLogsAndRender() {
-        const dateStr = selectedDateInput.value;
-        const logsRef = ref(database, `teachers/${teacherId}/attendance/${dateStr}`);
-        
-        onValue(logsRef, (snapshot) => {
-            attendanceLogs = snapshot.exists() ? snapshot.val() : {};
-            renderTable();
-        }, { onlyOnce: true });
-    }
-
-    // 3. Таблицаны жана Статистиканы тартуу
-    function renderTable() {
-        const tbody = document.getElementById('attendanceTbody');
-        tbody.innerHTML = '';
-        const filterQuery = document.getElementById('searchInput').value.toLowerCase();
-
-        const filtered = myStudentsList.filter(s => 
-            s.name.toLowerCase().includes(filterQuery) || 
-            s.email.toLowerCase().includes(filterQuery)
-        );
-
-        if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар азырынча жок. Оң жактагы форма аркылуу окуучунун Аты-Жөнүн жана Эл. почтасын кошуңуз.</td></tr>';
+        if (total === 0) {
+            attendanceTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Окуучулар табылган жок. Окуучу кошуңуз.</td></tr>`;
             updateStats(0, 0, 0, 0);
             return;
         }
 
-        let countPresent = 0, countLate = 0, countAbsent = 0;
+        let index = 1;
+        for (const [sId, sData] of studentEntries) {
+            const att = attendance[sId] || {};
+            const status = att.status || 'ABSENT';
+            const checkInTime = att.checkIn || '-';
+            
+            // GPS Маалыматын Табуу
+            let geoHTML = `<span class="no-geo">-</span>`;
+            let rawGeo = att.geolocation || att.mapUrl || att.location || att.coordinates || "";
 
-        filtered.forEach((student, index) => {
-            const log = attendanceLogs[student.id] || {};
-            const status = log.status || 'ABSENT';
-            const checkIn = log.checkIn || '-';
-            const checkOut = log.checkOut || '-';
-            const geo = log.location;
+            if (rawGeo && rawGeo !== "-" && !rawGeo.includes("эмес") && !rawGeo.includes("өчүрүлгөн")) {
+                if (rawGeo.startsWith('http://') || rawGeo.startsWith('https://')) {
+                    geoHTML = `<a href="${rawGeo}" target="_blank" class="map-btn"><i class="fas fa-map-marked-alt"></i> Картадан көрүү</a>`;
+                } else if (rawGeo.includes(',')) {
+                    const cleanCoords = rawGeo.replace(/\s+/g, '');
+                    geoHTML = `<a href="https://www.google.com/maps?q=${cleanCoords}" target="_blank" class="map-btn"><i class="fas fa-map-pin"></i> ${cleanCoords}</a>`;
+                }
+            } else if (rawGeo) {
+                geoHTML = `<span class="no-geo" style="font-size:11px;">${rawGeo}</span>`;
+            }
 
-            if (status === 'PRESENT') countPresent++;
-            else if (status === 'LATE') countLate++;
-            else countAbsent++;
-
-            let badgeClass = 'badge-absent', statusText = 'Келген жок';
-            if (status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
-            if (status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
-
-            let geoHtml = '<span style="color:var(--text-muted);">-</span>';
-            if (geo && geo.lat && geo.lng) {
-                const mapUrl = `https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lng}#map=18/${geo.lat}/${geo.lng}`;
-                geoHtml = `<a href="${mapUrl}" target="_blank" class="geo-link"><i class="fas fa-map-marker-alt" style="color:var(--accent-red)"></i> ${geo.lat}, ${geo.lng}</a>`;
+            let statusBadge = '';
+            if (status === 'PRESENT') {
+                statusBadge = `<span class="status-btn status-present">Толук катышты</span>`;
+                present++;
+            } else if (status === 'LATE') {
+                statusBadge = `<span class="status-btn status-late">Кечикти</span>`;
+                late++;
+            } else {
+                statusBadge = `<span class="status-btn status-absent">Келген жок</span>`;
+                absent++;
             }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${index + 1}</td>
-                <td><strong>${student.name}</strong></td>
-                <td><code>${student.email}</code></td>
-                <td>${checkIn}</td>
-                <td>${checkOut}</td>
-                <td>${geoHtml}</td>
-                <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                <td>${index++}</td>
+                <td><strong>${sData.name || 'Окуучу'}</strong></td>
+                <td style="color: var(--text-muted); font-size:13px;">${sData.email || '-'}</td>
+                <td>${checkInTime}</td>
+                <td>${geoHTML}</td>
+                <td>${statusBadge}</td>
                 <td>
-                    <button class="action-btn" style="color:var(--accent-green);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'PRESENT')"><i class="fas fa-check"></i></button>
-                    <button class="action-btn" style="color:var(--accent-gold);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'LATE')"><i class="fas fa-clock"></i></button>
-                    <button class="action-btn" style="color:var(--accent-red);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'ABSENT')"><i class="fas fa-times"></i></button>
+                    <div class="action-btns">
+                        <button class="act-btn green" title="Келди" onclick="setStatus('${sId}', 'PRESENT')"><i class="fas fa-check"></i></button>
+                        <button class="act-btn yellow" title="Кечикти" onclick="setStatus('${sId}', 'LATE')"><i class="fas fa-clock"></i></button>
+                        <button class="act-btn red" title="Келген жок" onclick="setStatus('${sId}', 'ABSENT')"><i class="fas fa-times"></i></button>
+                    </div>
                 </td>
             `;
-            tbody.appendChild(tr);
-        });
+            attendanceTableBody.appendChild(tr);
+        }
 
-        updateStats(filtered.length, countPresent, countLate, countAbsent);
+        updateStats(total, present, late, absent);
     }
 
-    // 4. Түздөн-түз катышууну сактоо
-    window.markAttendanceForTeacher = async function(tId, studentId, status, customLocation = null) {
-        const dateStr = selectedDateInput.value;
+    function updateStats(total, present, late, absent) {
+        document.getElementById('statTotal').innerText = total;
+        document.getElementById('statPresent').innerText = present;
+        document.getElementById('statLate').innerText = late;
+        document.getElementById('statAbsent').innerText = absent;
+    }
+
+    window.setStatus = async function(studentId, newStatus) {
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        const logRef = ref(database, `teachers/${tId}/attendance/${dateStr}/${studentId}`);
-        
-        let currentLog = {};
-        if (tId === teacherId) currentLog = attendanceLogs[studentId] || {};
-
-        let checkInTime = currentLog.checkIn || (status !== 'ABSENT' ? nowTime : '-');
-        let checkOutTime = currentLog.checkOut || '-';
-
-        if (currentLog.checkIn && status !== 'ABSENT' && !currentLog.checkOut) {
-            checkOutTime = nowTime;
-        }
-
-        const locationData = customLocation || currentLog.location || null;
-
-        await set(logRef, {
-            status: status,
-            checkIn: checkInTime,
-            checkOut: checkOutTime,
-            location: locationData,
+        const attRef = ref(database, `teachers/${currentTeacherId}/attendance/${todayStr}/${studentId}`);
+        await update(attRef, {
+            status: newStatus,
+            checkIn: newStatus !== 'ABSENT' ? nowTime : '-',
             updatedAt: new Date().toISOString()
         });
-
-        if (tId === teacherId) {
-            showToast('Катышуу сакталды!');
-            fetchLogsAndRender();
-        }
+        showToast('Статус жаңыртылды!');
     };
 
-    // 5. ЖАЛПЫ СКАНЕР ТЕРМИНАЛЫ (БАРДЫК КЛАСС ЖЕТЕКЧИЛЕРДИН АРАСЫНАН ПОЧТА БОЮНЧА АНЫКТАЙТ)
-    document.getElementById('qrInput').addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            const inputVal = e.target.value.trim().toLowerCase();
-            if (!inputVal) return;
-
-            const currentDateStr = selectedDateInput.value;
-
-            try {
-                showToast('Базадан аныкталууда...');
-                const allTeachersRef = ref(database, 'teachers');
-                const snapshot = await get(allTeachersRef);
-
-                let foundStudent = null;
-                let foundTeacherId = null;
-
-                if (snapshot.exists()) {
-                    const teachersData = snapshot.val();
-                    
-                    // Бардык мугалимдердин окуучуларын текшерип табуу
-                    for (const [tId, tData] of Object.entries(teachersData)) {
-                        if (tData.students) {
-                            for (const [sId, sData] of Object.entries(tData.students)) {
-                                const dailyToken = getDailyEmailToken(sData.email, currentDateStr);
-                                
-                                if (sData.email.toLowerCase() === inputVal || dailyToken.toLowerCase() === inputVal) {
-                                    foundStudent = { id: sId, ...sData };
-                                    foundTeacherId = tId;
-                                    break;
-                                }
-                            }
-                        }
-                        if (foundStudent) break;
-                    }
-                }
-
-                if (foundStudent && foundTeacherId) {
-                    const location = await getCurrentLocation();
-                    const now = new Date();
-                    const hours = now.getHours();
-                    const minutes = now.getMinutes();
-
-                    let autoStatus = 'PRESENT';
-                    if (hours > 8 || (hours === 8 && minutes > 15)) {
-                        autoStatus = 'LATE';
-                    }
-
-                    await window.markAttendanceForTeacher(foundTeacherId, foundStudent.id, autoStatus, location);
-                    showToast(`Катталды: ${foundStudent.name} (${foundStudent.email})`);
-                } else {
-                    showToast('Ката! Окуучу табылган жок же QR код эскирген!');
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Сканерлөөдө ката чыкты!');
-            }
-
-            e.target.value = '';
-        }
-    });
-
-    // 6. КЛАСС ЖЕТЕКЧИ ОКУУЧУНУ ӨЗ БАЗАСЫНА ГАНА КОШОТ
     document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('newStudentName').value.trim();
         const email = document.getElementById('newStudentEmail').value.trim().toLowerCase();
 
-        if (name && email) {
-            const newRef = push(teacherStudentsRef);
-            await set(newRef, { name, email, createdAt: new Date().toISOString() });
-            showToast('Окуучу базаңызга кошулду');
-            document.getElementById('addStudentForm').reset();
-        }
-    });
+        const sId = 'std_' + Date.now();
+        const studentRef = ref(database, `teachers/${currentTeacherId}/students/${sId}`);
 
-    // 7. КҮНҮМДҮК QR КОДДОРДУ ЭЛ. ПОЧТА БОЮНЧА ЧЫГАРУУ
-    document.getElementById('generateQRCodesBtn').addEventListener('click', () => {
-        const currentDateStr = selectedDateInput.value;
-        document.getElementById('modalDateStr').innerText = currentDateStr;
-        const grid = document.getElementById('modalQrGrid');
-        grid.innerHTML = '';
-
-        if (myStudentsList.length === 0) {
-            grid.innerHTML = '<p style="color:var(--text-muted)">Классыңызда окуучулар азырынча жок.</p>';
-        }
-
-        myStudentsList.forEach(student => {
-            const dailyToken = getDailyEmailToken(student.email, currentDateStr);
-
-            const card = document.createElement('div');
-            card.className = 'qr-card';
-            
-            const title = document.createElement('h5');
-            title.innerText = student.name;
-            card.appendChild(title);
-
-            const emailText = document.createElement('p');
-            emailText.className = 'email';
-            emailText.innerText = student.email;
-            card.appendChild(emailText);
-
-            const qrContainer = document.createElement('div');
-            card.appendChild(qrContainer);
-
-            new QRCode(qrContainer, {
-                text: dailyToken,
-                width: 120,
-                height: 120
-            });
-
-            const tokenText = document.createElement('p');
-            tokenText.className = 'token';
-            tokenText.innerText = dailyToken;
-            card.appendChild(tokenText);
-
-            grid.appendChild(card);
+        await set(studentRef, {
+            name: name,
+            email: email,
+            createdAt: new Date().toISOString()
         });
 
-        document.getElementById('qrModal').style.display = 'block';
+        document.getElementById('addStudentForm').reset();
+        showToast('Окуучу кошулду!');
     });
-
-    // 8. Статистика & Диаграмма
-    function updateStats(total, present, late, absent) {
-        document.getElementById('stat-total').innerText = total;
-        document.getElementById('stat-present').innerText = present;
-        document.getElementById('stat-late').innerText = late;
-        document.getElementById('stat-absent').innerText = absent;
-
-        renderChart(present, late, absent);
-    }
-
-    function renderChart(p, l, a) {
-        const ctx = document.getElementById('attendanceChart').getContext('2d');
-        if (chartInstance) chartInstance.destroy();
-
-        chartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Келгендер', 'Кечиккендер', 'Келбегендер'],
-                datasets: [{
-                    data: [p, l, a],
-                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { labels: { color: '#f9fafb' } } }
-            }
-        });
-    }
 
     function showToast(msg) {
-        const toast = document.getElementById('toastMsg');
-        toast.innerText = msg;
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 3000);
+        toastMsg.innerText = msg;
+        toastMsg.style.display = 'block';
+        setTimeout(() => toastMsg.style.display = 'none', 3000);
     }
-
-    document.getElementById('refreshBtn').addEventListener('click', fetchLogsAndRender);
-    selectedDateInput.addEventListener('change', fetchLogsAndRender);
-    document.getElementById('searchInput').addEventListener('input', renderTable);
 </script>
 </body>
 </html>
