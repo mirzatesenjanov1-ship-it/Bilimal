@@ -225,6 +225,21 @@
             border: 1px solid var(--accent-red);
         }
 
+        .geo-status {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .geo-status a {
+            color: var(--accent-color);
+            text-decoration: underline;
+        }
+
         .toast {
             position: fixed;
             bottom: 25px;
@@ -291,6 +306,7 @@
             <h4 style="font-size: 15px; color: #111827;">Бүгүнкү күн үчүн катышуу QR коду (<span id="currentDateStr"></span>)</h4>
             <div id="qrcode"></div>
             <p style="font-size: 12px; color: #6b7280; word-break: break-all;" id="tokenText"></p>
+            <div class="geo-status" id="geoStatusDisplay"><i class="fas fa-location-arrow"></i> Геолокация аныкталууда...</div>
         </div>
     </div>
 
@@ -330,17 +346,52 @@
     const studentProfileSection = document.getElementById('studentProfileSection');
     const scannerSection = document.getElementById('scannerSection');
     const toastMsg = document.getElementById('toastMsg');
+    const geoStatusDisplay = document.getElementById('geoStatusDisplay');
 
     let currentStudent = null;
     let currentTeacherId = null;
     let html5QrcodeScanner = null;
     let isProcessingScan = false;
+    
+    // Дефолттук маанилер
+    let rawCoords = "Өчүрүлгөн";
+    let mapUrl = "-";
 
-    // Бүгүнкү күн форматы (гггг-мм-дд)
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('currentDateStr').innerText = todayStr;
 
-    // Браузерде мурда сакталган E-mail бар болсо авто-кирүү
+    // Түзмөктүн GPS Жайгашуусун Алуу Жана Онлайн Карта Шилтемесин Түзүү
+    function fetchUserLocation() {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude.toFixed(6);
+                    const lng = position.coords.longitude.toFixed(6);
+                    
+                    rawCoords = `${lat}, ${lng}`;
+                    // Google Maps онлайн картасына шилтеме
+                    mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+
+                    geoStatusDisplay.innerHTML = `
+                        <i class="fas fa-map-marker-alt" style="color:#10b981;"></i> 
+                        GPS Аныкталды: <a href="${mapUrl}" target="_blank" style="color:#00d2ff; font-weight:bold;"> Онлайн Картадан көрүү</a>
+                    `;
+                },
+                (error) => {
+                    console.warn("GPS Алынган жок:", error.message);
+                    rawCoords = "GPS өчүрүлгөн";
+                    mapUrl = "-";
+                    geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-slash" style="color:#ef4444;"></i> GPS аныкталган жок (Уруксат берилген эмес)`;
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            rawCoords = "GPS колдолбойт";
+            mapUrl = "-";
+            geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> GPS колдолбойт`;
+        }
+    }
+
     const savedEmail = localStorage.getItem('bilimal_student_email');
     if (savedEmail) {
         document.getElementById('studentEmailInput').value = savedEmail;
@@ -356,7 +407,6 @@
         identifyStudent(email);
     });
 
-    // Firebase database'ден окуучуну издөө логикасы
     async function identifyStudent(email) {
         try {
             showToast('Маалымат текшерилүүдө...');
@@ -385,9 +435,10 @@
 
             if (found) {
                 localStorage.setItem('bilimal_student_email', email);
+                fetchUserLocation();
                 displayStudentDashboard();
             } else {
-                showToast('Бул электрондук почта базадан табылган жок! Класс жетекчиңизден сураңыз.');
+                showToast('Бул электрондук почта базадан табылган жок!');
             }
         } catch (err) {
             console.error(err);
@@ -395,7 +446,6 @@
         }
     }
 
-    // Окуучунун экранын жана туураланган QR кодду түзүү
     function displayStudentDashboard() {
         authSection.style.display = 'none';
         studentProfileSection.style.display = 'block';
@@ -405,7 +455,6 @@
         document.getElementById('studentClassDisplay').innerText = currentStudent.class || 'Көрсөтүлгөн эмес';
         document.getElementById('studentEmailDisplay').innerText = currentStudent.email;
 
-        // Туураланган стандартташтырылган JSON токен
         const dailyPayload = {
             type: "BILIMAL_ATTENDANCE",
             studentId: currentStudent.id,
@@ -416,7 +465,6 @@
         const payloadString = JSON.stringify(dailyPayload);
         document.getElementById('tokenText').innerText = `Код: ${currentStudent.id} | ${todayStr}`;
 
-        // QR Кодду түзүү
         document.getElementById('qrcode').innerHTML = '';
         new QRCode(document.getElementById('qrcode'), {
             text: payloadString,
@@ -430,7 +478,6 @@
         startCameraScanner();
     }
 
-    // Сканерди иштетүү
     function startCameraScanner() {
         if (html5QrcodeScanner) {
             html5QrcodeScanner.clear();
@@ -443,7 +490,7 @@
         html5QrcodeScanner.render(onScanSuccess, onScanError);
     }
 
-    // QR код ийгиликтүү окулганда
+    // QR КОД ОКУЛГАНДА FIREBASE БАЗАСЫНА ОНЛАЙН КАРТА ШИЛТЕМЕСИН САКТОО
     async function onScanSuccess(decodedText) {
         if (isProcessingScan) return;
         isProcessingScan = true;
@@ -453,7 +500,6 @@
             try {
                 scannedData = JSON.parse(decodedText);
             } catch (e) {
-                // Стандарттык эмес формат болсо тексттен ажыратуу
                 scannedData = { text: decodedText };
             }
 
@@ -462,41 +508,43 @@
             const minutes = now.getMinutes();
             const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // Саат 08:15тен кийин кечикти (LATE), ага чейин келип калса (PRESENT)
             let autoStatus = 'PRESENT';
             if (hours > 8 || (hours === 8 && minutes > 15)) {
                 autoStatus = 'LATE';
             }
 
-            // Эгер мектептин же мугалимдин коду окулса, Мугалимдин IDсин алуу
             let targetTeacherId = currentTeacherId;
             if (scannedData && scannedData.teacherId) {
                 targetTeacherId = scannedData.teacherId;
             }
 
-            // FirebaseRealtime DBге катышууну түз сактоо
+            // Журнал бетинде карта ачылышы үчүн даяр шилтемени жана координаттарды жазуу
             const attendanceRef = ref(database, `teachers/${targetTeacherId}/attendance/${todayStr}/${currentStudent.id}`);
             
             await set(attendanceRef, {
                 studentName: currentStudent.name,
+                email: currentStudent.email,
                 status: autoStatus,
                 checkIn: nowTime,
                 checkOut: '-',
+                geolocation: mapUrl !== '-' ? mapUrl : rawCoords, // Журналга Карта шилтемеси же Цифра жазылат
+                coordinates: rawCoords,
+                mapUrl: mapUrl,
                 updatedAt: new Date().toISOString()
             });
 
             document.getElementById('scanResult').innerHTML = `
                 <div class="status-badge status-success">
-                    <i class="fas fa-check-circle"></i> Катышууңуз сакталды! Класс жетекчиге маалымат өттү. (${nowTime})
+                    <i class="fas fa-check-circle"></i> Катышууңуз жана онлайн картадагы геолокацияңыз сакталды! (${nowTime})
                 </div>
             `;
-            showToast('Катышууңуз ийгиликтүү катталды!');
+            showToast('Катышуу жана онлайн карта жайгашуусу сакталды!');
 
         } catch (error) {
             console.error(error);
             document.getElementById('scanResult').innerHTML = `
                 <div class="status-badge status-error">
-                    <i class="fas fa-exclamation-triangle"></i> QR код туура эмес же сактоодо ката кетти!
+                    <i class="fas fa-exclamation-triangle"></i> Сактоодо ката кетти!
                 </div>
             `;
             showToast('Ката кетти, кайра аракет кылыңыз!');
@@ -505,9 +553,7 @@
         }
     }
 
-    function onScanError(errorMessage) {
-        // Камера издөө процессиндеги убактылуу логика
-    }
+    function onScanError(errorMessage) {}
 
     function showToast(msg) {
         toastMsg.innerText = msg;
