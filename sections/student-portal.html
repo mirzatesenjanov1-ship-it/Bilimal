@@ -79,7 +79,7 @@
         .status-success { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
         .status-error { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); }
 
-        .geo-status { margin-top: 10px; font-size: 13px; color: var(--accent-color); display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .geo-status { margin-top: 12px; font-size: 13px; color: var(--accent-color); display: flex; align-items: center; justify-content: center; gap: 6px; }
 
         .toast {
             position: fixed; bottom: 25px; right: 25px; background: var(--accent-color);
@@ -117,7 +117,7 @@
             <h4 style="font-size: 15px; color: #111827;">Бүгүнкү күн үчүн катышуу QR коду (<span id="currentDateStr"></span>)</h4>
             <div id="qrcode"></div>
             <p style="font-size: 12px; color: #6b7280; word-break: break-all;" id="tokenText"></p>
-            <div class="geo-status" id="geoStatusDisplay"><i class="fas fa-location-arrow"></i> Геолокация аныкталууда...</div>
+            <div class="geo-status" id="geoStatusDisplay"><i class="fas fa-spinner fa-spin"></i> Так GPS геолокациясы алынууда...</div>
         </div>
     </div>
 
@@ -157,35 +157,50 @@
     let currentTeacherId = null;
     let html5QrcodeScanner = null;
     let isProcessingScan = false;
-    let cachedMapUrl = null;
 
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('currentDateStr').innerText = todayStr;
 
-    // GPS КООРДИНАТТАРДЫ ТАПТАК ЫРААТТУУ АЛУУ
-    function fetchCurrentLocation() {
+    // ТАК GPS КООРДИНАТТАРЫН СПУТНИКТЕН АЛУУ
+    function getExactGPSLocation() {
         return new Promise((resolve) => {
-            if (cachedMapUrl) return resolve(cachedMapUrl);
-
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const lat = position.coords.latitude.toFixed(6);
-                        const lng = position.coords.longitude.toFixed(6);
-                        cachedMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                        geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="color:#10b981;"></i> GPS Аныкталды! <a href="${cachedMapUrl}" target="_blank" style="color:#00d2ff;"> Картадан көрүү</a>`;
-                        resolve(cachedMapUrl);
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = Math.round(position.coords.accuracy); // Тактык (метр менен)
+
+                        // Google Maps маркер туудурган түз шилтеме
+                        const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                        
+                        geoStatusDisplay.innerHTML = `
+                            <i class="fas fa-map-marker-alt" style="color:#10b981;"></i> 
+                            Так GPS табылды (Тактыгы: ~${accuracy}м)! 
+                            <a href="${mapUrl}" target="_blank" style="color:#00d2ff; font-weight:bold; margin-left:5px;">[Картадан көрүү]</a>
+                        `;
+                        resolve(mapUrl);
                     },
                     (error) => {
-                        console.warn(error);
-                        geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-slash" style="color:#ef4444;"></i> GPS өчүрүлгөн (Браузерден уруксат бериңиз)`;
-                        resolve("GPS уруксаты берилген эмес");
+                        console.warn("GPS Катасы:", error);
+                        let errText = "GPS алынган жок";
+                        if (error.code === error.PERMISSION_DENIED) {
+                            errText = "Геолокацияга уруксат берилген жок";
+                        } else if (error.code === error.TIMEOUT) {
+                            errText = "GPS убактысы өттү";
+                        }
+                        geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i> ${errText}`;
+                        resolve(errText);
                     },
-                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+                    {
+                        enableHighAccuracy: true, // Максималдуу так GPS режим
+                        timeout: 10000,           // 10 секунда күтүү
+                        maximumAge: 0             // Кештелген даректерди колдонбоо
+                    }
                 );
             } else {
-                geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> GPS колдолбойт`;
-                resolve("GPS колдолбойт");
+                geoStatusDisplay.innerHTML = `<i class="fas fa-times-circle"></i> Браузер геолокацияны колдобойт`;
+                resolve("Геолокация колдолбойт");
             }
         });
     }
@@ -228,7 +243,7 @@
             if (found) {
                 localStorage.setItem('bilimal_student_email', email);
                 displayStudentDashboard();
-                fetchCurrentLocation();
+                getExactGPSLocation(); // Порталга кирээри менен GPSти аныктоо
             } else {
                 showToast('Почта базадан табылган жок!');
             }
@@ -272,8 +287,8 @@
         isProcessingScan = true;
 
         try {
-            showToast('Геолокация текшерилип, сакталууда...');
-            const finalMapUrl = await fetchCurrentLocation();
+            showToast('Так GPS аныкталып, базага сакталууда...');
+            const exactMapUrl = await getExactGPSLocation();
 
             const now = new Date();
             const hours = now.getHours();
@@ -290,20 +305,20 @@
                 status: autoStatus,
                 checkIn: nowTime,
                 checkOut: '-',
-                geolocation: finalMapUrl,
-                mapUrl: finalMapUrl,
+                geolocation: exactMapUrl,
+                mapUrl: exactMapUrl,
                 updatedAt: new Date().toISOString()
             });
 
             document.getElementById('scanResult').innerHTML = `
                 <div class="status-badge status-success">
-                    <i class="fas fa-check-circle"></i> Катышуу жана GPS маалыматы сакталды! (${nowTime})
+                    <i class="fas fa-check-circle"></i> Окуучу саат ${nowTime} боюнча GPS шилтемеси менен сакталды!
                 </div>
             `;
-            showToast('Ийгиликтүү сакталды!');
+            showToast('Ийгиликтүү белгиленди!');
         } catch (error) {
             console.error(error);
-            showToast('Сактоодо ката кетти!');
+            showToast('Сактоодо ката чыкты!');
         } finally {
             setTimeout(() => { isProcessingScan = false; }, 3000);
         }
