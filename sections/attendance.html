@@ -75,7 +75,6 @@
         .geo-link {
             color: var(--accent-color); text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;
         }
-        .geo-link:hover { text-decoration: underline; }
 
         .qr-box {
             background: #000; border: 2px dashed var(--accent-color); border-radius: 10px;
@@ -114,11 +113,12 @@
             background: var(--card-bg); margin: 30px auto; padding: 25px; border: 1px solid var(--accent-color);
             border-radius: 12px; max-width: 900px; color: var(--text-main);
         }
-        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
         .qr-card { background: #fff; color: #000; padding: 15px; border-radius: 8px; text-align: center; }
-        .qr-card h5 { margin-bottom: 8px; font-size: 14px; font-weight: bold; color: #111; }
+        .qr-card h5 { margin-bottom: 4px; font-size: 14px; font-weight: bold; color: #111; }
+        .qr-card p.email { font-size: 11px; color: #666; margin-bottom: 8px; word-break: break-all; }
         .qr-card div { display: flex; justify-content: center; margin-bottom: 8px; }
-        .qr-card p { font-size: 11px; color: #555; font-family: monospace; word-break: break-all; }
+        .qr-card p.token { font-size: 10px; color: #444; font-family: monospace; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -170,7 +170,7 @@
                         <tr>
                             <th>#</th>
                             <th>Окуучунун Аты-Жөнү</th>
-                            <th>ID Коду / Бүгүнкү Токен</th>
+                            <th>Электрондук Почтасы</th>
                             <th>Кирген убактысы</th>
                             <th>Чыккан убактысы</th>
                             <th>Геолокация (GPS)</th>
@@ -185,31 +185,31 @@
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR (QR SCANNER, ADD STUDENT & ANALYTICS) -->
+        <!-- RIGHT SIDEBAR (GLOBAL QR SCANNER & ADD STUDENT) -->
         <div>
-            <!-- QR SCANNER TERMINAL -->
+            <!-- GLOBAL QR SCANNER TERMINAL -->
             <div class="card">
-                <div class="card-title"><i class="fas fa-qrcode"></i> QR Сканер Терминалы</div>
+                <div class="card-title"><i class="fas fa-qrcode"></i> Жалпы QR Сканер Терминалы</div>
                 <div class="qr-box">
                     <i class="fas fa-camera fa-2x" style="color: var(--accent-color);"></i>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Күнүмдүк QR Токенди сканерлеңиз же киргизип Enter басыңыз:</p>
-                    <input type="text" id="qrInput" placeholder="Сканерден киргизүү..." autofocus>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Окуучунун QR Токенин же Эл. почтасын киргизиңиз:</p>
+                    <input type="text" id="qrInput" placeholder="Сканерден өткөрүү..." autofocus>
                 </div>
             </div>
 
-            <!-- ADD STUDENT FORM -->
+            <!-- ADD STUDENT FORM (FOR CLASS TEACHER) -->
             <div class="card">
-                <div class="card-title"><i class="fas fa-user-plus"></i> Окуучу кошуу</div>
+                <div class="card-title"><i class="fas fa-user-plus"></i> Окуучу кошуу (Класс жетекчи)</div>
                 <form id="addStudentForm">
                     <div class="form-group">
-                        <label>Аты-Жөнү:</label>
+                        <label>Окуучунун Аты-Жөнү:</label>
                         <input type="text" id="newStudentName" placeholder="Мисалы: Абдуллаев Нурислам" required>
                     </div>
                     <div class="form-group">
-                        <label>ID Негизги Коду:</label>
-                        <input type="text" id="newStudentCode" placeholder="Мисалы: ST-101" required>
+                        <label>Электрондук Почтасы (Email):</label>
+                        <input type="email" id="newStudentEmail" placeholder="Мисалы: student@gmail.com" required>
                     </div>
-                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Firebase базасына кошуу</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Базага кошуу</button>
                 </form>
             </div>
 
@@ -230,7 +230,7 @@
             <button onclick="document.getElementById('qrModal').style.display='none'" class="btn-secondary" style="background:#ef4444;"><i class="fas fa-times"></i> Жабуу</button>
         </div>
         <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">
-            Ар бир QR код ушул күн үчүн гана жарактуу. Күн алмашса QR коддор автоматтык түрдө жаңыланат.
+            Ар бир QR код окуучунун эл. почтасы менен байланышкан жана күн сайын автоматтык түрдө өзгөрүп турат.
         </p>
         <div id="modalQrGrid" class="qr-grid"></div>
     </div>
@@ -241,8 +241,7 @@
 <!-- FIREBASE INTEGRATION (v10 Modular SDK) -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
-    import { getDatabase, ref, onValue, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, push, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     // Firebase Конфигурациясы
     const firebaseConfig = {
@@ -257,39 +256,34 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const database = getDatabase(app);
 
+    // КЛАСС ЖЕТЕКЧИНИН ID ИДЕНТИФИКАТОРУ (АР БИР МУГАЛИМДИН АРАЛАШПАГАН ӨЗ БАЗАСЫ БОЛОТ)
+    const teacherId = localStorage.getItem('bilimal_teacher_id') || 'teacher_9b';
     const userClass = localStorage.getItem('bilimal_user_class') || '9-Б';
-    document.getElementById('currentClassName').innerText = userClass + ' классы';
+    
+    document.getElementById('currentClassName').innerText = `${userClass} классы`;
 
     const selectedDateInput = document.getElementById('selectedDate');
     selectedDateInput.valueAsDate = new Date();
 
-    let studentsList = [];
+    let myStudentsList = [];
     let attendanceLogs = {};
     let chartInstance = null;
 
-    // Автоматтык Күнүмдүк Динамикалык Токен
-    function getDailyToken(studentCode, dateStr) {
-        return `${studentCode}-${dateStr}`;
+    // Эл. почта жана дата боюнча күнүмдүк динамикалык QR токен түзүү
+    function getDailyEmailToken(email, dateStr) {
+        const cleanEmail = (email || '').toLowerCase().trim();
+        return `${cleanEmail}_${dateStr}`;
     }
 
-    // Түзмөктүн (браузердин) Геолокациясын алуу функциясы
+    // Түзмөктөн Геолокация аныктоо
     function getCurrentLocation() {
         return new Promise((resolve) => {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        resolve({
-                            lat: position.coords.latitude.toFixed(6),
-                            lng: position.coords.longitude.toFixed(6)
-                        });
-                    },
-                    (error) => {
-                        console.warn("Геолокация алынган жок же уруксат берилген жок:", error.message);
-                        resolve(null);
-                    },
+                    (pos) => resolve({ lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) }),
+                    () => resolve(null),
                     { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
                 );
             } else {
@@ -298,24 +292,24 @@
         });
     }
 
-    const studentsRef = ref(database, `classes/${userClass}/students`);
+    // 1. АКТИВДҮҮ КЛАСС ЖЕТЕКЧИНИН ОКУУЧУЛАРЫН ГАНА АЛУУ (Маалыматтар коопсуз бөлүнөт)
+    const teacherStudentsRef = ref(database, `teachers/${teacherId}/students`);
     
-    // 1. Firebase'ден окуучулар тизмесин окуп алуу
-    onValue(studentsRef, (snapshot) => {
-        studentsList = [];
+    onValue(teacherStudentsRef, (snapshot) => {
+        myStudentsList = [];
         if (snapshot.exists()) {
             const data = snapshot.val();
             Object.entries(data).forEach(([key, val]) => {
-                studentsList.push({ id: key, ...val });
+                myStudentsList.push({ id: key, ...val });
             });
         }
         fetchLogsAndRender();
     });
 
-    // 2. Тандалган дата боюнча катышуу журналын окуп алуу
+    // 2. Класс жетекчинин тандалган дата боюнча журналын алуу
     function fetchLogsAndRender() {
         const dateStr = selectedDateInput.value;
-        const logsRef = ref(database, `attendance/${userClass}/${dateStr}`);
+        const logsRef = ref(database, `teachers/${teacherId}/attendance/${dateStr}`);
         
         onValue(logsRef, (snapshot) => {
             attendanceLogs = snapshot.exists() ? snapshot.val() : {};
@@ -323,27 +317,24 @@
         }, { onlyOnce: true });
     }
 
-    // 3. Таблицага чыгаруу
+    // 3. Таблицаны жана Статистиканы тартуу
     function renderTable() {
         const tbody = document.getElementById('attendanceTbody');
         tbody.innerHTML = '';
         const filterQuery = document.getElementById('searchInput').value.toLowerCase();
-        const currentDateStr = selectedDateInput.value;
 
-        const filtered = studentsList.filter(s => 
+        const filtered = myStudentsList.filter(s => 
             s.name.toLowerCase().includes(filterQuery) || 
-            s.code.toLowerCase().includes(filterQuery)
+            s.email.toLowerCase().includes(filterQuery)
         );
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар табылган жок.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар азырынча жок. Оң жактагы форма аркылуу окуучунун Аты-Жөнүн жана Эл. почтасын кошуңуз.</td></tr>';
             updateStats(0, 0, 0, 0);
             return;
         }
 
-        let countPresent = 0;
-        let countLate = 0;
-        let countAbsent = 0;
+        let countPresent = 0, countLate = 0, countAbsent = 0;
 
         filtered.forEach((student, index) => {
             const log = attendanceLogs[student.id] || {};
@@ -351,20 +342,15 @@
             const checkIn = log.checkIn || '-';
             const checkOut = log.checkOut || '-';
             const geo = log.location;
-            
-            const dailyToken = getDailyToken(student.code, currentDateStr);
 
             if (status === 'PRESENT') countPresent++;
             else if (status === 'LATE') countLate++;
             else countAbsent++;
 
-            let badgeClass = 'badge-absent';
-            let statusText = 'Келген жок';
-
+            let badgeClass = 'badge-absent', statusText = 'Келген жок';
             if (status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
             if (status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
 
-            // Геолокация баскычы (Эгер сакталган болсо OpenStreetMap шилтемесин ачат)
             let geoHtml = '<span style="color:var(--text-muted);">-</span>';
             if (geo && geo.lat && geo.lng) {
                 const mapUrl = `https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lng}#map=18/${geo.lat}/${geo.lng}`;
@@ -375,15 +361,15 @@
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td><strong>${student.name}</strong></td>
-                <td><code style="color:var(--accent-color);">${dailyToken}</code></td>
+                <td><code>${student.email}</code></td>
                 <td>${checkIn}</td>
                 <td>${checkOut}</td>
                 <td>${geoHtml}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
                 <td>
-                    <button class="action-btn" style="color:var(--accent-green);" onclick="markAttendance('${student.id}', 'PRESENT')"><i class="fas fa-check"></i></button>
-                    <button class="action-btn" style="color:var(--accent-gold);" onclick="markAttendance('${student.id}', 'LATE')"><i class="fas fa-clock"></i></button>
-                    <button class="action-btn" style="color:var(--accent-red);" onclick="markAttendance('${student.id}', 'ABSENT')"><i class="fas fa-times"></i></button>
+                    <button class="action-btn" style="color:var(--accent-green);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'PRESENT')"><i class="fas fa-check"></i></button>
+                    <button class="action-btn" style="color:var(--accent-gold);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'LATE')"><i class="fas fa-clock"></i></button>
+                    <button class="action-btn" style="color:var(--accent-red);" onclick="markAttendanceForTeacher('${teacherId}', '${student.id}', 'ABSENT')"><i class="fas fa-times"></i></button>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -392,13 +378,15 @@
         updateStats(filtered.length, countPresent, countLate, countAbsent);
     }
 
-    // 4. Катышууну жана Геолокацияны сактоо
-    window.markAttendance = async function(studentId, status, customLocation = null) {
+    // 4. Түздөн-түз катышууну сактоо
+    window.markAttendanceForTeacher = async function(tId, studentId, status, customLocation = null) {
         const dateStr = selectedDateInput.value;
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const logRef = ref(database, `attendance/${userClass}/${dateStr}/${studentId}`);
-        const currentLog = attendanceLogs[studentId] || {};
+        const logRef = ref(database, `teachers/${tId}/attendance/${dateStr}/${studentId}`);
+        
+        let currentLog = {};
+        if (tId === teacherId) currentLog = attendanceLogs[studentId] || {};
 
         let checkInTime = currentLog.checkIn || (status !== 'ABSENT' ? nowTime : '-');
         let checkOutTime = currentLog.checkOut || '-';
@@ -407,7 +395,6 @@
             checkOutTime = nowTime;
         }
 
-        // Эгерде геолокация сканерлөө учурунда табылса аны сактайт
         const locationData = customLocation || currentLog.location || null;
 
         await set(logRef, {
@@ -418,74 +405,100 @@
             updatedAt: new Date().toISOString()
         });
 
-        showToast('Геолокация жана катышуу сакталды!');
-        fetchLogsAndRender();
+        if (tId === teacherId) {
+            showToast('Катышуу сакталды!');
+            fetchLogsAndRender();
+        }
     };
 
-    // 5. QR Сканер иштетүү (Автоматтык Геолокация фиксациялоо менен)
+    // 5. ЖАЛПЫ СКАНЕР ТЕРМИНАЛЫ (БАРДЫК КЛАСС ЖЕТЕКЧИЛЕРДИН АРАСЫНАН ПОЧТА БОЮНЧА АНЫКТАЙТ)
     document.getElementById('qrInput').addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
-            const inputCode = e.target.value.trim();
-            if (!inputCode) return;
+            const inputVal = e.target.value.trim().toLowerCase();
+            if (!inputVal) return;
 
             const currentDateStr = selectedDateInput.value;
 
-            const student = studentsList.find(s => {
-                const dailyToken = getDailyToken(s.code, currentDateStr);
-                return s.code.toLowerCase() === inputCode.toLowerCase() || dailyToken.toLowerCase() === inputCode.toLowerCase();
-            });
+            try {
+                showToast('Базадан аныкталууда...');
+                const allTeachersRef = ref(database, 'teachers');
+                const snapshot = await get(allTeachersRef);
 
-            if (student) {
-                showToast('Геолокация аныкталууда...');
-                
-                // Автоматтык геолокацияны алуу
-                const location = await getCurrentLocation();
+                let foundStudent = null;
+                let foundTeacherId = null;
 
-                const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
-
-                let autoStatus = 'PRESENT';
-                if (hours > 8 || (hours === 8 && minutes > 15)) {
-                    autoStatus = 'LATE';
+                if (snapshot.exists()) {
+                    const teachersData = snapshot.val();
+                    
+                    // Бардык мугалимдердин окуучуларын текшерип табуу
+                    for (const [tId, tData] of Object.entries(teachersData)) {
+                        if (tData.students) {
+                            for (const [sId, sData] of Object.entries(tData.students)) {
+                                const dailyToken = getDailyEmailToken(sData.email, currentDateStr);
+                                
+                                if (sData.email.toLowerCase() === inputVal || dailyToken.toLowerCase() === inputVal) {
+                                    foundStudent = { id: sId, ...sData };
+                                    foundTeacherId = tId;
+                                    break;
+                                }
+                            }
+                        }
+                        if (foundStudent) break;
+                    }
                 }
 
-                await window.markAttendance(student.id, autoStatus, location);
-                showToast(`Катталды: ${student.name}`);
-            } else {
-                showToast('Ката! Жараксыз же эскирген QR код!');
+                if (foundStudent && foundTeacherId) {
+                    const location = await getCurrentLocation();
+                    const now = new Date();
+                    const hours = now.getHours();
+                    const minutes = now.getMinutes();
+
+                    let autoStatus = 'PRESENT';
+                    if (hours > 8 || (hours === 8 && minutes > 15)) {
+                        autoStatus = 'LATE';
+                    }
+
+                    await window.markAttendanceForTeacher(foundTeacherId, foundStudent.id, autoStatus, location);
+                    showToast(`Катталды: ${foundStudent.name} (${foundStudent.email})`);
+                } else {
+                    showToast('Ката! Окуучу табылган жок же QR код эскирген!');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Сканерлөөдө ката чыкты!');
             }
+
             e.target.value = '';
         }
     });
 
-    // 6. Жаңы окуучуну кошуу
+    // 6. КЛАСС ЖЕТЕКЧИ ОКУУЧУНУ ӨЗ БАЗАСЫНА ГАНА КОШОТ
     document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('newStudentName').value.trim();
-        const code = document.getElementById('newStudentCode').value.trim();
+        const email = document.getElementById('newStudentEmail').value.trim().toLowerCase();
 
-        if (name && code) {
-            const newRef = push(studentsRef);
-            await set(newRef, { name, code });
-            showToast('Жаңы окуучу кошулду');
+        if (name && email) {
+            const newRef = push(teacherStudentsRef);
+            await set(newRef, { name, email, createdAt: new Date().toISOString() });
+            showToast('Окуучу базаңызга кошулду');
             document.getElementById('addStudentForm').reset();
         }
     });
 
-    // 7. Күнүмдүк QR коддорду модалга чыгаруу
+    // 7. КҮНҮМДҮК QR КОДДОРДУ ЭЛ. ПОЧТА БОЮНЧА ЧЫГАРУУ
     document.getElementById('generateQRCodesBtn').addEventListener('click', () => {
         const currentDateStr = selectedDateInput.value;
         document.getElementById('modalDateStr').innerText = currentDateStr;
         const grid = document.getElementById('modalQrGrid');
         grid.innerHTML = '';
 
-        if (studentsList.length === 0) {
-            grid.innerHTML = '<p style="color:var(--text-muted)">Окуучулар азырынча кошула элек.</p>';
+        if (myStudentsList.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-muted)">Классыңызда окуучулар азырынча жок.</p>';
         }
 
-        studentsList.forEach(student => {
-            const dailyToken = getDailyToken(student.code, currentDateStr);
+        myStudentsList.forEach(student => {
+            const dailyToken = getDailyEmailToken(student.email, currentDateStr);
 
             const card = document.createElement('div');
             card.className = 'qr-card';
@@ -493,6 +506,11 @@
             const title = document.createElement('h5');
             title.innerText = student.name;
             card.appendChild(title);
+
+            const emailText = document.createElement('p');
+            emailText.className = 'email';
+            emailText.innerText = student.email;
+            card.appendChild(emailText);
 
             const qrContainer = document.createElement('div');
             card.appendChild(qrContainer);
@@ -503,9 +521,10 @@
                 height: 120
             });
 
-            const codeText = document.createElement('p');
-            codeText.innerText = dailyToken;
-            card.appendChild(codeText);
+            const tokenText = document.createElement('p');
+            tokenText.className = 'token';
+            tokenText.innerText = dailyToken;
+            card.appendChild(tokenText);
 
             grid.appendChild(card);
         });
@@ -513,7 +532,7 @@
         document.getElementById('qrModal').style.display = 'block';
     });
 
-    // 8. Статистика жана Диаграмма
+    // 8. Статистика & Диаграмма
     function updateStats(total, present, late, absent) {
         document.getElementById('stat-total').innerText = total;
         document.getElementById('stat-present').innerText = present;
