@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Окуучунун Жеке Порталы - Bilimal</title>
-    <!-- FontAwesome, QR Code generator жана Html5Qrcode библиотекалары -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -158,31 +157,37 @@
     let currentTeacherId = null;
     let html5QrcodeScanner = null;
     let isProcessingScan = false;
-    let mapUrl = "-";
+    let cachedMapUrl = null;
 
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('currentDateStr').innerText = todayStr;
 
-    // GPS ГЕОЛОКАЦИЯ АЛУУ ЖАНА GOOGLE MAPS ШИЛТЕМЕСИН ТҮЗҮҮ
-    function fetchUserLocation() {
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const lat = position.coords.latitude.toFixed(6);
-                    const lng = position.coords.longitude.toFixed(6);
-                    mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-                    geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="color:#10b981;"></i> GPS Аныкталды! <a href="${mapUrl}" target="_blank" style="color:#00d2ff;"> Картадан көрүү</a>`;
-                },
-                (error) => {
-                    mapUrl = "GPS өчүрүлгөн";
-                    geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-slash" style="color:#ef4444;"></i> GPS аныкталган жок (Геолокацияны күйгүзүңүз)`;
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        } else {
-            mapUrl = "GPS колдолбойт";
-            geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> GPS браузерде колдолбойт`;
-        }
+    // GPS ГЕОЛОКАЦИЯНЫ АСИНХРОНДУУ АЛУУ
+    function getExactLocation() {
+        return new Promise((resolve) => {
+            if (cachedMapUrl) return resolve(cachedMapUrl);
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude.toFixed(6);
+                        const lng = position.coords.longitude.toFixed(6);
+                        cachedMapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                        geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-alt" style="color:#10b981;"></i> GPS Аныкталды! <a href="${cachedMapUrl}" target="_blank" style="color:#00d2ff;"> Картадан көрүү</a>`;
+                        resolve(cachedMapUrl);
+                    },
+                    (error) => {
+                        console.warn("GPS уруксат берилген жок:", error.message);
+                        geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-slash" style="color:#ef4444;"></i> GPS өчүрүлгөн (Браузерден уруксат бериңиз)`;
+                        resolve("GPS уруксаты берилген эмес");
+                    },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            } else {
+                geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> GPS колдолбойт`;
+                resolve("GPS колдолбойт");
+            }
+        });
     }
 
     const savedEmail = localStorage.getItem('bilimal_student_email');
@@ -222,8 +227,8 @@
 
             if (found) {
                 localStorage.setItem('bilimal_student_email', email);
-                fetchUserLocation();
                 displayStudentDashboard();
+                getExactLocation(); // Экраны ачылганда эле GPSти сурай баштайт
             } else {
                 showToast('Почта базадан табылган жок!');
             }
@@ -267,6 +272,11 @@
         isProcessingScan = true;
 
         try {
+            showToast('Геолокация текшерилип, сакталууда...');
+            
+            // GPS алынышын так күтүү
+            const finalMapUrl = await getExactLocation();
+
             const now = new Date();
             const hours = now.getHours();
             const minutes = now.getMinutes();
@@ -282,19 +292,20 @@
                 status: autoStatus,
                 checkIn: nowTime,
                 checkOut: '-',
-                geolocation: mapUrl, // <--- GOOGLE MAPS ШИЛТЕМЕСИ ЖАЗЫЛАТ
+                geolocation: finalMapUrl,
+                mapUrl: finalMapUrl,
                 updatedAt: new Date().toISOString()
             });
 
             document.getElementById('scanResult').innerHTML = `
                 <div class="status-badge status-success">
-                    <i class="fas fa-check-circle"></i> Катышуу жана GPS карта шилтемеси сакталды! (${nowTime})
+                    <i class="fas fa-check-circle"></i> Катышуу жана GPS маалыматы ийгиликтүү сакталды! (${nowTime})
                 </div>
             `;
-            showToast('Катышуу сакталды!');
+            showToast('Ийгиликтүү сакталды!');
         } catch (error) {
             console.error(error);
-            showToast('Ката кетти!');
+            showToast('Сактоодо ката кетти!');
         } finally {
             setTimeout(() => { isProcessingScan = false; }, 3000);
         }
