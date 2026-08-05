@@ -22,7 +22,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; min-height: 100vh; }
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1350px; margin: 0 auto; }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 18px; }
@@ -33,7 +33,13 @@
         @media (max-width: 992px) { .main-layout { grid-template-columns: 1fr; } }
 
         .card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-        .card-title { font-size: 18px; color: var(--accent-color); font-weight: 600; display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+        .card-title { font-size: 18px; color: var(--accent-color); font-weight: 600; display: flex; align-items: center; gap: 10px; }
+
+        .date-picker {
+            background: #0b0e14; border: 1px solid var(--accent-color); color: #fff;
+            padding: 6px 12px; border-radius: 6px; font-size: 14px; outline: none; cursor: pointer;
+        }
 
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { background: #0b0e14; color: var(--text-muted); padding: 12px; border-bottom: 1px solid var(--border-color); }
@@ -46,14 +52,32 @@
 
         .map-btn {
             display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 210, 255, 0.15);
-            color: var(--accent-color); border: 1px solid var(--accent-color); padding: 6px 10px;
+            color: var(--accent-color); border: 1px solid var(--accent-color); padding: 5px 10px;
             border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500;
         }
         .map-btn:hover { background: var(--accent-color); color: #0b0e14; }
 
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red);
+            padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: 0.2s;
+        }
+        .delete-btn:hover { background: var(--accent-red); color: #fff; }
+
+        .btn-clear-all {
+            background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red);
+            padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold;
+        }
+        .btn-clear-all:hover { background: var(--accent-red); color: #fff; }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .form-group input { width: 100%; padding: 10px; background: #0b0e14; border: 1px solid var(--border-color); color: #fff; border-radius: 6px; font-size: 14px; outline: none; }
+
+        .btn-add { width: 100%; background: var(--accent-color); color: #0b0e14; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { opacity: 0.9; }
+
         .qr-display-box { background: #fff; border-radius: 10px; padding: 20px; text-align: center; margin-top: 10px; }
         .qr-display-box #schoolQrCode { display: flex; justify-content: center; margin: 10px 0; }
-        .date-badge { display: inline-block; background: #0b0e14; color: var(--accent-color); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
 
         .toast { position: fixed; bottom: 20px; right: 20px; background: var(--accent-color); color: #0b0e14; padding: 12px 20px; border-radius: 8px; font-weight: bold; display: none; z-index: 9999; }
     </style>
@@ -70,7 +94,14 @@
 
     <div class="main-layout">
         <div class="card">
-            <div class="card-title"><i class="fas fa-list-check"></i> Бүгүнкү журнал (<span id="todayLabel"></span>)</div>
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-list-check"></i> Катышуу журналы 
+                    <input type="date" id="selectedDate" class="date-picker">
+                </div>
+                <button class="btn-clear-all" id="clearTodayBtn"><i class="fas fa-trash-alt"></i> Жыйынтыкты тазалоо</button>
+            </div>
+
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
@@ -81,22 +112,37 @@
                             <th>Убактысы</th>
                             <th>GPS Геолокациясы</th>
                             <th>Статусу</th>
+                            <th>Аракет</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTableBody">
-                        <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Маалымат жүктөлүүдө...</td></tr>
+                        <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Маалымат жүктөлүүдө...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
         <div>
+            <!-- ОКУУЧУ КОШУУ ФОРМАСЫ -->
             <div class="card">
-                <div class="card-title" style="justify-content: space-between;">
-                    <span><i class="fas fa-qrcode"></i> КҮНДҮК МЕКТЕП QR</span>
-                    <span class="date-badge" id="qrDateLabel"></span>
-                </div>
-                <p style="font-size: 12px; color: var(--text-muted);">Бул QR код күн сайын автоматтык түрдө өзгөрүп турат:</p>
+                <div class="card-title" style="font-size: 16px;"><i class="fas fa-user-plus"></i> Окуучу кошуу</div>
+                <form id="addStudentForm">
+                    <div class="form-group">
+                        <label>Окуучунун Аты-Жөнү:</label>
+                        <input type="text" id="newStudentName" placeholder="Мисалы: Абдуллаев Нурислам" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Электрондук Почтасы (Email):</label>
+                        <input type="email" id="newStudentEmail" placeholder="Мисалы: student@gmail.com" required>
+                    </div>
+                    <button type="submit" class="btn-add">+ Базага кошуу</button>
+                </form>
+            </div>
+
+            <!-- КҮНДҮК КӨРҮНҮҮЧҮ МЕКТЕП QR КАРТОЧКАСЫ -->
+            <div class="card">
+                <div class="card-title" style="font-size: 16px;"><i class="fas fa-qrcode"></i> КҮНДҮК МЕКТЕП QR</div>
+                <p style="font-size: 12px; color: var(--text-muted);">Бул QR код ар күнү автоматтык өзгөрөт:</p>
                 <div class="qr-display-box">
                     <div id="schoolQrCode"></div>
                     <strong style="color: #000; font-size: 11px;" id="qrTokenInfo"></strong>
@@ -110,7 +156,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -126,54 +172,82 @@
     const database = getDatabase(app);
 
     const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('todayLabel').innerText = todayStr;
-    document.getElementById('qrDateLabel').innerText = todayStr;
+    const datePicker = document.getElementById('selectedDate');
+    datePicker.value = todayStr;
 
-    // КҮНДҮК ӨЗГӨРҮҮЧҮ МЕКТЕП QR КОДУН ТҮЗҮҮ
-    const dailySchoolToken = "BILIMAL_SCHOOL_" + btoa(`SCHOOL_${todayStr}_SECRETKEY`).replace(/=/g, '');
-    
-    new QRCode(document.getElementById('schoolQrCode'), {
-        text: JSON.stringify({ type: "SCHOOL_QR", date: todayStr, token: dailySchoolToken }),
-        width: 180,
-        height: 180
+    let activeDate = todayStr;
+
+    // Мектептин күндүк QR кодун түзүү
+    function generateSchoolQR(date) {
+        document.getElementById('schoolQrCode').innerHTML = '';
+        const dailyToken = "BILIMAL_SCHOOL_" + btoa(`SCHOOL_${date}_SECRETKEY`).replace(/=/g, '');
+        new QRCode(document.getElementById('schoolQrCode'), {
+            text: JSON.stringify({ type: "SCHOOL_QR", date: date, token: dailyToken }),
+            width: 170,
+            height: 170
+        });
+        document.getElementById('qrTokenInfo').innerText = `Код: ${dailyToken.substring(0, 18)}...`;
+    }
+
+    generateSchoolQR(todayStr);
+
+    datePicker.addEventListener('change', (e) => {
+        activeDate = e.target.value;
+        loadAttendanceData(activeDate);
     });
 
-    document.getElementById('qrTokenInfo').innerText = `Код: ${dailySchoolToken.substring(0, 18)}...`;
+    // ОКУУЧУ КОШУУ ЛОГИКАСЫ
+    document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newStudentName').value.trim();
+        const email = document.getElementById('newStudentEmail').value.trim().toLowerCase();
+        
+        const sId = 'std_' + Date.now();
+        const studentRef = ref(database, `students/${sId}`);
 
-    // БАЗАДАН МААЛЫМАТТАРДЫ ЖҮКТӨӨ
-    const teachersRef = ref(database, 'teachers');
-    onValue(teachersRef, (snapshot) => {
-        if (!snapshot.exists()) return;
+        await set(studentRef, {
+            id: sId,
+            name: name,
+            email: email,
+            createdAt: new Date().toISOString()
+        });
 
-        const teachers = snapshot.val();
-        let studentsMap = {};
-        let attendanceMap = {};
-
-        for (const [tId, tData] of Object.entries(teachers)) {
-            if (tData.students) {
-                for (const [sId, sData] of Object.entries(tData.students)) {
-                    studentsMap[sId] = sData;
-                }
-            }
-            if (tData.attendance && tData.attendance[todayStr]) {
-                for (const [sId, aData] of Object.entries(tData.attendance[todayStr])) {
-                    attendanceMap[sId] = aData;
-                }
-            }
-        }
-
-        renderTable(studentsMap, attendanceMap);
+        document.getElementById('addStudentForm').reset();
+        showToast('Окуучу ийгиликтүү кошулду!');
     });
+
+    // БАЗАДАН БАРДЫК ОКУУЧУЛАРДЫ ЖАНА ТАНДАЛГАН ДАТАДАГЫ КАШЫШУУНУ ЧЫГАРУУ
+    function loadAttendanceData(dateStr) {
+        const studentsRef = ref(database, 'students');
+        const attendanceRef = ref(database, `attendance/${dateStr}`);
+
+        onValue(studentsRef, (sSnap) => {
+            const students = sSnap.exists() ? sSnap.val() : {};
+            
+            onValue(attendanceRef, (aSnap) => {
+                const attendance = aSnap.exists() ? aSnap.val() : {};
+                renderTable(students, attendance);
+            });
+        });
+    }
 
     function renderTable(students, attendance) {
         const tbody = document.getElementById('attendanceTableBody');
         tbody.innerHTML = '';
 
-        let total = Object.keys(students).length;
+        const studentEntries = Object.entries(students);
+        let total = studentEntries.length;
+
+        if (total === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted);">Окуучулар табылган жок. Оң жактагы формадан окуучу кошуңуз.</td></tr>`;
+            updateStats(0, 0, 0, 0);
+            return;
+        }
+
         let present = 0, late = 0, absent = 0;
         let index = 1;
 
-        for (const [sId, sData] of Object.entries(students)) {
+        for (const [sId, sData] of studentEntries) {
             const att = attendance[sId] || {};
             const status = att.status || 'ABSENT';
             const mapUrl = att.mapUrl || att.geolocation || '';
@@ -198,18 +272,51 @@
             tr.innerHTML = `
                 <td>${index++}</td>
                 <td><strong>${sData.name || 'Окуучу'}</strong></td>
-                <td style="color:var(--text-muted); font-size:13px;">${sData.email}</td>
+                <td style="color:var(--text-muted); font-size:13px;">${sData.email || '-'}</td>
                 <td>${att.checkIn || '-'}</td>
                 <td>${geoHTML}</td>
                 <td>${statusBadge}</td>
+                <td>
+                    <button class="delete-btn" title="Базадан өчүрүү" onclick="deleteStudent('${sId}')"><i class="fas fa-trash"></i></button>
+                </td>
             `;
             tbody.appendChild(tr);
         }
 
+        updateStats(total, present, late, absent);
+    }
+
+    function updateStats(total, present, late, absent) {
         document.getElementById('statTotal').innerText = total;
         document.getElementById('statPresent').innerText = present;
         document.getElementById('statLate').innerText = late;
         document.getElementById('statAbsent').innerText = absent;
+    }
+
+    // БИР ОКУУЧУНУ БАЗАДАН ТОЛУК ӨЧҮРҮҮ
+    window.deleteStudent = async function(studentId) {
+        if (confirm('Бул окуучуну базадан өчүрүүнү каалайсызбы?')) {
+            await remove(ref(database, `students/${studentId}`));
+            await remove(ref(database, `attendance/${activeDate}/${studentId}`));
+            showToast('Окуучу өчүрүлдү!');
+        }
+    };
+
+    // ТАНДАЛГАН КҮНДҮН ЖЫЙЫНТЫКТАРЫН ТАЗАЛОО
+    document.getElementById('clearTodayBtn').addEventListener('click', async () => {
+        if (confirm(`${activeDate} күнүнүн катышуу жыйынтыктарын тазалоону каалайсызбы?`)) {
+            await remove(ref(database, `attendance/${activeDate}`));
+            showToast('Жыйынтыктар тазаланды!');
+        }
+    });
+
+    loadAttendanceData(todayStr);
+
+    function showToast(msg) {
+        const t = document.getElementById('toastMsg');
+        t.innerText = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
     }
 </script>
 </body>
