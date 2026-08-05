@@ -162,8 +162,8 @@
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('currentDateStr').innerText = todayStr;
 
-    // GPS ГЕОЛОКАЦИЯНЫ АСИНХРОНДУУ АЛУУ
-    function getExactLocation() {
+    // GPS КООРДИНАТТАРДЫ ТАПТАК ЫРААТТУУ АЛУУ
+    function fetchCurrentLocation() {
         return new Promise((resolve) => {
             if (cachedMapUrl) return resolve(cachedMapUrl);
 
@@ -177,11 +177,11 @@
                         resolve(cachedMapUrl);
                     },
                     (error) => {
-                        console.warn("GPS уруксат берилген жок:", error.message);
+                        console.warn(error);
                         geoStatusDisplay.innerHTML = `<i class="fas fa-map-marker-slash" style="color:#ef4444;"></i> GPS өчүрүлгөн (Браузерден уруксат бериңиз)`;
                         resolve("GPS уруксаты берилген эмес");
                     },
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
                 );
             } else {
                 geoStatusDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> GPS колдолбойт`;
@@ -228,7 +228,7 @@
             if (found) {
                 localStorage.setItem('bilimal_student_email', email);
                 displayStudentDashboard();
-                getExactLocation(); // Экраны ачылганда эле GPSти сурай баштайт
+                fetchCurrentLocation();
             } else {
                 showToast('Почта базадан табылган жок!');
             }
@@ -273,9 +273,7 @@
 
         try {
             showToast('Геолокация текшерилип, сакталууда...');
-            
-            // GPS алынышын так күтүү
-            const finalMapUrl = await getExactLocation();
+            const finalMapUrl = await fetchCurrentLocation();
 
             const now = new Date();
             const hours = now.getHours();
@@ -299,7 +297,7 @@
 
             document.getElementById('scanResult').innerHTML = `
                 <div class="status-badge status-success">
-                    <i class="fas fa-check-circle"></i> Катышуу жана GPS маалыматы ийгиликтүү сакталды! (${nowTime})
+                    <i class="fas fa-check-circle"></i> Катышуу жана GPS маалыматы сакталды! (${nowTime})
                 </div>
             `;
             showToast('Ийгиликтүү сакталды!');
