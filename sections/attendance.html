@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Окуучулардын катышуусу (Attendance Management) - Bilimal</title>
-    <!-- FontAwesome & Chart.js -->
+    <!-- FontAwesome, Chart.js & QRCode.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <style>
         :root {
@@ -23,7 +24,7 @@
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg-color); color: var(--text-main); padding: 20px; }
-        .container { max-width: 1300px; margin: 0 auto; }
+        .container { max-width: 1350px; margin: 0 auto; }
 
         header {
             display: flex; justify-content: space-between; align-items: center;
@@ -71,6 +72,11 @@
         }
         .action-btn:hover { border-color: var(--accent-color); }
 
+        .geo-link {
+            color: var(--accent-color); text-decoration: none; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .geo-link:hover { text-decoration: underline; }
+
         .qr-box {
             background: #000; border: 2px dashed var(--accent-color); border-radius: 10px;
             padding: 20px; text-align: center; margin-bottom: 15px;
@@ -99,6 +105,20 @@
             color: #000; padding: 12px 20px; border-radius: 8px; font-weight: bold;
             display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1000;
         }
+
+        .modal {
+            display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.8); overflow-y: auto; padding: 20px;
+        }
+        .modal-content {
+            background: var(--card-bg); margin: 30px auto; padding: 25px; border: 1px solid var(--accent-color);
+            border-radius: 12px; max-width: 900px; color: var(--text-main);
+        }
+        .qr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .qr-card { background: #fff; color: #000; padding: 15px; border-radius: 8px; text-align: center; }
+        .qr-card h5 { margin-bottom: 8px; font-size: 14px; font-weight: bold; color: #111; }
+        .qr-card div { display: flex; justify-content: center; margin-bottom: 8px; }
+        .qr-card p { font-size: 11px; color: #555; font-family: monospace; word-break: break-all; }
     </style>
 </head>
 <body>
@@ -110,6 +130,7 @@
             <h1><i class="fas fa-user-check"></i> ОКУУЧУЛАРДЫ ЖОКТОО ЖАНА КАТЫШУУ МАТРИЦАСЫ</h1>
         </div>
         <div style="display: flex; gap: 10px;">
+            <button class="btn-secondary" id="generateQRCodesBtn" style="background: var(--accent-color); color: #000; font-weight: bold;"><i class="fas fa-qrcode"></i> Күнүмдүк QR Коддорду Алуу</button>
             <input type="date" id="selectedDate" class="btn-secondary" style="background: var(--card-bg);">
             <button class="btn-secondary" id="refreshBtn"><i class="fas fa-sync"></i> Жаңыртуу</button>
         </div>
@@ -149,15 +170,16 @@
                         <tr>
                             <th>#</th>
                             <th>Окуучунун Аты-Жөнү</th>
-                            <th>ID Коду / Токен</th>
+                            <th>ID Коду / Бүгүнкү Токен</th>
                             <th>Кирген убактысы</th>
                             <th>Чыккан убактысы</th>
+                            <th>Геолокация (GPS)</th>
                             <th>Статусу</th>
-                            <th>Кол менен белгилөө</th>
+                            <th>Белгилөө</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTbody">
-                        <tr><td colspan="7" style="text-align:center; padding: 20px;">Firebase базасынан маалымат жүктөлүүдө...</td></tr>
+                        <tr><td colspan="8" style="text-align:center; padding: 20px;">Firebase базасынан маалымат жүктөлүүдө...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -170,7 +192,7 @@
                 <div class="card-title"><i class="fas fa-qrcode"></i> QR Сканер Терминалы</div>
                 <div class="qr-box">
                     <i class="fas fa-camera fa-2x" style="color: var(--accent-color);"></i>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">QR Токенди сканерлеңиз же киргизип Enter басыңыз:</p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">Күнүмдүк QR Токенди сканерлеңиз же киргизип Enter басыңыз:</p>
                     <input type="text" id="qrInput" placeholder="Сканерден киргизүү..." autofocus>
                 </div>
             </div>
@@ -184,7 +206,7 @@
                         <input type="text" id="newStudentName" placeholder="Мисалы: Абдуллаев Нурислам" required>
                     </div>
                     <div class="form-group">
-                        <label>ID / QR Коду:</label>
+                        <label>ID Негизги Коду:</label>
                         <input type="text" id="newStudentCode" placeholder="Мисалы: ST-101" required>
                     </div>
                     <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Firebase базасына кошуу</button>
@@ -200,6 +222,20 @@
     </div>
 </div>
 
+<!-- MODAL FOR DAILY QR CODES -->
+<div id="qrModal" class="modal">
+    <div class="modal-content">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2><i class="fas fa-qrcode"></i> Күнүмдүк QR Карточкалар (<span id="modalDateStr"></span>)</h2>
+            <button onclick="document.getElementById('qrModal').style.display='none'" class="btn-secondary" style="background:#ef4444;"><i class="fas fa-times"></i> Жабуу</button>
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">
+            Ар бир QR код ушул күн үчүн гана жарактуу. Күн алмашса QR коддор автоматтык түрдө жаңыланат.
+        </p>
+        <div id="modalQrGrid" class="qr-grid"></div>
+    </div>
+</div>
+
 <div class="toast" id="toastMsg">Билдирүү</div>
 
 <!-- FIREBASE INTEGRATION (v10 Modular SDK) -->
@@ -208,7 +244,7 @@
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import { getDatabase, ref, onValue, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Сиз берген Firebase Конфигурациясы
+    // Firebase Конфигурациясы
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -220,7 +256,6 @@
         measurementId: "G-9GSQV60QV0"
     };
 
-    // Firebase'ди иштетүү
     const app = initializeApp(firebaseConfig);
     const analytics = getAnalytics(app);
     const database = getDatabase(app);
@@ -235,9 +270,37 @@
     let attendanceLogs = {};
     let chartInstance = null;
 
+    // Автоматтык Күнүмдүк Динамикалык Токен
+    function getDailyToken(studentCode, dateStr) {
+        return `${studentCode}-${dateStr}`;
+    }
+
+    // Түзмөктүн (браузердин) Геолокациясын алуу функциясы
+    function getCurrentLocation() {
+        return new Promise((resolve) => {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            lat: position.coords.latitude.toFixed(6),
+                            lng: position.coords.longitude.toFixed(6)
+                        });
+                    },
+                    (error) => {
+                        console.warn("Геолокация алынган жок же уруксат берилген жок:", error.message);
+                        resolve(null);
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                resolve(null);
+            }
+        });
+    }
+
     const studentsRef = ref(database, `classes/${userClass}/students`);
     
-    // 1. Firebase'ден окуучулар тизмесин реальный убакытта (Realtime) окуп алуу
+    // 1. Firebase'ден окуучулар тизмесин окуп алуу
     onValue(studentsRef, (snapshot) => {
         studentsList = [];
         if (snapshot.exists()) {
@@ -249,7 +312,7 @@
         fetchLogsAndRender();
     });
 
-    // 2. Тандалган дата боюнча катышуу маалыматтарын алуу
+    // 2. Тандалган дата боюнча катышуу журналын окуп алуу
     function fetchLogsAndRender() {
         const dateStr = selectedDateInput.value;
         const logsRef = ref(database, `attendance/${userClass}/${dateStr}`);
@@ -260,11 +323,12 @@
         }, { onlyOnce: true });
     }
 
-    // 3. Таблицаны чагылдыруу
+    // 3. Таблицага чыгаруу
     function renderTable() {
         const tbody = document.getElementById('attendanceTbody');
         tbody.innerHTML = '';
         const filterQuery = document.getElementById('searchInput').value.toLowerCase();
+        const currentDateStr = selectedDateInput.value;
 
         const filtered = studentsList.filter(s => 
             s.name.toLowerCase().includes(filterQuery) || 
@@ -272,7 +336,7 @@
         );
 
         if (filtered.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар азырынча жок же табылган жок. Оң жактагы форма аркылуу окуучу кошуңуз.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар табылган жок.</td></tr>';
             updateStats(0, 0, 0, 0);
             return;
         }
@@ -286,6 +350,9 @@
             const status = log.status || 'ABSENT';
             const checkIn = log.checkIn || '-';
             const checkOut = log.checkOut || '-';
+            const geo = log.location;
+            
+            const dailyToken = getDailyToken(student.code, currentDateStr);
 
             if (status === 'PRESENT') countPresent++;
             else if (status === 'LATE') countLate++;
@@ -297,13 +364,21 @@
             if (status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
             if (status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
 
+            // Геолокация баскычы (Эгер сакталган болсо OpenStreetMap шилтемесин ачат)
+            let geoHtml = '<span style="color:var(--text-muted);">-</span>';
+            if (geo && geo.lat && geo.lng) {
+                const mapUrl = `https://www.openstreetmap.org/?mlat=${geo.lat}&mlon=${geo.lng}#map=18/${geo.lat}/${geo.lng}`;
+                geoHtml = `<a href="${mapUrl}" target="_blank" class="geo-link"><i class="fas fa-map-marker-alt" style="color:var(--accent-red)"></i> ${geo.lat}, ${geo.lng}</a>`;
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
                 <td><strong>${student.name}</strong></td>
-                <td><code>${student.code}</code></td>
+                <td><code style="color:var(--accent-color);">${dailyToken}</code></td>
                 <td>${checkIn}</td>
                 <td>${checkOut}</td>
+                <td>${geoHtml}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
                 <td>
                     <button class="action-btn" style="color:var(--accent-green);" onclick="markAttendance('${student.id}', 'PRESENT')"><i class="fas fa-check"></i></button>
@@ -317,8 +392,8 @@
         updateStats(filtered.length, countPresent, countLate, countAbsent);
     }
 
-    // 4. Катышууну Firebase'ге сактоо (Кол менен жана QR аркылуу)
-    window.markAttendance = async function(studentId, status) {
+    // 4. Катышууну жана Геолокацияны сактоо
+    window.markAttendance = async function(studentId, status, customLocation = null) {
         const dateStr = selectedDateInput.value;
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -332,45 +407,59 @@
             checkOutTime = nowTime;
         }
 
+        // Эгерде геолокация сканерлөө учурунда табылса аны сактайт
+        const locationData = customLocation || currentLog.location || null;
+
         await set(logRef, {
             status: status,
             checkIn: checkInTime,
             checkOut: checkOutTime,
+            location: locationData,
             updatedAt: new Date().toISOString()
         });
 
-        showToast('Firebase DBге сакталды!');
+        showToast('Геолокация жана катышуу сакталды!');
         fetchLogsAndRender();
     };
 
-    // 5. QR Сканер аркылуу каттоо (Enter басылганда)
+    // 5. QR Сканер иштетүү (Автоматтык Геолокация фиксациялоо менен)
     document.getElementById('qrInput').addEventListener('keypress', async (e) => {
         if (e.key === 'Enter') {
             const inputCode = e.target.value.trim();
             if (!inputCode) return;
 
-            const student = studentsList.find(s => s.code.toLowerCase() === inputCode.toLowerCase());
+            const currentDateStr = selectedDateInput.value;
+
+            const student = studentsList.find(s => {
+                const dailyToken = getDailyToken(s.code, currentDateStr);
+                return s.code.toLowerCase() === inputCode.toLowerCase() || dailyToken.toLowerCase() === inputCode.toLowerCase();
+            });
+
             if (student) {
+                showToast('Геолокация аныкталууда...');
+                
+                // Автоматтык геолокацияны алуу
+                const location = await getCurrentLocation();
+
                 const now = new Date();
                 const hours = now.getHours();
                 const minutes = now.getMinutes();
 
-                // 08:15тен кечиксе авто LATE
                 let autoStatus = 'PRESENT';
                 if (hours > 8 || (hours === 8 && minutes > 15)) {
                     autoStatus = 'LATE';
                 }
 
-                await window.markAttendance(student.id, autoStatus);
+                await window.markAttendance(student.id, autoStatus, location);
                 showToast(`Катталды: ${student.name}`);
             } else {
-                showToast('Окуучу табылган жок!');
+                showToast('Ката! Жараксыз же эскирген QR код!');
             }
             e.target.value = '';
         }
     });
 
-    // 6. Жаңы окуучуну Firebase'ге кошуу
+    // 6. Жаңы окуучуну кошуу
     document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('newStudentName').value.trim();
@@ -379,12 +468,52 @@
         if (name && code) {
             const newRef = push(studentsRef);
             await set(newRef, { name, code });
-            showToast('Жаңы окуучу Firebase\'ге кошулду');
+            showToast('Жаңы окуучу кошулду');
             document.getElementById('addStudentForm').reset();
         }
     });
 
-    // 7. Диаграмма жана Статистика
+    // 7. Күнүмдүк QR коддорду модалга чыгаруу
+    document.getElementById('generateQRCodesBtn').addEventListener('click', () => {
+        const currentDateStr = selectedDateInput.value;
+        document.getElementById('modalDateStr').innerText = currentDateStr;
+        const grid = document.getElementById('modalQrGrid');
+        grid.innerHTML = '';
+
+        if (studentsList.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-muted)">Окуучулар азырынча кошула элек.</p>';
+        }
+
+        studentsList.forEach(student => {
+            const dailyToken = getDailyToken(student.code, currentDateStr);
+
+            const card = document.createElement('div');
+            card.className = 'qr-card';
+            
+            const title = document.createElement('h5');
+            title.innerText = student.name;
+            card.appendChild(title);
+
+            const qrContainer = document.createElement('div');
+            card.appendChild(qrContainer);
+
+            new QRCode(qrContainer, {
+                text: dailyToken,
+                width: 120,
+                height: 120
+            });
+
+            const codeText = document.createElement('p');
+            codeText.innerText = dailyToken;
+            card.appendChild(codeText);
+
+            grid.appendChild(card);
+        });
+
+        document.getElementById('qrModal').style.display = 'block';
+    });
+
+    // 8. Статистика жана Диаграмма
     function updateStats(total, present, late, absent) {
         document.getElementById('stat-total').innerText = total;
         document.getElementById('stat-present').innerText = present;
