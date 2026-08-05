@@ -219,6 +219,12 @@
             border: 1px solid var(--accent-green);
         }
 
+        .status-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+        }
+
         .toast {
             position: fixed;
             bottom: 25px;
@@ -284,15 +290,15 @@
         <div class="qr-display-box">
             <h4 style="font-size: 15px; color: #111827;">Бүгүнкү күн үчүн катышуу QR коду (<span id="currentDateStr"></span>)</h4>
             <div id="qrcode"></div>
-            <p style="font-size: 12px; color: #6b7280;" id="tokenText"></p>
+            <p style="font-size: 12px; color: #6b7280; word-break: break-all;" id="tokenText"></p>
         </div>
     </div>
 
-    <!-- 3. ВЕБ-КАМЕРА АРКЫЛУУ МЕКТЕПТИН КАТЫШУУ QR КОДУН СКАНЕРЛӨӨ -->
+    <!-- 3. ВЕБ-КАМЕРА АРКЫЛУУ МЕКТЕПТИН / МУГАЛИМДИН QR КОДУН СКАНЕРЛӨӨ -->
     <div class="card" id="scannerSection" style="display: none;">
-        <div class="card-title"><i class="fas fa-qrcode"></i> Мектептин QR кодун сканерлөө</div>
+        <div class="card-title"><i class="fas fa-qrcode"></i> Мектептин же Мугалимдин QR кодун сканерлөө</div>
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 15px;">
-            Мектептин кирүү жериндеги же класс жетекчинин экранындагы QR кодду камерага багыттаңыз:
+            Мектептин кире беришиндеги же мугалимдин экранындагы QR кодду камерага багыттаңыз:
         </p>
         <div id="reader"></div>
         <div id="scanResult" style="text-align: center;"></div>
@@ -301,7 +307,7 @@
 
 <div class="toast" id="toastMsg">Билдирүү</div>
 
-<!-- FIREBASE INTEGRATION (v9/v10 Modular) -->
+<!-- FIREBASE INTEGRATION (v9 Modular) -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -328,12 +334,13 @@
     let currentStudent = null;
     let currentTeacherId = null;
     let html5QrcodeScanner = null;
+    let isProcessingScan = false;
 
-    // Бүгүнкү күн дарегин алуу (гггг-мм-дд)
+    // Бүгүнкү күн форматы (гггг-мм-дд)
     const todayStr = new Date().toISOString().split('T')[0];
     document.getElementById('currentDateStr').innerText = todayStr;
 
-    // Браузерде сакталган E-mail бар болсо авто-кирүү
+    // Браузерде мурда сакталган E-mail бар болсо авто-кирүү
     const savedEmail = localStorage.getItem('bilimal_student_email');
     if (savedEmail) {
         document.getElementById('studentEmailInput').value = savedEmail;
@@ -349,7 +356,7 @@
         identifyStudent(email);
     });
 
-    // Firebase'ден Окуучуну издөө
+    // Firebase database'ден окуучуну издөө логикасы
     async function identifyStudent(email) {
         try {
             showToast('Маалымат текшерилүүдө...');
@@ -388,7 +395,7 @@
         }
     }
 
-    // Профиль маалыматтарын жана QR кодду көрсөтүү
+    // Окуучунун экранын жана туураланган QR кодду түзүү
     function displayStudentDashboard() {
         authSection.style.display = 'none';
         studentProfileSection.style.display = 'block';
@@ -398,15 +405,23 @@
         document.getElementById('studentClassDisplay').innerText = currentStudent.class || 'Көрсөтүлгөн эмес';
         document.getElementById('studentEmailDisplay').innerText = currentStudent.email;
 
-        const dailyToken = `STUDENT_${currentStudent.id}_${todayStr}`;
-        document.getElementById('tokenText').innerText = dailyToken;
+        // Туураланган стандартташтырылган JSON токен
+        const dailyPayload = {
+            type: "BILIMAL_ATTENDANCE",
+            studentId: currentStudent.id,
+            teacherId: currentTeacherId,
+            date: todayStr
+        };
+        
+        const payloadString = JSON.stringify(dailyPayload);
+        document.getElementById('tokenText').innerText = `Код: ${currentStudent.id} | ${todayStr}`;
 
-        // QR Кодду тартуу
+        // QR Кодду түзүү
         document.getElementById('qrcode').innerHTML = '';
         new QRCode(document.getElementById('qrcode'), {
-            text: dailyToken,
-            width: 180,
-            height: 180,
+            text: payloadString,
+            width: 200,
+            height: 200,
             colorDark : "#000000",
             colorLight : "#ffffff",
             correctLevel : QRCode.CorrectLevel.H
@@ -415,52 +430,83 @@
         startCameraScanner();
     }
 
-    // Веб-камераны активдештирүү
+    // Сканерди иштетүү
     function startCameraScanner() {
-        html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } });
-        html5QrcodeScanner.render(onScanSuccess, onScanError);
-    }
-
-    // QR код сканерленгенде Мугалимдин базасына жиберүү
-    async function onScanSuccess(decodedText, decodedResult) {
         if (html5QrcodeScanner) {
             html5QrcodeScanner.clear();
         }
-
-        showToast('QR код кабыл алынды! Жөнөтүлүүдө...');
-
-        const now = new Date();
-        const hours = now.getHours();
-        const minutes = now.getMinutes();
-        const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-        // Саат 08:15тен кийин кечикти деп белгилөө
-        let autoStatus = 'PRESENT';
-        if (hours > 8 || (hours === 8 && minutes > 15)) {
-            autoStatus = 'LATE';
-        }
-
-        // Класс жетекчинин FirebaseRealtime DB катышуу бөлүмүнө түз сактоо
-        const attendanceRef = ref(database, `teachers/${currentTeacherId}/attendance/${todayStr}/${currentStudent.id}`);
-        
-        await set(attendanceRef, {
-            studentName: currentStudent.name,
-            status: autoStatus,
-            checkIn: nowTime,
-            checkOut: '-',
-            updatedAt: new Date().toISOString()
+        html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 },
+            rememberLastUsedCamera: true
         });
+        html5QrcodeScanner.render(onScanSuccess, onScanError);
+    }
 
-        document.getElementById('scanResult').innerHTML = `
-            <div class="status-badge status-success">
-                <i class="fas fa-check-circle"></i> Катышууңуз сакталды! Класс жетекчиге маалымат өттү. (${nowTime})
-            </div>
-        `;
-        showToast('Класс жетекчиге ийгиликтүү жөнөтүлдү!');
+    // QR код ийгиликтүү окулганда
+    async function onScanSuccess(decodedText) {
+        if (isProcessingScan) return;
+        isProcessingScan = true;
+
+        try {
+            let scannedData = null;
+            try {
+                scannedData = JSON.parse(decodedText);
+            } catch (e) {
+                // Стандарттык эмес формат болсо тексттен ажыратуу
+                scannedData = { text: decodedText };
+            }
+
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // Саат 08:15тен кийин кечикти (LATE), ага чейин келип калса (PRESENT)
+            let autoStatus = 'PRESENT';
+            if (hours > 8 || (hours === 8 && minutes > 15)) {
+                autoStatus = 'LATE';
+            }
+
+            // Эгер мектептин же мугалимдин коду окулса, Мугалимдин IDсин алуу
+            let targetTeacherId = currentTeacherId;
+            if (scannedData && scannedData.teacherId) {
+                targetTeacherId = scannedData.teacherId;
+            }
+
+            // FirebaseRealtime DBге катышууну түз сактоо
+            const attendanceRef = ref(database, `teachers/${targetTeacherId}/attendance/${todayStr}/${currentStudent.id}`);
+            
+            await set(attendanceRef, {
+                studentName: currentStudent.name,
+                status: autoStatus,
+                checkIn: nowTime,
+                checkOut: '-',
+                updatedAt: new Date().toISOString()
+            });
+
+            document.getElementById('scanResult').innerHTML = `
+                <div class="status-badge status-success">
+                    <i class="fas fa-check-circle"></i> Катышууңуз сакталды! Класс жетекчиге маалымат өттү. (${nowTime})
+                </div>
+            `;
+            showToast('Катышууңуз ийгиликтүү катталды!');
+
+        } catch (error) {
+            console.error(error);
+            document.getElementById('scanResult').innerHTML = `
+                <div class="status-badge status-error">
+                    <i class="fas fa-exclamation-triangle"></i> QR код туура эмес же сактоодо ката кетти!
+                </div>
+            `;
+            showToast('Ката кетти, кайра аракет кылыңыз!');
+        } finally {
+            setTimeout(() => { isProcessingScan = false; }, 3000);
+        }
     }
 
     function onScanError(errorMessage) {
-        // Сканерлөө процессинин ички логи
+        // Камера издөө процессиндеги убактылуу логика
     }
 
     function showToast(msg) {
