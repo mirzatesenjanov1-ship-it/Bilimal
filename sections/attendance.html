@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Окуучулардын катышуусу (Attendance Management) - Bilimal</title>
-    <!-- FontAwesome & Chart.js Icons -->
+    <!-- FontAwesome & Chart.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -35,6 +35,7 @@
         .btn-secondary {
             background: #374151; color: #fff; border: none; padding: 8px 16px; border-radius: 6px;
             cursor: pointer; display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 14px;
+            transition: 0.2s;
         }
         .btn-secondary:hover { background: #4b5563; }
 
@@ -48,21 +49,27 @@
         .stat-card h4 { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
         .stat-card .val { font-size: 24px; font-weight: bold; }
 
-        .main-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+        .main-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
         @media(max-width: 950px) { .main-layout { grid-template-columns: 1fr; } }
 
         .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .card-title { font-size: 16px; color: var(--accent-color); margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-size: 16px; color: var(--accent-color); margin-bottom: 15px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
 
         .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 13px; }
         th { background: #1f2937; color: var(--text-muted); font-weight: 600; }
 
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-block; }
         .badge-present { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
         .badge-late { background: rgba(245, 158, 11, 0.2); color: var(--accent-gold); }
         .badge-absent { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+        .action-btn {
+            background: #1f2937; border: 1px solid var(--border-color); color: #fff;
+            padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 4px;
+        }
+        .action-btn:hover { border-color: var(--accent-color); }
 
         .qr-box {
             background: #000; border: 2px dashed var(--accent-color); border-radius: 10px;
@@ -70,8 +77,22 @@
         }
         .qr-box input {
             width: 100%; padding: 10px; background: #1f2937; border: 1px solid var(--border-color);
-            color: #fff; border-radius: 6px; margin-top: 10px; text-align: center; font-size: 14px;
+            color: #fff; border-radius: 6px; margin-top: 10px; text-align: center; font-size: 14px; outline: none;
         }
+        .qr-box input:focus { border-color: var(--accent-color); }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+        .form-group input {
+            width: 100%; padding: 8px 12px; background: #1f2937; border: 1px solid var(--border-color);
+            color: #fff; border-radius: 6px; outline: none; font-size: 13px;
+        }
+
+        .btn-primary {
+            background: var(--accent-color); color: #000; border: none; padding: 9px 15px;
+            border-radius: 6px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s;
+        }
+        .btn-primary:hover { opacity: 0.9; }
 
         .toast {
             position: fixed; bottom: 20px; right: 20px; background: var(--accent-green);
@@ -118,8 +139,8 @@
         <!-- LEFT TABLE AREA -->
         <div class="card">
             <div class="card-title">
-                <span><i class="fas fa-list"></i> Катышуу журналы (<span id="currentClassName">Жүктөлүүдө...</span>)</span>
-                <input type="text" id="searchInput" placeholder="Окуучуну издөө..." style="padding: 6px 12px; background: #1f2937; border: 1px solid var(--border-color); color:#fff; border-radius: 6px;">
+                <span><i class="fas fa-list"></i> Катышуу журналы (<span id="currentClassName">9-Б классы</span>)</span>
+                <input type="text" id="searchInput" placeholder="Окуучуну издөө..." style="padding: 6px 12px; background: #1f2937; border: 1px solid var(--border-color); color:#fff; border-radius: 6px; outline:none;">
             </div>
 
             <div class="table-responsive">
@@ -128,30 +149,49 @@
                         <tr>
                             <th>#</th>
                             <th>Окуучунун Аты-Жөнү</th>
-                            <th>ID Коду</th>
+                            <th>ID Коду / Токен</th>
                             <th>Кирген убактысы</th>
                             <th>Чыккан убактысы</th>
                             <th>Статусу</th>
+                            <th>Кол менен белгилөө</th>
                         </tr>
                     </thead>
                     <tbody id="attendanceTbody">
-                        <tr><td colspan="6" style="text-align:center;">Маалымат жүктөлүүдө...</td></tr>
+                        <tr><td colspan="7" style="text-align:center; padding: 20px;">Firebase базасынан маалымат жүктөлүүдө...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- RIGHT SIDEBAR (QR SCANNER & ANALYTICS) -->
+        <!-- RIGHT SIDEBAR (QR SCANNER, ADD STUDENT & ANALYTICS) -->
         <div>
+            <!-- QR SCANNER TERMINAL -->
             <div class="card">
                 <div class="card-title"><i class="fas fa-qrcode"></i> QR Сканер Терминалы</div>
                 <div class="qr-box">
                     <i class="fas fa-camera fa-2x" style="color: var(--accent-color);"></i>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">QR Токенди сканерлеңиз же киргизиңиз:</p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-top: 8px;">QR Токенди сканерлеңиз же киргизип Enter басыңыз:</p>
                     <input type="text" id="qrInput" placeholder="Сканерден киргизүү..." autofocus>
                 </div>
             </div>
 
+            <!-- ADD STUDENT FORM -->
+            <div class="card">
+                <div class="card-title"><i class="fas fa-user-plus"></i> Окуучу кошуу</div>
+                <form id="addStudentForm">
+                    <div class="form-group">
+                        <label>Аты-Жөнү:</label>
+                        <input type="text" id="newStudentName" placeholder="Мисалы: Абдуллаев Нурислам" required>
+                    </div>
+                    <div class="form-group">
+                        <label>ID / QR Коду:</label>
+                        <input type="text" id="newStudentCode" placeholder="Мисалы: ST-101" required>
+                    </div>
+                    <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Firebase базасына кошуу</button>
+                </form>
+            </div>
+
+            <!-- CHART ANALYTICS -->
             <div class="card">
                 <div class="card-title"><i class="fas fa-chart-pie"></i> Бүгүнкү статистика</div>
                 <canvas id="attendanceChart" style="max-height: 220px;"></canvas>
@@ -162,80 +202,190 @@
 
 <div class="toast" id="toastMsg">Билдирүү</div>
 
-<script>
-    const API_BASE = '/api/attendance';
-    let chartInstance = null;
-    let attendanceData = [];
+<!-- FIREBASE INTEGRATION (v10 Modular SDK) -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+    import { getDatabase, ref, onValue, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    document.getElementById('selectedDate').valueAsDate = new Date();
+    // Сиз берген Firebase Конфигурациясы
+    const firebaseConfig = {
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835",
+        measurementId: "G-9GSQV60QV0"
+    };
 
-    // Токен жана колдонуучунун маалыматын алуу
-    const token = localStorage.getItem('bilimal_token') || '';
-    const userClass = localStorage.getItem('bilimal_user_class') || '9-Б'; 
+    // Firebase'ди иштетүү
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const database = getDatabase(app);
 
+    const userClass = localStorage.getItem('bilimal_user_class') || '9-Б';
     document.getElementById('currentClassName').innerText = userClass + ' классы';
 
-    // 1. Катышуу тизмесин жуктоо
-    async function loadAttendance() {
-        const date = document.getElementById('selectedDate').value;
-        try {
-            const res = await fetch(`${API_BASE}/class/${userClass}?date=${date}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+    const selectedDateInput = document.getElementById('selectedDate');
+    selectedDateInput.valueAsDate = new Date();
+
+    let studentsList = [];
+    let attendanceLogs = {};
+    let chartInstance = null;
+
+    const studentsRef = ref(database, `classes/${userClass}/students`);
+    
+    // 1. Firebase'ден окуучулар тизмесин реальный убакытта (Realtime) окуп алуу
+    onValue(studentsRef, (snapshot) => {
+        studentsList = [];
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            Object.entries(data).forEach(([key, val]) => {
+                studentsList.push({ id: key, ...val });
             });
-
-            if (res.status === 403) {
-                alert('403 Forbidden: Сиз бул класстын маалыматын көрө албайсыз!');
-                return;
-            }
-
-            const result = await res.json();
-            if (result.success) {
-                attendanceData = result.data;
-                renderTable(attendanceData);
-                updateStats(attendanceData);
-            }
-        } catch (err) {
-            console.error('Ката:', err);
         }
+        fetchLogsAndRender();
+    });
+
+    // 2. Тандалган дата боюнча катышуу маалыматтарын алуу
+    function fetchLogsAndRender() {
+        const dateStr = selectedDateInput.value;
+        const logsRef = ref(database, `attendance/${userClass}/${dateStr}`);
+        
+        onValue(logsRef, (snapshot) => {
+            attendanceLogs = snapshot.exists() ? snapshot.val() : {};
+            renderTable();
+        }, { onlyOnce: true });
     }
 
-    // 2. Таблицага чыгаруу
-    function renderTable(data) {
+    // 3. Таблицаны чагылдыруу
+    function renderTable() {
         const tbody = document.getElementById('attendanceTbody');
         tbody.innerHTML = '';
+        const filterQuery = document.getElementById('searchInput').value.toLowerCase();
 
-        if(data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Окуучулар табылган жок</td></tr>';
+        const filtered = studentsList.filter(s => 
+            s.name.toLowerCase().includes(filterQuery) || 
+            s.code.toLowerCase().includes(filterQuery)
+        );
+
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px; color: var(--text-muted);">Окуучулар азырынча жок же табылган жок. Оң жактагы форма аркылуу окуучу кошуңуз.</td></tr>';
+            updateStats(0, 0, 0, 0);
             return;
         }
 
-        data.forEach((item, index) => {
+        let countPresent = 0;
+        let countLate = 0;
+        let countAbsent = 0;
+
+        filtered.forEach((student, index) => {
+            const log = attendanceLogs[student.id] || {};
+            const status = log.status || 'ABSENT';
+            const checkIn = log.checkIn || '-';
+            const checkOut = log.checkOut || '-';
+
+            if (status === 'PRESENT') countPresent++;
+            else if (status === 'LATE') countLate++;
+            else countAbsent++;
+
             let badgeClass = 'badge-absent';
             let statusText = 'Келген жок';
 
-            if(item.status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
-            if(item.status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
+            if (status === 'PRESENT') { badgeClass = 'badge-present'; statusText = 'Толук катышты'; }
+            if (status === 'LATE') { badgeClass = 'badge-late'; statusText = 'Кеч келди'; }
 
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${index + 1}</td>
-                <td><strong>${item.full_name}</strong></td>
-                <td><code>${item.student_id_code}</code></td>
-                <td>${item.check_in_time || '-'}</td>
-                <td>${item.check_out_time || '-'}</td>
+                <td><strong>${student.name}</strong></td>
+                <td><code>${student.code}</code></td>
+                <td>${checkIn}</td>
+                <td>${checkOut}</td>
                 <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                <td>
+                    <button class="action-btn" style="color:var(--accent-green);" onclick="markAttendance('${student.id}', 'PRESENT')"><i class="fas fa-check"></i></button>
+                    <button class="action-btn" style="color:var(--accent-gold);" onclick="markAttendance('${student.id}', 'LATE')"><i class="fas fa-clock"></i></button>
+                    <button class="action-btn" style="color:var(--accent-red);" onclick="markAttendance('${student.id}', 'ABSENT')"><i class="fas fa-times"></i></button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
+
+        updateStats(filtered.length, countPresent, countLate, countAbsent);
     }
 
-    // 3. Статистиканы оңдоо
-    function updateStats(data) {
-        const total = data.length;
-        const present = data.filter(d => d.status === 'PRESENT').length;
-        const late = data.filter(d => d.status === 'LATE').length;
-        const absent = data.filter(d => d.status === 'ABSENT').length;
+    // 4. Катышууну Firebase'ге сактоо (Кол менен жана QR аркылуу)
+    window.markAttendance = async function(studentId, status) {
+        const dateStr = selectedDateInput.value;
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+        const logRef = ref(database, `attendance/${userClass}/${dateStr}/${studentId}`);
+        const currentLog = attendanceLogs[studentId] || {};
+
+        let checkInTime = currentLog.checkIn || (status !== 'ABSENT' ? nowTime : '-');
+        let checkOutTime = currentLog.checkOut || '-';
+
+        if (currentLog.checkIn && status !== 'ABSENT' && !currentLog.checkOut) {
+            checkOutTime = nowTime;
+        }
+
+        await set(logRef, {
+            status: status,
+            checkIn: checkInTime,
+            checkOut: checkOutTime,
+            updatedAt: new Date().toISOString()
+        });
+
+        showToast('Firebase DBге сакталды!');
+        fetchLogsAndRender();
+    };
+
+    // 5. QR Сканер аркылуу каттоо (Enter басылганда)
+    document.getElementById('qrInput').addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const inputCode = e.target.value.trim();
+            if (!inputCode) return;
+
+            const student = studentsList.find(s => s.code.toLowerCase() === inputCode.toLowerCase());
+            if (student) {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+
+                // 08:15тен кечиксе авто LATE
+                let autoStatus = 'PRESENT';
+                if (hours > 8 || (hours === 8 && minutes > 15)) {
+                    autoStatus = 'LATE';
+                }
+
+                await window.markAttendance(student.id, autoStatus);
+                showToast(`Катталды: ${student.name}`);
+            } else {
+                showToast('Окуучу табылган жок!');
+            }
+            e.target.value = '';
+        }
+    });
+
+    // 6. Жаңы окуучуну Firebase'ге кошуу
+    document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('newStudentName').value.trim();
+        const code = document.getElementById('newStudentCode').value.trim();
+
+        if (name && code) {
+            const newRef = push(studentsRef);
+            await set(newRef, { name, code });
+            showToast('Жаңы окуучу Firebase\'ге кошулду');
+            document.getElementById('addStudentForm').reset();
+        }
+    });
+
+    // 7. Диаграмма жана Статистика
+    function updateStats(total, present, late, absent) {
         document.getElementById('stat-total').innerText = total;
         document.getElementById('stat-present').innerText = present;
         document.getElementById('stat-late').innerText = late;
@@ -244,10 +394,9 @@
         renderChart(present, late, absent);
     }
 
-    // 4. Диаграмма
     function renderChart(p, l, a) {
         const ctx = document.getElementById('attendanceChart').getContext('2d');
-        if(chartInstance) chartInstance.destroy();
+        if (chartInstance) chartInstance.destroy();
 
         chartInstance = new Chart(ctx, {
             type: 'doughnut',
@@ -258,35 +407,12 @@
                     backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
                 }]
             },
-            options: { plugins: { legend: { labels: { color: '#f9fafb' } } } }
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#f9fafb' } } }
+            }
         });
     }
-
-    // 5. QR Иштетүү
-    document.getElementById('qrInput').addEventListener('keypress', async (e) => {
-        if (e.key === 'Enter') {
-            const qrToken = e.target.value.trim();
-            if (!qrToken) return;
-
-            try {
-                const res = await fetch(`${API_BASE}/qr-check`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ qrToken })
-                });
-
-                const result = await res.json();
-                showToast(result.message);
-                e.target.value = '';
-                loadAttendance();
-            } catch (err) {
-                showToast('QR Текшерүүдө ката чыкты');
-            }
-        }
-    });
 
     function showToast(msg) {
         const toast = document.getElementById('toastMsg');
@@ -295,10 +421,9 @@
         setTimeout(() => toast.style.display = 'none', 3000);
     }
 
-    document.getElementById('refreshBtn').addEventListener('click', loadAttendance);
-    document.getElementById('selectedDate').addEventListener('change', loadAttendance);
-
-    window.addEventListener('DOMContentLoaded', loadAttendance);
+    document.getElementById('refreshBtn').addEventListener('click', fetchLogsAndRender);
+    selectedDateInput.addEventListener('change', fetchLogsAndRender);
+    document.getElementById('searchInput').addEventListener('input', renderTable);
 </script>
 </body>
 </html>
