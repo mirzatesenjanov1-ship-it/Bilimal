@@ -116,50 +116,54 @@
     let html5QrcodeScanner = null;
     let isProcessing = false;
     let verifiedLocation = null;
+    let locationAccuracy = null;
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // КӨЙГӨЙДҮ 100% ЧЕЧКЕН СМАРТ GPS АНЫКТОО (2 КАТМАРЛУУ FALLBACK)
+    // ТАКТЫКТЫ ЖОГОРУЛАТКАН ЖАНА ТАЙМ-АУТСУЗ GPS АНЫКТОО
     function requestLocationAccess() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
                 return reject("Түзмөгүңүз геолокацияны колдобойт!");
             }
 
-            const successCallback = (pos) => {
+            const updateLocationUI = (pos) => {
                 const lat = pos.coords.latitude.toFixed(6);
                 const lng = pos.coords.longitude.toFixed(6);
+                const acc = Math.round(pos.coords.accuracy);
+
                 verifiedLocation = `https://www.google.com/maps?q=${lat},${lng}`;
-                
+                locationAccuracy = `~${acc} метр`;
+
                 document.getElementById('geoStatus').innerHTML = `
-                    <span style="color:var(--accent-green); font-weight:bold; font-size:15px;">
-                        <i class="fas fa-check-circle"></i> GPS Геолокация аныкталды! Эми QR кодду сканерлеңиз.
+                    <span style="color:var(--accent-green); font-weight:bold; font-size:15px; line-height:1.4;">
+                        <i class="fas fa-check-circle"></i> GPS Геолокация аныкталды!<br>
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(Тактыгы: ${locationAccuracy}) Эми QR кодду сканерлеңиз.</span>
                     </span>
                 `;
                 resolve(verifiedLocation);
             };
 
-            // 1-АРАКЕТ: Тез аныктоо (Мобилдик мунаралар/Wi-Fi + 5 мүнөттүк кэш)
-            const fastOptions = {
-                enableHighAccuracy: false, // Имарат ичинде тайм-аутту болтурбайт
-                timeout: 10000,            // 10 секунд
-                maximumAge: 300000         // Акыркы 5 мүнөттөгү координат сакталган болсо берет
-            };
-
-            // 2-АРАКЕТ: Эгер тез аныктоо убактысы өтүп кетсе, GPS Спутниктери аркылуу кайра текшерүү
+            // 1-АРАКЕТ: Тез аныктоо (Мобилдик тармак/Wi-Fi аркылуу заматта координат алуу)
             navigator.geolocation.getCurrentPosition(
-                successCallback,
-                (err1) => {
-                    console.warn("Тез аныктоо ишке ашпады, жогорку тактыкта GPS изделүүдө...", err1);
-                    
-                    const preciseOptions = {
-                        enableHighAccuracy: true,
-                        timeout: 20000, // 20 секунд күтөт
-                        maximumAge: 60000
-                    };
+                (fastPos) => {
+                    updateLocationUI(fastPos);
 
+                    // 2-АРАКЕТ: Фондо GPS спутниктери аркылуу тактыкты андан ары жогорулатуу
+                    navigator.geolocation.watchPosition(
+                        (accuratePos) => {
+                            if (accuratePos.coords.accuracy < fastPos.coords.accuracy) {
+                                updateLocationUI(accuratePos);
+                            }
+                        },
+                        (err) => { console.log("Фондогу GPS тактоо өтүп кетти, тез координат сакталды."); },
+                        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                    );
+                },
+                (err1) => {
+                    // Эгер тез аныктоо ката берсе, 5 секунддук кэштеги координатты суроо
                     navigator.geolocation.getCurrentPosition(
-                        successCallback,
+                        updateLocationUI,
                         (err2) => {
                             console.error("GPS Аныктоо катасы:", err2);
                             let errMsg = "GPS аныкталган жок!";
@@ -182,10 +186,10 @@
                             document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
                             reject(errMsg);
                         },
-                        preciseOptions
+                        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
                     );
                 },
-                fastOptions
+                { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
             );
         });
     }
@@ -282,12 +286,13 @@
                 checkIn: nowTime,
                 mapUrl: verifiedLocation,
                 geolocation: verifiedLocation,
+                accuracy: locationAccuracy || 'Аныкталган жок',
                 updatedAt: new Date().toISOString()
             });
 
             resultBox.innerHTML = `
                 <div class="alert-box alert-success">
-                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы менен катышууңуз ийгиликтүү катталды!
+                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы (${locationAccuracy}) менен катышууңуз ийгиликтүү катталды!
                 </div>
             `;
             showToast('Катышууңуз катталды!');
