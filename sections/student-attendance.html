@@ -87,7 +87,6 @@
     const btnGetGps = document.getElementById('btnGetGps');
     const gpsStatus = document.getElementById('gpsStatus');
 
-    // Экран ачылганда уруксат статусун автоматты текшерүү
     checkPermissionStatus();
 
     async function checkPermissionStatus() {
@@ -97,57 +96,66 @@
                 if (status.state === 'denied') {
                     showDeniedInstructions();
                 }
-                status.onchange = () => {
-                    if (status.state === 'granted') {
-                        gpsStatus.innerHTML = `<span style="color:var(--accent-green); font-size:13px;"><i class="fas fa-check"></i> Уруксат берилди! "GPS Аныктоо" баскычын басыңыз.</span>`;
-                    } else if (status.state === 'denied') {
-                        showDeniedInstructions();
-                    }
-                };
             } catch (e) {}
         }
     }
 
     btnGetGps.addEventListener('click', () => {
-        gpsStatus.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS геолокация суралууда...</span>`;
+        gpsStatus.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS байланышы изделүүдө...</span>`;
 
         if (!navigator.geolocation) {
             gpsStatus.innerHTML = `<div class="alert alert-error">Түзмөгүңүз геолокацияны колдобойт.</div>`;
             return;
         }
 
-        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+        // 1-ЭТАП: Спутниктик жогорку тактыктагы GPS издөө (25 секунд берилет)
+        const highAccuracyOptions = { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 };
+        
+        // 2-ЭТАП: Тармак (Wi-Fi / 4G) аркылуу тез геолокация (эгер имарат ичинде спутник тартпаса)
+        const lowAccuracyOptions = { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 };
+
+        function onGpsSuccess(pos) {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lng = pos.coords.longitude.toFixed(6);
+            const acc = Math.round(pos.coords.accuracy);
+
+            gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
+            gpsAccuracy = `~${acc} метр`;
+
+            gpsStatus.innerHTML = `
+                <div style="color:var(--accent-green); font-weight:bold; font-size:13px; margin-top:8px;">
+                    <i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ${gpsAccuracy})
+                </div>
+            `;
+            document.getElementById('scannerWrapper').style.display = 'block';
+            startScanner();
+        }
 
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const lat = pos.coords.latitude.toFixed(6);
-                const lng = pos.coords.longitude.toFixed(6);
-                const acc = Math.round(pos.coords.accuracy);
-
-                gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
-                gpsAccuracy = `~${acc} метр`;
-
-                gpsStatus.innerHTML = `
-                    <div style="color:var(--accent-green); font-weight:bold; font-size:13px; margin-top:8px;">
-                        <i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ${gpsAccuracy})
-                    </div>
-                `;
-                document.getElementById('scannerWrapper').style.display = 'block';
-                startScanner();
-            },
-            (err) => {
-                if (err.code === err.PERMISSION_DENIED) {
+            onGpsSuccess,
+            (errHigh) => {
+                if (errHigh.code === errHigh.PERMISSION_DENIED) {
                     showDeniedInstructions();
                 } else {
-                    gpsStatus.innerHTML = `
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle"></i> GPS сигналы начар же телефондун геолокациясы өчүк.<br>
-                            <button class="btn-retry" onclick="location.reload()"><i class="fas fa-redo"></i> Кайра аракет кылуу</button>
-                        </div>
-                    `;
+                    // Эгер спутник таппай «сигнал начар» (Timeout) болсо, ТАРМАКТЫК РЕЖИМГЕ өтөбүз:
+                    gpsStatus.innerHTML = `<span style="color:var(--accent-yellow); font-size:13px;"><i class="fas fa-wifi"></i> Спутник тартпай жатат, тармак (Wi-Fi/4G) аркылуу жайгашуу алынууда...</span>`;
+                    
+                    navigator.geolocation.getCurrentPosition(
+                        onGpsSuccess,
+                        (errLow) => {
+                            gpsStatus.innerHTML = `
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle"></i> GPS жана тармак сигналы алынган жок.<br>
+                                    Телефондогу "Геолокация" (Location) күйүп турганын текшерип, имараттын терезесине жакын же ачык асман алдында кайра басыңыз.
+                                    <button class="btn-retry" onclick="location.reload()"><i class="fas fa-redo"></i> Кайра кайталап көрүү</button>
+                                </div>
+                            `;
+                        },
+                        lowAccuracyOptions
+                    );
                 }
             },
-            options
+            highAccuracyOptions
         );
     });
 
@@ -155,11 +163,10 @@
         gpsStatus.innerHTML = `
             <div class="alert alert-error">
                 <strong style="color:#ef4444; font-size:14px;"><i class="fas fa-user-lock"></i> GPS уруксаты бөгөттөлгөн!</strong><br><br>
-                Браузер уруксатты бөгөттөп койгондуктан, аны кол менен күйгүзүү керек:<br><br>
-                <strong>1-кадам:</strong> Браузердин жогорку сол бурчундагы 🔒 (кулпу) же ⚙️ (жөндөө) сүрөтчөсүн басыңыз.<br>
+                <strong>1-кадам:</strong> Браузердин жогорку сол бурчундагы 🔒 (кулпу) же ⚙️ сүрөтчөсүн басыңыз.<br>
                 <strong>2-кадам:</strong> <em>"Сайттын жөндөөлөрү" (Site settings)</em> бөлүмүнө кириңиз.<br>
-                <strong>3-кадам:</strong> <em>"Геолокация / Местоположение"</em> дегенди <strong>"Разрешить" (Уруксат берүү)</strong> кылып өзгөртүңүз.<br>
-                <strong>4-кадам:</strong> Төмөндөгү баскычты басып баракчаны жаңыртыңыз.
+                <strong>3-кадам:</strong> <em>"Геолокация / Местоположение"</em> дегенди <strong>"Разрешить" (Уруксат берүү)</strong> кылыңыз.<br>
+                <strong>4-кадам:</strong> Төмөндөгү баскычты басып баракты жаңыртыңыз.
                 <button class="btn-retry" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Баракчаны жаңыртуу</button>
             </div>
         `;
@@ -231,7 +238,7 @@
             resultBox.innerHTML = `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча катышууңуз катталды!<br>
-                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Класс жетекчинин журналына сакталды.</small>
+                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Журналга жүктөлдү.</small>
                 </div>
             `;
         } catch (err) {
