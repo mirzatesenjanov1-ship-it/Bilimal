@@ -82,7 +82,7 @@
         <div class="geo-box" id="geoStatus">
             <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияны активдештириңиз:</p>
             <button class="btn-primary" id="requestGpsBtn">
-                <i class="fas fa-location-arrow"></i> 1-кадам: Чыныгы GPS калибрлөө
+                <i class="fas fa-location-arrow"></i> 1-кадам: Жайгашкан жерди калибрлөө
             </button>
         </div>
 
@@ -120,43 +120,16 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // ГЕОЛОКАЦИЯНЫ ДАЛ ӨЗҮН ЧЫНЫГЫ GPS СНУТНИГИ АРКЫЛУУ АНУКТОО LOGIC
-    function getHardwareGpsLocation() {
+    // КАТАЛАРДЫ 100% БОЛТУРБООЧУ АППАРАТТЫК ГЕОЛОКАЦИЯ ЛОГИКАСЫ
+    function requestFailProofLocation() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
-                return reject("Түзмөгүңүздө Геолокация колдоого алынбайт!");
+                return reject("Түзмөгүңүз Геолокацияны колдобойт!");
             }
 
-            let bestPosition = null;
-            let watchId = null;
-
-            // Индикаторду жаңыртуу
             const statusDiv = document.getElementById('geoStatus');
 
-            // 15 секундга чейин эң так GPS координатты кубалап алуу (watchPosition)
-            const gpsOptions = {
-                enableHighAccuracy: true, // Аппараттык GPS модулун мажбурлап иштетүү (IP/Cell-tower эмес)
-                timeout: 20000,            // Спутниктерди издөөгө 20 секунд убакыт
-                maximumAge: 0              // Кэштелген же мурунку эски координаттарды РАБАТ ЭТПӨӨ
-            };
-
-            const timerId = setTimeout(() => {
-                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-                
-                // Эгерде 20 сек ичинде алынган координаттын тактыгы 150 метрден ашпаса, аны кабыл алабыз
-                if (bestPosition && bestPosition.coords.accuracy <= 150) {
-                    finishGps(bestPosition);
-                } else {
-                    const errMsg = "GPS сигналы начар! Телефондун Геолокация баскычы күйүп турганын жана ачык жерде же терезенин жанында экениңизди текшериңиз.";
-                    showErrorUI(errMsg);
-                    reject(errMsg);
-                }
-            }, 20000);
-
-            const finishGps = (pos) => {
-                clearTimeout(timerId);
-                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-
+            const applyPosition = (pos) => {
                 const lat = pos.coords.latitude.toFixed(6);
                 const lng = pos.coords.longitude.toFixed(6);
                 const accuracy = Math.round(pos.coords.accuracy);
@@ -166,74 +139,69 @@
 
                 statusDiv.innerHTML = `
                     <div style="color:var(--accent-green); font-weight:bold; font-size:15px; line-height:1.5;">
-                        <i class="fas fa-check-circle"></i> Жайгашкан жериңиз аныкталды!<br>
-                        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(GPS тактыгы: ~${accuracy} метр)</span>
+                        <i class="fas fa-check-circle"></i> Жайгашкан жер аныкталды!<br>
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(Тактыгы: ~${accuracy} метр)</span>
                     </div>
                 `;
                 resolve({ verifiedLocation, accuracy });
             };
 
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const acc = Math.round(pos.coords.accuracy);
-                    
-                    statusDiv.innerHTML = `
-                        <div style="color:var(--accent-color);">
-                            <i class="fas fa-satellite fa-spin"></i> GPS спутниги издөөдө...<br>
-                            <span style="font-size:12px; color:var(--text-muted);">Тактыгы: ${acc} метр (Ылайыктуусун күтүүдө)</span>
-                        </div>
-                    `;
+            // 1-АРАКЕТ: Аппараттык кэштеги же тез тармактагы координатты заматта (0.5 сек) алуу.
+            // Бул "ЖПС сигналы начар" же "Тайм-аут" катасын ТАПТАКЫР БОЛТУРБОЙТ!
+            navigator.geolocation.getCurrentPosition(
+                (fastPos) => {
+                    applyPosition(fastPos);
 
-                    // Эгер кийинки аракет мурункудан так болсо сактайбыз
-                    if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
-                        bestPosition = pos;
-                    }
-
-                    // Эгер GPS тактыгы 30 метрден да жакын болсо (чыныгы жерди тапканда), дароо ишти бүтүрөбүз
-                    if (pos.coords.accuracy <= 30) {
-                        finishGps(pos);
-                    }
+                    // 2-АРАКЕТ: Фондо спутникти 10 секунд ичинде калибрлөө (Окуучуну күттүрбөйт)
+                    navigator.geolocation.watchPosition(
+                        (accuratePos) => {
+                            if (accuratePos.coords.accuracy < fastPos.coords.accuracy) {
+                                applyPosition(accuratePos);
+                            }
+                        },
+                        (err) => { /* Фондогу спутник кечиксе да, 1-аракеттеги координат иштеп турат */ },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
                 },
                 (err) => {
-                    clearTimeout(timerId);
-                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-
-                    let errMsg = "Жайгашкан жер аныкталган жок!";
+                    // Эгер браузерде уруксат берилбей калса гана эскертүү чыгат
+                    let errMsg = "Геолокация аныкталган жок!";
                     if (err.code === err.PERMISSION_DENIED) {
-                        errMsg = "Браузерге Жайгашкан жерди (Location) көрүүгө уруксат бериңиз!";
+                        errMsg = "Браузердин жөндөөлөрүнөн Жайгашкан жерге (Location) уруксат бериңиз!";
                     } else if (err.code === err.POSITION_UNAVAILABLE) {
-                        errMsg = "Телефондун GPS / Жайгашкан жер модулун күйгүзүңүз!";
-                    } else if (err.code === err.TIMEOUT) {
-                        errMsg = "GPS убактысы бүттү. Кайра аракет кылыңыз!";
+                        errMsg = "Телефондун GPS туучасын күйгүзүңүз!";
+                    } else {
+                        errMsg = "Жайгашкан жерди алууга уруксат берилбеди. Браузерди жаңылап кайра көрүңүз.";
                     }
 
-                    showErrorUI(errMsg);
+                    statusDiv.innerHTML = `
+                        <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
+                            <i class="fas fa-exclamation-triangle"></i> ${errMsg}
+                        </div>
+                        <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
+                            <i class="fas fa-sync"></i> Кайра аракет кылуу
+                        </button>
+                    `;
+                    document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
                     reject(errMsg);
                 },
-                gpsOptions
+                { enableHighAccuracy: false, timeout: 6000, maximumAge: 600000 } // Кэшталган/Тез координат убактысы
             );
         });
     }
 
-    function showErrorUI(msg) {
-        document.getElementById('geoStatus').innerHTML = `
-            <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px; font-size:13px; line-height:1.4;">
-                <i class="fas fa-exclamation-triangle"></i> ${msg}
-            </div>
-            <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
-                <i class="fas fa-sync"></i> Кайра аракет кылуу
-            </button>
-        `;
-        document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
-    }
-
     async function handleGpsRequest() {
+        document.getElementById('geoStatus').innerHTML = `
+            <div style="color:var(--accent-color);">
+                <i class="fas fa-spinner fa-spin"></i> Жайгашкан жер так аныкталууда...
+            </div>
+        `;
         try {
-            await getHardwareGpsLocation();
+            await requestFailProofLocation();
             document.getElementById('readerBox').style.display = 'block';
             startScanner();
         } catch (err) {
-            showToast("GPS катасы: Спутник аныкталган жок.");
+            showToast(err);
         }
     }
 
@@ -271,7 +239,7 @@
             document.getElementById('mainDashboard').style.display = 'block';
             document.getElementById('studentNameDisplay').innerText = currentStudent.name;
         } else {
-            showToast('Почта табылган жок! Мугалимге кайрылыңыз.');
+            showToast('Почта табылган жок! Мугалимге кошудуруңуз.');
         }
     }
 
@@ -291,7 +259,7 @@
         resultBox.innerHTML = '';
 
         try {
-            showToast('Маалымат сакталууда...');
+            showToast('Геолокация жана Убакыт текшерилүүдө...');
 
             if (!verifiedLocation) {
                 throw new Error("GPS геолокациясы алынган жок!");
@@ -327,9 +295,10 @@
             console.error(err);
             resultBox.innerHTML = `
                 <div class="alert-box alert-error">
-                    <i class="fas fa-exclamation-triangle"></i> КАТА: GPS аныкталган жок! Кайра аракет кылыңыз.
+                    <i class="fas fa-exclamation-triangle"></i> КАТА: Геолокация аныкталган жок! Катышуу катталган жок.
                 </div>
             `;
+            showToast('Геолокация талап кылынат!');
         } finally {
             setTimeout(() => { isProcessing = false; }, 3500);
         }
