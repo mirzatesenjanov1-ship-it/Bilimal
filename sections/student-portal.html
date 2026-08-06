@@ -43,13 +43,15 @@
         .btn-primary {
             background: var(--accent-color); color: #0b0e14; border: none; padding: 12px 20px;
             border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+        .btn-primary:active { transform: scale(0.98); }
 
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--border-color); }
         
         .geo-box {
-            background: #0b0e14; border: 1px solid var(--border-color); padding: 12px;
-            border-radius: 8px; font-size: 13px; text-align: center; margin-bottom: 15px;
+            background: #0b0e14; border: 1px solid var(--border-color); padding: 15px;
+            border-radius: 8px; font-size: 14px; text-align: center; margin-bottom: 15px;
         }
 
         .alert-box {
@@ -78,10 +80,15 @@
         <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
         
         <div class="geo-box" id="geoStatus">
-            <i class="fas fa-spinner fa-spin" style="color:var(--accent-color);"></i> GPS координаттары текшерилүүдө...
+            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияга уруксат бериңиз:</p>
+            <button class="btn-primary" id="requestGpsBtn">
+                <i class="fas fa-location-arrow"></i> 1-кадам: GPS'ти күйгүзүү жана уруксат берүү
+            </button>
         </div>
 
-        <div id="reader"></div>
+        <div id="readerBox" style="display: none;">
+            <div id="reader"></div>
+        </div>
         <div id="scanResult"></div>
     </div>
 </div>
@@ -112,12 +119,18 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // GPS КООРДИНАТТАРЫН СӨЗСҮЗ ТАЛАП КЫЛУУ (ПРОВЕРКА)
-    function requireExactLocation() {
+    // GPS АНУКТОО ЖАНА УРУКСАТ СУРОО ФУНКЦИЯСЫ
+    function requestLocationAccess() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
                 return reject("Түзмөгүңүз геолокацияны колдобойт!");
             }
+
+            const geoOptions = {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            };
 
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -126,23 +139,51 @@
                     verifiedLocation = `https://www.google.com/maps?q=${lat},${lng}`;
                     
                     document.getElementById('geoStatus').innerHTML = `
-                        <span style="color:var(--accent-green); font-weight:bold;">
-                            <i class="fas fa-check-circle"></i> GPS Аныкталды (Даяр)
+                        <span style="color:var(--accent-green); font-weight:bold; font-size:15px;">
+                            <i class="fas fa-check-circle"></i> GPS Геолокация аныкталды! Эми QR кодду сканерлеңиз.
                         </span>
                     `;
                     resolve(verifiedLocation);
                 },
                 (err) => {
+                    let errMsg = "GPS аныкталган жок!";
+                    if (err.code === err.PERMISSION_DENIED) {
+                        errMsg = "Браузердин жөндөөлөрүнөн геолокацияга (Location) уруксат бериңиз!";
+                    } else if (err.code === err.POSITION_UNAVAILABLE) {
+                        errMsg = "Телефонуңуздун GPS кошуучу кнопкасын күйгүзүңүз!";
+                    } else if (err.code === err.TIMEOUT) {
+                        errMsg = "GPS аныктоо убактысы өттү, кайра аракет кылыңыз!";
+                    }
+
                     document.getElementById('geoStatus').innerHTML = `
-                        <span style="color:var(--accent-red); font-weight:bold;">
-                            <i class="fas fa-times-circle"></i> GPS Аныкталган жок! Түзмөктөн геолокацияга уруксат бериңиз.
-                        </span>
+                        <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
+                            <i class="fas fa-exclamation-triangle"></i> ${errMsg}
+                        </div>
+                        <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
+                            <i class="fas fa-sync"></i> Кайра аракет кылуу
+                        </button>
                     `;
-                    reject("GPS геолокациясы алынган жок. Сканерлөөгө уруксат берилбейт!");
+                    document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
+                    reject(errMsg);
                 },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                geoOptions
             );
         });
+    }
+
+    async function handleGpsRequest() {
+        document.getElementById('geoStatus').innerHTML = `
+            <div style="color:var(--accent-color);">
+                <i class="fas fa-spinner fa-spin"></i> GPS координаттары аныкталууда, күтө туруңуз...
+            </div>
+        `;
+        try {
+            await requestLocationAccess();
+            document.getElementById('readerBox').style.display = 'block';
+            startScanner();
+        } catch (err) {
+            showToast(err);
+        }
     }
 
     const savedEmail = localStorage.getItem('bilimal_student_email');
@@ -155,6 +196,8 @@
         const email = document.getElementById('studentEmailInput').value.trim().toLowerCase();
         if (email) loginStudent(email);
     });
+
+    document.getElementById('requestGpsBtn').addEventListener('click', handleGpsRequest);
 
     async function loginStudent(email) {
         showToast('Профиль текшерилүүдө...');
@@ -176,17 +219,15 @@
             document.getElementById('authSection').style.display = 'none';
             document.getElementById('mainDashboard').style.display = 'block';
             document.getElementById('studentNameDisplay').innerText = currentStudent.name;
-
-            // Алгач GPSни милдеттүү түрдө алууга аракет кылуу
-            requireExactLocation().catch(err => console.warn(err));
-            startScanner();
         } else {
             showToast('Почта табылган жок! Мугалимге кошудуруңуз.');
         }
     }
 
     function startScanner() {
-        if (html5QrcodeScanner) html5QrcodeScanner.clear();
+        if (html5QrcodeScanner) {
+            try { html5QrcodeScanner.clear(); } catch(e){}
+        }
         html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 240 });
         html5QrcodeScanner.render(onScanSuccess, () => {});
     }
@@ -199,24 +240,20 @@
         resultBox.innerHTML = '';
 
         try {
-            showToast('GPS жана Убакыт текшерилүүдө...');
+            showToast('Геолокация жана Убакыт текшерилүүдө...');
 
-            // ГЕОЛОКАЦИЯНЫ КАЙРАДАН СӨЗСҮЗ ТЕКШЕРҮҮ
-            const mapUrl = await requireExactLocation();
-
-            if (!mapUrl || !mapUrl.startsWith('http')) {
-                throw new Error("GPS маалыматы жок!");
+            if (!verifiedLocation) {
+                throw new Error("GPS геолокациясы алынган жок!");
             }
 
-            // УБАКЫТТЫ МИЛДЕТТҮҮ АЛУУ
             const now = new Date();
             const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const hours = now.getHours();
             const minutes = now.getMinutes();
 
+            // Эгер саат 8:15тен өтсө 'Кечикти', болбосо 'Келди'
             let autoStatus = (hours > 8 || (hours === 8 && minutes > 15)) ? 'LATE' : 'PRESENT';
 
-            // БАЗАГА ГЕОЛОКАЦИЯ ЖАНА УБАКЫТ БАР БОЛСО ГАНА САКТОО
             const attRef = ref(database, `attendance/${todayStr}/${currentStudent.id}`);
             await set(attRef, {
                 studentId: currentStudent.id,
@@ -224,25 +261,25 @@
                 email: currentStudent.email,
                 status: autoStatus,
                 checkIn: nowTime,
-                mapUrl: mapUrl,
-                geolocation: mapUrl,
+                mapUrl: verifiedLocation,
+                geolocation: verifiedLocation,
                 updatedAt: new Date().toISOString()
             });
 
             resultBox.innerHTML = `
                 <div class="alert-box alert-success">
-                    <i class="fas fa-check-circle"></i> Катышуу саат ${nowTime} боюнча GPS геолокациясы менен ийгиликтүү катталды!
+                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы менен катышууңуз ийгиликтүү катталды!
                 </div>
             `;
-            showToast('Ийгиликтүү катталды!');
+            showToast('Катышууңуз катталды!');
         } catch (err) {
             console.error(err);
             resultBox.innerHTML = `
                 <div class="alert-box alert-error">
-                    <i class="fas fa-exclamation-triangle"></i> КАТА: Геолокация аныкталган жок! Катышуу катталган жок. Телефонуңуздун GPS'ин күйгүзүңүз.
+                    <i class="fas fa-exclamation-triangle"></i> КАТА: GPS аныкталган жок! Катышуу катталган жок.
                 </div>
             `;
-            showToast('Геолокация талап кылынат!');
+            showToast('GPS Геолокация талап кылынат!');
         } finally {
             setTimeout(() => { isProcessing = false; }, 3500);
         }
