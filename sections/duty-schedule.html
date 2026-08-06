@@ -426,6 +426,9 @@
                             <input type="text" id="input-student-name" placeholder="Окуучунун Аты-Жөнү">
                         </div>
                         <div class="form-group">
+                            <input type="email" id="input-student-email" placeholder="Электрондук почтасы (Email)">
+                        </div>
+                        <div class="form-group">
                             <select id="input-student-gender">
                                 <option value="m">Уул бала</option>
                                 <option value="f">Кыз бала</option>
@@ -437,7 +440,7 @@
                     <div>
                         <h4 style="font-size: 14px; margin-bottom: 10px;">Массалык импорт (Катар боюнча):</h4>
                         <div class="form-group">
-                            <textarea id="input-bulk-students" rows="3" placeholder="Адылбекова Гүлжан&#10;Анарбаев Адилет (уул)&#10;Аскарова Элмина"></textarea>
+                            <textarea id="input-bulk-students" rows="4" placeholder="Адылбекова Гүлжан, gulzhan@gmail.com&#10;Анарбаев Адилет (уул), adilet@gmail.com&#10;Аскарова Элмина"></textarea>
                         </div>
                         <button class="btn-secondary" id="btnImportBulk" style="width: 100%;">Тизмени Киргизүү</button>
                     </div>
@@ -452,6 +455,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Окуучунун аты-жөнү</th>
+                                <th>Электрондук Почтасы</th>
                                 <th>Жынысы</th>
                                 <th>Кезмет саны</th>
                                 <th>Статус</th>
@@ -561,7 +565,7 @@
     <!-- JAVASCRIPT ENGINE (MODULE) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { getDatabase, ref, set, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -751,6 +755,7 @@
             if (isStudentMode || !currentTeacherEmail) return;
             const data = { students: studentsList, schedule: generatedSchedule };
             localStorage.setItem(getStorageKey(), JSON.stringify(data));
+            localStorage.setItem('attendance_app_students', JSON.stringify(studentsList)); // Синхрондук түрдө сактоо
             syncTodayDutyToFirebase();
         }
 
@@ -762,25 +767,36 @@
 
             if (todayDutyItem) {
                 const dutyNames = todayDutyItem.duty.split(', ');
-                const dutyData = {};
+                const dutyListForStudentPortal = [];
+                const firebaseStudentsObj = {};
 
                 dutyNames.forEach((name, idx) => {
                     const cleanName = name.replace(' (Резерв алмашты)', '').trim();
                     const matchedStudent = studentsList.find(s => s.name === cleanName);
-                    const sId = matchedStudent ? matchedStudent.id : `duty_st_${idx}`;
+                    
+                    dutyListForStudentPortal.push({
+                        id: matchedStudent ? matchedStudent.id : `st_${idx}`,
+                        name: cleanName,
+                        email: matchedStudent ? matchedStudent.email : '',
+                        status: 'Дайындалды',
+                        tasks: todayDutyItem.tasks
+                    });
+                });
 
-                    dutyData[sId] = {
-                        studentId: sId,
-                        studentName: cleanName,
-                        status: 'Кезметте (Дайындалды)',
-                        tasks: todayDutyItem.tasks,
-                        assignedAt: new Date().toISOString()
+                // Базада окуучулардын атын жана email даректерин сактоо
+                studentsList.forEach(s => {
+                    firebaseStudentsObj[s.id] = {
+                        name: s.name,
+                        email: s.email || '',
+                        gender: s.gender || 'm'
                     };
                 });
 
                 try {
-                    const dutyRef = ref(database, `duty_schedule/${todayStr}`);
-                    await set(dutyRef, dutyData);
+                    // Окуучулардын кезмет порталы (/sections/student-duty.html) үчүн туура ЖОЛ
+                    await set(ref(database, `duty_schedule/${todayStr}`), dutyListForStudentPortal);
+                    // Окуучулардын тизмеси Firebase "students" түйүнүнө сакталат
+                    await update(ref(database, 'students'), firebaseStudentsObj);
                 } catch (err) {
                     console.error("Firebase'ге сактоодо ката:", err);
                 }
@@ -790,13 +806,18 @@
         // Student CRUD & Roster Input
         function addSingleStudent() {
             const nameInput = document.getElementById('input-student-name');
+            const emailInput = document.getElementById('input-student-email');
             const genderInput = document.getElementById('input-student-gender');
+            
             const name = nameInput.value.trim();
+            const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+
             if (!name) return alert('Окуучунун аты-жөнүн жазыңыз!');
 
             const newStudent = {
                 id: 'st_' + Date.now(),
                 name: name,
+                email: email,
                 gender: genderInput.value,
                 dutyCount: 0,
                 score: 100,
@@ -807,6 +828,8 @@
 
             studentsList.push(newStudent);
             nameInput.value = '';
+            if (emailInput) emailInput.value = '';
+
             renderStudentsTable();
             generateSmartSchedule(false);
         }
@@ -824,9 +847,15 @@
                     let gender = 'm';
                     if (clean.toLowerCase().includes('(кыз)') || clean.toLowerCase().includes('кыз')) gender = 'f';
 
+                    // Email даректерин ажыратып алуу
+                    const parts = clean.split(',');
+                    const namePart = parts[0].replace(/\(кыз\)|\(уул\)/gi, '').trim();
+                    const emailPart = parts[1] ? parts[1].trim().toLowerCase() : '';
+
                     studentsList.push({
                         id: 'st_' + (Date.now() + idx),
-                        name: clean.replace(/\(кыз\)|\(уул\)/gi, '').trim(),
+                        name: namePart,
+                        email: emailPart,
                         gender: gender,
                         dutyCount: 0,
                         score: 100,
@@ -863,6 +892,7 @@
                 tr.innerHTML = `
                     <td>${idx + 1}</td>
                     <td><strong>${s.name}</strong></td>
+                    <td><small style="color:var(--accent-color);">${s.email || '--'}</small></td>
                     <td>${s.gender === 'm' ? 'Уул' : 'Кыз'}</td>
                     <td>${s.dutyCount}</td>
                     <td><span class="badge badge-success">${s.status}</span></td>
@@ -1059,9 +1089,9 @@
         }
 
         function exportCSV() {
-            let csv = 'Окуучу,Жынысы,Кезмет Саны,Индекс\n';
+            let csv = 'Окуучу,Электрондук Почта,Жынысы,Кезмет Саны,Индекс\n';
             studentsList.forEach(s => {
-                csv += `${s.name},${s.gender},${s.dutyCount},${s.score}\n`;
+                csv += `${s.name},${s.email || ''},${s.gender},${s.dutyCount},${s.score}\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
