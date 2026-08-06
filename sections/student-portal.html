@@ -33,19 +33,14 @@
             display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;
         }
 
-        /* Навигациялык меню (Tabs) */
-        .portal-nav {
-            display: flex; gap: 10px; margin-bottom: 20px;
-        }
+        .portal-nav { display: flex; gap: 10px; margin-bottom: 20px; }
         .nav-tab {
             flex: 1; padding: 12px 10px; background: #0b0e14; border: 1px solid var(--border-color);
             color: var(--text-muted); border-radius: 8px; font-size: 14px; font-weight: 600;
             cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;
             transition: all 0.2s ease;
         }
-        .nav-tab.active {
-            background: var(--accent-color); color: #0b0e14; border-color: var(--accent-color);
-        }
+        .nav-tab.active { background: var(--accent-color); color: #0b0e14; border-color: var(--accent-color); }
 
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
@@ -59,23 +54,15 @@
             border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px;
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .btn-primary:active { transform: scale(0.98); }
 
         #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--border-color); }
         
-        .geo-box {
-            background: #0b0e14; border: 1px solid var(--border-color); padding: 15px;
-            border-radius: 8px; font-size: 14px; text-align: center; margin-bottom: 15px;
-        }
-
-        .duty-box {
+        .geo-box, .duty-box {
             background: #0b0e14; border: 1px solid var(--border-color); padding: 16px;
             border-radius: 8px; margin-top: 10px;
         }
 
-        .alert-box {
-            padding: 14px; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 15px; font-size: 14px;
-        }
+        .alert-box { padding: 14px; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 15px; font-size: 14px; }
         .alert-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
         .alert-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
 
@@ -97,13 +84,11 @@
     <div class="card" id="mainDashboard" style="display: none;">
         <p style="font-size:14px; color:var(--text-muted); margin-bottom:15px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
 
-        <!-- Навигация: Бөлүмдөр -->
         <div class="portal-nav">
             <button class="nav-tab active" id="tabClassRegister"><i class="fas fa-qrcode"></i> Сабакка каттал</button>
             <button class="nav-tab" id="tabDutyPortal"><i class="fas fa-user-shield"></i> Окуучулардын кезмет порталы</button>
         </div>
         
-        <!-- 1-БӨЛҮМ: Сабакка каттал -->
         <div id="sectionClassRegister">
             <div class="card-title"><i class="fas fa-qrcode"></i> Мектеп QR кодун сканерлөө</div>
             <div class="geo-box" id="geoStatus">
@@ -119,13 +104,12 @@
             <div id="scanResult"></div>
         </div>
 
-        <!-- 2-БӨЛҮМ: Окуучулардын кезмет порталы -->
         <div id="sectionDutyPortal" style="display: none;">
             <div class="card-title"><i class="fas fa-user-shield"></i> Бүгүнкү Кезметчилер</div>
             <div class="duty-box">
                 <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px;">Бүгүнкү мектеп/класс кезметчилери:</p>
                 <div id="dutyListContainer" style="color:#fff; font-weight:600; line-height:1.6;">
-                    <i class="fas fa-spinner fa-spin"></i> Маалымат жүктөлүүдө...
+                    <i class="fas fa-spinner fa-spin"></i> Базадан маалымат жүктөлүүдө...
                 </div>
             </div>
 
@@ -143,7 +127,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -166,7 +150,6 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // NAV TABS SWITCHING LOGIC
     const tabClassRegister = document.getElementById('tabClassRegister');
     const tabDutyPortal = document.getElementById('tabDutyPortal');
     const sectionClassRegister = document.getElementById('sectionClassRegister');
@@ -184,15 +167,12 @@
         tabClassRegister.classList.remove('active');
         sectionClassRegister.style.display = 'none';
         sectionDutyPortal.style.display = 'block';
-        loadDutySchedule();
+        listenDutySchedule();
     });
 
-    // GPS LOGIC
     function requestLocationAccess() {
         return new Promise((resolve, reject) => {
-            if (!("geolocation" in navigator)) {
-                return reject("Түзмөгүңүз геолокацияны колдобойт!");
-            }
+            if (!("geolocation" in navigator)) return reject("Түзмөгүңүз геолокацияны колдобойт!");
 
             const updateLocationUI = (pos) => {
                 const lat = pos.coords.latitude.toFixed(6);
@@ -216,9 +196,7 @@
                     updateLocationUI(fastPos);
                     navigator.geolocation.watchPosition(
                         (accuratePos) => {
-                            if (accuratePos.coords.accuracy < fastPos.coords.accuracy) {
-                                updateLocationUI(accuratePos);
-                            }
+                            if (accuratePos.coords.accuracy < fastPos.coords.accuracy) updateLocationUI(accuratePos);
                         },
                         (err) => {},
                         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
@@ -229,19 +207,10 @@
                         updateLocationUI,
                         (err2) => {
                             let errMsg = "GPS аныкталган жок!";
-                            if (err2.code === err2.PERMISSION_DENIED) {
-                                errMsg = "Браузердин жөндөөлөрүнөн геолокацияга уруксат бериңиз!";
-                            } else if (err2.code === err2.POSITION_UNAVAILABLE) {
-                                errMsg = "Телефонуңуздун GPS баскычын күйгүзүңүз!";
-                            }
-
+                            if (err2.code === err2.PERMISSION_DENIED) errMsg = "Браузердин жөндөөлөрүнөн уруксат бериңиз!";
                             document.getElementById('geoStatus').innerHTML = `
-                                <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
-                                    <i class="fas fa-exclamation-triangle"></i> ${errMsg}
-                                </div>
-                                <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
-                                    <i class="fas fa-sync"></i> Кайра аракет кылуу
-                                </button>
+                                <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;"><i class="fas fa-exclamation-triangle"></i> ${errMsg}</div>
+                                <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;"><i class="fas fa-sync"></i> Кайра аракет кылуу</button>
                             `;
                             document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
                             reject(errMsg);
@@ -255,11 +224,7 @@
     }
 
     async function handleGpsRequest() {
-        document.getElementById('geoStatus').innerHTML = `
-            <div style="color:var(--accent-color);">
-                <i class="fas fa-spinner fa-spin"></i> GPS координаттары аныкталууда, күтө туруңуз...
-            </div>
-        `;
+        document.getElementById('geoStatus').innerHTML = `<div style="color:var(--accent-color);"><i class="fas fa-spinner fa-spin"></i> GPS аныкталууда...</div>`;
         try {
             await requestLocationAccess();
             document.getElementById('readerBox').style.display = 'block';
@@ -297,20 +262,18 @@
             }
         }
 
-        if (currentStudent) {
-            localStorage.setItem('bilimal_student_email', email);
-            document.getElementById('authSection').style.display = 'none';
-            document.getElementById('mainDashboard').style.display = 'block';
-            document.getElementById('studentNameDisplay').innerText = currentStudent.name;
-        } else {
-            showToast('Почта табылган жок! Мугалимге кошудуруңуз.');
+        if (!currentStudent) {
+            currentStudent = { id: 'st_' + Date.now(), name: email.split('@')[0], email: email };
         }
+
+        localStorage.setItem('bilimal_student_email', email);
+        document.getElementById('authSection').style.display = 'none';
+        document.getElementById('mainDashboard').style.display = 'block';
+        document.getElementById('studentNameDisplay').innerText = currentStudent.name;
     }
 
     function startScanner() {
-        if (html5QrcodeScanner) {
-            try { html5QrcodeScanner.clear(); } catch(e){}
-        }
+        if (html5QrcodeScanner) { try { html5QrcodeScanner.clear(); } catch(e){} }
         html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 240 });
         html5QrcodeScanner.render(onScanSuccess, () => {});
     }
@@ -323,11 +286,7 @@
         resultBox.innerHTML = '';
 
         try {
-            showToast('Геолокация жана Убакыт текшерилүүдө...');
-
-            if (!verifiedLocation) {
-                throw new Error("GPS геолокациясы алынган жок!");
-            }
+            if (!verifiedLocation) throw new Error("GPS геолокациясы алынган жок!");
 
             const now = new Date();
             const nowTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -351,12 +310,11 @@
 
             resultBox.innerHTML = `
                 <div class="alert-box alert-success">
-                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы (${locationAccuracy}) менен катышууңуз ийгиликтүү катталды!
+                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы (${locationAccuracy}) менен катышууңуз катталды!
                 </div>
             `;
             showToast('Катышууңуз катталды!');
         } catch (err) {
-            console.error(err);
             resultBox.innerHTML = `
                 <div class="alert-box alert-error">
                     <i class="fas fa-exclamation-triangle"></i> КАТА: GPS аныкталган жок! Катышуу катталган жок.
@@ -368,29 +326,33 @@
         }
     }
 
-    // 2-БӨЛҮМ КЕЗМЕТЧИЛЕРДИ БАЗАДАН АЛУУ ЖАНА КАБЫЛ АЛУУ LOGIC
-    async function loadDutySchedule() {
+    // FIREBASE REALTIME КЕЗМЕТ ТИЗМЕСИН УГУУЖАНА ЖАҢЫЛОО
+    function listenDutySchedule() {
         const dutyContainer = document.getElementById('dutyListContainer');
-        try {
-            const dutyRef = ref(database, `duty_schedule/${todayStr}`);
-            const snapshot = await get(dutyRef);
+        const dutyRef = ref(database, `duty_schedule/${todayStr}`);
 
+        onValue(dutyRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 let html = '<ul style="list-style:none; padding:0;">';
                 for (const [id, item] of Object.entries(data)) {
-                    html += `<li style="padding:6px 0; border-bottom:1px solid var(--border-color);">
-                        <i class="fas fa-user-clock" style="color:var(--accent-color);"></i> ${item.studentName} - <span style="color:var(--accent-green); font-size:12px;">${item.status || 'Кезметте'}</span>
+                    const isCompleted = item.status === 'Кабыл алды';
+                    const statusColor = isCompleted ? 'var(--accent-green)' : 'var(--accent-color)';
+                    
+                    html += `<li style="padding:8px 0; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <i class="fas fa-user-clock" style="color:var(--accent-color); margin-right:8px;"></i> ${item.studentName}
+                            ${item.tasks ? `<br><small style="color:var(--text-muted); font-size:11px;">Тапшырма: ${item.tasks}</small>` : ''}
+                        </div>
+                        <span style="color:${statusColor}; font-size:12px; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;">${item.status || 'Кезметте'}</span>
                     </li>`;
                 }
                 html += '</ul>';
                 dutyContainer.innerHTML = html;
             } else {
-                dutyContainer.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Бүгүнкү күнгө кезметчилер белгилене элек.</p>';
+                dutyContainer.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Бүгүнкү күнгө кезметчилер дайындала элек (Мугалим панелинде Авто-График түзүлүшү керек).</p>';
             }
-        } catch (e) {
-            dutyContainer.innerHTML = '<p style="color:var(--accent-red); font-size:13px;">Маалыматты жүктөөдө ката чыкты.</p>';
-        }
+        });
     }
 
     document.getElementById('claimDutyBtn').addEventListener('click', async () => {
@@ -399,6 +361,7 @@
         try {
             const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const userDutyRef = ref(database, `duty_schedule/${todayStr}/${currentStudent.id}`);
+            
             await set(userDutyRef, {
                 studentId: currentStudent.id,
                 studentName: currentStudent.name,
@@ -406,7 +369,6 @@
                 claimedAt: nowTime
             });
             showToast('Кезмет кабыл алынды!');
-            loadDutySchedule();
         } catch (e) {
             showToast('Ката чыкты!');
         }
