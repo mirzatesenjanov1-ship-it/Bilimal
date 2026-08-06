@@ -226,9 +226,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(11, 14, 20, 0.92);
+            background: rgba(11, 14, 20, 0.95);
             backdrop-filter: blur(8px);
-            display: none;
+            display: flex; /* Дефолт катары ачык турат, Firebase текшерип анан жабат */
             justify-content: center;
             align-items: center;
             z-index: 10000;
@@ -317,14 +317,16 @@
         }
 
         .auth-error-msg {
-            color: #e74c3c;
+            color: #ff5252;
             font-size: 13px;
             margin-top: 12px;
             display: none;
-            background: rgba(231, 76, 60, 0.15);
-            padding: 8px 12px;
+            background: rgba(255, 82, 82, 0.15);
+            padding: 10px;
             border-radius: 6px;
-            border: 1px solid rgba(231, 76, 60, 0.3);
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            text-align: left;
+            word-break: break-word;
         }
 
         @media (max-width: 768px) {
@@ -352,11 +354,11 @@
             <form id="auth-form" onsubmit="return false;">
                 <div class="auth-input-group">
                     <label id="lbl-email">Электрондук почта (E-mail)</label>
-                    <input type="email" id="auth-email" placeholder="example@gmail.com" required>
+                    <input type="email" id="auth-email" placeholder="example@gmail.com" required autocomplete="email">
                 </div>
                 <div class="auth-input-group">
                     <label id="lbl-password">Сыр сөз (Пароль)</label>
-                    <input type="password" id="auth-password" placeholder="******" required minlength="6">
+                    <input type="password" id="auth-password" placeholder="******" required minlength="6" autocomplete="current-password">
                 </div>
 
                 <button type="button" class="auth-btn-primary" id="auth-submit-btn">Кирүү</button>
@@ -374,16 +376,8 @@
     <!-- НЕГИЗГИ КАБИНЕТ -->
     <div class="container" id="main-content">
         <!-- Google AdSense Баннер -->
-        <div class="ad-container">
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-1495571814896964"
-                 data-ad-slot="1574613769"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
+        <div class="ad-container" id="adsense-top-container">
+            <!-- AdSense динамикалык түрдө кабинет ачылганда кошулат -->
         </div>
 
         <div class="profile-card">
@@ -457,9 +451,9 @@
     <!-- Adsterra Social Bar -->
     <script type="text/javascript" src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js"></script>
 
-    <!-- Котормо (i18n) Логикасы -->
+    <!-- Котормо (i18n) Логикасы - Глобалдык Чөйрөдө -->
     <script>
-        const translations = {
+        window.translations = {
             ky: {
                 loaderText: "Система текшерилүүдө...",
                 authLoginTitle: "Жеке кабинетке кирүү",
@@ -485,7 +479,7 @@
                 curatorsTitle: "Класс жетекчилер/Кураторлор үчүн",
                 curatorsDesc: "Башкаруу жана отчеттор",
                 errWrongPass: "Почта же сыр сөз ката!",
-                errEmailInUse: "Бул почта мурда катталган! Кирүү баскычын басыңыз.",
+                errEmailInUse: "Бул почта мурда катталган! 'Кирүү' баскычын басыңыз.",
                 errWeakPass: "Сыр сөз кеминде 6 белгиден турушу керек!",
                 errGeneral: "Ката кетти: "
             },
@@ -549,17 +543,17 @@
             }
         };
 
-        let currentLang = localStorage.getItem('site_lang') || 'ky';
+        window.currentLang = localStorage.getItem('site_lang') || 'ky';
 
-        function setLanguage(lang) {
-            currentLang = lang;
+        window.setLanguage = function(lang) {
+            window.currentLang = lang;
             localStorage.setItem('site_lang', lang);
 
             document.querySelectorAll('.lang-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.textContent.toLowerCase() === lang);
             });
 
-            const t = translations[lang];
+            const t = window.translations[lang] || window.translations['ky'];
 
             document.getElementById('loader-text').innerText = t.loaderText;
             document.getElementById('lbl-email').innerText = t.lblEmail;
@@ -596,21 +590,20 @@
             if (window.currentUserEmail) {
                 document.getElementById('user-email-display').innerText = t.userLabel + window.currentUserEmail;
             }
-        }
+        };
 
         window.addEventListener('DOMContentLoaded', () => {
-            setLanguage(currentLang);
+            window.setLanguage(window.currentLang);
         });
 
         window.addEventListener('error', function(e) {
             if (e.message && e.message.includes('cross-origin')) {
-                console.warn('Cross-origin коргоо катасы коопсуз иштетилди.');
                 e.preventDefault();
             }
         }, true);
     </script>
 
-    <!-- FIREBASE & AUTH ENGINE -->
+    <!-- FIREBASE AUTH ENGINE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -628,9 +621,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        
-        // Analytics коопсуз иштетүү (AdBlock тоскоол кылбашы үчүн)
-        try { getAnalytics(app); } catch(e) { console.warn("Analytics бөгөттөлдү:", e); }
+        try { getAnalytics(app); } catch(e) {}
         
         const auth = getAuth(app);
         setPersistence(auth, browserLocalPersistence);
@@ -648,7 +639,27 @@
         let isModeLogin = true; 
         window.isModeLoginStatus = isModeLogin;
 
-        // Колдонуучунун кирүү статусун текшерүү
+        let adsenseLoaded = false;
+        function loadAdsenseDynamically() {
+            if (adsenseLoaded) return;
+            const container = document.getElementById('adsense-top-container');
+            if (container) {
+                container.innerHTML = `
+                    <ins class="adsbygoogle"
+                         style="display:block"
+                         data-ad-client="ca-pub-1495571814896964"
+                         data-ad-slot="1574613769"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"></ins>
+                `;
+                try {
+                    (adsbygoogle = window.adsbygoogle || []).push({});
+                    adsenseLoaded = true;
+                } catch(e) { console.warn("AdSense push error handled:", e); }
+            }
+        }
+
+        // Колдонуучу киргенде/чыкканда
         onAuthStateChanged(auth, (user) => {
             loader.style.display = 'none';
 
@@ -657,32 +668,35 @@
                 localStorage.setItem('duty_current_teacher_email', user.email);
                 authModal.style.display = 'none';
                 mainContent.style.display = 'block';
-                const t = window.translations[window.currentLang || 'ky'];
-                userEmailDisplay.textContent = `${t.userLabel}${user.email}`;
+                loadAdsenseDynamically();
+                if (window.setLanguage) window.setLanguage(window.currentLang || 'ky');
             } else {
                 window.currentUserEmail = null;
                 mainContent.style.display = 'none';
                 authModal.style.display = 'flex';
+                if (window.setLanguage) window.setLanguage(window.currentLang || 'ky');
             }
         });
 
-        // Режимди алмаштыруу (Кирүү <-> Катталуу)
+        // Режим алмаштыруу (Кирүү / Катталуу)
         authSwitchBtn.addEventListener('click', () => {
             isModeLogin = !isModeLogin;
             window.isModeLoginStatus = isModeLogin;
             authError.style.display = 'none';
-            window.setLanguage(window.currentLang || 'ky');
+            if (window.setLanguage) window.setLanguage(window.currentLang || 'ky');
         });
 
-        // КИРҮҮ / КАТТАЛУУ ФУНКЦИЯСЫ
+        // БАШКЫ АВТОРИЗАЦИЯ ФУНКЦИЯСЫ
         async function handleAuthAction() {
             authError.style.display = 'none';
+            authError.textContent = '';
+
             const emailInput = document.getElementById('auth-email');
             const passwordInput = document.getElementById('auth-password');
 
             const email = emailInput ? emailInput.value.trim() : '';
             const password = passwordInput ? passwordInput.value : '';
-            const t = window.translations[window.currentLang || 'ky'];
+            const t = (window.translations && window.translations[window.currentLang]) ? window.translations[window.currentLang] : window.translations['ky'];
 
             if (!email || !password) {
                 authError.style.display = 'block';
@@ -701,34 +715,32 @@
                 }
             } catch (error) {
                 authError.style.display = 'block';
-                console.error("Auth Катасы:", error.code, error.message);
+                console.error("Firebase Auth Катасы:", error.code, error.message);
 
                 if (
                     error.code === 'auth/user-not-found' || 
                     error.code === 'auth/wrong-password' || 
                     error.code === 'auth/invalid-credential'
                 ) {
-                    authError.textContent = t.errWrongPass;
+                    authError.textContent = t.errWrongPass || "Почта же сыр сөз ката!";
                 } else if (error.code === 'auth/email-already-in-use') {
-                    authError.textContent = t.errEmailInUse;
+                    authError.textContent = t.errEmailInUse || "Бул почта мурда катталган!";
                 } else if (error.code === 'auth/weak-password') {
-                    authError.textContent = t.errWeakPass;
+                    authError.textContent = t.errWeakPass || "Сыр сөз кеминде 6 белги турушу керек!";
                 } else if (error.code === 'auth/invalid-email') {
                     authError.textContent = "Туура эмес почта форматы!";
                 } else {
-                    authError.textContent = t.errGeneral + error.message;
+                    authError.textContent = (t.errGeneral || "Ката: ") + error.message;
                 }
             } finally {
                 authSubmitBtn.disabled = false;
-                window.setLanguage(window.currentLang || 'ky');
+                if (window.setLanguage) window.setLanguage(window.currentLang || 'ky');
             }
         }
 
-        // Баскычка түздөн-түз 'click' байланышы кошулду
         authSubmitBtn.addEventListener('click', handleAuthAction);
 
-        // Enter басылганда да аткарылуусу үчүн
-        document.getElementById('auth-password').addEventListener('keypress', (e) => {
+        document.getElementById('auth-password').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') handleAuthAction();
         });
 
