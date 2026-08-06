@@ -27,7 +27,7 @@
         #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; border: 1px solid var(--border-color); }
         .alert { padding: 14px; border-radius: 8px; margin-top: 15px; font-weight: bold; text-align: center; font-size: 14px; line-height: 1.4; }
         .alert-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
-        .alert-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+        .alert-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); text-align: left; }
     </style>
 </head>
 <body>
@@ -56,7 +56,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -77,55 +77,53 @@
 
     const studentEmail = (localStorage.getItem('bilimal_student_email') || '').trim().toLowerCase();
 
-    // МОБИЛДИК ТҮЗМӨКТӨР ҮЧҮН КҮЧӨТҮЛГӨН GPS АНЫКТОО
     document.getElementById('btnGetGps').addEventListener('click', () => {
         const status = document.getElementById('gpsStatus');
-        status.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS аныкталууда... Радар күйгүзүлдү.</span>`;
+        status.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS суралууда... Түзмөктөн уруксат бериңиз.</span>`;
 
         if (!navigator.geolocation) {
             status.innerHTML = `<span style="color:var(--accent-red); font-size:13px;">Түзмөгүңүз геолокацияны колдобойт.</span>`;
             return;
         }
 
-        // Жогорку тактыктагы уруксат
-        const optionsHigh = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
-        // Төмөнкү тактыктагы резервдик уруксат (эгер жогорку тактык мобилдик телефондо тартпай калса)
-        const optionsLow = { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 };
-
-        function handleSuccess(pos) {
-            const lat = pos.coords.latitude.toFixed(6);
-            const lng = pos.coords.longitude.toFixed(6);
-            const acc = Math.round(pos.coords.accuracy);
-
-            gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
-            gpsAccuracy = `~${acc} метр`;
-
-            status.innerHTML = `
-                <span style="color:var(--accent-green); font-weight:bold; font-size:13px;">
-                    <i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ${gpsAccuracy})
-                </span>
-            `;
-            document.getElementById('scannerWrapper').style.display = 'block';
-            startScanner();
-        }
+        const options = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
 
         navigator.geolocation.getCurrentPosition(
-            handleSuccess,
-            (err) => {
-                // Эгер HighAccuracy мобилдик тармакта иштебей калса, экинчи резервдик режимди ишке киргизебиз:
-                navigator.geolocation.getCurrentPosition(
-                    handleSuccess,
-                    (err2) => {
-                        let errMsg = "GPS аныкталган жок!";
-                        if (err2.code === err2.PERMISSION_DENIED) {
-                            errMsg = "Браузердин жөндөөлөрүнөн GPS геолокацияга уруксат бериңиз!";
-                        }
-                        status.innerHTML = `<span style="color:var(--accent-red); font-size:13px;"><i class="fas fa-exclamation-circle"></i> ${errMsg}</span>`;
-                    },
-                    optionsLow
-                );
+            (pos) => {
+                const lat = pos.coords.latitude.toFixed(6);
+                const lng = pos.coords.longitude.toFixed(6);
+                const acc = Math.round(pos.coords.accuracy);
+
+                gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
+                gpsAccuracy = `~${acc} метр`;
+
+                status.innerHTML = `
+                    <span style="color:var(--accent-green); font-weight:bold; font-size:13px;">
+                        <i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ${gpsAccuracy})
+                    </span>
+                `;
+                document.getElementById('scannerWrapper').style.display = 'block';
+                startScanner();
             },
-            optionsHigh
+            (err) => {
+                let errorHelp = "";
+                if (err.code === err.PERMISSION_DENIED) {
+                    errorHelp = `
+                        <div class="alert alert-error">
+                            <i class="fas fa-lock"></i> <strong>GPS уруксаты бөгөттөлгөн!</strong><br><br>
+                            Уруксатты күйгүзүү үчүн:<br>
+                            1. Браузердин жогору жагындагы <strong>кулпу (🔒)</strong> сүрөтчөсүн басыңыз.<br>
+                            2. <strong>"Разрешения / Сайттын жөндөөлөрү"</strong> бөлүмүнө кириңиз.<br>
+                            3. <strong>"Местоположение / Геолокация"</strong> дегенди <strong>"Разрешить" (Уруксат берүү)</strong> кылыңыз.<br>
+                            4. Баракчаны жаңыртып кайра аракет кылыңыз.
+                        </div>
+                    `;
+                } else {
+                    errorHelp = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> GPS сигналы начар же телефондун геолокациясы өчүк. Индикаторду текшериңиз.</div>`;
+                }
+                status.innerHTML = errorHelp;
+            },
+            options
         );
     });
 
@@ -145,7 +143,7 @@
         resultBox.innerHTML = '';
 
         try {
-            if (!gpsLocation) throw new Error("GPS геолокациясы алынган жок!");
+            if (!gpsLocation) throw new Error("GPS геолокация алынган жок!");
 
             const todayStr = new Date().toISOString().split('T')[0];
             const now = new Date();
@@ -153,14 +151,11 @@
             const hours = now.getHours();
             const minutes = now.getMinutes();
 
-            // Расписание: 08:15ке чейин "PRESENT" (Келди), андан кийин "LATE" (Кечикти)
             let autoStatus = (hours > 8 || (hours === 8 && minutes > 15)) ? 'LATE' : 'PRESENT';
 
             let matchedStudentId = null;
             let matchedStudentName = studentEmail.split('@')[0];
 
-            // 1. КЛАСС ЖЕТЕКЧИНИН ПАНЕЛИ МЕНЕН ДАЛ КЕЛТИРҮҮ
-            // Realtime Database "students" түйүнүнөн окуучуну email аркылуу издеп, чыныгы IDсин табабыз
             const studentsSnap = await get(ref(database, 'students'));
             if (studentsSnap.exists()) {
                 const allStudents = studentsSnap.val();
@@ -173,25 +168,10 @@
                 }
             }
 
-            // Эгер Firebase DBде табылбаса LocalStorage'деги мугалимдин тизмесинен карайбыз
-            if (!matchedStudentId) {
-                const storedTeacherData = localStorage.getItem('attendance_app_students');
-                if (storedTeacherData) {
-                    const parsedList = JSON.parse(storedTeacherData);
-                    const found = parsedList.find(s => s.email && s.email.toLowerCase().trim() === studentEmail);
-                    if (found) {
-                        matchedStudentId = found.id;
-                        matchedStudentName = found.name;
-                    }
-                }
-            }
-
-            // Эгер эч жерде табылбаса убактылуу уникалдуу ID түзөбүз
             if (!matchedStudentId) {
                 matchedStudentId = 'st_' + studentEmail.replace(/[^a-zA-Z0-9]/g, '');
             }
 
-            // 2. КЛАСС ЖЕТЕКЧИНИН ЖУРНАЛЫНА СИНХРОНДУУ ЖАЗУУ
             const attendanceData = {
                 studentId: matchedStudentId,
                 studentName: matchedStudentName,
@@ -213,7 +193,7 @@
             resultBox.innerHTML = `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча катышууңуз катталды!<br>
-                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Класс жетекчинин журналына сакталды.</small>
+                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Журналга жүктөлдү.</small>
                 </div>
             `;
         } catch (err) {
