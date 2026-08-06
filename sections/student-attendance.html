@@ -14,6 +14,7 @@
             --accent-blue: #00d2ff;
             --accent-green: #10b981;
             --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
             --text-main: #ffffff;
             --text-muted: #9ca3af;
         }
@@ -23,11 +24,13 @@
         .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; }
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
         .btn-back { background: var(--border-color); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-        .btn-gps { width: 100%; background: var(--accent-blue); color: #0b0e14; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 15px 0; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-gps { width: 100%; background: var(--accent-blue); color: #0b0e14; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 10px 0; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-retry { background: var(--accent-yellow); color: #0b0e14; border: none; padding: 10px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; }
         #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; border: 1px solid var(--border-color); }
-        .alert { padding: 14px; border-radius: 8px; margin-top: 15px; font-weight: bold; text-align: center; font-size: 14px; line-height: 1.4; }
+        .alert { padding: 14px; border-radius: 8px; margin-top: 15px; font-weight: normal; font-size: 13px; line-height: 1.5; }
         .alert-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
-        .alert-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); text-align: left; }
+        .alert-error { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border: 1px solid var(--accent-red); text-align: left; }
+        .alert-warning { background: rgba(245, 158, 11, 0.15); color: #fde047; border: 1px solid var(--accent-yellow); text-align: left; }
     </style>
 </head>
 <body>
@@ -42,7 +45,11 @@
 
         <div id="gpsBox" style="background: #0b0e14; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
             <p style="font-size: 13px; color: var(--text-muted);">Катышууну сактоо үчүн алгач GPS аныктаңыз:</p>
-            <button class="btn-gps" id="btnGetGps"><i class="fas fa-location-arrow"></i> GPS Аныктоо</button>
+            
+            <button class="btn-gps" id="btnGetGps">
+                <i class="fas fa-location-arrow"></i> GPS Аныктоо
+            </button>
+            
             <div id="gpsStatus"></div>
         </div>
 
@@ -77,16 +84,39 @@
 
     const studentEmail = (localStorage.getItem('bilimal_student_email') || '').trim().toLowerCase();
 
-    document.getElementById('btnGetGps').addEventListener('click', () => {
-        const status = document.getElementById('gpsStatus');
-        status.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS суралууда... Түзмөктөн уруксат бериңиз.</span>`;
+    const btnGetGps = document.getElementById('btnGetGps');
+    const gpsStatus = document.getElementById('gpsStatus');
+
+    // Экран ачылганда уруксат статусун автоматты текшерүү
+    checkPermissionStatus();
+
+    async function checkPermissionStatus() {
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const status = await navigator.permissions.query({ name: 'geolocation' });
+                if (status.state === 'denied') {
+                    showDeniedInstructions();
+                }
+                status.onchange = () => {
+                    if (status.state === 'granted') {
+                        gpsStatus.innerHTML = `<span style="color:var(--accent-green); font-size:13px;"><i class="fas fa-check"></i> Уруксат берилди! "GPS Аныктоо" баскычын басыңыз.</span>`;
+                    } else if (status.state === 'denied') {
+                        showDeniedInstructions();
+                    }
+                };
+            } catch (e) {}
+        }
+    }
+
+    btnGetGps.addEventListener('click', () => {
+        gpsStatus.innerHTML = `<span style="color:var(--accent-blue); font-size:13px;"><i class="fas fa-spinner fa-spin"></i> GPS геолокация суралууда...</span>`;
 
         if (!navigator.geolocation) {
-            status.innerHTML = `<span style="color:var(--accent-red); font-size:13px;">Түзмөгүңүз геолокацияны колдобойт.</span>`;
+            gpsStatus.innerHTML = `<div class="alert alert-error">Түзмөгүңүз геолокацияны колдобойт.</div>`;
             return;
         }
 
-        const options = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
+        const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
         navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -97,35 +127,43 @@
                 gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
                 gpsAccuracy = `~${acc} метр`;
 
-                status.innerHTML = `
-                    <span style="color:var(--accent-green); font-weight:bold; font-size:13px;">
+                gpsStatus.innerHTML = `
+                    <div style="color:var(--accent-green); font-weight:bold; font-size:13px; margin-top:8px;">
                         <i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ${gpsAccuracy})
-                    </span>
+                    </div>
                 `;
                 document.getElementById('scannerWrapper').style.display = 'block';
                 startScanner();
             },
             (err) => {
-                let errorHelp = "";
                 if (err.code === err.PERMISSION_DENIED) {
-                    errorHelp = `
-                        <div class="alert alert-error">
-                            <i class="fas fa-lock"></i> <strong>GPS уруксаты бөгөттөлгөн!</strong><br><br>
-                            Уруксатты күйгүзүү үчүн:<br>
-                            1. Браузердин жогору жагындагы <strong>кулпу (🔒)</strong> сүрөтчөсүн басыңыз.<br>
-                            2. <strong>"Разрешения / Сайттын жөндөөлөрү"</strong> бөлүмүнө кириңиз.<br>
-                            3. <strong>"Местоположение / Геолокация"</strong> дегенди <strong>"Разрешить" (Уруксат берүү)</strong> кылыңыз.<br>
-                            4. Баракчаны жаңыртып кайра аракет кылыңыз.
+                    showDeniedInstructions();
+                } else {
+                    gpsStatus.innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i> GPS сигналы начар же телефондун геолокациясы өчүк.<br>
+                            <button class="btn-retry" onclick="location.reload()"><i class="fas fa-redo"></i> Кайра аракет кылуу</button>
                         </div>
                     `;
-                } else {
-                    errorHelp = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i> GPS сигналы начар же телефондун геолокациясы өчүк. Индикаторду текшериңиз.</div>`;
                 }
-                status.innerHTML = errorHelp;
             },
             options
         );
     });
+
+    function showDeniedInstructions() {
+        gpsStatus.innerHTML = `
+            <div class="alert alert-error">
+                <strong style="color:#ef4444; font-size:14px;"><i class="fas fa-user-lock"></i> GPS уруксаты бөгөттөлгөн!</strong><br><br>
+                Браузер уруксатты бөгөттөп койгондуктан, аны кол менен күйгүзүү керек:<br><br>
+                <strong>1-кадам:</strong> Браузердин жогорку сол бурчундагы 🔒 (кулпу) же ⚙️ (жөндөө) сүрөтчөсүн басыңыз.<br>
+                <strong>2-кадам:</strong> <em>"Сайттын жөндөөлөрү" (Site settings)</em> бөлүмүнө кириңиз.<br>
+                <strong>3-кадам:</strong> <em>"Геолокация / Местоположение"</em> дегенди <strong>"Разрешить" (Уруксат берүү)</strong> кылып өзгөртүңүз.<br>
+                <strong>4-кадам:</strong> Төмөндөгү баскычты басып баракчаны жаңыртыңыз.
+                <button class="btn-retry" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Баракчаны жаңыртуу</button>
+            </div>
+        `;
+    }
 
     function startScanner() {
         if (html5QrcodeScanner) {
@@ -193,7 +231,7 @@
             resultBox.innerHTML = `
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча катышууңуз катталды!<br>
-                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Журналга жүктөлдү.</small>
+                    <small>Статус: <strong>${autoStatus === 'PRESENT' ? 'Келди' : 'Кечикти'}</strong> | Класс жетекчинин журналына сакталды.</small>
                 </div>
             `;
         } catch (err) {
