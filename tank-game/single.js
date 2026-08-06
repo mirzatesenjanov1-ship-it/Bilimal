@@ -47,6 +47,12 @@ function gameLoop() {
 // ============================================================================
 // 💰 ADSTERRA ЖАРНАМАСЫН БАШКАРУУ ЖАНА КАТПОО КЕПИЛДИГИ (ИНТЕГРАЦИЯ)
 // ============================================================================
+
+// Жарнама экранында колдонуучу манжасы менен экранды жылдырып жибербеши үчүн бөгөттөө
+function preventScroll(e) {
+    e.preventDefault();
+}
+
 function showAdOverlay(titleText, callbackOnEnd) {
     // 1. Оюнду дароо тындыруу (Жарнама убагында JS процессорду бошотот)
     isGameRunning = false; 
@@ -55,21 +61,32 @@ function showAdOverlay(titleText, callbackOnEnd) {
     const timerText = document.getElementById('ad-timer-text');
     const screenTitle = document.getElementById('ad-screen-title');
 
-    screenTitle.innerText = titleText;
-    overlay.style.display = 'flex'; // Жарнама экранын ачуу
+    // Экрандын керексиз скролл болушун бөгөттөөчү окуяны кошуу
+    window.addEventListener('touchmove', preventScroll, { passive: false });
+    window.addEventListener('wheel', preventScroll, { passive: false });
+
+    if (screenTitle) screenTitle.innerText = titleText;
+    if (overlay) {
+        overlay.style.display = 'flex'; // Жарнама экранын ачуу
+        overlay.style.touchAction = 'none'; // Жарнама оверлейинде скроллду толугу менен бөгөттөө
+    }
 
     let timeLeft = 7; // Сиз сураган 7 секунддук убакыт
-    timerText.innerText = `Оюн уланууга: ${timeLeft} сек...`;
+    if (timerText) timerText.innerText = `Оюн уланууга: ${timeLeft} сек...`;
 
     // Таймердин артка эсептөөсү
     const adCountdown = setInterval(() => {
         timeLeft--;
-        timerText.innerText = `Оюн уланууга: ${timeLeft} сек...`;
+        if (timerText) timerText.innerText = `Оюн уланууга: ${timeLeft} сек...`;
 
         if (timeLeft <= 0) {
             clearInterval(adCountdown);
-            overlay.style.display = 'none'; // Жарнаманы жабуу
+            if (overlay) overlay.style.display = 'none'; // Жарнаманы жабуу
             
+            // Экранды бөгөттөөнү алып салуу
+            window.removeEventListener('touchmove', preventScroll);
+            window.removeEventListener('wheel', preventScroll);
+
             // 2. Жарнама бүткөндөн кийин гана оюндун циклдерин кайра жандыруу
             callbackOnEnd(); 
         }
