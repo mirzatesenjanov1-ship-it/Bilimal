@@ -219,19 +219,7 @@
             color: #7f8c8d;
         }
 
-        .footer-link {
-            text-align: center;
-            margin-top: 40px;
-            padding: 20px;
-        }
-
-        .footer-link a {
-            color: #00d2ff;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        /* КАТТАЛУУ / КИРҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
+        /* КАТТАЛУУ ЖАНА КИРҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
         .auth-modal-overlay {
             position: fixed;
             top: 0;
@@ -315,11 +303,6 @@
             background: #00a3cc;
         }
 
-        .auth-btn-primary:disabled {
-            background: #34495e;
-            cursor: not-allowed;
-        }
-
         .auth-switch-text {
             margin-top: 15px;
             font-size: 13px;
@@ -336,10 +319,10 @@
         .auth-error-msg {
             color: #e74c3c;
             font-size: 13px;
-            margin-top: 10px;
+            margin-top: 12px;
             display: none;
-            background: rgba(231, 76, 60, 0.1);
-            padding: 8px;
+            background: rgba(231, 76, 60, 0.15);
+            padding: 8px 12px;
             border-radius: 6px;
             border: 1px solid rgba(231, 76, 60, 0.3);
         }
@@ -366,7 +349,7 @@
             <h3 id="auth-title">Жеке кабинетке кирүү</h3>
             <p id="auth-subtitle">Сайттын функцияларын колдонуу үчүн почтаңызды киргизиңиз</p>
 
-            <form id="auth-form">
+            <form id="auth-form" onsubmit="return false;">
                 <div class="auth-input-group">
                     <label id="lbl-email">Электрондук почта (E-mail)</label>
                     <input type="email" id="auth-email" placeholder="example@gmail.com" required>
@@ -376,7 +359,7 @@
                     <input type="password" id="auth-password" placeholder="******" required minlength="6">
                 </div>
 
-                <button type="submit" class="auth-btn-primary" id="auth-submit-btn">Кирүү</button>
+                <button type="button" class="auth-btn-primary" id="auth-submit-btn">Кирүү</button>
             </form>
 
             <div class="auth-error-msg" id="auth-error"></div>
@@ -595,16 +578,17 @@
             document.getElementById('badge-lab').innerHTML = `<i class="fas fa-flask"></i> ${t.badgeLab}`;
 
             const isLogin = window.isModeLoginStatus !== undefined ? window.isModeLoginStatus : true;
+            const submitBtn = document.getElementById('auth-submit-btn');
             if (isLogin) {
                 document.getElementById('auth-title').innerText = t.authLoginTitle;
                 document.getElementById('auth-subtitle').innerText = t.authLoginSub;
-                document.getElementById('auth-submit-btn').innerText = t.btnLogin;
+                if (submitBtn) submitBtn.innerText = t.btnLogin;
                 document.getElementById('auth-switch-prompt').innerText = t.promptNotReg;
                 document.getElementById('auth-switch-btn').innerText = t.btnRegister;
             } else {
                 document.getElementById('auth-title').innerText = t.authRegTitle;
                 document.getElementById('auth-subtitle').innerText = t.authRegSub;
-                document.getElementById('auth-submit-btn').innerText = t.btnRegister;
+                if (submitBtn) submitBtn.innerText = t.btnRegister;
                 document.getElementById('auth-switch-prompt').innerText = t.promptAlreadyReg;
                 document.getElementById('auth-switch-btn').innerText = t.btnLogin;
             }
@@ -626,7 +610,7 @@
         }, true);
     </script>
 
-    <!-- Firebase SDK жана Авто-Кирүү / Катталуу Логикасы -->
+    <!-- FIREBASE & AUTH ENGINE -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -644,9 +628,11 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
+        
+        // Analytics коопсуз иштетүү (AdBlock тоскоол кылбашы үчүн)
+        try { getAnalytics(app); } catch(e) { console.warn("Analytics бөгөттөлдү:", e); }
+        
         const auth = getAuth(app);
-
         setPersistence(auth, browserLocalPersistence);
 
         const loader = document.getElementById('loader');
@@ -655,7 +641,6 @@
         const userEmailDisplay = document.getElementById('user-email-display');
         const logoutBtn = document.getElementById('logout-btn');
 
-        const authForm = document.getElementById('auth-form');
         const authSubmitBtn = document.getElementById('auth-submit-btn');
         const authSwitchBtn = document.getElementById('auth-switch-btn');
         const authError = document.getElementById('auth-error');
@@ -663,11 +648,13 @@
         let isModeLogin = true; 
         window.isModeLoginStatus = isModeLogin;
 
+        // Колдонуучунун кирүү статусун текшерүү
         onAuthStateChanged(auth, (user) => {
             loader.style.display = 'none';
 
             if (user) {
                 window.currentUserEmail = user.email;
+                localStorage.setItem('duty_current_teacher_email', user.email);
                 authModal.style.display = 'none';
                 mainContent.style.display = 'block';
                 const t = window.translations[window.currentLang || 'ky'];
@@ -679,6 +666,7 @@
             }
         });
 
+        // Режимди алмаштыруу (Кирүү <-> Катталуу)
         authSwitchBtn.addEventListener('click', () => {
             isModeLogin = !isModeLogin;
             window.isModeLoginStatus = isModeLogin;
@@ -686,14 +674,21 @@
             window.setLanguage(window.currentLang || 'ky');
         });
 
-        // КИРҮҮ ЖАНА КАТТАЛУУ ФОРМАСЫН ОҢДОЛГОН АТКАРУУ ЛОГИКАСЫ
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // КИРҮҮ / КАТТАЛУУ ФУНКЦИЯСЫ
+        async function handleAuthAction() {
             authError.style.display = 'none';
+            const emailInput = document.getElementById('auth-email');
+            const passwordInput = document.getElementById('auth-password');
 
-            const email = document.getElementById('auth-email').value.trim();
-            const password = document.getElementById('auth-password').value;
+            const email = emailInput ? emailInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value : '';
             const t = window.translations[window.currentLang || 'ky'];
+
+            if (!email || !password) {
+                authError.style.display = 'block';
+                authError.textContent = "Электрондук почта жана сыр сөздү толтуруңуз!";
+                return;
+            }
 
             authSubmitBtn.disabled = true;
             authSubmitBtn.innerText = 'Күтө туруңуз...';
@@ -706,9 +701,8 @@
                 }
             } catch (error) {
                 authError.style.display = 'block';
-                console.error("Firebase Auth Катасы:", error.code, error.message);
+                console.error("Auth Катасы:", error.code, error.message);
 
-                // Firebase v9+ бардык ката коддорун так текшерүү
                 if (
                     error.code === 'auth/user-not-found' || 
                     error.code === 'auth/wrong-password' || 
@@ -720,7 +714,7 @@
                 } else if (error.code === 'auth/weak-password') {
                     authError.textContent = t.errWeakPass;
                 } else if (error.code === 'auth/invalid-email') {
-                    authError.textContent = "Туура эмес электрондук почта форматы!";
+                    authError.textContent = "Туура эмес почта форматы!";
                 } else {
                     authError.textContent = t.errGeneral + error.message;
                 }
@@ -728,14 +722,23 @@
                 authSubmitBtn.disabled = false;
                 window.setLanguage(window.currentLang || 'ky');
             }
+        }
+
+        // Баскычка түздөн-түз 'click' байланышы кошулду
+        authSubmitBtn.addEventListener('click', handleAuthAction);
+
+        // Enter басылганда да аткарылуусу үчүн
+        document.getElementById('auth-password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAuthAction();
         });
 
         logoutBtn.addEventListener('click', () => {
             signOut(auth).then(() => {
                 userEmailDisplay.textContent = "";
                 window.currentUserEmail = null;
+                localStorage.removeItem('duty_current_teacher_email');
             }).catch((error) => {
-                console.error("Ката:", error);
+                console.error("Чыгууда ката:", error);
             });
         });
     </script>
