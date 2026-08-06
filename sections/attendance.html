@@ -123,7 +123,6 @@
         </div>
 
         <div>
-            <!-- ОКУУЧУ КОШУУ ФОРМАСЫ -->
             <div class="card">
                 <div class="card-title" style="font-size: 16px;"><i class="fas fa-user-plus"></i> Окуучу кошуу</div>
                 <form id="addStudentForm">
@@ -139,7 +138,6 @@
                 </form>
             </div>
 
-            <!-- КҮНДҮК КӨРҮНҮҮЧҮ МЕКТЕП QR КАРТОЧКАСЫ -->
             <div class="card">
                 <div class="card-title" style="font-size: 16px;"><i class="fas fa-qrcode"></i> КҮНДҮК МЕКТЕП QR</div>
                 <p style="font-size: 12px; color: var(--text-muted);">Бул QR код ар күнү автоматтык өзгөрөт:</p>
@@ -177,7 +175,6 @@
 
     let activeDate = todayStr;
 
-    // Мектептин күндүк QR кодун түзүү
     function generateSchoolQR(date) {
         document.getElementById('schoolQrCode').innerHTML = '';
         const dailyToken = "BILIMAL_SCHOOL_" + btoa(`SCHOOL_${date}_SECRETKEY`).replace(/=/g, '');
@@ -196,7 +193,6 @@
         loadAttendanceData(activeDate);
     });
 
-    // ОКУУЧУ КОШУУ ЛОГИКАСЫ
     document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const name = document.getElementById('newStudentName').value.trim();
@@ -216,7 +212,6 @@
         showToast('Окуучу ийгиликтүү кошулду!');
     });
 
-    // БАЗАДАН БАРДЫК ОКУУЧУЛАРДЫ ЖАНА ТАНДАЛГАН ДАТАДАГЫ КАШЫШУУНУ ЧЫГАРУУ
     function loadAttendanceData(dateStr) {
         const studentsRef = ref(database, 'students');
         const attendanceRef = ref(database, `attendance/${dateStr}`);
@@ -249,11 +244,15 @@
 
         for (const [sId, sData] of studentEntries) {
             const att = attendance[sId] || {};
-            const status = att.status || 'ABSENT';
             const mapUrl = att.mapUrl || att.geolocation || '';
+            const checkInTime = att.checkIn || '-';
+            
+            // GPS БАР БОЛСО ГАНА КАТЫШКАН КАТЫНДА ЭСЕПТӨӨ
+            const hasValidGPS = mapUrl && mapUrl.startsWith('http');
+            const status = (hasValidGPS && att.status) ? att.status : 'ABSENT';
 
             let geoHTML = `<span style="color: var(--text-muted); font-size:12px;">Аныкталган жок</span>`;
-            if (mapUrl && mapUrl.startsWith('http')) {
+            if (hasValidGPS) {
                 geoHTML = `<a href="${mapUrl}" target="_blank" class="map-btn"><i class="fas fa-map-marked-alt"></i> Картадан көрүү</a>`;
             }
 
@@ -273,7 +272,7 @@
                 <td>${index++}</td>
                 <td><strong>${sData.name || 'Окуучу'}</strong></td>
                 <td style="color:var(--text-muted); font-size:13px;">${sData.email || '-'}</td>
-                <td>${att.checkIn || '-'}</td>
+                <td>${hasValidGPS ? checkInTime : '-'}</td>
                 <td>${geoHTML}</td>
                 <td>${statusBadge}</td>
                 <td>
@@ -293,7 +292,6 @@
         document.getElementById('statAbsent').innerText = absent;
     }
 
-    // БИР ОКУУЧУНУ БАЗАДАН ТОЛУК ӨЧҮРҮҮ
     window.deleteStudent = async function(studentId) {
         if (confirm('Бул окуучуну базадан өчүрүүнү каалайсызбы?')) {
             await remove(ref(database, `students/${studentId}`));
@@ -302,7 +300,6 @@
         }
     };
 
-    // ТАНДАЛГАН КҮНДҮН ЖЫЙЫНТЫКТАРЫН ТАЗАЛОО
     document.getElementById('clearTodayBtn').addEventListener('click', async () => {
         if (confirm(`${activeDate} күнүнүн катышуу жыйынтыктарын тазалоону каалайсызбы?`)) {
             await remove(ref(database, `attendance/${activeDate}`));
