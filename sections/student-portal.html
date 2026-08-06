@@ -33,6 +33,20 @@
             display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;
         }
 
+        /* Навигациялык меню (Tabs) */
+        .portal-nav {
+            display: flex; gap: 10px; margin-bottom: 20px;
+        }
+        .nav-tab {
+            flex: 1; padding: 12px 10px; background: #0b0e14; border: 1px solid var(--border-color);
+            color: var(--text-muted); border-radius: 8px; font-size: 14px; font-weight: 600;
+            cursor: pointer; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .nav-tab.active {
+            background: var(--accent-color); color: #0b0e14; border-color: var(--accent-color);
+        }
+
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
         .form-group input {
@@ -52,6 +66,11 @@
         .geo-box {
             background: #0b0e14; border: 1px solid var(--border-color); padding: 15px;
             border-radius: 8px; font-size: 14px; text-align: center; margin-bottom: 15px;
+        }
+
+        .duty-box {
+            background: #0b0e14; border: 1px solid var(--border-color); padding: 16px;
+            border-radius: 8px; margin-top: 10px;
         }
 
         .alert-box {
@@ -76,20 +95,47 @@
     </div>
 
     <div class="card" id="mainDashboard" style="display: none;">
-        <div class="card-title"><i class="fas fa-qrcode"></i> Мектеп QR кодун сканерлөө</div>
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
+        <p style="font-size:14px; color:var(--text-muted); margin-bottom:15px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
+
+        <!-- Навигация: Бөлүмдөр -->
+        <div class="portal-nav">
+            <button class="nav-tab active" id="tabClassRegister"><i class="fas fa-qrcode"></i> Сабакка каттал</button>
+            <button class="nav-tab" id="tabDutyPortal"><i class="fas fa-user-shield"></i> Окуучулардын кезмет порталы</button>
+        </div>
         
-        <div class="geo-box" id="geoStatus">
-            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияга уруксат бериңиз:</p>
-            <button class="btn-primary" id="requestGpsBtn">
-                <i class="fas fa-location-arrow"></i> 1-кадам: GPS'ти күйгүзүү жана уруксат берүү
-            </button>
+        <!-- 1-БӨЛҮМ: Сабакка каттал -->
+        <div id="sectionClassRegister">
+            <div class="card-title"><i class="fas fa-qrcode"></i> Мектеп QR кодун сканерлөө</div>
+            <div class="geo-box" id="geoStatus">
+                <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияга уруксат бериңиз:</p>
+                <button class="btn-primary" id="requestGpsBtn">
+                    <i class="fas fa-location-arrow"></i> 1-кадам: GPS'ти күйгүзүү жана уруксат берүү
+                </button>
+            </div>
+
+            <div id="readerBox" style="display: none;">
+                <div id="reader"></div>
+            </div>
+            <div id="scanResult"></div>
         </div>
 
-        <div id="readerBox" style="display: none;">
-            <div id="reader"></div>
+        <!-- 2-БӨЛҮМ: Окуучулардын кезмет порталы -->
+        <div id="sectionDutyPortal" style="display: none;">
+            <div class="card-title"><i class="fas fa-user-shield"></i> Бүгүнкү Кезметчилер</div>
+            <div class="duty-box">
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px;">Бүгүнкү мектеп/класс кезметчилери:</p>
+                <div id="dutyListContainer" style="color:#fff; font-weight:600; line-height:1.6;">
+                    <i class="fas fa-spinner fa-spin"></i> Маалымат жүктөлүүдө...
+                </div>
+            </div>
+
+            <div class="duty-box" style="margin-top:15px;">
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:10px;">Кезметти тастыктоо / Кабыл алуу:</p>
+                <button class="btn-primary" id="claimDutyBtn" style="background:var(--accent-green); color:#fff;">
+                    <i class="fas fa-check-double"></i> Кезметти кабыл алдым
+                </button>
+            </div>
         </div>
-        <div id="scanResult"></div>
     </div>
 </div>
 
@@ -120,7 +166,28 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // ТАКТЫКТЫ ЖОГОРУЛАТКАН ЖАНА ТАЙМ-АУТСУЗ GPS АНЫКТОО
+    // NAV TABS SWITCHING LOGIC
+    const tabClassRegister = document.getElementById('tabClassRegister');
+    const tabDutyPortal = document.getElementById('tabDutyPortal');
+    const sectionClassRegister = document.getElementById('sectionClassRegister');
+    const sectionDutyPortal = document.getElementById('sectionDutyPortal');
+
+    tabClassRegister.addEventListener('click', () => {
+        tabClassRegister.classList.add('active');
+        tabDutyPortal.classList.remove('active');
+        sectionClassRegister.style.display = 'block';
+        sectionDutyPortal.style.display = 'none';
+    });
+
+    tabDutyPortal.addEventListener('click', () => {
+        tabDutyPortal.classList.add('active');
+        tabClassRegister.classList.remove('active');
+        sectionClassRegister.style.display = 'none';
+        sectionDutyPortal.style.display = 'block';
+        loadDutySchedule();
+    });
+
+    // GPS LOGIC
     function requestLocationAccess() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
@@ -144,35 +211,28 @@
                 resolve(verifiedLocation);
             };
 
-            // 1-АРАКЕТ: Тез аныктоо (Мобилдик тармак/Wi-Fi аркылуу заматта координат алуу)
             navigator.geolocation.getCurrentPosition(
                 (fastPos) => {
                     updateLocationUI(fastPos);
-
-                    // 2-АРАКЕТ: Фондо GPS спутниктери аркылуу тактыкты андан ары жогорулатуу
                     navigator.geolocation.watchPosition(
                         (accuratePos) => {
                             if (accuratePos.coords.accuracy < fastPos.coords.accuracy) {
                                 updateLocationUI(accuratePos);
                             }
                         },
-                        (err) => { console.log("Фондогу GPS тактоо өтүп кетти, тез координат сакталды."); },
+                        (err) => {},
                         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
                     );
                 },
                 (err1) => {
-                    // Эгер тез аныктоо ката берсе, 5 секунддук кэштеги координатты суроо
                     navigator.geolocation.getCurrentPosition(
                         updateLocationUI,
                         (err2) => {
-                            console.error("GPS Аныктоо катасы:", err2);
                             let errMsg = "GPS аныкталган жок!";
                             if (err2.code === err2.PERMISSION_DENIED) {
-                                errMsg = "Браузердин жөндөөлөрүнөн геолокацияга (Location) уруксат бериңиз!";
+                                errMsg = "Браузердин жөндөөлөрүнөн геолокацияга уруксат бериңиз!";
                             } else if (err2.code === err2.POSITION_UNAVAILABLE) {
-                                errMsg = "Телефонуңуздун GPS баскычын күйгүзүңүз же ачык жерге чыгыңыз!";
-                            } else if (err2.code === err2.TIMEOUT) {
-                                errMsg = "GPS сигналы начар. GPSти өчүрүп кайра күйгүзүңүз!";
+                                errMsg = "Телефонуңуздун GPS баскычын күйгүзүңүз!";
                             }
 
                             document.getElementById('geoStatus').innerHTML = `
@@ -274,7 +334,6 @@
             const hours = now.getHours();
             const minutes = now.getMinutes();
 
-            // Эгер 8:15тен өткөн болсо LATE (Кечикти), болбосо PRESENT (Келди)
             let autoStatus = (hours > 8 || (hours === 8 && minutes > 15)) ? 'LATE' : 'PRESENT';
 
             const attRef = ref(database, `attendance/${todayStr}/${currentStudent.id}`);
@@ -308,6 +367,50 @@
             setTimeout(() => { isProcessing = false; }, 3500);
         }
     }
+
+    // 2-БӨЛҮМ КЕЗМЕТЧИЛЕРДИ БАЗАДАН АЛУУ ЖАНА КАБЫЛ АЛУУ LOGIC
+    async function loadDutySchedule() {
+        const dutyContainer = document.getElementById('dutyListContainer');
+        try {
+            const dutyRef = ref(database, `duty_schedule/${todayStr}`);
+            const snapshot = await get(dutyRef);
+
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                let html = '<ul style="list-style:none; padding:0;">';
+                for (const [id, item] of Object.entries(data)) {
+                    html += `<li style="padding:6px 0; border-bottom:1px solid var(--border-color);">
+                        <i class="fas fa-user-clock" style="color:var(--accent-color);"></i> ${item.studentName} - <span style="color:var(--accent-green); font-size:12px;">${item.status || 'Кезметте'}</span>
+                    </li>`;
+                }
+                html += '</ul>';
+                dutyContainer.innerHTML = html;
+            } else {
+                dutyContainer.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Бүгүнкү күнгө кезметчилер белгилене элек.</p>';
+            }
+        } catch (e) {
+            dutyContainer.innerHTML = '<p style="color:var(--accent-red); font-size:13px;">Маалыматты жүктөөдө ката чыкты.</p>';
+        }
+    }
+
+    document.getElementById('claimDutyBtn').addEventListener('click', async () => {
+        if (!currentStudent) return;
+        showToast('Кезмет бекитилүүдө...');
+        try {
+            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const userDutyRef = ref(database, `duty_schedule/${todayStr}/${currentStudent.id}`);
+            await set(userDutyRef, {
+                studentId: currentStudent.id,
+                studentName: currentStudent.name,
+                status: 'Кабыл алды',
+                claimedAt: nowTime
+            });
+            showToast('Кезмет кабыл алынды!');
+            loadDutySchedule();
+        } catch (e) {
+            showToast('Ката чыкты!');
+        }
+    });
 
     function showToast(msg) {
         const t = document.getElementById('toastMsg');
