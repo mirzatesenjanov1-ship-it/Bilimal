@@ -80,9 +80,9 @@
         <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
         
         <div class="geo-box" id="geoStatus">
-            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияга уруксат бериңиз:</p>
+            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияны активдештириңиз:</p>
             <button class="btn-primary" id="requestGpsBtn">
-                <i class="fas fa-location-arrow"></i> 1-кадам: GPS'ти күйгүзүү жана уруксат берүү
+                <i class="fas fa-location-arrow"></i> 1-кадам: Жайгашкан жерди аныктоо (GPS)
             </button>
         </div>
 
@@ -116,88 +116,113 @@
     let html5QrcodeScanner = null;
     let isProcessing = false;
     let verifiedLocation = null;
+    let locationAccuracyMeters = null;
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // КӨЙГӨЙДҮ 100% ЧЕЧКЕН СМАРТ GPS АНЫКТОО (2 КАТМАРЛУУ FALLBACK)
-    function requestLocationAccess() {
+    // ЧЫНЫГЫ ЖАНА ТАК GPS ЖАЙГАШУУНУ АЛУУ (IP же демейки координаттар колдонулбайт)
+    function requestRealGpsLocation() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
                 return reject("Түзмөгүңүз геолокацияны колдобойт!");
             }
 
-            const successCallback = (pos) => {
+            let bestPosition = null;
+            let watchId = null;
+
+            const updateUIAndResolve = (pos) => {
                 const lat = pos.coords.latitude.toFixed(6);
                 const lng = pos.coords.longitude.toFixed(6);
+                const accuracy = Math.round(pos.coords.accuracy);
+
                 verifiedLocation = `https://www.google.com/maps?q=${lat},${lng}`;
-                
+                locationAccuracyMeters = `${accuracy} метр`;
+
                 document.getElementById('geoStatus').innerHTML = `
-                    <span style="color:var(--accent-green); font-weight:bold; font-size:15px;">
-                        <i class="fas fa-check-circle"></i> GPS Геолокация аныкталды! Эми QR кодду сканерлеңиз.
-                    </span>
+                    <div style="color:var(--accent-green); font-weight:bold; font-size:15px; line-height:1.5;">
+                        <i class="fas fa-check-circle"></i> Жайгашкан жериңиз дал өзү аныкталды!<br>
+                        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(Тактыгы: ~${accuracy} метр)</span>
+                    </div>
                 `;
-                resolve(verifiedLocation);
+                resolve({ verifiedLocation, accuracy });
             };
 
-            // 1-АРАКЕТ: Тез аныктоо (Мобилдик мунаралар/Wi-Fi + 5 мүнөттүк кэш)
-            const fastOptions = {
-                enableHighAccuracy: false, // Имарат ичинде тайм-аутту болтурбайт
-                timeout: 10000,            // 10 секунд
-                maximumAge: 300000         // Акыркы 5 мүнөттөгү координат сакталган болсо берет
+            // Максималдуу так GPS орнотуулары
+            const gpsOptions = {
+                enableHighAccuracy: true, // Жогорку тактыктагы чыныгы GPS куралын иштетүү
+                timeout: 15000,            // GPS калибрлөө үчүн 15 секундга чейин убакыт берүү
+                maximumAge: 0              // Кэштелген эски/ката координаттарды колдонбоо
             };
 
-            // 2-АРАКЕТ: Эгер тез аныктоо убактысы өтүп кетсе, GPS Спутниктери аркылуу кайра текшерүү
-            navigator.geolocation.getCurrentPosition(
-                successCallback,
-                (err1) => {
-                    console.warn("Тез аныктоо ишке ашпады, жогорку тактыкта GPS изделүүдө...", err1);
-                    
-                    const preciseOptions = {
-                        enableHighAccuracy: true,
-                        timeout: 20000, // 20 секунд күтөт
-                        maximumAge: 60000
-                    };
+            // 10 секунд ичинде эң так координатты тандоо таймери
+            const timerId = setTimeout(() => {
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                
+                if (bestPosition && bestPosition.coords.accuracy <= 500) {
+                    updateUIAndResolve(bestPosition);
+                } else {
+                    const errMsg = "GPS спутниктери сизди так аныктай албады. Мектептин терезесине же ачык жерге жакындап кайра басыңыз!";
+                    showErrorUI(errMsg);
+                    reject(errMsg);
+                }
+            }, 10000);
 
-                    navigator.geolocation.getCurrentPosition(
-                        successCallback,
-                        (err2) => {
-                            console.error("GPS Аныктоо катасы:", err2);
-                            let errMsg = "GPS аныкталган жок!";
-                            if (err2.code === err2.PERMISSION_DENIED) {
-                                errMsg = "Браузердин жөндөөлөрүнөн геолокацияга (Location) уруксат бериңиз!";
-                            } else if (err2.code === err2.POSITION_UNAVAILABLE) {
-                                errMsg = "Телефонуңуздун GPS баскычын күйгүзүңүз же ачык жерге чыгыңыз!";
-                            } else if (err2.code === err2.TIMEOUT) {
-                                errMsg = "GPS сигналы начар. GPSти өчүрүп кайра күйгүзүңүз!";
-                            }
+            // Телефондун чыныгы координаттарын кабыл алуу
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    // Эгер алынган координат мурункудан так болсо, сактайбыз
+                    if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
+                        bestPosition = pos;
+                    }
 
-                            document.getElementById('geoStatus').innerHTML = `
-                                <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
-                                    <i class="fas fa-exclamation-triangle"></i> ${errMsg}
-                                </div>
-                                <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
-                                    <i class="fas fa-sync"></i> Кайра аракет кылуу
-                                </button>
-                            `;
-                            document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
-                            reject(errMsg);
-                        },
-                        preciseOptions
-                    );
+                    // Эгер тактык 50 метрден жакын болсо, заматта бекитебиз
+                    if (pos.coords.accuracy <= 50) {
+                        clearTimeout(timerId);
+                        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                        updateUIAndResolve(pos);
+                    }
                 },
-                fastOptions
+                (err) => {
+                    clearTimeout(timerId);
+                    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+
+                    let errMsg = "Жайгашкан жер аныкталган жок!";
+                    if (err.code === err.PERMISSION_DENIED) {
+                        errMsg = "Браузер жөндөөлөрүнөн Жайгашкан жерге (Location) уруксат бериңиз!";
+                    } else if (err.code === err.POSITION_UNAVAILABLE) {
+                        errMsg = "Телефондун GPS баскычын күйгүзүңүз!";
+                    } else if (err.code === err.TIMEOUT) {
+                        errMsg = "GPS сигналы кармаган жок. Имараттан ачыгыраак жерге чыгып кайра басыңыз!";
+                    }
+
+                    showErrorUI(errMsg);
+                    reject(errMsg);
+                },
+                gpsOptions
             );
         });
+    }
+
+    function showErrorUI(msg) {
+        document.getElementById('geoStatus').innerHTML = `
+            <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
+                <i class="fas fa-exclamation-triangle"></i> ${msg}
+            </div>
+            <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
+                <i class="fas fa-sync"></i> Кайра аракет кылуу
+            </button>
+        `;
+        document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
     }
 
     async function handleGpsRequest() {
         document.getElementById('geoStatus').innerHTML = `
             <div style="color:var(--accent-color);">
-                <i class="fas fa-spinner fa-spin"></i> GPS координаттары аныкталууда, күтө туруңуз...
+                <i class="fas fa-spinner fa-spin"></i> GPS Спутниктери аркылуу жайгашкан жер так калибрленүүдө...
             </div>
         `;
         try {
-            await requestLocationAccess();
+            await requestRealGpsLocation();
             document.getElementById('readerBox').style.display = 'block';
             startScanner();
         } catch (err) {
@@ -270,7 +295,6 @@
             const hours = now.getHours();
             const minutes = now.getMinutes();
 
-            // Эгер 8:15тен өткөн болсо LATE (Кечикти), болбосо PRESENT (Келди)
             let autoStatus = (hours > 8 || (hours === 8 && minutes > 15)) ? 'LATE' : 'PRESENT';
 
             const attRef = ref(database, `attendance/${todayStr}/${currentStudent.id}`);
@@ -282,12 +306,13 @@
                 checkIn: nowTime,
                 mapUrl: verifiedLocation,
                 geolocation: verifiedLocation,
+                accuracy: locationAccuracyMeters,
                 updatedAt: new Date().toISOString()
             });
 
             resultBox.innerHTML = `
                 <div class="alert-box alert-success">
-                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы менен катышууңуз ийгиликтүү катталды!
+                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы (тактыгы: ${locationAccuracyMeters}) менен катышууңуз ийгиликтүү катталды!
                 </div>
             `;
             showToast('Катышууңуз катталды!');
