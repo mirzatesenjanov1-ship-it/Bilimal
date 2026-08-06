@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кезмет Порталы - Bilimal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #111622;
+            --border-color: #1e2640;
+            --accent-green: #10b981;
+            --accent-blue: #00d2ff;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .btn-back { background: var(--border-color); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+        .duty-box { background: #0b0e14; border: 1px solid var(--border-color); padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .btn-claim { width: 100%; background: var(--accent-green); color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="header">
+            <a href="/sections/student-portal.html" class="btn-back"><i class="fas fa-arrow-left"></i> Артка</a>
+            <h3 style="color: var(--accent-green);"><i class="fas fa-user-shield"></i> Кезмет Порталы</h3>
+        </div>
+
+        <div class="duty-box">
+            <h4 style="color: var(--accent-blue); margin-bottom: 10px;">Бүгүнкү кезметчилер:</h4>
+            <div id="dutyList"><i class="fas fa-spinner fa-spin"></i> Жүктөлүүдө...</div>
+        </div>
+
+        <button class="btn-claim" id="btnClaim"><i class="fas fa-check-double"></i> Кезметти кабыл алдым</button>
+        <div id="msgBox" style="margin-top: 10px; text-align: center;"></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835"
+    };
+
+    const database = getDatabase(initializeApp(firebaseConfig));
+    const todayStr = new Date().toISOString().split('T')[0];
+    const studentEmail = localStorage.getItem('bilimal_student_email') || 'okuuchu@gmail.com';
+
+    onValue(ref(database, `duty_schedule/${todayStr}`), (snapshot) => {
+        const dutyList = document.getElementById('dutyList');
+        if (snapshot.exists()) {
+            let html = '<ul style="list-style:none;">';
+            Object.values(snapshot.val()).forEach(item => {
+                html += `<li style="padding:6px 0; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;">
+                    <span>${item.studentName}</span>
+                    <strong style="color:var(--accent-green);">${item.status || 'Дайындалды'}</strong>
+                </li>`;
+            });
+            html += '</ul>';
+            dutyList.innerHTML = html;
+        } else {
+            dutyList.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Бүгүнгө кезметчи дайындала элек.</p>';
+        }
+    });
+
+    document.getElementById('btnClaim').addEventListener('click', async () => {
+        const sId = 'st_' + studentEmail.replace(/[^a-zA-Z0-9]/g, '');
+        await set(ref(database, `duty_schedule/${todayStr}/${sId}`), {
+            studentName: studentEmail.split('@')[0],
+            status: 'Кабыл алды',
+            claimedAt: new Date().toLocaleTimeString()
+        });
+        document.getElementById('msgBox').innerHTML = `<span style="color:var(--accent-green); font-weight:bold;">Кезметти ийгиликтүү кабыл алдыңыз!</span>`;
+    });
+</script>
+</body>
+</html>
