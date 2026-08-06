@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сабакка катталуу - Bilimal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #111622;
+            --border-color: #1e2640;
+            --accent-blue: #00d2ff;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; }
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .btn-back { background: var(--border-color); color: #fff; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+        .btn-gps { width: 100%; background: var(--accent-blue); color: #0b0e14; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; margin: 15px 0; }
+        #reader { width: 100%; border-radius: 8px; overflow: hidden; margin-top: 15px; border: 1px solid var(--border-color); }
+        .alert { padding: 12px; border-radius: 8px; margin-top: 15px; font-weight: bold; text-align: center; }
+        .alert-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .alert-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="header">
+            <a href="/sections/student-portal.html" class="btn-back"><i class="fas fa-arrow-left"></i> Артка</a>
+            <h3 style="color: var(--accent-blue);"><i class="fas fa-qrcode"></i> Сабакка каттал</h3>
+        </div>
+
+        <div id="gpsBox" style="background: #0b0e14; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <p style="font-size: 13px; color: var(--text-muted);">Катышууну сактоо үчүн алгач GPS аныктаңыз:</p>
+            <button class="btn-gps" id="btnGetGps"><i class="fas fa-location-arrow"></i> GPS Аныктоо</button>
+            <div id="gpsStatus"></div>
+        </div>
+
+        <div id="scannerWrapper" style="display: none;">
+            <div id="reader"></div>
+        </div>
+
+        <div id="resultBox"></div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835"
+    };
+
+    const database = getDatabase(initializeApp(firebaseConfig));
+    let gpsLocation = null;
+    let studentEmail = localStorage.getItem('bilimal_student_email') || 'okuuchu@gmail.com';
+
+    document.getElementById('btnGetGps').addEventListener('click', () => {
+        const status = document.getElementById('gpsStatus');
+        status.innerHTML = `<span style="color:var(--accent-blue);">GPS изделүүдө...</span>`;
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude.toFixed(6);
+                const lng = pos.coords.longitude.toFixed(6);
+                gpsLocation = `https://www.google.com/maps?q=${lat},${lng}`;
+                status.innerHTML = `<span style="color:var(--accent-green); font-weight:bold;"><i class="fas fa-check-circle"></i> GPS Аныкталды! (Тактыгы: ~${Math.round(pos.coords.accuracy)}м)</span>`;
+                document.getElementById('scannerWrapper').style.display = 'block';
+                startScanner();
+            },
+            (err) => {
+                status.innerHTML = `<span style="color:var(--accent-red); font-weight:bold;">GPS катасы! Браузерден уруксат бериңиз.</span>`;
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    });
+
+    function startScanner() {
+        const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 220 });
+        scanner.render(async (decodedText) => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const sId = 'st_' + studentEmail.replace(/[^a-zA-Z0-9]/g, '');
+
+            await set(ref(database, `attendance/${todayStr}/${sId}`), {
+                studentEmail: studentEmail,
+                checkIn: nowTime,
+                mapUrl: gpsLocation,
+                status: 'PRESENT'
+            });
+
+            document.getElementById('resultBox').innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча катышууңуз ийгиликтүү катталды!</div>`;
+            scanner.clear();
+        }, () => {});
+    }
+</script>
+</body>
+</html>
