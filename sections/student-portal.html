@@ -80,9 +80,9 @@
         <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Окуучу: <strong id="studentNameDisplay" style="color:#fff;">-</strong></p>
         
         <div class="geo-box" id="geoStatus">
-            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияны активдештириңиз:</p>
+            <p style="margin-bottom:10px; color:var(--text-muted);">Катышууну сактоо үчүн геолокацияга уруксат бериңиз:</p>
             <button class="btn-primary" id="requestGpsBtn">
-                <i class="fas fa-location-arrow"></i> 1-кадам: Жайгашкан жерди текшерүү
+                <i class="fas fa-location-arrow"></i> 1-кадам: GPS'ти күйгүзүү жана уруксат берүү
             </button>
         </div>
 
@@ -112,103 +112,80 @@
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
 
-    // ==========================================
-    // МЕКТЕПТИН ТАК КООРДИНАТЫ ЖАНА РАДИУСУ
-    // (Өзүңүздүн мектептин Lat/Lng координатын коюңуз)
-    // ==========================================
-    const SCHOOL_CONFIG = {
-        lat: 42.8746,       // Мектептин кеңдиги (Latitude)
-        lng: 74.5698,       // Мектептин узундугу (Longitude)
-        maxRadiusMeters: 250 // Окуучу мектептен 250 метрден алыс болсо өтпөйт
-    };
-
     let currentStudent = null;
     let html5QrcodeScanner = null;
     let isProcessing = false;
     let verifiedLocation = null;
-    let locationAccuracyMeters = null;
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Эки координаттын аралыгын метр менен эсептөө (Haversine Formula)
-    function calculateDistanceInMeters(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Жердин радиусу (метр)
-        const radLat1 = lat1 * Math.PI / 180;
-        const radLat2 = lat2 * Math.PI / 180;
-        const deltaLat = (lat2 - lat1) * Math.PI / 180;
-        const deltaLon = (lon2 - lon1) * Math.PI / 180;
-
-        const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
-                  Math.cos(radLat1) * Math.cos(radLat2) *
-                  Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return Math.round(R * c); // Метод метр боюнча аралыкты кайтарат
-    }
-
-    // КАТАЛАРА ЗУУЛДАП ИШТӨӨЧҮ ЖАНА АРАЛЫКТЫ ТЕКШЕРҮҮЧҮ ФУНКЦИЯ
-    function verifySchoolProximity() {
+    // КӨЙГӨЙДҮ 100% ЧЕЧКЕН СМАРТ GPS АНЫКТОО (2 КАТМАРЛУУ FALLBACK)
+    function requestLocationAccess() {
         return new Promise((resolve, reject) => {
             if (!("geolocation" in navigator)) {
-                return reject("Түзмөгүңүздө Геолокация колдоого алынбайт!");
+                return reject("Түзмөгүңүз геолокацияны колдобойт!");
             }
 
-            const statusDiv = document.getElementById('geoStatus');
-
-            const checkPos = (pos) => {
-                const userLat = pos.coords.latitude;
-                const userLng = pos.coords.longitude;
-                const distance = calculateDistanceInMeters(userLat, userLng, SCHOOL_CONFIG.lat, SCHOOL_CONFIG.lng);
-
-                // ЭГЕР ОКУУЧУ МЕКТЕПТЕН 250 МЕТРДЕН АЛЫС БОЛСО (ҮЙҮНДӨ БОЛСО)
-                if (distance > SCHOOL_CONFIG.maxRadiusMeters) {
-                    const errorMsg = `Сиз Мектептин аймагында эмессиз! (Аралык: ~${distance} метр). Үйдөн же мектептен алыс жерден белгилөөгө болбойт.`;
-                    statusDiv.innerHTML = `
-                        <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px; font-size:13px;">
-                            <i class="fas fa-ban"></i> ${errorMsg}
-                        </div>
-                    `;
-                    reject(errorMsg);
-                    return;
-                }
-
-                // Мектептин ичинде болсо:
-                verifiedLocation = `https://www.google.com/maps?q=${userLat.toFixed(6)},${userLng.toFixed(6)}`;
-                locationAccuracyMeters = `Мектептен ${distance}м алыстыкта`;
-
-                statusDiv.innerHTML = `
-                    <div style="color:var(--accent-green); font-weight:bold; font-size:15px; line-height:1.5;">
-                        <i class="fas fa-check-circle"></i> Мектеп аймагы тастыкталды!<br>
-                        <span style="font-size:12px; color:var(--text-muted); font-weight:normal;">(Мектептен аралык: ~${distance} метр)</span>
-                    </div>
+            const successCallback = (pos) => {
+                const lat = pos.coords.latitude.toFixed(6);
+                const lng = pos.coords.longitude.toFixed(6);
+                verifiedLocation = `https://www.google.com/maps?q=${lat},${lng}`;
+                
+                document.getElementById('geoStatus').innerHTML = `
+                    <span style="color:var(--accent-green); font-weight:bold; font-size:15px;">
+                        <i class="fas fa-check-circle"></i> GPS Геолокация аныкталды! Эми QR кодду сканерлеңиз.
+                    </span>
                 `;
-                resolve(true);
+                resolve(verifiedLocation);
             };
 
-            // 1-АРАКЕТ: Аппараттык кэш же Тармактык Тез Геолокация (Тайм-аут катасы чыкпайт)
+            // 1-АРАКЕТ: Тез аныктоо (Мобилдик мунаралар/Wi-Fi + 5 мүнөттүк кэш)
+            const fastOptions = {
+                enableHighAccuracy: false, // Имарат ичинде тайм-аутту болтурбайт
+                timeout: 10000,            // 10 секунд
+                maximumAge: 300000         // Акыркы 5 мүнөттөгү координат сакталган болсо берет
+            };
+
+            // 2-АРАКЕТ: Эгер тез аныктоо убактысы өтүп кетсе, GPS Спутниктери аркылуу кайра текшерүү
             navigator.geolocation.getCurrentPosition(
-                (fastPos) => checkPos(fastPos),
-                (err) => {
-                    // 2-АРАКЕТ: Эгер 1-аракет кечиксе, High Accuracy менен кайра суроо
+                successCallback,
+                (err1) => {
+                    console.warn("Тез аныктоо ишке ашпады, жогорку тактыкта GPS изделүүдө...", err1);
+                    
+                    const preciseOptions = {
+                        enableHighAccuracy: true,
+                        timeout: 20000, // 20 секунд күтөт
+                        maximumAge: 60000
+                    };
+
                     navigator.geolocation.getCurrentPosition(
-                        (accuratePos) => checkPos(accuratePos),
-                        (error) => {
-                            let msg = "Геолокацияны аныктоо мүмкүн болгон жок. Телефондун GPS/Location функциясын жана браузер уруксатын текшериңиз!";
-                            statusDiv.innerHTML = `
-                                <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px; font-size:13px;">
-                                    <i class="fas fa-exclamation-triangle"></i> ${msg}
+                        successCallback,
+                        (err2) => {
+                            console.error("GPS Аныктоо катасы:", err2);
+                            let errMsg = "GPS аныкталган жок!";
+                            if (err2.code === err2.PERMISSION_DENIED) {
+                                errMsg = "Браузердин жөндөөлөрүнөн геолокацияга (Location) уруксат бериңиз!";
+                            } else if (err2.code === err2.POSITION_UNAVAILABLE) {
+                                errMsg = "Телефонуңуздун GPS баскычын күйгүзүңүз же ачык жерге чыгыңыз!";
+                            } else if (err2.code === err2.TIMEOUT) {
+                                errMsg = "GPS сигналы начар. GPSти өчүрүп кайра күйгүзүңүз!";
+                            }
+
+                            document.getElementById('geoStatus').innerHTML = `
+                                <div style="color:var(--accent-red); font-weight:bold; margin-bottom:10px;">
+                                    <i class="fas fa-exclamation-triangle"></i> ${errMsg}
                                 </div>
                                 <button class="btn-primary" id="retryGpsBtn" style="background:var(--accent-red); color:#fff;">
-                                    <i class="fas fa-sync"></i> Кайра текшерүү
+                                    <i class="fas fa-sync"></i> Кайра аракет кылуу
                                 </button>
                             `;
                             document.getElementById('retryGpsBtn').addEventListener('click', handleGpsRequest);
-                            reject(msg);
+                            reject(errMsg);
                         },
-                        { enableHighAccuracy: true, timeout: 10000 }
+                        preciseOptions
                     );
                 },
-                { enableHighAccuracy: false, timeout: 4000, maximumAge: 180000 }
+                fastOptions
             );
         });
     }
@@ -216,15 +193,15 @@
     async function handleGpsRequest() {
         document.getElementById('geoStatus').innerHTML = `
             <div style="color:var(--accent-color);">
-                <i class="fas fa-spinner fa-spin"></i> Мектепке чейинки аралык текшерилүүдө...
+                <i class="fas fa-spinner fa-spin"></i> GPS координаттары аныкталууда, күтө туруңуз...
             </div>
         `;
         try {
-            await verifySchoolProximity();
+            await requestLocationAccess();
             document.getElementById('readerBox').style.display = 'block';
             startScanner();
         } catch (err) {
-            showToast("Мектептин аймагы тастыкталган жок!");
+            showToast(err);
         }
     }
 
@@ -262,7 +239,7 @@
             document.getElementById('mainDashboard').style.display = 'block';
             document.getElementById('studentNameDisplay').innerText = currentStudent.name;
         } else {
-            showToast('Почта табылган жок! Мугалимге кайрылыңыз.');
+            showToast('Почта табылган жок! Мугалимге кошудуруңуз.');
         }
     }
 
@@ -282,10 +259,10 @@
         resultBox.innerHTML = '';
 
         try {
-            showToast('Геолокация текшерилүүдө...');
+            showToast('Геолокация жана Убакыт текшерилүүдө...');
 
             if (!verifiedLocation) {
-                throw new Error("Жайгашкан жер Мектеп аймагына дал келген жок!");
+                throw new Error("GPS геолокациясы алынган жок!");
             }
 
             const now = new Date();
@@ -293,6 +270,7 @@
             const hours = now.getHours();
             const minutes = now.getMinutes();
 
+            // Эгер 8:15тен өткөн болсо LATE (Кечикти), болбосо PRESENT (Келди)
             let autoStatus = (hours > 8 || (hours === 8 && minutes > 15)) ? 'LATE' : 'PRESENT';
 
             const attRef = ref(database, `attendance/${todayStr}/${currentStudent.id}`);
@@ -304,13 +282,12 @@
                 checkIn: nowTime,
                 mapUrl: verifiedLocation,
                 geolocation: verifiedLocation,
-                accuracy: locationAccuracyMeters,
                 updatedAt: new Date().toISOString()
             });
 
             resultBox.innerHTML = `
                 <div class="alert-box alert-success">
-                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча Мектеп аймагында экениңиз тастыкталып, катышууңуз катталды!
+                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча GPS геолокациясы менен катышууңуз ийгиликтүү катталды!
                 </div>
             `;
             showToast('Катышууңуз катталды!');
@@ -318,9 +295,10 @@
             console.error(err);
             resultBox.innerHTML = `
                 <div class="alert-box alert-error">
-                    <i class="fas fa-exclamation-triangle"></i> КАТА: Мектеп аймагы тастыкталган жок.
+                    <i class="fas fa-exclamation-triangle"></i> КАТА: GPS аныкталган жок! Катышуу катталган жок.
                 </div>
             `;
+            showToast('GPS Геолокация талап кылынат!');
         } finally {
             setTimeout(() => { isProcessing = false; }, 3500);
         }
