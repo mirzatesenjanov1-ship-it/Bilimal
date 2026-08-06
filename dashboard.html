@@ -315,6 +315,11 @@
             background: #00a3cc;
         }
 
+        .auth-btn-primary:disabled {
+            background: #34495e;
+            cursor: not-allowed;
+        }
+
         .auth-switch-text {
             margin-top: 15px;
             font-size: 13px;
@@ -333,6 +338,10 @@
             font-size: 13px;
             margin-top: 10px;
             display: none;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(231, 76, 60, 0.3);
         }
 
         @media (max-width: 768px) {
@@ -419,7 +428,7 @@
         <h3 class="section-title" id="section-title">Ыкчам өтмөктөр:</h3>
 
         <div class="grid-container">
-            <!-- ОКУУЧУЛАР / СТУДЕНТТЕР БӨЛҮМҮ (ШИЛТЕМЕСИ STUDENT-PORTAL.HTML ДЕП ОҢДОЛДУ) -->
+            <!-- ОКУУЧУЛАР / СТУДЕНТТЕР БӨЛҮМҮ -->
             <a href="./sections/student-portal.html" class="grid-item">
                 <i class="fas fa-user-graduate"></i>
                 <div class="item-text">
@@ -647,6 +656,7 @@
         const logoutBtn = document.getElementById('logout-btn');
 
         const authForm = document.getElementById('auth-form');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
         const authSwitchBtn = document.getElementById('auth-switch-btn');
         const authError = document.getElementById('auth-error');
 
@@ -676,13 +686,17 @@
             window.setLanguage(window.currentLang || 'ky');
         });
 
+        // КИРҮҮ ЖАНА КАТТАЛУУ ФОРМАСЫН ОҢДОЛГОН АТКАРУУ ЛОГИКАСЫ
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             authError.style.display = 'none';
 
-            const email = document.getElementById('auth-email').value;
+            const email = document.getElementById('auth-email').value.trim();
             const password = document.getElementById('auth-password').value;
             const t = window.translations[window.currentLang || 'ky'];
+
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.innerText = 'Күтө туруңуз...';
 
             try {
                 if (isModeLogin) {
@@ -692,15 +706,27 @@
                 }
             } catch (error) {
                 authError.style.display = 'block';
-                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                console.error("Firebase Auth Катасы:", error.code, error.message);
+
+                // Firebase v9+ бардык ката коддорун так текшерүү
+                if (
+                    error.code === 'auth/user-not-found' || 
+                    error.code === 'auth/wrong-password' || 
+                    error.code === 'auth/invalid-credential'
+                ) {
                     authError.textContent = t.errWrongPass;
                 } else if (error.code === 'auth/email-already-in-use') {
                     authError.textContent = t.errEmailInUse;
                 } else if (error.code === 'auth/weak-password') {
                     authError.textContent = t.errWeakPass;
+                } else if (error.code === 'auth/invalid-email') {
+                    authError.textContent = "Туура эмес электрондук почта форматы!";
                 } else {
                     authError.textContent = t.errGeneral + error.message;
                 }
+            } finally {
+                authSubmitBtn.disabled = false;
+                window.setLanguage(window.currentLang || 'ky');
             }
         });
 
