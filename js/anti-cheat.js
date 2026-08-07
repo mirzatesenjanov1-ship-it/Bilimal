@@ -1,5 +1,5 @@
 (function() {
-    // 1. Оң баскычты бөгөттө
+    // 1. Оң баскычты бөгөттөө
     document.addEventListener('contextmenu', e => e.preventDefault());
 
     // 2. Көчүрүү жана чаптоону чектөө
