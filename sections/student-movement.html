@@ -529,7 +529,27 @@
 
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-        const movementsRef = ref(database, 'movements');
+
+        // -------------------------------------------------------------
+        // КУПУЯЛУУЛУКТУ САКТОО: Мугалимдин IDсин алуу же түзүү
+        // -------------------------------------------------------------
+        function getTeacherId() {
+            let teacherId = localStorage.getItem('bilimal_teacher_id');
+            if (!teacherId) {
+                teacherId = 'teacher_' + Math.random().toString(36).substring(2, 11);
+                localStorage.setItem('bilimal_teacher_id', teacherId);
+            }
+            return teacherId;
+        }
+
+        const teacherId = getTeacherId();
+
+        // Окуучулар үчүн уникалдуу шилтемени жаңыртуу
+        const shareLinkInput = document.getElementById("shareableLink");
+        shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${teacherId}`;
+
+        // Ар бир мугалимдин өзүнүн базасы: movements/{teacherId}
+        const teacherMovementsRef = ref(database, `movements/${teacherId}`);
 
         let allRecords = [];
 
@@ -552,8 +572,8 @@
             }, 2000);
         });
 
-        // Firebase'ден реальный убакыт режиминде маалыматтарды алуу
-        onValue(movementsRef, (snapshot) => {
+        // Firebase'ден ушул МУГАЛИМДИН ГАНА маалыматтарын реальный убакыт режиминде алуу
+        onValue(teacherMovementsRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
@@ -615,7 +635,7 @@
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
-                        await remove(ref(database, `movements/${id}`));
+                        await remove(ref(database, `movements/${teacherId}/${id}`));
                     }
                 });
             });
@@ -647,7 +667,7 @@
             };
 
             try {
-                await push(movementsRef, payload);
+                await push(teacherMovementsRef, payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
             } catch (err) {
