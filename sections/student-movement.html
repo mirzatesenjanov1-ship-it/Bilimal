@@ -395,7 +395,7 @@
         <div class="student-link-card">
             <div class="link-info">
                 <h3><i class="fas fa-link"></i> Окуучулар өздөрү толтуруучу анкета шилтемеси:</h3>
-                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору купуя түрдө ушул таблицаңызга түшөт.</p>
+                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору туура ушул таблицаңызга түшөт.</p>
             </div>
             <div class="link-input-group">
                 <input type="text" id="shareableLink" value="https://bilimal.org/sections/student-form.html" readonly>
@@ -530,26 +530,8 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // -------------------------------------------------------------
-        // КУПУЯЛУУЛУКТУ САКТОО: Мугалимдин IDсин алуу же түзүү
-        // -------------------------------------------------------------
-        function getTeacherId() {
-            let teacherId = localStorage.getItem('bilimal_teacher_id');
-            if (!teacherId) {
-                teacherId = 'teacher_' + Math.random().toString(36).substring(2, 11);
-                localStorage.setItem('bilimal_teacher_id', teacherId);
-            }
-            return teacherId;
-        }
-
-        const teacherId = getTeacherId();
-
-        // Окуучулар үчүн уникалдуу шилтемени жаңыртуу
-        const shareLinkInput = document.getElementById("shareableLink");
-        shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${teacherId}`;
-
-        // Ар бир мугалимдин өзүнүн базасы: movements/{teacherId}
-        const teacherMovementsRef = ref(database, `movements/${teacherId}`);
+        // Жалпы негизги 'movements' папкасына кайра туташтырабыз
+        const movementsRef = ref(database, 'movements');
 
         let allRecords = [];
 
@@ -572,13 +554,24 @@
             }, 2000);
         });
 
-        // Firebase'ден ушул МУГАЛИМДИН ГАНА маалыматтарын реальный убакыт режиминде алуу
-        onValue(teacherMovementsRef, (snapshot) => {
+        // Firebase'ден ЖАЛПЫ маалыматтарды алуу (ичинде сублокация бар болсо аны да, түз сакталгандарды да чогултат)
+        onValue(movementsRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                Object.entries(data).forEach(([key, item]) => {
-                    allRecords.push({ id: key, ...item });
+                
+                Object.entries(data).forEach(([key, value]) => {
+                    // Эгерде объект ичинде ички объект болсо (мугалим IDси боюнча сакталып калгандар)
+                    if (value && typeof value === 'object' && !value.fullName && !value.name) {
+                        Object.entries(value).forEach(([innerKey, innerValue]) => {
+                            if (innerValue && typeof innerValue === 'object') {
+                                allRecords.push({ id: `${key}/${innerKey}`, ...innerValue });
+                            }
+                        });
+                    } else {
+                        // Мурунку түз сакталган маалыматтар
+                        allRecords.push({ id: key, ...value });
+                    }
                 });
             }
             // Жаңы катталгандарды өйдө жагына чыгаруу
@@ -606,9 +599,9 @@
                 if (item.type === 'out') {
                     badgeClass = 'badge-out';
                     typeText = '<i class="fas fa-arrow-up"></i> Кетти';
-                } else if (item.type === 'self') {
+                } else if (item.type === 'self' || !item.type) {
                     badgeClass = 'badge-self';
-                    typeText = '<i class="fas fa-user-check"></i> Өзү толтурду';
+                    typeText = '<i class="fas fa-user-check"></i> Анкета';
                 }
 
                 const dateDisplay = item.date || (item.timestamp ? new Date(item.timestamp).toLocaleDateString() : '-');
@@ -635,7 +628,7 @@
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
-                        await remove(ref(database, `movements/${teacherId}/${id}`));
+                        await remove(ref(database, `movements/${id}`));
                     }
                 });
             });
@@ -646,7 +639,7 @@
             document.getElementById('stat-total').innerText = data.length;
             document.getElementById('stat-in').innerText = data.filter(r => r.type === 'in').length;
             document.getElementById('stat-out').innerText = data.filter(r => r.type === 'out').length;
-            document.getElementById('stat-self').innerText = data.filter(r => r.type === 'self').length;
+            document.getElementById('stat-self').innerText = data.filter(r => r.type === 'self' || !r.type).length;
         }
 
         // Мугалим тараптан сактоо
@@ -667,7 +660,7 @@
             };
 
             try {
-                await push(teacherMovementsRef, payload);
+                await push(movementsRef, payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
             } catch (err) {
@@ -698,7 +691,7 @@
             allRecords.forEach(r => {
                 let typeName = 'Келди';
                 if (r.type === 'out') typeName = 'Кетти';
-                if (r.type === 'self') typeName = 'Өзү толтурду';
+                if (r.type === 'self' || !r.type) typeName = 'Анкета';
                 
                 const dateVal = r.date || (r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '-');
                 const nameVal = r.fullName || r.name || '-';
