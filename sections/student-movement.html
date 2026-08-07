@@ -105,6 +105,38 @@
             border-color: var(--accent-color);
         }
 
+        /* TEACHER KEY CARD BANNER */
+        .teacher-key-card {
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .teacher-key-card .key-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .btn-key-change {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
         /* BANNER FOR STUDENT LINK */
         .student-link-card {
             background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
@@ -391,14 +423,23 @@
             </div>
         </header>
 
+        <!-- TEACHER KEY DISPLAY -->
+        <div class="teacher-key-card">
+            <div class="key-title">
+                <i class="fas fa-user-shield"></i>
+                <span>Мугалимдин өздүк ключу: <strong id="teacherKeyDisplay" style="color: #fff;">...</strong></span>
+            </div>
+            <button class="btn-key-change" id="changeKeyBtn"><i class="fas fa-key"></i> Ключту алмаштыруу / Мурункуну кайтаруу</button>
+        </div>
+
         <!-- STUDENT SURVEY LINK BANNER -->
         <div class="student-link-card">
             <div class="link-info">
                 <h3><i class="fas fa-link"></i> Окуучулар өздөрү толтуруучу анкета шилтемеси:</h3>
-                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору туура ушул таблицаңызга түшөт.</p>
+                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору купуя түрдө өзүңүздүн гана журналыңызга түшөт.</p>
             </div>
             <div class="link-input-group">
-                <input type="text" id="shareableLink" value="https://bilimal.org/sections/student-form.html" readonly>
+                <input type="text" id="shareableLink" value="" readonly>
                 <button class="btn-copy" id="copyBtn"><i class="fas fa-copy"></i> Көчүрүү</button>
             </div>
         </div>
@@ -530,8 +571,43 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // Жалпы негизги 'movements' папкасына кайра туташтырабыз
-        const movementsRef = ref(database, 'movements');
+        // ------------------------------------------------------------------
+        // МУГАЛИМДИН КЛЮЧУН ИШТЕТҮҮ ЖАНА АЗЫРКЫ 24 ОКУУЧУНУ КОРГОО
+        // ------------------------------------------------------------------
+        function getOrSetTeacherKey() {
+            let key = localStorage.getItem('bilimal_teacher_key');
+            if (!key) {
+                key = prompt("Мугалимдин жеке ключун (сыр сөзүн) киргизиңиз же ойлоп табыңыз:\n\n(Эгер мурунку 24 окуучуну кайтаргыңыз келсе 'legacy' же 'main' деп жазыңыз)", "legacy");
+                if (!key || key.trim() === '') {
+                    key = 'legacy';
+                }
+                key = key.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+                localStorage.setItem('bilimal_teacher_key', key);
+            }
+            return key;
+        }
+
+        let currentTeacherKey = getOrSetTeacherKey();
+        document.getElementById('teacherKeyDisplay').innerText = currentTeacherKey;
+
+        // Ключту алмаштыруу баскычы
+        document.getElementById('changeKeyBtn').addEventListener('click', () => {
+            const newKey = prompt("Жаңы мугалимдик ключту же сыр сөздү киргизиңиз:\n(Мурунку 24 окуучуңуз үчүн 'legacy' деп жазыңыз)", currentTeacherKey);
+            if (newKey && newKey.trim() !== '') {
+                const sanitizedKey = newKey.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+                localStorage.setItem('bilimal_teacher_key', sanitizedKey);
+                location.reload();
+            }
+        });
+
+        // Окуучулар үчүн ар бир мугалимге уникалдуу шилтеме
+        const shareLinkInput = document.getElementById("shareableLink");
+        shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
+
+        // Сиздин гана маалыматтарыңыз сакталуучу Firebase папкасы
+        // Эгер 'legacy' болсо, дал ошол мурунку 24 окуучу сакталган негизги 'movements' ачылат!
+        const teacherPath = (currentTeacherKey === 'legacy' || currentTeacherKey === 'main') ? 'movements' : `teachers_data/${currentTeacherKey}`;
+        const currentRef = ref(database, teacherPath);
 
         let allRecords = [];
 
@@ -554,27 +630,18 @@
             }, 2000);
         });
 
-        // Firebase'ден ЖАЛПЫ маалыматтарды алуу (ичинде сублокация бар болсо аны да, түз сакталгандарды да чогултат)
-        onValue(movementsRef, (snapshot) => {
+        // Firebase'ден ушул мугалимге гана тиешелүү маалыматты жүктөө
+        onValue(currentRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
-                
                 Object.entries(data).forEach(([key, value]) => {
-                    // Эгерде объект ичинде ички объект болсо (мугалим IDси боюнча сакталып калгандар)
-                    if (value && typeof value === 'object' && !value.fullName && !value.name) {
-                        Object.entries(value).forEach(([innerKey, innerValue]) => {
-                            if (innerValue && typeof innerValue === 'object') {
-                                allRecords.push({ id: `${key}/${innerKey}`, ...innerValue });
-                            }
-                        });
-                    } else {
-                        // Мурунку түз сакталган маалыматтар
+                    // Түз объект болсо кошуп алабыз
+                    if (value && typeof value === 'object' && (value.fullName || value.name)) {
                         allRecords.push({ id: key, ...value });
                     }
                 });
             }
-            // Жаңы катталгандарды өйдө жагына чыгаруу
             allRecords.reverse();
             renderTable(allRecords);
             updateStats(allRecords);
@@ -586,7 +653,7 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Катталган маалымат жок</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Жазуулар табылган жок (Ключ: ${currentTeacherKey})</td></tr>`;
                 return;
             }
 
@@ -628,7 +695,7 @@
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
-                        await remove(ref(database, `movements/${id}`));
+                        await remove(ref(database, `${teacherPath}/${id}`));
                     }
                 });
             });
@@ -660,7 +727,7 @@
             };
 
             try {
-                await push(movementsRef, payload);
+                await push(currentRef, payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
             } catch (err) {
@@ -706,7 +773,7 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.setAttribute('href', url);
-            a.setAttribute('download', 'окуучулардын_кыймылы_отчет.csv');
+            a.setAttribute('download', `окуучулардын_кыймылы_${currentTeacherKey}.csv`);
             a.click();
         });
     </script>
