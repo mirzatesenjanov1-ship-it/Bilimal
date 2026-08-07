@@ -98,6 +98,10 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
+        // URL'ден мугалимдин жеке IDсин алуу (мисалы: ?teacher=teacher_123456)
+        const urlParams = new URLSearchParams(window.location.search);
+        const teacherId = urlParams.get('teacher');
+
         const form = document.getElementById('studentSurveyForm');
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -115,8 +119,9 @@
             };
 
             try {
-                const movementsRef = ref(database, 'movements');
-                await push(movementsRef, payload);
+                // Эгер шилтемеде мугалимдин IDси бар болсо, дал ошол мугалимдин папкасына сактайбыз
+                const targetRef = teacherId ? ref(database, `movements/${teacherId}`) : ref(database, 'movements');
+                await push(targetRef, payload);
 
                 document.getElementById('form-content').style.display = 'none';
                 document.getElementById('successBox').style.display = 'block';
