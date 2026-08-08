@@ -151,10 +151,24 @@ function attachEventListeners() {
 async function viewResults(id, title) {
     const modal = document.getElementById('resultsModal');
     const titleEl = document.getElementById('modalTitle');
+    const tableHead = document.querySelector('#resultsModal thead tr');
     const tableBody = document.getElementById('resultsTableBody');
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
-    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Жүктөлүүдө...</td></tr>';
+
+    // Анти-чит тилкесин кошуу
+    if (tableHead) {
+        tableHead.innerHTML = `
+            <th>Окуучунун аты-жөнү</th>
+            <th>Класс</th>
+            <th>Балл</th>
+            <th>Процент (%)</th>
+            <th>Анти-Чит (чыгуулары)</th>
+            <th>Датасы</th>
+        `;
+    }
+
+    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
 
     try {
@@ -166,20 +180,32 @@ async function viewResults(id, title) {
             tableBody.innerHTML = '';
 
             Object.values(results).forEach(r => {
+                const cheatedCount = r.cheatedCount || 0;
+                let cheatedBadge = `<span style="color:#10b981;">Таза (0)</span>`;
+
+                if (cheatedCount > 0) {
+                    cheatedBadge = `<span style="color:#ff0055; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${cheatedCount} жолу чыккан</span>`;
+                }
+
+                if (r.cheatingAttempt) {
+                    cheatedBadge += ` <small style="color:#ff0055;">(Бөгөттөлгөн)</small>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${r.studentName || '-'}</td>
                     <td>${r.studentClass || '-'}</td>
                     <td>${r.score} / ${r.totalQuestions}</td>
                     <td>${r.percent}%</td>
+                    <td>${cheatedBadge}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
                 `;
                 tableBody.appendChild(tr);
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ff0055;">Ката: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff0055;">Ката: ${err.message}</td></tr>`;
     }
 }
