@@ -1,96 +1,173 @@
-import { auth, db } from '../firebase/firebase-config.js';
+import { auth, db } from '/firebase/firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { ref, get, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
+let currentUser = null;
+
+// Auth текшерүү
 onAuthStateChanged(auth, async (user) => {
     if (!user) {
-        window.location.href = "../dashboard.html";
+        window.location.href = "/dashboard.html";
         return;
     }
-    loadTeacherTests(user.uid);
+    currentUser = user;
+    loadTeacherTests();
 });
 
-async function loadTeacherTests(uid) {
+// Мугалимге гана тиешелүү тесттерди жүктөө
+async function loadTeacherTests() {
     const container = document.getElementById('testContainer');
-    const testsRef = ref(db, 'tests');
-    
     try {
+        const testsRef = ref(db, 'tests');
         const snapshot = await get(testsRef);
-        container.innerHTML = '';
 
         if (!snapshot.exists()) {
-            container.innerHTML = '<p>Азырынча тесттер жок.</p>';
+            container.innerHTML = '<p style="color:#94a3b8">Сизде азырынча түзүлгөн тесттер жок.</p>';
             return;
         }
 
-        snapshot.forEach(child => {
-            const test = child.val();
-            const testId = child.key;
+        const testsData = snapshot.val();
+        container.innerHTML = ''; // Тазалоо
 
-            if (test.ownerUid === uid) {
-                const card = document.createElement('div');
-                card.className = 'test-card';
-                card.innerHTML = `
-                    <h3>${test.title}</h3>
-                    <p>Предмет: ${test.subject} (${test.grade}-класс)</p>
-                    <p>Убакыт: ${test.duration} мүнөт</p>
-                    <div class="card-actions">
-                        <button class="btn-action" onclick="copyLink('${testId}')"><i class="fas fa-link"></i> Ссылка</button>
-                        <button class="btn-action" onclick="viewResults('${testId}', '${test.title}')"><i class="fas fa-poll"></i> Жыйынтыктар</button>
-                        <button class="btn-action btn-delete" onclick="deleteTest('${testId}')"><i class="fas fa-trash"></i> Өчүрүү</button>
-                    </div>
-                `;
+        let myTestsCount = 0;
+
+        for (const [testId, test] of Object.entries(testsData)) {
+            // Болгону ушул мугалимге тиешелүү тесттерди чыпкалоо
+            if (test.ownerUid === currentUser.uid) {
+                myTestsCount++;
+                const card = createTestCard(testId, test);
                 container.appendChild(card);
             }
-        });
-    } catch (e) {
-        container.innerHTML = `<p style="color:#ff0055">Ката: ${e.message}</p>`;
+        }
+
+        if (myTestsCount === 0) {
+            container.innerHTML = '<p style="color:#94a3b8">Сизде азырынча түзүлгөн тесттер жок.</p>';
+        }
+
+    } catch (error) {
+        console.error('Тесттерди жүктөөдө ката чыкты:', error);
+        container.innerHTML = '<p style="color:#ff0055">Тесттерди жүктөөдө ката болду.</p>';
     }
 }
 
-window.copyLink = (testId) => {
-    const url = `${window.location.origin}/test.html?testId=${testId}`;
-    navigator.clipboard.writeText(url);
-    alert('Шилтеме көчүрүлдү: ' + url);
-};
+// Тест картасын түзүү
+function createTestCard(testId, test) {
+    const card = document.createElement('div');
+    card.className = 'test-card';
 
-window.deleteTest = async (testId) => {
-    if (confirm('Тестти өчүрүүнү каалайсызбы?')) {
-        await remove(ref(db, `tests/${testId}`));
-        location.reload();
-    }
-};
+    const qCount = test.questions ? Object.keys(test.questions).length : 0;
+    const isPublished = test.published !== false;
 
-window.viewResults = async (testId, title) => {
-    document.getElementById('modalTitle').innerText = `${title} — Жыйынтыктар`;
-    const tbody = document.getElementById('resultsTableBody');
-    tbody.innerHTML = '<tr><td colspan="5">Жүктөлүүдө...</td></tr>';
-    document.getElementById('resultsModal').style.display = 'flex';
+    card.innerHTML = `
+        <span class="badge ${isPublished ? 'badge-pub' : 'badge-unpub'}">
+            ${isPublished ? '● Жарыяланган' : '○ Жашырылган'}
+        </span>
+        <h3>${escapeHtml(test.title || 'Аталышсыз тест')}</h3>
+        <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
+        <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
+        <p><i class="fa-solid fa-circle-question"></i> Суроолор саны: <strong>${qCount}</strong></p>
+        
+        <div class="card-actions">
+            <button class="btn-action btn-copy" data-id="${testId}" title="Окуучуларга шилтемени көчүрүү"><i class="fa-solid fa-link"></i> Шилтеме</button>
+            <button class="btn-action btn-toggle" data-id="${testId}" data-pub="${isPublished}"><i class="fa-solid ${isPublished ? 'fa-eye-slash' : 'fa-eye'}"></i> ${isPublished ? 'Жашыруу' : 'Жарыялоо'}</button>
+            <a href="/sections/test-builder.html?editId=${testId}" class="btn-action"><i class="fa-solid fa-pen"></i> Оңдоо</a>
+            <button class="btn-action btn-results" data-id="${testId}" data-title="${escapeHtml(test.title)}"><i class="fa-solid fa-chart-line"></i> Жыйынтыктар</button>
+            <button class="btn-action btn-delete" data-id="${testId}"><i class="fa-solid fa-trash"></i></button>
+        </div>
+    `;
 
-    const resRef = ref(db, `results/${testId}`);
-    const snapshot = await get(resRef);
-    tbody.innerHTML = '';
+    // Event Listener'дерди кошуу
+    card.querySelector('.btn-copy').addEventListener('click', () => copyTestLink(testId));
+    card.querySelector('.btn-toggle').addEventListener('click', () => togglePublish(testId, isPublished));
+    card.querySelector('.btn-results').addEventListener('click', () => showResults(testId, test.title));
+    card.querySelector('.btn-delete').addEventListener('click', () => deleteTest(testId));
 
-    if (!snapshot.exists()) {
-        tbody.innerHTML = '<tr><td colspan="5">Азырынча тапшырган окуучулар жок.</td></tr>';
-        return;
-    }
+    return card;
+}
 
-    snapshot.forEach(child => {
-        const r = child.val();
-        const date = new Date(r.submittedAt).toLocaleDateString();
-        tbody.innerHTML += `
-            <tr>
-                <td>${r.studentName}</td>
-                <td>${r.studentClass}</td>
-                <td>${r.score}/${r.total}</td>
-                <td>${r.percentage}%</td>
-                <td>${date}</td>
-            </tr>
-        `;
+// Шилтемени көчүрүү
+function copyTestLink(testId) {
+    const link = `https://bilimal.org/test.html?testId=${testId}`;
+    navigator.clipboard.writeText(link).then(() => {
+        alert(`Шилтеме көчүрүлдү!\n${link}`);
+    }).catch(() => {
+        prompt("Төмөнкү шилтемени көчүрүп алыңыз:", link);
     });
-};
+}
 
-document.getElementById('closeModal').onclick = () => {
+// Жарыялоо/Жашыруу статусун алмаштыруу
+async function togglePublish(testId, currentStatus) {
+    try {
+        await update(ref(db, `tests/${testId}`), {
+            published: !currentStatus
+        });
+        loadTeacherTests();
+    } catch (error) {
+        alert("Статусту өзгөртүүдө ката болду!");
+    }
+}
+
+// Тестти өчүрүү
+async function deleteTest(testId) {
+    if (confirm("Чын эле бул тестти өчүргүңүз келеби? Бардык жыйынтыктар кошо өчөт!")) {
+        try {
+            await remove(ref(db, `tests/${testId}`));
+            await remove(ref(db, `results/${testId}`));
+            alert("Тест өчүрүлдү!");
+            loadTeacherTests();
+        } catch (error) {
+            alert("Өчүрүүдө ката болду!");
+        }
+    }
+}
+
+// Жыйынтыктарды көрсөтүү (Modal)
+async function showResults(testId, testTitle) {
+    const modal = document.getElementById('resultsModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const tableBody = document.getElementById('resultsTableBody');
+
+    modalTitle.innerText = `Жыйынтыктар: ${testTitle}`;
+    tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Жүктөлүүдө...</td></tr>';
+    modal.style.display = 'flex';
+
+    try {
+        const resultsRef = ref(db, `results/${testId}`);
+        const snapshot = await get(resultsRef);
+
+        if (!snapshot.exists()) {
+            tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">Бул тестке азырынча окуучулар жооп бере элек.</td></tr>';
+            return;
+        }
+
+        const resultsData = snapshot.val();
+        tableBody.innerHTML = '';
+
+        Object.values(resultsData).forEach(res => {
+            const tr = document.createElement('tr');
+            const dateStr = res.completedAt ? new Date(res.completedAt).toLocaleString('ky-KG') : '-';
+            tr.innerHTML = `
+                <td><strong>${escapeHtml(res.studentName || 'Аноним')}</strong></td>
+                <td>${escapeHtml(res.studentClass || '-')}</td>
+                <td>${res.score} / ${res.totalQuestions}</td>
+                <td><strong style="color: ${res.percentage >= 70 ? '#10b981' : '#ff0055'}">${res.percentage}%</strong></td>
+                <td>${dateStr}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+    } catch (error) {
+        console.error('Жыйынтыктарды жүктөөдө ката:', error);
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#ff0055;">Жыйынтыктарды жүктөөдө ката чыкты.</td></tr>';
+    }
+}
+
+// Модалканы жабуу
+document.getElementById('closeModal').addEventListener('click', () => {
     document.getElementById('resultsModal').style.display = 'none';
-};
+});
+
+// HTML текстинен коргонуу (XSS Safety)
+function escapeHtml(str) {
+    return String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
