@@ -1,5 +1,5 @@
 import { db } from '../firebase/firebase-config.js';
-import { ref, get, child, push, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { ref, get, child, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let testData = null;
 let currentQIndex = 0;
@@ -35,8 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('lblTitle').innerText = "Тест табылган жок!";
         }
     } catch (err) {
-        console.error(err);
-        document.getElementById('lblTitle').innerText = "Ката чыкты!";
+        console.error("Тестти жүктөөдө ката:", err);
+        document.getElementById('lblTitle').innerText = "Тестти жүктөөдө ката чыкты!";
     }
 
     document.getElementById('startBtn').addEventListener('click', startTest);
@@ -61,6 +61,8 @@ function startTest() {
 }
 
 function renderQuestion() {
+    if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
+
     const q = testData.questions[currentQIndex];
     document.getElementById('progress').innerText = `Суроо ${currentQIndex + 1} / ${testData.questions.length}`;
 
@@ -84,14 +86,15 @@ function renderQuestion() {
     const optionsContainer = document.getElementById('optionsContainer');
     optionsContainer.innerHTML = '';
 
-    if (q.type === 'matching') {
-        const rightOptions = [...q.options.map(o => o.right)].sort(() => Math.random() - 0.5);
+    if (q.type === 'matching' && Array.isArray(q.options)) {
+        const rightOptions = [...q.options.map(o => typeof o === 'object' ? o.right : o)].sort(() => Math.random() - 0.5);
         
         q.options.forEach((pair, idx) => {
+            const leftText = typeof pair === 'object' ? pair.left : pair;
             const row = document.createElement('div');
             row.className = 'matching-row';
             row.innerHTML = `
-                <div>${pair.left}</div>
+                <div>${leftText}</div>
                 <select data-idx="${idx}">
                     <option value="">-- Тандаңыз --</option>
                     ${rightOptions.map(r => `<option value="${r}">${r}</option>`).join('')}
@@ -99,12 +102,12 @@ function renderQuestion() {
             `;
             optionsContainer.appendChild(row);
         });
-    } else {
+    } else if (Array.isArray(q.options)) {
         const isMultiple = q.type === 'multiple';
         const inputType = isMultiple ? 'checkbox' : 'radio';
 
         q.options.forEach((opt, idx) => {
-            const optText = typeof opt === 'object' ? opt.text : opt;
+            const optText = (typeof opt === 'object' && opt !== null) ? (opt.text || opt.label || '') : opt;
             const label = document.createElement('label');
             label.className = 'q-option';
             label.innerHTML = `
@@ -115,8 +118,8 @@ function renderQuestion() {
         });
     }
 
-    if (window.MathJax) {
-        MathJax.typesetPromise();
+    if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+        MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
     }
 }
 
@@ -130,11 +133,12 @@ function nextQuestion() {
             document.getElementById('nextBtn').innerText = "Тестти аяктоо 🏁";
         }
     } else {
-        finishTest();
+        finishTest('normal');
     }
 }
 
 function saveAnswer() {
+    if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
     const q = testData.questions[currentQIndex];
 
     if (q.type === 'matching') {
@@ -157,12 +161,14 @@ function startTimer(seconds) {
     timerInterval = setInterval(() => {
         const m = Math.floor(timer / 60);
         const s = timer % 60;
-        timerEl.innerHTML = `<i class="fa-solid fa-clock"></i> ${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        if (timerEl) {
+            timerEl.innerHTML = `<i class="fa-solid fa-clock"></i> ${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
 
         if (--timer < 0) {
             clearInterval(timerInterval);
             alert("Убакыт бүттү!");
-            finishTest();
+            finishTest('timeout');
         }
     }, 1000);
 }
@@ -171,71 +177,91 @@ async function finishTest(reason = 'normal') {
     if (isTestFinished) return;
     isTestFinished = true;
 
-    clearInterval(timerInterval);
+    if (timerInterval) clearInterval(timerInterval);
     saveAnswer();
 
     let score = 0;
-    testData.questions.forEach((q, idx) => {
-        const userAns = userAnswers[idx];
-        if (!userAns) return;
+    const totalQ = (testData && testData.questions) ? testData.questions.length : 0;
 
-        if (q.type === 'matching') {
-            let correctCount = 0;
-            q.options.forEach((pair, pIdx) => {
-                if (userAns[pIdx] === pair.right) correctCount++;
-            });
-            if (correctCount === q.options.length) score++;
-        } else {
-            const correctIndices = q.options
-                .map((o, i) => (typeof o === 'object' && o.isCorrect) ? i : null)
-                .filter(i => i !== null);
+    if (totalQ > 0) {
+        testData.questions.forEach((q, idx) => {
+            const userAns = userAnswers[idx];
+            if (!userAns) return;
 
-            if (JSON.stringify(correctIndices.sort()) === JSON.stringify(userAns.sort())) {
-                score++;
+            if (q.type === 'matching') {
+                let correctCount = 0;
+                if (Array.isArray(q.options)) {
+                    q.options.forEach((pair, pIdx) => {
+                        const targetRight = typeof pair === 'object' ? pair.right : pair;
+                        if (userAns[pIdx] === targetRight) correctCount++;
+                    });
+                    if (correctCount === q.options.length) score++;
+                }
+            } else if (Array.isArray(q.options)) {
+                // Туура индекстерди аныктоо (Объект же жөнөкөй массив үчүн)
+                const correctIndices = [];
+                q.options.forEach((o, i) => {
+                    if (typeof o === 'object' && o !== null) {
+                        if (o.isCorrect === true || o.correct === true) correctIndices.push(i);
+                    } else if (q.correctAnswer !== undefined) {
+                        if (q.correctAnswer === i || (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i))) {
+                            correctIndices.push(i);
+                        }
+                    }
+                });
+
+                if (Array.isArray(userAns) && JSON.stringify(correctIndices.sort()) === JSON.stringify(userAns.sort())) {
+                    score++;
+                }
             }
-        }
-    });
+        });
+    }
 
-    const percent = Math.round((score / testData.questions.length) * 100);
-    const name = document.getElementById('studentName').value.trim();
-    const cls = document.getElementById('studentClass').value.trim();
+    const percent = totalQ > 0 ? Math.round((score / totalQ) * 100) : 0;
+    const nameInput = document.getElementById('studentName');
+    const classInput = document.getElementById('studentClass');
+    const name = nameInput ? nameInput.value.trim() : 'Аноним';
+    const cls = classInput ? classInput.value.trim() : '-';
 
-    // БАЗАГА САКТОО (test_results ЖАНА results ЭКӨӨНӨ ТЕҢ САКТАЙБЫЗ)
+    // БАЗАГА САКТОО (Коопсуз Promise агымы)
     try {
         const payload = {
             testId: testId,
             studentName: name,
             studentClass: cls,
             score: score,
-            totalQuestions: testData.questions.length,
+            totalQuestions: totalQ,
             percent: percent,
             cheatedCount: warningCount,
             cheatingAttempt: reason === 'cheating',
             date: new Date().toISOString()
         };
 
-        // 1. test_results/testId/
-        await set(push(ref(db, `test_results/${testId}`)), payload);
-        // 2. results/testId/ (Эгер эски структура болсо)
-        await set(push(ref(db, `results/${testId}`)), payload);
+        const resultsRef = ref(db, `test_results/${testId}`);
+        await push(resultsRef, payload);
     } catch (e) {
-        console.error("Жыйынтыкты сактоодо ката:", e);
+        console.error("Жыйынтыкты Firebase'ке сактоодо ката чыкты:", e);
     }
 
     let statusHtml = '';
     if (reason === 'cheating') {
         statusHtml = `<p style="color:#ff0055; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">⚠️ Тест эреже бузулгандыктан автоматтык түрдө токтотулду!</p>`;
+    } else if (reason === 'timeout') {
+        statusHtml = `<p style="color:#ff9900; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">⏳ Тесттин убактысы бүттү!</p>`;
     }
 
-    document.getElementById('runningScreen').innerHTML = `
-        <div style="text-align:center; padding: 20px;">
-            <h2 style="color:#00f0ff; margin-bottom:15px;">🎉 Тест Аяктады!</h2>
-            ${statusHtml}
-            <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${testData.questions.length}</strong> (${percent}%)</p>
-            <p style="color:#a5b4fc; font-size:0.9rem;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
-            <a href="tests-center.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:10px 25px; margin-top:15px;">Башкы баракчага кайтуу</a>
-        </div>
-    `;
+    const runningScreen = document.getElementById('runningScreen');
+    if (runningScreen) {
+        runningScreen.innerHTML = `
+            <div style="text-align:center; padding: 20px;">
+                <h2 style="color:#00f0ff; margin-bottom:15px;">🎉 Тест Аяктады!</h2>
+                ${statusHtml}
+                <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${totalQ}</strong> (${percent}%)</p>
+                <p style="color:#a5b4fc; font-size:0.9rem;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
+                <a href="tests-center.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:10px 25px; margin-top:15px;">Башкы баракчага кайтуу</a>
+            </div>
+        `;
+    }
 }
 
 function enableStrictProtection() {
