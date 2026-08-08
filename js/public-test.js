@@ -61,11 +61,28 @@ async function loadTest(id) {
     }
 }
 
+// Ката чыкканда UX жакшыртуу: Тест Борборуна багыттоо
 function showError(msg) {
-    document.getElementById('lblTitle').innerText = "Каталык!";
-    document.getElementById('lblTitle').style.color = "#ff0055";
-    document.getElementById('lblMeta').innerText = msg;
-    document.getElementById('startBtn').style.display = 'none';
+    const lblTitle = document.getElementById('lblTitle');
+    const lblMeta = document.getElementById('lblMeta');
+    const startBtn = document.getElementById('startBtn');
+
+    if (lblTitle) {
+        lblTitle.innerText = "Каталык!";
+        lblTitle.style.color = "#ff0055";
+    }
+    if (lblMeta) {
+        lblMeta.innerText = msg;
+    }
+    
+    if (startBtn) {
+        startBtn.style.display = 'block';
+        startBtn.disabled = false;
+        startBtn.innerText = "🎓 Тест Борборуна өтүү";
+        startBtn.onclick = () => {
+            window.location.href = '/tests-center.html';
+        };
+    }
 }
 
 // Тестти баштоо
@@ -98,7 +115,7 @@ function startTimer() {
 
         if (timeLeftSeconds <= 0) {
             clearInterval(timerInterval);
-            alert("Бөлүнгөн убакыт бүттү! Жыйынтыктар автоматтык байланап сакталууда.");
+            alert("Бөлүнгөн убакыт бүттү! Жыйынтыктар автоматтык эсептелип сакталууда.");
             finishTest();
         }
     }, 1000);
@@ -107,7 +124,10 @@ function startTimer() {
 function updateTimerUI() {
     const m = Math.floor(timeLeftSeconds / 60);
     const s = timeLeftSeconds % 60;
-    document.getElementById('timer').innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    const timerElem = document.getElementById('timer');
+    if (timerElem) {
+        timerElem.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+    }
 }
 
 // Суроону экранга чыгаруу
@@ -126,7 +146,7 @@ function renderQuestion() {
         
         div.addEventListener('click', () => {
             userAnswers[currentIndex] = optIdx;
-            renderQuestion(); // Элемент тандалганда кайра тарттыруу
+            renderQuestion(); // Элемент тандалганда кайра тартуу
         });
 
         optContainer.appendChild(div);
