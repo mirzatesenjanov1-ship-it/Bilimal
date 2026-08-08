@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!container || !form) return;
 
-    // URL'ден оңдоо ID'син текшерүү
     const urlParams = new URLSearchParams(window.location.search);
     const editId = urlParams.get('id');
 
@@ -19,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editBadge) editBadge.style.display = 'inline-block';
         loadTestForEdit(editId);
     } else {
-        // Дефолттук биринчи суроону кошуу
         addQuestion();
     }
 
@@ -27,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn.addEventListener('click', () => addQuestion());
     }
 
-    // Форманы Realtime Database'ге сактоо логикасы
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -48,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         qBoxes.forEach((qBox) => {
             const type = qBox.querySelector('.q-type').value;
             const text = qBox.querySelector('.q-text').value.trim();
+            const imageUrl = qBox.querySelector('.q-img-url').value.trim();
             const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
 
             const options = [];
@@ -75,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
             questions.push({
                 type,
                 text,
+                imageUrl,
                 context: pisaContext,
                 options
             });
@@ -92,11 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (editId) {
-                // Жаңылоо
                 await set(ref(db, 'tests/' + editId), testData);
                 alert("Тест ийгиликтүү жаңыланды!");
             } else {
-                // Жаңы кошуу
                 const testsRef = ref(db, 'tests');
                 const newTestRef = push(testsRef);
                 await set(newTestRef, testData);
@@ -118,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         qBox.id = qId;
         
         const qType = data ? data.type : 'single';
+        const qImg = data && data.imageUrl ? data.imageUrl : '';
 
         qBox.innerHTML = `
             <div class="q-header">
@@ -138,13 +136,32 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
 
             <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
-                <label>PISA Контекст / Текст / Сүрөттөмө:</label>
-                <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+                <label>PISA Контекст / Текст:</label>
+                <textarea class="pisa-text" rows="3" placeholder="Контексттик текстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
             </div>
 
             <div class="form-group">
-                <label>Суроонун тексти</label>
+                <label>Символдор & Эмодзилер тез панели:</label>
+                <div class="symbol-toolbar">
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '⚡')">⚡</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '🧲')">🧲</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '💡')">💡</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '⚛️')">⚛️</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'Ω')">Ω</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'π')">π</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '√')">√</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'Δ')">Δ</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'm/s²')">m/s²</button>
+                    <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '\\(E=mc^2\\)')">E=mc²</button>
+                </div>
+                <label>Суроонун тексти (Формула үчүн $F = m \\cdot a$ жазыңыз):</label>
                 <textarea class="q-text" rows="2" required placeholder="Суроону жазыңыз...">${data ? data.text : ''}</textarea>
+            </div>
+
+            <div class="form-group" style="margin-top:10px;">
+                <label><i class="fa-solid fa-image"></i> Суроого сүрөт кошуу (URL шилтемеси):</label>
+                <input type="url" class="q-img-url" placeholder="https://example.com/image.jpg" value="${qImg}" onchange="previewImage(this, '${qId}')">
+                <img class="img-preview" id="preview_${qId}" src="${qImg}" style="display:${qImg ? 'block' : 'none'}">
             </div>
 
             <div class="options-container" style="margin-top: 15px;"></div>
@@ -180,7 +197,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Глобалдык кнопкалар үчүн функциялар
+window.previewImage = function(input, qId) {
+    const imgEl = document.getElementById(`preview_${qId}`);
+    if (input.value.trim() !== '') {
+        imgEl.src = input.value.trim();
+        imgEl.style.display = 'block';
+    } else {
+        imgEl.style.display = 'none';
+    }
+};
+
+window.insertSymbol = function(qId, symbol) {
+    const qBox = document.getElementById(qId);
+    const textarea = qBox.querySelector('.q-text');
+    textarea.value += symbol;
+    textarea.focus();
+};
+
 window.removeQuestion = function(qId) {
     const el = document.getElementById(qId);
     if (el) el.remove();
@@ -238,7 +271,7 @@ function renderOptions(qId, type, optionsData = null) {
         `;
         
         if (optionsData && optionsData.length) {
-            optionsData.forEach(opt => addOptionItem(qId, inputType, opt.text, opt.isCorrect));
+            optionsData.forEach(opt => addOptionItem(qId, inputType, typeof opt === 'object' ? opt.text : opt, opt.isCorrect));
         } else {
             addOptionItem(qId, inputType);
             addOptionItem(qId, inputType);
@@ -256,7 +289,7 @@ window.addOptionItem = function(qId, inputType, text = '', isCorrect = false) {
     item.className = 'opt-item';
     item.innerHTML = `
         <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
-        <input type="text" class="opt-text" required placeholder="Варианттын тексти" value="${text}">
+        <input type="text" class="opt-text" required placeholder="Варианттын тексти же $E=mc^2$" value="${text}">
         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding: 4px 8px;">
             <i class="fa-solid fa-xmark"></i>
         </button>
