@@ -1,6 +1,6 @@
 import { auth, db } from '/firebase/firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { ref, get, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { ref, get, query, orderByChild, equalTo, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let currentUser = null;
 
@@ -14,12 +14,18 @@ onAuthStateChanged(auth, async (user) => {
     loadTeacherTests();
 });
 
-// Мугалимге гана тиешелүү тесттерди жүктөө
+// Мугалимдин өзүнө гана тиешелүү тесттерди Firebase Query менен жүктөө
 async function loadTeacherTests() {
     const container = document.getElementById('testContainer');
     try {
-        const testsRef = ref(db, 'tests');
-        const snapshot = await get(testsRef);
+        // Бүтүндөй /tests эмес, болгону ownerUid === currentUser.uid болгон тесттерди гана суроо
+        const testsQuery = query(
+            ref(db, 'tests'), 
+            orderByChild('ownerUid'), 
+            equalTo(currentUser.uid)
+        );
+        
+        const snapshot = await get(testsQuery);
 
         if (!snapshot.exists()) {
             container.innerHTML = '<p style="color:#94a3b8">Сизде азырынча түзүлгөн тесттер жок.</p>';
@@ -27,21 +33,11 @@ async function loadTeacherTests() {
         }
 
         const testsData = snapshot.val();
-        container.innerHTML = ''; // Тазалоо
-
-        let myTestsCount = 0;
+        container.innerHTML = '';
 
         for (const [testId, test] of Object.entries(testsData)) {
-            // Болгону ушул мугалимге тиешелүү тесттерди чыпкалоо
-            if (test.ownerUid === currentUser.uid) {
-                myTestsCount++;
-                const card = createTestCard(testId, test);
-                container.appendChild(card);
-            }
-        }
-
-        if (myTestsCount === 0) {
-            container.innerHTML = '<p style="color:#94a3b8">Сизде азырынча түзүлгөн тесттер жок.</p>';
+            const card = createTestCard(testId, test);
+            container.appendChild(card);
         }
 
     } catch (error) {
@@ -76,7 +72,7 @@ function createTestCard(testId, test) {
         </div>
     `;
 
-    // Event Listener'дерди кошуу
+    // Event Listener'дерди туташтыруу
     card.querySelector('.btn-copy').addEventListener('click', () => copyTestLink(testId));
     card.querySelector('.btn-toggle').addEventListener('click', () => togglePublish(testId, isPublished));
     card.querySelector('.btn-results').addEventListener('click', () => showResults(testId, test.title));
@@ -167,7 +163,7 @@ document.getElementById('closeModal').addEventListener('click', () => {
     document.getElementById('resultsModal').style.display = 'none';
 });
 
-// HTML текстинен коргонуу (XSS Safety)
+// HTML экранирование (XSS коопсуздугу үчүн)
 function escapeHtml(str) {
     return String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
