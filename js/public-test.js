@@ -9,7 +9,7 @@ let userAnswers = {};
 let timerInterval = null;
 let timeLeftSeconds = 0;
 
-// URL'ден testId алу
+// URL'ден testId алуу
 const urlParams = new URLSearchParams(window.location.search);
 testId = urlParams.get('testId');
 
