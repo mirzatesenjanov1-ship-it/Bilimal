@@ -148,43 +148,33 @@ function attachEventListeners() {
     });
 }
 
-async function viewResults(id, title) {
+async function viewResults(testId, title) {
     const modal = document.getElementById('resultsModal');
     const titleEl = document.getElementById('modalTitle');
-    const tableHead = document.querySelector('#resultsModal thead tr');
     const tableBody = document.getElementById('resultsTableBody');
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
-
-    // Анти-чит тилкесин кошуу
-    if (tableHead) {
-        tableHead.innerHTML = `
-            <th>Окуучунун аты-жөнү</th>
-            <th>Класс</th>
-            <th>Балл</th>
-            <th>Процент (%)</th>
-            <th>Анти-Чит (чыгуулары)</th>
-            <th>Датасы</th>
-        `;
-    }
-
-    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Жүктөлүүдө...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
 
     try {
         const dbRef = ref(db);
-        const snapshot = await get(child(dbRef, `test_results/${id}`));
+        // Бул жерде дал ошол тандалган тесттин IDси боюнча гана жыйынтыктар суралат (test_results/TEST_ID)
+        const snapshot = await get(child(dbRef, `test_results/${testId}`));
 
         if (snapshot.exists()) {
             const results = snapshot.val();
             tableBody.innerHTML = '';
 
-            Object.values(results).forEach(r => {
+            // Нтыйжаларды массивге айландырып, акыркы тапшыргандарды жогору чыгаруу
+            const resultList = Object.values(results);
+
+            resultList.forEach(r => {
                 const cheatedCount = r.cheatedCount || 0;
                 let cheatedBadge = `<span style="color:#10b981;">Таза (0)</span>`;
 
                 if (cheatedCount > 0) {
-                    cheatedBadge = `<span style="color:#ff0055; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${cheatedCount} жолу чыккан</span>`;
+                    cheatedBadge = `<span style="color:#ff0055; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${cheatedCount} жолу</span>`;
                 }
 
                 if (r.cheatingAttempt) {
@@ -195,8 +185,8 @@ async function viewResults(id, title) {
                 tr.innerHTML = `
                     <td>${r.studentName || '-'}</td>
                     <td>${r.studentClass || '-'}</td>
-                    <td>${r.score} / ${r.totalQuestions}</td>
-                    <td>${r.percent}%</td>
+                    <td><strong>${r.score}</strong> / ${r.totalQuestions}</td>
+                    <td><strong>${r.percent}%</strong></td>
                     <td>${cheatedBadge}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
                 `;
@@ -206,6 +196,7 @@ async function viewResults(id, title) {
             tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
-        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff0055;">Ката: ${err.message}</td></tr>`;
+        console.error("Жыйынтыктарды жүктөөдө ката:", err);
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
     }
 }
