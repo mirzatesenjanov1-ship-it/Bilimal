@@ -12,10 +12,9 @@ const MAX_WARNINGS = 3;
 let isTestFinished = false;
 
 const urlParams = new URLSearchParams(window.location.search);
-const testId = urlParams.get('testId');
+const testId = urlParams.get('testId') || urlParams.get('id');
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // Текст көчүрүү жана чычкандын оң баскычын бөгөттөө (Анти-чит)
     enableStrictProtection();
 
     if (!testId) {
@@ -56,9 +55,7 @@ function startTest() {
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('runningScreen').style.display = 'block';
 
-    // Вкладка алмаштырууну көзөмөлдөөчү анти-читти ишке киргизүү
     activateTabSwitchProtection();
-
     startTimer((testData.duration || 15) * 60);
     renderQuestion();
 }
@@ -67,7 +64,6 @@ function renderQuestion() {
     const q = testData.questions[currentQIndex];
     document.getElementById('progress').innerText = `Суроо ${currentQIndex + 1} / ${testData.questions.length}`;
 
-    // PISA контекстин көрсөтүү
     const pisaBox = document.getElementById('pisaBox');
     if (q.type === 'pisa' && q.context) {
         pisaBox.innerHTML = `<strong>Контекст:</strong><br>${q.context}`;
@@ -78,7 +74,6 @@ function renderQuestion() {
 
     document.getElementById('qText').innerHTML = q.text || '';
 
-    // Сүрөттү көрсөтүү
     const imgContainer = document.getElementById('imgContainer');
     if (q.imageUrl) {
         imgContainer.innerHTML = `<img src="${q.imageUrl}" class="test-image" ondragstart="return false;">`;
@@ -86,7 +81,6 @@ function renderQuestion() {
         imgContainer.innerHTML = '';
     }
 
-    // Варианттарды рендерлөө
     const optionsContainer = document.getElementById('optionsContainer');
     optionsContainer.innerHTML = '';
 
@@ -121,7 +115,6 @@ function renderQuestion() {
         });
     }
 
-    // MathJax формулаларын рендерлөө
     if (window.MathJax) {
         MathJax.typesetPromise();
     }
@@ -207,27 +200,31 @@ async function finishTest(reason = 'normal') {
     const name = document.getElementById('studentName').value.trim();
     const cls = document.getElementById('studentClass').value.trim();
 
-    // Жыйынтыкты Firebase базасына жазуу (Мугалим көрүшү үчүн)
+    // БАЗАГА САКТОО (test_results ЖАНА results ЭКӨӨНӨ ТЕҢ САКТАЙБЫЗ)
     try {
-        const resultsRef = ref(db, `test_results/${testId}`);
-        const newResultRef = push(resultsRef);
-        await set(newResultRef, {
+        const payload = {
+            testId: testId,
             studentName: name,
             studentClass: cls,
             score: score,
             totalQuestions: testData.questions.length,
             percent: percent,
-            cheatedCount: warningCount, // Окуучу канча жолу башка жакка чыкканы
+            cheatedCount: warningCount,
             cheatingAttempt: reason === 'cheating',
             date: new Date().toISOString()
-        });
+        };
+
+        // 1. test_results/testId/
+        await set(push(ref(db, `test_results/${testId}`)), payload);
+        // 2. results/testId/ (Эгер эски структура болсо)
+        await set(push(ref(db, `results/${testId}`)), payload);
     } catch (e) {
         console.error("Жыйынтыкты сактоодо ката:", e);
     }
 
     let statusHtml = '';
     if (reason === 'cheating') {
-        statusHtml = `<p style="color:#ff0055; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">⚠️ Тест эреже бузулгандыктан (башка баракчага ашыкча өтүлгөндүктөн) автоматтык түрдө токтотулду!</p>`;
+        statusHtml = `<p style="color:#ff0055; font-weight:bold; font-size:1.1rem; margin-bottom:10px;">⚠️ Тест эреже бузулгандыктан автоматтык түрдө токтотулду!</p>`;
     }
 
     document.getElementById('runningScreen').innerHTML = `
@@ -241,47 +238,39 @@ async function finishTest(reason = 'normal') {
     `;
 }
 
-// ==========================================
-// АНТИ-ЧИТ ФУНКЦИЯЛАРЫ
-// ==========================================
-
 function enableStrictProtection() {
-    // 1. Оң баскыч, текст таңдоо, көчүрүү, кесүү, чаптоону бөгөттөө
     const events = ['contextmenu', 'selectstart', 'copy', 'cut', 'paste', 'dragstart'];
     events.forEach(event => {
         document.addEventListener(event, (e) => e.preventDefault());
     });
 
-    // 2. Иштеп чыгуучу баскычтарды жана клавиатура айкалыштарын өчүрүү
     document.addEventListener('keydown', (e) => {
         if (
-            e.keyCode === 123 || // F12
-            (e.ctrlKey && e.shiftKey && e.keyCode === 73) || // Ctrl+Shift+I
-            (e.ctrlKey && e.shiftKey && e.keyCode === 74) || // Ctrl+Shift+J
-            (e.ctrlKey && e.keyCode === 85) || // Ctrl+U
-            (e.ctrlKey && e.keyCode === 67) || // Ctrl+C
-            (e.ctrlKey && e.keyCode === 86) || // Ctrl+V
-            (e.ctrlKey && e.keyCode === 65)    // Ctrl+A
+            e.keyCode === 123 ||
+            (e.ctrlKey && e.shiftKey && e.keyCode === 73) ||
+            (e.ctrlKey && e.shiftKey && e.keyCode === 74) ||
+            (e.ctrlKey && e.keyCode === 85) ||
+            (e.ctrlKey && e.keyCode === 67) ||
+            (e.ctrlKey && e.keyCode === 86) ||
+            (e.ctrlKey && e.keyCode === 65)
         ) {
             e.preventDefault();
             return false;
         }
     });
 
-    // CSS аркылуу текст тандалуусун болтурбоо
     document.body.style.userSelect = 'none';
     document.body.style.webkitUserSelect = 'none';
     document.body.style.msUserSelect = 'none';
 }
 
 function activateTabSwitchProtection() {
-    // Башка вкладкага же тиркемеге өтүп кеткенде көзөмөлдөө
     const handleViolation = () => {
         if (isTestFinished) return;
         
         warningCount++;
         if (warningCount < MAX_WARNINGS) {
-            alert(`⚠️ ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS})!\nТест учурунда башка баракчага өтүүгө болбойт. Эскертүүлөр мугалимге жөнөтүлөт!`);
+            alert(`⚠️ ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS})!\nТест учурунда башка баракчага өтүүгө болбойт.`);
         } else {
             alert("❌ Эрежелер кайра-кайра бузулгандыктан тест бөгөттөлдү!");
             finishTest('cheating');
