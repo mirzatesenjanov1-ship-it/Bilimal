@@ -1,71 +1,182 @@
-import { db } from '/js/firebase-config.js';
+import { db } from './firebase-config.js';
 import { collection, addDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 let questionCount = 0;
-const container = document.getElementById('questionsContainer');
-const addBtn = document.getElementById('addQuestionBtn');
-const form = document.getElementById('builderForm');
 
-const urlParams = new URLSearchParams(window.location.search);
-const editId = urlParams.get('id');
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('questionsContainer');
+    const addBtn = document.getElementById('addQuestionBtn');
+    const form = document.getElementById('builderForm');
 
-if (editId) {
-    const editBadge = document.getElementById('editBadge');
-    if (editBadge) editBadge.style.display = 'inline-block';
-    loadTestForEdit(editId);
-} else {
-    addQuestion();
-}
+    if (!container || !form) return;
 
-if (addBtn) {
-    addBtn.addEventListener('click', () => addQuestion());
-}
+    // URL'ден оңдоо ID'син текшерүү
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('id');
 
-function addQuestion(data = null) {
-    questionCount++;
-    const qId = `q_${questionCount}`;
-    
-    const qBox = document.createElement('div');
-    qBox.className = 'q-box';
-    qBox.id = qId;
-    
-    const qType = data ? data.type : 'single';
+    if (editId) {
+        const editBadge = document.getElementById('editBadge');
+        if (editBadge) editBadge.style.display = 'inline-block';
+        loadTestForEdit(editId);
+    } else {
+        // Дефолттук биринчи суроо
+        addQuestion();
+    }
 
-    qBox.innerHTML = `
-        <div class="q-header">
-            <strong>Суроо #${questionCount}</strong>
-            <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion('${qId}')">
-                <i class="fa-solid fa-trash"></i> Өчүрүү
-            </button>
-        </div>
+    if (addBtn) {
+        addBtn.addEventListener('click', () => addQuestion());
+    }
 
-        <div class="form-group" style="margin-bottom: 12px;">
-            <label>Суроонун түрү</label>
-            <select class="q-type" onchange="changeQuestionType('${qId}', this.value)">
-                <option value="single" ${qType === 'single' ? 'selected' : ''}>1 туура варианттуу</option>
-                <option value="multiple" ${qType === 'multiple' ? 'selected' : ''}>Көп туура варианттуу</option>
-                <option value="pisa" ${qType === 'pisa' ? 'selected' : ''}>PISA суроосу (Контекст / Текст менен)</option>
-                <option value="matching" ${qType === 'matching' ? 'selected' : ''}>Дал келтирүү (Шайкештик)</option>
-            </select>
-        </div>
+    // Форманы сактоо логикасы
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-        <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
-            <label>PISA Контекст / Текст / Сүрөттөмө:</label>
-            <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти же сүрөттөмөнү жазыңыз...">${data && data.context ? data.context : ''}</textarea>
-        </div>
+        const title = document.getElementById('testTitle').value.trim();
+        const subject = document.getElementById('testSubject').value.trim();
+        const grade = document.getElementById('testGrade').value.trim();
+        const topic = document.getElementById('testTopic').value.trim();
+        const duration = parseInt(document.getElementById('testDuration').value);
 
-        <div class="form-group">
-            <label>Суроонун тексти</label>
-            <textarea class="q-text" rows="2" required placeholder="Суроону жазыңыз...">${data ? data.text : ''}</textarea>
-        </div>
+        const questions = [];
+        const qBoxes = container.querySelectorAll('.q-box');
 
-        <div class="options-container" style="margin-top: 15px;"></div>
-    `;
+        if (qBoxes.length === 0) {
+            alert("Кем дегенде 1 суроо кошуңуз!");
+            return;
+        }
 
-    container.appendChild(qBox);
-    renderOptions(qId, qType, data ? data.options : null);
-}
+        qBoxes.forEach((qBox) => {
+            const type = qBox.querySelector('.q-type').value;
+            const text = qBox.querySelector('.q-text').value.trim();
+            const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
 
+            const options = [];
+
+            if (type === 'matching') {
+                const pairs = qBox.querySelectorAll('.match-pair');
+                pairs.forEach(p => {
+                    options.push({
+                        left: p.querySelector('.match-left').value.trim(),
+                        right: p.querySelector('.match-right').value.trim()
+                    });
+                });
+            } else {
+                const items = qBox.querySelectorAll('.opt-item');
+                items.forEach(it => {
+                    const isCorrect = it.querySelector('input[type="radio"], input[type="checkbox"]').checked;
+                    const optText = it.querySelector('.opt-text').value.trim();
+                    options.push({
+                        text: optText,
+                        isCorrect: isCorrect
+                    });
+                });
+            }
+
+            questions.push({
+                type,
+                text,
+                context: pisaContext,
+                options
+            });
+        });
+
+        const testData = {
+            title,
+            subject,
+            grade,
+            topic,
+            duration,
+            questions,
+            createdAt: new Date().toISOString()
+        };
+
+        try {
+            if (editId) {
+                await updateDoc(doc(db, "tests", editId), testData);
+                alert("Тест ийгиликтүү жаңыланды!");
+            } else {
+                await addDoc(collection(db, "tests"), testData);
+                alert("Тест ийгиликтүү сакталды жана жарыяланды!");
+            }
+            window.location.href = 'tests.html';
+        } catch (err) {
+            console.error("Сактоодо ката чыкты: ", err);
+            alert("Ката чыкты: " + err.message);
+        }
+    });
+
+    function addQuestion(data = null) {
+        questionCount++;
+        const qId = `q_${questionCount}`;
+        
+        const qBox = document.createElement('div');
+        qBox.className = 'q-box';
+        qBox.id = qId;
+        
+        const qType = data ? data.type : 'single';
+
+        qBox.innerHTML = `
+            <div class="q-header">
+                <strong>Суроо #${questionCount}</strong>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion('${qId}')">
+                    <i class="fa-solid fa-trash"></i> Өчүрүү
+                </button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label>Суроонун түрү</label>
+                <select class="q-type" onchange="changeQuestionType('${qId}', this.value)">
+                    <option value="single" ${qType === 'single' ? 'selected' : ''}>1 туура варианттуу</option>
+                    <option value="multiple" ${qType === 'multiple' ? 'selected' : ''}>Көп туура варианттуу</option>
+                    <option value="pisa" ${qType === 'pisa' ? 'selected' : ''}>PISA суроосу (Контекст / Текст менен)</option>
+                    <option value="matching" ${qType === 'matching' ? 'selected' : ''}>Дал келтирүү (Шайкештик)</option>
+                </select>
+            </div>
+
+            <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
+                <label>PISA Контекст / Текст / Сүрөттөмө:</label>
+                <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти же сүрөттөмөнү жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Суроонун тексти</label>
+                <textarea class="q-text" rows="2" required placeholder="Суроону жазыңыз...">${data ? data.text : ''}</textarea>
+            </div>
+
+            <div class="options-container" style="margin-top: 15px;"></div>
+        `;
+
+        container.appendChild(qBox);
+        renderOptions(qId, qType, data ? data.options : null);
+    }
+
+    async function loadTestForEdit(id) {
+        try {
+            const docRef = doc(doc(db, "tests", id));
+            const docSnap = await getDoc(docRef);
+
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                document.getElementById('testTitle').value = data.title || '';
+                document.getElementById('testSubject').value = data.subject || '';
+                document.getElementById('testGrade').value = data.grade || '';
+                document.getElementById('testTopic').value = data.topic || '';
+                document.getElementById('testDuration').value = data.duration || 15;
+
+                container.innerHTML = '';
+                questionCount = 0;
+
+                if (data.questions && data.questions.length) {
+                    data.questions.forEach(q => addQuestion(q));
+                }
+            }
+        } catch (err) {
+            console.error("Тестти жүктөөдө ката чыкты:", err);
+        }
+    }
+});
+
+// Глобалдык функциялар (HTML кнопкалары чакыра алышы үчүн)
 window.removeQuestion = function(qId) {
     const el = document.getElementById(qId);
     if (el) el.remove();
@@ -73,11 +184,11 @@ window.removeQuestion = function(qId) {
 };
 
 function renumberQuestions() {
+    const container = document.getElementById('questionsContainer');
     const boxes = container.querySelectorAll('.q-box');
     boxes.forEach((box, idx) => {
         box.querySelector('.q-header strong').innerText = `Суроо #${idx + 1}`;
     });
-    questionCount = boxes.length;
 }
 
 window.changeQuestionType = function(qId, type) {
@@ -164,102 +275,3 @@ window.addMatchPair = function(qId, leftText = '', rightText = '') {
     `;
     list.appendChild(pair);
 };
-
-if (form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const title = document.getElementById('testTitle').value.trim();
-        const subject = document.getElementById('testSubject').value.trim();
-        const grade = document.getElementById('testGrade').value.trim();
-        const topic = document.getElementById('testTopic').value.trim();
-        const duration = parseInt(document.getElementById('testDuration').value);
-
-        const questions = [];
-        const qBoxes = container.querySelectorAll('.q-box');
-
-        qBoxes.forEach((qBox) => {
-            const type = qBox.querySelector('.q-type').value;
-            const text = qBox.querySelector('.q-text').value.trim();
-            const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
-
-            const options = [];
-
-            if (type === 'matching') {
-                const pairs = qBox.querySelectorAll('.match-pair');
-                pairs.forEach(p => {
-                    options.push({
-                        left: p.querySelector('.match-left').value.trim(),
-                        right: p.querySelector('.match-right').value.trim()
-                    });
-                });
-            } else {
-                const items = qBox.querySelectorAll('.opt-item');
-                items.forEach(it => {
-                    const isCorrect = it.querySelector('input[type="radio"], input[type="checkbox"]').checked;
-                    const optText = it.querySelector('.opt-text').value.trim();
-                    options.push({
-                        text: optText,
-                        isCorrect: isCorrect
-                    });
-                });
-            }
-
-            questions.push({
-                type,
-                text,
-                context: pisaContext,
-                options
-            });
-        });
-
-        const testData = {
-            title,
-            subject,
-            grade,
-            topic,
-            duration,
-            questions,
-            createdAt: new Date().toISOString()
-        };
-
-        try {
-            if (editId) {
-                await updateDoc(doc(db, "tests", editId), testData);
-                alert("Тест ийгиликтүү жаңыланды!");
-            } else {
-                await addDoc(collection(db, "tests"), testData);
-                alert("Тест ийгиликтүү түзүлдү жана жарыяланды!");
-            }
-            window.location.href = 'tests.html';
-        } catch (err) {
-            console.error("Сактоодо ката чыкты: ", err);
-            alert("Ката чыкты: " + err.message);
-        }
-    });
-}
-
-async function loadTestForEdit(id) {
-    try {
-        const docRef = doc(db, "tests", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            document.getElementById('testTitle').value = data.title || '';
-            document.getElementById('testSubject').value = data.subject || '';
-            document.getElementById('testGrade').value = data.grade || '';
-            document.getElementById('testTopic').value = data.topic || '';
-            document.getElementById('testDuration').value = data.duration || 15;
-
-            container.innerHTML = '';
-            questionCount = 0;
-
-            if (data.questions && data.questions.length) {
-                data.questions.forEach(q => addQuestion(q));
-            }
-        }
-    } catch (err) {
-        console.error("Тестти жүктөөдө ката чыкты:", err);
-    }
-}
