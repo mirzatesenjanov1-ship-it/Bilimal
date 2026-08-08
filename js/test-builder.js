@@ -1,4 +1,6 @@
-import { db } from './firebase-config.js'; // Добоңуздун жөндөөлөрүнө жараша импортту сактаңыз
+// Эски сап: import { db } from './firebase-config.js';
+// ЖАҢЫ ОҢДОЛГОН САП:
+import { db } from '../js/firebase-config.js'; 
 import { collection, addDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 let questionCount = 0;
@@ -11,14 +13,17 @@ const urlParams = new URLSearchParams(window.location.search);
 const editId = urlParams.get('id');
 
 if (editId) {
-    document.getElementById('editBadge').style.display = 'inline-block';
+    const editBadge = document.getElementById('editBadge');
+    if (editBadge) editBadge.style.display = 'inline-block';
     loadTestForEdit(editId);
 } else {
-    // Дефолттук биринчи суроону кошуу
+    // Баракча ачылганда автоматтык түрдө 1-суроону чыгаруу
     addQuestion();
 }
 
-addBtn.addEventListener('click', () => addQuestion());
+if (addBtn) {
+    addBtn.addEventListener('click', () => addQuestion());
+}
 
 function addQuestion(data = null) {
     questionCount++;
@@ -59,7 +64,7 @@ function addQuestion(data = null) {
         </div>
 
         <div class="options-container" style="margin-top: 15px;">
-            <!-- Варианттар ушул жерге динамикалык чыгат -->
+            <!-- Варианттар ушул жерге чыгат -->
         </div>
     `;
 
@@ -106,12 +111,10 @@ function renderOptions(qId, type, optionsData = null) {
                 <i class="fa-solid fa-plus"></i> Түгөй кошуу
             </button>
         `;
-        const matchList = optContainer.querySelector('.match-list');
         
         if (optionsData && optionsData.length) {
             optionsData.forEach(pair => addMatchPair(qId, pair.left, pair.right));
         } else {
-            // Дефолттук 2 түгөй
             addMatchPair(qId);
             addMatchPair(qId);
         }
@@ -128,7 +131,6 @@ function renderOptions(qId, type, optionsData = null) {
         if (optionsData && optionsData.length) {
             optionsData.forEach(opt => addOptionItem(qId, inputType, opt.text, opt.isCorrect));
         } else {
-            // Дефолттук 4 вариант
             addOptionItem(qId, inputType);
             addOptionItem(qId, inputType);
             addOptionItem(qId, inputType);
@@ -169,80 +171,80 @@ window.addMatchPair = function(qId, leftText = '', rightText = '') {
     list.appendChild(pair);
 };
 
-// Форманы сактоо логикасы
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const title = document.getElementById('testTitle').value.trim();
-    const subject = document.getElementById('testSubject').value.trim();
-    const grade = document.getElementById('testGrade').value.trim();
-    const topic = document.getElementById('testTopic').value.trim();
-    const duration = parseInt(document.getElementById('testDuration').value);
+        const title = document.getElementById('testTitle').value.trim();
+        const subject = document.getElementById('testSubject').value.trim();
+        const grade = document.getElementById('testGrade').value.trim();
+        const topic = document.getElementById('testTopic').value.trim();
+        const duration = parseInt(document.getElementById('testDuration').value);
 
-    const questions = [];
-    const qBoxes = container.querySelectorAll('.q-box');
+        const questions = [];
+        const qBoxes = container.querySelectorAll('.q-box');
 
-    qBoxes.forEach((qBox) => {
-        const type = qBox.querySelector('.q-type').value;
-        const text = qBox.querySelector('.q-text').value.trim();
-        const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
+        qBoxes.forEach((qBox) => {
+            const type = qBox.querySelector('.q-type').value;
+            const text = qBox.querySelector('.q-text').value.trim();
+            const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
 
-        const options = [];
+            const options = [];
 
-        if (type === 'matching') {
-            const pairs = qBox.querySelectorAll('.match-pair');
-            pairs.forEach(p => {
-                options.push({
-                    left: p.querySelector('.match-left').value.trim(),
-                    right: p.querySelector('.match-right').value.trim()
+            if (type === 'matching') {
+                const pairs = qBox.querySelectorAll('.match-pair');
+                pairs.forEach(p => {
+                    options.push({
+                        left: p.querySelector('.match-left').value.trim(),
+                        right: p.querySelector('.match-right').value.trim()
+                    });
                 });
-            });
-        } else {
-            const items = qBox.querySelectorAll('.opt-item');
-            items.forEach(it => {
-                const isCorrect = it.querySelector('input[type="radio"], input[type="checkbox"]').checked;
-                const optText = it.querySelector('.opt-text').value.trim();
-                options.push({
-                    text: optText,
-                    isCorrect: isCorrect
+            } else {
+                const items = qBox.querySelectorAll('.opt-item');
+                items.forEach(it => {
+                    const isCorrect = it.querySelector('input[type="radio"], input[type="checkbox"]').checked;
+                    const optText = it.querySelector('.opt-text').value.trim();
+                    options.push({
+                        text: optText,
+                        isCorrect: isCorrect
+                    });
                 });
-            });
-        }
+            }
 
-        questions.push({
-            type,
-            text,
-            context: pisaContext,
-            options
+            questions.push({
+                type,
+                text,
+                context: pisaContext,
+                options
+            });
         });
-    });
 
-    const testData = {
-        title,
-        subject,
-        grade,
-        topic,
-        duration,
-        questions,
-        createdAt: new Date().toISOString()
-    };
+        const testData = {
+            title,
+            subject,
+            grade,
+            topic,
+            duration,
+            questions,
+            createdAt: new Date().toISOString()
+        };
 
-    try {
-        if (editId) {
-            await updateDoc(doc(db, "tests", editId), testData);
-            alert("Тест ийгиликтүү жаңыланды!");
-        } else {
-            await addDoc(collection(db, "tests"), testData);
-            alert("Тест ийгиликтүү түзүлдү жана жарыяланды!");
+        try {
+            if (editId) {
+                await updateDoc(doc(db, "tests", editId), testData);
+                alert("Тест ийгиликтүү жаңыланды!");
+            } else {
+                await addDoc(collection(db, "tests"), testData);
+                alert("Тест ийгиликтүү түзүлдү жана жарыяланды!");
+            }
+            window.location.href = 'tests.html';
+        } catch (err) {
+            console.error("Сактоодо ката чыкты: ", err);
+            alert("Ката чыкты: " + err.message);
         }
-        window.location.href = '/sections/tests.html';
-    } catch (err) {
-        console.error("Сактоодо ката чыкты: ", err);
-        alert("Ката чыкты: " + err.message);
-    }
-});
+    });
+}
 
-// Оңдоо режими үчүн тестти жүктөө
 async function loadTestForEdit(id) {
     try {
         const docRef = doc(db, "tests", id);
