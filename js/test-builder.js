@@ -1,5 +1,5 @@
-import { db } from './firebase-config.js';
-import { collection, addDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { db } from '../firebase/firebase-config.js';
+import { ref, push, set, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let questionCount = 0;
 
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editBadge) editBadge.style.display = 'inline-block';
         loadTestForEdit(editId);
     } else {
-        // Дефолттук биринчи суроо
+        // Дефолттук биринчи суроону кошуу
         addQuestion();
     }
 
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addBtn.addEventListener('click', () => addQuestion());
     }
 
-    // Форманы сактоо логикасы
+    // Форманы Realtime Database'ге сактоо логикасы
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -92,11 +92,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (editId) {
-                await updateDoc(doc(db, "tests", editId), testData);
+                // Жаңылоо
+                await set(ref(db, 'tests/' + editId), testData);
                 alert("Тест ийгиликтүү жаңыланды!");
             } else {
-                await addDoc(collection(db, "tests"), testData);
-                alert("Тест ийгиликтүү сакталды жана жарыяланды!");
+                // Жаңы кошуу
+                const testsRef = ref(db, 'tests');
+                const newTestRef = push(testsRef);
+                await set(newTestRef, testData);
+                alert("Тест ийгиликтүү түзүлдү жана жарыяланды!");
             }
             window.location.href = 'tests.html';
         } catch (err) {
@@ -135,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
                 <label>PISA Контекст / Текст / Сүрөттөмө:</label>
-                <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти же сүрөттөмөнү жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+                <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
             </div>
 
             <div class="form-group">
@@ -152,11 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadTestForEdit(id) {
         try {
-            const docRef = doc(doc(db, "tests", id));
-            const docSnap = await getDoc(docRef);
+            const dbRef = ref(db);
+            const snapshot = await get(child(dbRef, `tests/${id}`));
 
-            if (docSnap.exists()) {
-                const data = docSnap.data();
+            if (snapshot.exists()) {
+                const data = snapshot.val();
                 document.getElementById('testTitle').value = data.title || '';
                 document.getElementById('testSubject').value = data.subject || '';
                 document.getElementById('testGrade').value = data.grade || '';
@@ -176,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Глобалдык функциялар (HTML кнопкалары чакыра алышы үчүн)
+// Глобалдык кнопкалар үчүн функциялар
 window.removeQuestion = function(qId) {
     const el = document.getElementById(qId);
     if (el) el.remove();
