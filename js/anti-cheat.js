@@ -1,24 +1,36 @@
+// Anti-Cheat Коргоо Механизми
 (function() {
-    // 1. Оң баскычты бөгөттөө
-    document.addEventListener('contextmenu', e => e.preventDefault());
+    // Контексттик менюну бөгөттөө (Оң баскыч)
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
 
-    // 2. Көчүрүү жана чаптоону чектөө
-    document.addEventListener('copy', e => e.preventDefault());
-    document.addEventListener('paste', e => e.preventDefault());
-    document.addEventListener('selectstart', e => e.preventDefault());
-
-    // 3. Tab алмаштырууну көзөмөлдөө
-    let switchCount = 0;
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            switchCount++;
-            if (switchCount >= 2) {
-                alert("Эскертүү! Экранды алмаштырганыңыз үчүн тест автоматтык түрдө тапшырылат.");
-                const nextBtn = document.getElementById('nextBtn');
-                if (nextBtn) nextBtn.click();
-            } else {
-                alert(`Эскертүү! Тест учурунда башка вкладкага өтүүгө болбойт! (${switchCount}/2)`);
-            }
+    // Дебюггер жана DevTools баскычтарын бөгөттөө
+    document.addEventListener('keydown', function(e) {
+        // F12
+        if (e.key === "F12") {
+            e.preventDefault();
+            return false;
         }
+        // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl+U (Исходный код)
+        if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl+C (Көчүрүү)
+        if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Браузерден же Вкладкадан чыгып кеткенде эскертүү
+    window.addEventListener('blur', function() {
+        console.warn("Экрандан башка жака өтүүгө аракет жасалды!");
     });
 })();
