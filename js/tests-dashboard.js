@@ -5,7 +5,6 @@ import { ref, get, child, remove, update } from "https://www.gstatic.com/firebas
 let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Авторизация абалын текшерүү
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
@@ -94,7 +93,6 @@ async function loadTests() {
 }
 
 function attachEventListeners() {
-    // Шилтемени көчүрүү
     document.querySelectorAll('.btn-copy').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -107,7 +105,6 @@ function attachEventListeners() {
         });
     });
 
-    // Жашыруу / Көрсөтүү (Статусту өзгөртүү)
     document.querySelectorAll('.btn-toggle').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -121,7 +118,6 @@ function attachEventListeners() {
         });
     });
 
-    // Жыйынтыктарды көрүү
     document.querySelectorAll('.btn-results').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -130,7 +126,6 @@ function attachEventListeners() {
         });
     });
 
-    // Өчүрүү
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -161,25 +156,27 @@ async function viewResults(testId, title) {
         const dbRef = ref(db);
         let foundResults = [];
 
-        // 1. test_results/TEST_ID коопсуз жүктөө
+        // test_results/TEST_ID аркылуу издөө
         try {
             const snap = await get(child(dbRef, `test_results/${testId}`));
             if (snap.exists()) {
-                foundResults = Object.values(snap.val());
+                const val = snap.val();
+                foundResults = Array.isArray(val) ? val : Object.values(val);
             }
         } catch (e1) {
-            console.warn("test_results ичинен оккулган жок, эски results изделет:", e1.message);
+            console.warn("test_results ичинен окулган жок:", e1.message);
         }
 
-        // 2. Эгер 1-жолдон табылбаса, эски results/TEST_ID коопсуз жүктөө
+        // Эгер табылбаса эски results/TEST_ID аркылуу издөө
         if (foundResults.length === 0) {
             try {
                 const snap = await get(child(dbRef, `results/${testId}`));
                 if (snap.exists()) {
-                    foundResults = Object.values(snap.val());
+                    const val = snap.val();
+                    foundResults = Array.isArray(val) ? val : Object.values(val);
                 }
             } catch (e2) {
-                console.warn("results ичинен оккулган жок:", e2.message);
+                console.warn("results ичинен окулган жок:", e2.message);
             }
         }
 
