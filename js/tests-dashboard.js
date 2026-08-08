@@ -1,8 +1,27 @@
-import { db } from '../firebase/firebase-config.js';
+import { db, auth } from '../firebase/firebase-config.js';
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { ref, get, child, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
+let currentUser = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-    loadTests();
+    // Авторизация абалын текшерүү
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            loadTests();
+        } else {
+            const container = document.getElementById('testContainer');
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding:30px; grid-column: 1/-1;">
+                        <p style="color:#ff0055; margin-bottom:15px;"><i class="fa-solid fa-lock"></i> Бул баракчага кирүү үчүн системага киришиңиз керек!</p>
+                        <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
+                    </div>
+                `;
+            }
+        }
+    });
 
     const closeModalBtn = document.getElementById('closeModal');
     if (closeModalBtn) {
@@ -24,7 +43,6 @@ async function loadTests() {
             const data = snapshot.val();
             container.innerHTML = '';
 
-            // Realtime Database объектин цикл менен айлануу
             Object.keys(data).forEach((id) => {
                 const test = data[id];
                 const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
@@ -44,25 +62,28 @@ async function loadTests() {
                     ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${test.topic}</p>` : ''}
 
                     <div class="card-actions">
-                        <button class="btn-action" onclick="copyTestLink('${id}')">
+                        <button class="btn-action btn-copy" data-id="${id}">
                             <i class="fa-solid fa-link"></i> Шилтеме
                         </button>
-                        <button class="btn-action" onclick="toggleHideTest('${id}', ${isHidden})">
+                        <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
                             <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Көрсөтүү' : 'Жашыруу'}
                         </button>
-                        <a href="test-builder.html?id=${id}" class="btn-action">
+                        <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
                             <i class="fa-solid fa-pen"></i> Оңдоо
                         </a>
-                        <button class="btn-action" onclick="viewResults('${id}', '${test.title}')">
+                        <button class="btn-action btn-results" data-id="${id}" data-title="${test.title || 'Тест'}">
                             <i class="fa-solid fa-chart-column"></i> Жыйынтыктар
                         </button>
-                        <button class="btn-action btn-delete" onclick="deleteTest('${id}')">
+                        <button class="btn-action btn-delete" data-id="${id}">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </div>
                 `;
                 container.appendChild(card);
             });
+
+            attachEventListeners();
+
         } else {
             container.innerHTML = '<p style="color:#94a3b8">Азырынча эч кандай тест түзүлө элек.</p>';
         }
@@ -72,39 +93,62 @@ async function loadTests() {
     }
 }
 
-// Глобалдык кнопкалар үчүн функциялар
-window.copyTestLink = function(id) {
-    const link = `${window.location.origin}/test.html?testId=${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-        alert("Тесттин шилтемеси көчүрүлдү:\n" + link);
-    }).catch(() => {
-        prompt("Шилтемени көчүрүп алыңыз:", link);
+function attachEventListeners() {
+    // Шилтемени көчүрүү
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const link = `${window.location.origin}/test.html?testId=${id}`;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Тесттин шилтемеси көчүрүлдү:\n" + link);
+            }).catch(() => {
+                prompt("Шилтемени көчүрүп алыңыз:", link);
+            });
+        });
     });
-};
 
-window.toggleHideTest = async function(id, currentStatus) {
-    try {
-        await update(ref(db, `tests/${id}`), { hidden: !currentStatus });
-        loadTests();
-    } catch (err) {
-        alert("Статусту өзгөртүүдө ката чыкты: " + err.message);
-    }
-};
+    // Жашыруу / Көрсөтүү
+    document.querySelectorAll('.btn-toggle').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const currentStatus = btn.getAttribute('data-hidden') === 'true';
+            try {
+                await update(ref(db, `tests/${id}`), { hidden: !currentStatus });
+                loadTests();
+            } catch (err) {
+                alert("Статусту өзгөртүүдө ката чыкты: " + err.message);
+            }
+        });
+    });
 
-window.deleteTest = async function(id) {
-    if (confirm("Бул тестти чындап эле өчүрүүнү каалайсызбы?")) {
-        try {
-            await remove(ref(db, `tests/${id}`));
-            const card = document.getElementById(`card_${id}`);
-            if (card) card.remove();
-            alert("Тест өчүрүлдү!");
-        } catch (err) {
-            alert("Өчүрүүдө ката чыкты: " + err.message);
-        }
-    }
-};
+    // Жыйынтыктарды көрүү
+    document.querySelectorAll('.btn-results').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const title = btn.getAttribute('data-title');
+            viewResults(id, title);
+        });
+    });
 
-window.viewResults = async function(id, title) {
+    // Өчүрүү
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            if (confirm("Бул тестти чындап эле өчүрүүнү каалайсызбы?")) {
+                try {
+                    await remove(ref(db, `tests/${id}`));
+                    const card = document.getElementById(`card_${id}`);
+                    if (card) card.remove();
+                    alert("Тест өчүрүлдү!");
+                } catch (err) {
+                    alert("Өчүрүүдө ката чыкты: " + err.message);
+                }
+            }
+        });
+    });
+}
+
+async function viewResults(id, title) {
     const modal = document.getElementById('resultsModal');
     const titleEl = document.getElementById('modalTitle');
     const tableBody = document.getElementById('resultsTableBody');
@@ -138,4 +182,4 @@ window.viewResults = async function(id, title) {
     } catch (err) {
         tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ff0055;">Ката: ${err.message}</td></tr>`;
     }
-};
+}
