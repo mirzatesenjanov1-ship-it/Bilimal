@@ -16,6 +16,15 @@
 
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
+
+    <!-- MathJax: Физика-Математика формулаларын рендерлөө үчүн -->
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
@@ -33,7 +42,7 @@
             -ms-user-select: none;
             user-select: none; /* Текст көчүрүүдөн коргоо */
         }
-        .test-box { background:rgba(15,23,42,0.9); border:1px solid rgba(0,240,255,0.3); border-radius:16px; padding:30px; width:100%; max-width:650px; box-shadow:0 0 30px rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
+        .test-box { background:rgba(15,23,42,0.9); border:1px solid rgba(0,240,255,0.3); border-radius:16px; padding:30px; width:100%; max-width:700px; box-shadow:0 0 30px rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
         
         .back-nav { display: inline-flex; align-items: center; gap: 8px; color: #00f0ff; text-decoration: none; font-size: 0.9rem; font-weight: 600; margin-bottom: 15px; transition: 0.3s; }
         .back-nav:hover { color: #fff; text-shadow: 0 0 10px #00f0ff; }
@@ -43,9 +52,17 @@
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .input-field { width:100%; padding:12px; margin-top:8px; background:#020208; border:1px solid rgba(0,240,255,0.3); border-radius:6px; color:#fff; font-size: 1rem; outline: none; transition: 0.3s; }
         .input-field:focus { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
-        .q-option { background:rgba(2,2,8,0.8); border:1px solid rgba(255,255,255,0.1); padding:14px 18px; border-radius:8px; margin-bottom:12px; cursor:pointer; transition:0.2s; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+        
+        .q-option { background:rgba(2,2,8,0.8); border:1px solid rgba(255,255,255,0.1); padding:14px 18px; border-radius:8px; margin-bottom:12px; cursor:pointer; transition:0.2s; font-size: 1rem; display: flex; align-items: center; gap: 12px; }
         .q-option:hover { border-color:#00f0ff; background:rgba(0,240,255,0.1); }
-        .q-option.selected { border-color:#00f0ff; background:rgba(0,240,255,0.2); box-shadow: 0 0 10px rgba(0,240,255,0.2); }
+        .q-option input[type="radio"], .q-option input[type="checkbox"] { width: 18px; height: 18px; accent-color: #00f0ff; }
+
+        .pisa-container { background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; border-radius: 8px; margin-bottom: 15px; line-height: 1.6; }
+        .test-image { max-width: 100%; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(0,240,255,0.3); }
+
+        .matching-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .matching-row select { background: #020208; border: 1px solid rgba(0,240,255,0.3); color: #fff; padding: 10px; border-radius: 6px; outline: none; }
+
         .timer-badge { background:rgba(255,0,85,0.2); color:#ff0055; border:1px solid #ff0055; padding:6px 14px; border-radius:20px; font-weight:800; float:right; font-size: 0.95rem; }
         .ads-slot { margin:15px 0; text-align:center; min-height:90px; }
     </style>
@@ -55,7 +72,7 @@
     <div class="test-box">
         <!-- 1-БӨЛҮК: START SCREEN (Тест башталаар алдында) -->
         <div id="startScreen">
-            <a href="/tests-center.html" class="back-nav">
+            <a href="tests-center.html" class="back-nav">
                 <i class="fa-solid fa-arrow-left"></i> Бардык тесттерди көрүү
             </a>
 
@@ -70,7 +87,7 @@
                 <input type="text" id="studentClass" class="input-field" placeholder="Мисалы: 8-А">
             </div>
 
-            <!-- AdSense Жарнама Блогу (Тест баштала электе) -->
+            <!-- AdSense Жарнама Блогу -->
             <div class="ads-slot">
                 <ins class="adsbygoogle"
                      style="display:block"
@@ -84,18 +101,23 @@
             <button class="btn-start" id="startBtn" disabled>ТЕСТТИ БАШТОО 🚀</button>
         </div>
 
-        <!-- 2-БӨЛҮК: TEST RUNNING (Тест тапшырып жатканда ЖАРНАМА ЖОК) -->
+        <!-- 2-БӨЛҮК: TEST RUNNING -->
         <div id="runningScreen" style="display:none">
             <span class="timer-badge" id="timer"><i class="fa-solid fa-clock"></i> 00:00</span>
             <p style="color:#00f0ff; font-weight:700" id="progress">Суроо 1/10</p>
-            <h3 style="margin:20px 0; font-size: 1.25rem; line-height: 1.5;" id="qText"></h3>
-            <div id="optionsContainer"></div>
+            
+            <div id="pisaBox" class="pisa-container" style="display:none"></div>
+            <h3 style="margin:15px 0; font-size: 1.2rem; line-height: 1.5;" id="qText"></h3>
+            <div id="imgContainer"></div>
+
+            <div id="optionsContainer" style="margin-top: 15px;"></div>
+            
             <button class="btn-start" id="nextBtn" style="margin-top:20px">Кийинки суроо →</button>
         </div>
     </div>
 
     <!-- Скрипттер -->
-    <script type="module" src="/js/public-test.js"></script>
-    <script src="/js/anti-cheat.js"></script>
+    <script type="module" src="../js/public-test.js"></script>
+    <script src="../js/anti-cheat.js"></script>
 </body>
 </html>
