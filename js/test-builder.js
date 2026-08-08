@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('editBadge').style.display = 'inline-block';
                 await loadExistingTest(editTestId);
             } else {
-                addQuestion('single'); // Жаңы тест түзүүдө 1 дефолт суроо кошу
+                addQuestion('single'); // Жаңы тест түзүүдө 1 дефолт суроо кошуу
             }
         } else {
             alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
