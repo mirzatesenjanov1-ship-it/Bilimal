@@ -1,223 +1,269 @@
-import { auth, db } from '/firebase/firebase-config.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { ref, push, set, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { db } from './firebase-config.js'; // Добоңуздун жөндөөлөрүнө жараша импортту сактаңыз
+import { collection, addDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-let currentUser = null;
-let editTestId = null;
+let questionCount = 0;
+const container = document.getElementById('questionsContainer');
+const addBtn = document.getElementById('addQuestionBtn');
+const form = document.getElementById('builderForm');
 
-// URL'ден editId параметрин текшерүү (?editId=XXXX)
+// URL аркылуу оңдоо режимин текшерүү
 const urlParams = new URLSearchParams(window.location.search);
-editTestId = urlParams.get('editId');
+const editId = urlParams.get('id');
 
-// Auth текшерүү
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = "/dashboard.html";
-        return;
-    }
-    currentUser = user;
+if (editId) {
+    document.getElementById('editBadge').style.display = 'inline-block';
+    loadTestForEdit(editId);
+} else {
+    // Дефолттук биринчи суроону кошуу
+    addQuestion();
+}
 
-    if (editTestId) {
-        // Оңдоо режими: Базадан эски тестти жүктөө
-        const editBadge = document.getElementById('editBadge');
-        if (editBadge) editBadge.style.display = 'inline-block';
-        
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Өзгөртүүлөрдү сактоо 💾`;
+addBtn.addEventListener('click', () => addQuestion());
 
-        await loadTestForEdit(editTestId);
-    } else {
-        // Жаңы тест түзүү режими: Биринчи бош суроону кошуу
-        addQuestion();
-    }
-});
-
-// Суроону кошуу функциясы
-function addQuestion(qData = null) {
-    const container = document.getElementById('questionsContainer');
-    const qCount = container.children.length + 1;
-
-    const qDiv = document.createElement('div');
-    qDiv.className = 'q-box';
+function addQuestion(data = null) {
+    questionCount++;
+    const qId = `q_${questionCount}`;
     
-    // Суроонун ички структурасы
-    qDiv.innerHTML = `
+    const qBox = document.createElement('div');
+    qBox.className = 'q-box';
+    qBox.id = qId;
+    
+    const qType = data ? data.type : 'single';
+
+    qBox.innerHTML = `
         <div class="q-header">
-            <strong class="q-number">Суроо #${qCount}</strong>
-            <button type="button" class="btn btn-danger btn-remove-q"><i class="fa-solid fa-trash"></i></button>
+            <strong>Суроо #${questionCount}</strong>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion('${qId}')">
+                <i class="fa-solid fa-trash"></i> Өчүрүү
+            </button>
         </div>
-        <input type="text" class="q-text" placeholder="Суроонун текстин жазыңыз..." style="width:100%; margin-bottom:12px;" required value="${qData ? qData.text : ''}">
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Суроонун түрү</label>
+            <select class="q-type" onchange="changeQuestionType('${qId}', this.value)">
+                <option value="single" ${qType === 'single' ? 'selected' : ''}>1 туура варианттуу</option>
+                <option value="multiple" ${qType === 'multiple' ? 'selected' : ''}>Көп туура варианттуу</option>
+                <option value="pisa" ${qType === 'pisa' ? 'selected' : ''}>PISA суроосу (Контекст / Текст менен)</option>
+                <option value="matching" ${qType === 'matching' ? 'selected' : ''}>Дал келтирүү (Сайкештик)</option>
+            </select>
+        </div>
+
+        <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
+            <label>PISA Контекст / Окуя / Текст:</label>
+            <textarea class="pisa-text" rows="3" placeholder="Бул жерге текст, окуя же графиктин сүрөттөлүшүн жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Суроонун тексти</label>
+            <textarea class="q-text" rows="2" required placeholder="Суроону жазыңыз...">${data ? data.text : ''}</textarea>
+        </div>
+
+        <div class="options-container" style="margin-top: 15px;">
+            <!-- Варианттар ушул жерге динамикалык чыгат -->
+        </div>
+    `;
+
+    container.appendChild(qBox);
+    renderOptions(qId, qType, data ? data.options : null);
+}
+
+window.removeQuestion = function(qId) {
+    const el = document.getElementById(qId);
+    if (el) el.remove();
+    renumberQuestions();
+};
+
+function renumberQuestions() {
+    const boxes = container.querySelectorAll('.q-box');
+    boxes.forEach((box, idx) => {
+        box.querySelector('.q-header strong').innerText = `Суроо #${idx + 1}`;
+    });
+    questionCount = boxes.length;
+}
+
+window.changeQuestionType = function(qId, type) {
+    const qBox = document.getElementById(qId);
+    const pisaBox = qBox.querySelector('.pisa-box');
+    
+    if (type === 'pisa') {
+        pisaBox.style.display = 'block';
+    } else {
+        pisaBox.style.display = 'none';
+    }
+
+    renderOptions(qId, type);
+};
+
+function renderOptions(qId, type, optionsData = null) {
+    const qBox = document.getElementById(qId);
+    const optContainer = qBox.querySelector('.options-container');
+
+    if (type === 'matching') {
+        optContainer.innerHTML = `
+            <label>Дал келтирүү түгөйлөрү:</label>
+            <div class="opt-list match-list"></div>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="addMatchPair('${qId}')">
+                <i class="fa-solid fa-plus"></i> Түгөй кошуу
+            </button>
+        `;
+        const matchList = optContainer.querySelector('.match-list');
         
-        <label style="font-size:0.8rem; color:#a5b4fc;">Варианттар (Туура жооптун тушундагы радио-баскычты белгилеңиз):</label>
-        <div class="opt-list">
-            ${generateOptionHTML(qCount, 0, qData ? qData.options[0] : '', qData ? qData.correct === 0 : true)}
-            ${generateOptionHTML(qCount, 1, qData ? qData.options[1] : '', qData ? qData.correct === 1 : false)}
-            ${generateOptionHTML(qCount, 2, qData ? qData.options[2] : '', qData ? qData.correct === 2 : false)}
-        </div>
-    `;
-
-    // Өчүрүү баскычына Event Listener туташтыруу
-    const removeBtn = qDiv.querySelector('.btn-remove-q');
-    removeBtn.addEventListener('click', () => {
-        if (container.children.length <= 1) {
-            alert('Тестте кеминде 1 суроо болушу керек!');
-            return;
-        }
-        qDiv.remove();
-        reindexQuestions();
-    });
-
-    container.appendChild(qDiv);
-}
-
-// Варианттардын HTML форматы
-function generateOptionHTML(qIndex, optIndex, val = '', isCorrect = false) {
-    return `
-        <div class="opt-item">
-            <input type="radio" name="correct_${qIndex}" value="${optIndex}" ${isCorrect ? 'checked' : ''} required>
-            <input type="text" class="opt-text" placeholder="Вариант ${optIndex + 1}" value="${val}" required>
-        </div>
-    `;
-}
-
-// Өчүрүлгөндөн кийин суроолордун катар сандарын кайра тартипке келтирүү
-function reindexQuestions() {
-    const qBoxes = document.querySelectorAll('.q-box');
-    qBoxes.forEach((box, index) => {
-        const qNum = index + 1;
-        box.querySelector('.q-number').innerText = `Суроо #${qNum}`;
-        const radios = box.querySelectorAll('input[type="radio"]');
-        radios.forEach(radio => {
-            radio.name = `correct_${qNum}`;
-        });
-    });
-}
-
-// Эски тесттин маалыматтарын формага жүктөө
-async function loadTestForEdit(testId) {
-    try {
-        const testRef = ref(db, `tests/${testId}`);
-        const snapshot = await get(testRef);
-
-        if (!snapshot.exists()) {
-            alert('Мындай тест табылган жок!');
-            window.location.href = '/sections/tests.html';
-            return;
-        }
-
-        const testData = snapshot.val();
-
-        // Автордук укукту текшерүү (башка мугалим оңдой албашы керек)
-        if (testData.ownerUid !== currentUser.uid) {
-            alert('Сизде бул тестти оңдоого уруксат жок!');
-            window.location.href = '/sections/tests.html';
-            return;
-        }
-
-        // Форма талааларын толтуруу
-        document.getElementById('testTitle').value = testData.title || '';
-        document.getElementById('testSubject').value = testData.subject || '';
-        document.getElementById('testGrade').value = testData.grade || '';
-        document.getElementById('testTopic').value = testData.topic || '';
-        document.getElementById('testDuration').value = testData.duration || 15;
-
-        // Суроолорду жүктөө
-        const container = document.getElementById('questionsContainer');
-        container.innerHTML = ''; // Тазалоо
-
-        if (testData.questions) {
-            const questionsArray = Object.values(testData.questions);
-            questionsArray.forEach(qData => {
-                addQuestion(qData);
-            });
+        if (optionsData && optionsData.length) {
+            optionsData.forEach(pair => addMatchPair(qId, pair.left, pair.right));
         } else {
-            addQuestion();
+            // Дефолттук 2 түгөй
+            addMatchPair(qId);
+            addMatchPair(qId);
         }
-
-    } catch (error) {
-        console.error('Тестти жүктөөдө ката чыкты:', error);
-        alert('Маалыматтарды жүктөөдө ката болду!');
+    } else {
+        const inputType = type === 'multiple' ? 'checkbox' : 'radio';
+        optContainer.innerHTML = `
+            <label>Жооп варианттары (Туура жоопту белгилеңиз):</label>
+            <div class="opt-list standard-list"></div>
+            <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="addOptionItem('${qId}', '${inputType}')">
+                <i class="fa-solid fa-plus"></i> Вариант кошуу
+            </button>
+        `;
+        
+        if (optionsData && optionsData.length) {
+            optionsData.forEach(opt => addOptionItem(qId, inputType, opt.text, opt.isCorrect));
+        } else {
+            // Дефолттук 4 вариант
+            addOptionItem(qId, inputType);
+            addOptionItem(qId, inputType);
+            addOptionItem(qId, inputType);
+            addOptionItem(qId, inputType);
+        }
     }
 }
 
-// "Суроо кошуу" баскычы
-document.getElementById('addQuestionBtn').addEventListener('click', () => addQuestion());
+window.addOptionItem = function(qId, inputType, text = '', isCorrect = false) {
+    const qBox = document.getElementById(qId);
+    const list = qBox.querySelector('.standard-list');
+    
+    const item = document.createElement('div');
+    item.className = 'opt-item';
+    item.innerHTML = `
+        <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
+        <input type="text" class="opt-text" required placeholder="Варианттын тексти" value="${text}">
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding: 4px 8px;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    `;
+    list.appendChild(item);
+};
+
+window.addMatchPair = function(qId, leftText = '', rightText = '') {
+    const qBox = document.getElementById(qId);
+    const list = qBox.querySelector('.match-list');
+
+    const pair = document.createElement('div');
+    pair.className = 'match-pair';
+    pair.innerHTML = `
+        <input type="text" class="match-left" required placeholder="Сол жагы (мис: Ампер)" value="${leftText}">
+        <input type="text" class="match-right" required placeholder="Оң жагы (мис: Ток күчү)" value="${rightText}">
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding: 4px 8px;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    `;
+    list.appendChild(pair);
+};
 
 // Форманы сактоо логикасы
-document.getElementById('builderForm').addEventListener('submit', async (e) => {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (!currentUser) {
-        alert('Авторизациядан өтүңүз!');
-        return;
-    }
+    const title = document.getElementById('testTitle').value.trim();
+    const subject = document.getElementById('testSubject').value.trim();
+    const grade = document.getElementById('testGrade').value.trim();
+    const topic = document.getElementById('testTopic').value.trim();
+    const duration = parseInt(document.getElementById('testDuration').value);
 
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Сакталууда...`;
+    const questions = [];
+    const qBoxes = container.querySelectorAll('.q-box');
+
+    qBoxes.forEach((qBox) => {
+        const type = qBox.querySelector('.q-type').value;
+        const text = qBox.querySelector('.q-text').value.trim();
+        const pisaContext = type === 'pisa' ? qBox.querySelector('.pisa-text').value.trim() : '';
+
+        const options = [];
+
+        if (type === 'matching') {
+            const pairs = qBox.querySelectorAll('.match-pair');
+            pairs.forEach(p => {
+                options.push({
+                    left: p.querySelector('.match-left').value.trim(),
+                    right: p.querySelector('.match-right').value.trim()
+                });
+            });
+        } else {
+            const items = qBox.querySelectorAll('.opt-item');
+            items.forEach(it => {
+                const isCorrect = it.querySelector('input[type="radio"], input[type="checkbox"]').checked;
+                const optText = it.querySelector('.opt-text').value.trim();
+                options.push({
+                    text: optText,
+                    isCorrect: isCorrect
+                });
+            });
+        }
+
+        questions.push({
+            type,
+            text,
+            context: pisaContext,
+            options
+        });
+    });
+
+    const testData = {
+        title,
+        subject,
+        grade,
+        topic,
+        duration,
+        questions,
+        createdAt: new Date().toISOString()
+    };
 
     try {
-        const qBoxes = document.querySelectorAll('.q-box');
-        if (qBoxes.length === 0) {
-            alert('Кеминде 1 суроо киргизиңиз!');
-            submitBtn.disabled = false;
-            return;
-        }
-
-        const questions = {};
-
-        qBoxes.forEach((box, idx) => {
-            const qText = box.querySelector('.q-text').value.trim();
-            const optInputs = box.querySelectorAll('.opt-text');
-            const selectedRadio = box.querySelector(`input[type="radio"]:checked`);
-
-            if (!selectedRadio) {
-                throw new Error(`${idx + 1}-суроонун туура жообу белгиленген жок!`);
-            }
-
-            const correctIdx = parseInt(selectedRadio.value);
-            const options = [];
-
-            optInputs.forEach(opt => options.push(opt.value.trim()));
-
-            questions[`q_${idx}`] = {
-                text: qText,
-                options: options,
-                correct: correctIdx
-            };
-        });
-
-        const testPayload = {
-            ownerUid: currentUser.uid,
-            title: document.getElementById('testTitle').value.trim(),
-            subject: document.getElementById('testSubject').value.trim(),
-            grade: document.getElementById('testGrade').value.trim(),
-            topic: document.getElementById('testTopic').value.trim(),
-            duration: parseInt(document.getElementById('testDuration').value),
-            published: true, // По умолчанию жарыяланган
-            updatedAt: Date.now(),
-            questions: questions
-        };
-
-        if (editTestId) {
-            // Мурда бар тестти жаңыртуу (Update)
-            const testRef = ref(db, `tests/${editTestId}`);
-            await set(testRef, testPayload);
-            alert('Тест ийгиликтүү жаңыланды! 🚀');
+        if (editId) {
+            await updateDoc(doc(db, "tests", editId), testData);
+            alert("Тест ийгиликтүү жаңыланды!");
         } else {
-            // Жаңы тест сактоо (Create)
-            testPayload.createdAt = Date.now();
-            const newTestRef = push(ref(db, 'tests'));
-            await set(newTestRef, testPayload);
-            alert('Жаңы тест ийгиликтүү түзүлдү! 🚀');
+            await addDoc(collection(db, "tests"), testData);
+            alert("Тест ийгиликтүү түзүлдү жана жарыяланды!");
         }
-
         window.location.href = '/sections/tests.html';
-
-    } catch (error) {
-        console.error('Тестти сактоодо ката:', error);
-        alert(`Ката болду: ${error.message}`);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = editTestId ? `<i class="fa-solid fa-floppy-disk"></i> Өзгөртүүлөрдү сактоо 💾` : `<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀`;
+    } catch (err) {
+        console.error("Сактоодо ката чыкты: ", err);
+        alert("Ката чыкты: " + err.message);
     }
 });
+
+// Оңдоо режими үчүн тестти жүктөө
+async function loadTestForEdit(id) {
+    try {
+        const docRef = doc(db, "tests", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            document.getElementById('testTitle').value = data.title || '';
+            document.getElementById('testSubject').value = data.subject || '';
+            document.getElementById('testGrade').value = data.grade || '';
+            document.getElementById('testTopic').value = data.topic || '';
+            document.getElementById('testDuration').value = data.duration || 15;
+
+            container.innerHTML = '';
+            questionCount = 0;
+
+            if (data.questions && data.questions.length) {
+                data.questions.forEach(q => addQuestion(q));
+            }
+        }
+    } catch (err) {
+        console.error("Тестти жүктөөдө ката чыкты:", err);
+    }
+}
