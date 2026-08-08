@@ -1,217 +1,202 @@
-import { db } from '/firebase/firebase-config.js';
-import { ref, get, push, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { db } from '../firebase/firebase-config.js';
+import { ref, get, child } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-let currentTest = null;
-let testId = null;
-let questionsList = [];
-let currentIndex = 0;
+let testData = null;
+let currentQIndex = 0;
 let userAnswers = {};
 let timerInterval = null;
-let timeLeftSeconds = 0;
 
-// URL'ден testId алуу
 const urlParams = new URLSearchParams(window.location.search);
-testId = urlParams.get('testId');
+const testId = urlParams.get('testId');
 
 document.addEventListener('DOMContentLoaded', async () => {
     if (!testId) {
-        showError("Тесттин IDси көрсөтүлгөн жок! Туура шилтеме аркылуу кириңиз.");
+        document.getElementById('lblTitle').innerText = "Тест ID табылган жок!";
         return;
     }
 
-    await loadTest(testId);
+    try {
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, `tests/${testId}`));
+
+        if (snapshot.exists()) {
+            testData = snapshot.val();
+            document.getElementById('lblTitle').innerText = testData.title;
+            document.getElementById('lblMeta').innerText = `${testData.subject} | ${testData.grade}-класс | Убакыт: ${testData.duration} мүнөт`;
+            document.getElementById('startBtn').disabled = false;
+        } else {
+            document.getElementById('lblTitle').innerText = "Тест табылган жок!";
+        }
+    } catch (err) {
+        console.error(err);
+        document.getElementById('lblTitle').innerText = "Ката чыкты!";
+    }
+
+    document.getElementById('startBtn').addEventListener('click', startTest);
+    document.getElementById('nextBtn').addEventListener('click', nextQuestion);
 });
 
-// Тестти жүктөө
-async function loadTest(id) {
-    try {
-        const testRef = ref(db, `tests/${id}`);
-        const snapshot = await get(testRef);
-
-        if (!snapshot.exists()) {
-            showError("Мындай тест табылган жок же өчүрүлгөн!");
-            return;
-        }
-
-        currentTest = snapshot.val();
-
-        if (currentTest.published === false) {
-            showError("Бул тест азырынча мугалим тарабынан жабык.");
-            return;
-        }
-
-        questionsList = Object.values(currentTest.questions || {});
-
-        if (questionsList.length === 0) {
-            showError("Бул тестте азырынча суроолор жок!");
-            return;
-        }
-
-        // Инфону көрсөтүү
-        document.getElementById('lblTitle').innerText = currentTest.title || "Онлайн Тест";
-        document.getElementById('lblMeta').innerText = `Предмет: ${currentTest.subject || '-'} | Класс: ${currentTest.grade || '-'} | Суроолор: ${questionsList.length} | Убактысы: ${currentTest.duration || 15} мүнөт`;
-        
-        const startBtn = document.getElementById('startBtn');
-        startBtn.disabled = false;
-        startBtn.addEventListener('click', startTest);
-
-    } catch (error) {
-        console.error("Тестти жүктөөдө ката:", error);
-        showError("Интернет байланышын текшериңиз.");
-    }
-}
-
-// Ката чыкканда UX жакшыртуу: Тест Борборуна багыттоо
-function showError(msg) {
-    const lblTitle = document.getElementById('lblTitle');
-    const lblMeta = document.getElementById('lblMeta');
-    const startBtn = document.getElementById('startBtn');
-
-    if (lblTitle) {
-        lblTitle.innerText = "Каталык!";
-        lblTitle.style.color = "#ff0055";
-    }
-    if (lblMeta) {
-        lblMeta.innerText = msg;
-    }
-    
-    if (startBtn) {
-        startBtn.style.display = 'block';
-        startBtn.disabled = false;
-        startBtn.innerText = "🎓 Тест Борборуна өтүү";
-        startBtn.onclick = () => {
-            window.location.href = '/tests-center.html';
-        };
-    }
-}
-
-// Тестти баштоо
 function startTest() {
-    const sName = document.getElementById('studentName').value.trim();
-    const sClass = document.getElementById('studentClass').value.trim();
+    const name = document.getElementById('studentName').value.trim();
+    const cls = document.getElementById('studentClass').value.trim();
 
-    if (!sName || !sClass) {
-        alert("Сураныч, аты-жөнүңүздү жана классыңызды толтуруңуз!");
+    if (!name || !cls) {
+        alert("Аты-жөнүңүздү жана классыңызды жазыңыз!");
         return;
     }
 
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('runningScreen').style.display = 'block';
 
-    // Таймерди иштетүү
-    timeLeftSeconds = (currentTest.duration || 15) * 60;
-    startTimer();
-
-    // Биринчи суроону көрсөтүү
+    startTimer(testData.duration * 60);
     renderQuestion();
 }
 
-// Таймер
-function startTimer() {
-    updateTimerUI();
-    timerInterval = setInterval(() => {
-        timeLeftSeconds--;
-        updateTimerUI();
+function renderQuestion() {
+    const q = testData.questions[currentQIndex];
+    document.getElementById('progress').innerText = `Суроо ${currentQIndex + 1} / ${testData.questions.length}`;
 
-        if (timeLeftSeconds <= 0) {
+    // PISA контекстин көрсөтүү
+    const pisaBox = document.getElementById('pisaBox');
+    if (q.type === 'pisa' && q.context) {
+        pisaBox.innerHTML = `<strong>Контекст:</strong><br>${q.context}`;
+        pisaBox.style.display = 'block';
+    } else {
+        pisaBox.style.display = 'none';
+    }
+
+    document.getElementById('qText').innerHTML = q.text;
+
+    // Сүрөттү көрсөтүү
+    const imgContainer = document.getElementById('imgContainer');
+    if (q.imageUrl) {
+        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="test-image">`;
+    } else {
+        imgContainer.innerHTML = '';
+    }
+
+    // Варианттарды рендерлөө
+    const optionsContainer = document.getElementById('optionsContainer');
+    optionsContainer.innerHTML = '';
+
+    if (q.type === 'matching') {
+        // Дал келтирүү форматы
+        const rightOptions = [...q.options.map(o => o.right)].sort(() => Math.random() - 0.5);
+        
+        q.options.forEach((pair, idx) => {
+            const row = document.createElement('div');
+            row.className = 'matching-row';
+            row.innerHTML = `
+                <div>${pair.left}</div>
+                <select data-idx="${idx}">
+                    <option value="">-- Тандаңыз --</option>
+                    ${rightOptions.map(r => `<option value="${r}">${r}</option>`).join('')}
+                </select>
+            `;
+            optionsContainer.appendChild(row);
+        });
+    } else {
+        // Бир же көп туура варианттуу
+        const isMultiple = q.type === 'multiple';
+        const inputType = isMultiple ? 'checkbox' : 'radio';
+
+        q.options.forEach((opt, idx) => {
+            const optText = typeof opt === 'object' ? opt.text : opt;
+            const label = document.createElement('label');
+            label.className = 'q-option';
+            label.innerHTML = `
+                <input type="${inputType}" name="q_opt" value="${idx}">
+                <span>${optText}</span>
+            `;
+            optionsContainer.appendChild(label);
+        });
+    }
+
+    // MathJax формулаларын рендерлөө
+    if (window.MathJax) {
+        MathJax.typesetPromise();
+    }
+}
+
+function nextQuestion() {
+    saveAnswer();
+
+    currentQIndex++;
+    if (currentQIndex < testData.questions.length) {
+        renderQuestion();
+        if (currentQIndex === testData.questions.length - 1) {
+            document.getElementById('nextBtn').innerText = "Тестти аяктоо 🏁";
+        }
+    } else {
+        finishTest();
+    }
+}
+
+function saveAnswer() {
+    const q = testData.questions[currentQIndex];
+
+    if (q.type === 'matching') {
+        const selects = document.querySelectorAll('#optionsContainer select');
+        const ans = {};
+        selects.forEach(s => {
+            ans[s.getAttribute('data-idx')] = s.value;
+        });
+        userAnswers[currentQIndex] = ans;
+    } else {
+        const selected = document.querySelectorAll('input[name="q_opt"]:checked');
+        userAnswers[currentQIndex] = Array.from(selected).map(i => parseInt(i.value));
+    }
+}
+
+function startTimer(seconds) {
+    let timer = seconds;
+    const timerEl = document.getElementById('timer');
+
+    timerInterval = setInterval(() => {
+        const m = Math.floor(timer / 60);
+        const s = timer % 60;
+        timerEl.innerHTML = `<i class="fa-solid fa-clock"></i> ${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+
+        if (--timer < 0) {
             clearInterval(timerInterval);
-            alert("Бөлүнгөн убакыт бүттү! Жыйынтыктар автоматтык эсептелип сакталууда.");
+            alert("Убакыт бүттү!");
             finishTest();
         }
     }, 1000);
 }
 
-function updateTimerUI() {
-    const m = Math.floor(timeLeftSeconds / 60);
-    const s = timeLeftSeconds % 60;
-    const timerElem = document.getElementById('timer');
-    if (timerElem) {
-        timerElem.innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-    }
-}
-
-// Суроону экранга чыгаруу
-function renderQuestion() {
-    const q = questionsList[currentIndex];
-    document.getElementById('progress').innerText = `Суроо ${currentIndex + 1} / ${questionsList.length}`;
-    document.getElementById('qText').innerText = q.text;
-
-    const optContainer = document.getElementById('optionsContainer');
-    optContainer.innerHTML = '';
-
-    q.options.forEach((optText, optIdx) => {
-        const div = document.createElement('div');
-        div.className = `q-option ${userAnswers[currentIndex] === optIdx ? 'selected' : ''}`;
-        div.innerHTML = `<i class="fa-regular ${userAnswers[currentIndex] === optIdx ? 'fa-circle-dot' : 'fa-circle'}"></i> ${escapeHtml(optText)}`;
-        
-        div.addEventListener('click', () => {
-            userAnswers[currentIndex] = optIdx;
-            renderQuestion(); // Элемент тандалганда кайра тартуу
-        });
-
-        optContainer.appendChild(div);
-    });
-
-    const nextBtn = document.getElementById('nextBtn');
-    if (currentIndex === questionsList.length - 1) {
-        nextBtn.innerText = "Тестти аяктоо 🏁";
-        nextBtn.onclick = finishTest;
-    } else {
-        nextBtn.innerText = "Кийинки суроо →";
-        nextBtn.onclick = () => {
-            if (userAnswers[currentIndex] === undefined) {
-                if (!confirm("Суроого жооп тандаган жоксуз! Ишенимдүүсүзбү?")) return;
-            }
-            currentIndex++;
-            renderQuestion();
-        };
-    }
-}
-
-// Жыйынтыктоо жана Firebase'ге сактоо
-async function finishTest() {
+function finishTest() {
     clearInterval(timerInterval);
-
-    const nextBtn = document.getElementById('nextBtn');
-    nextBtn.disabled = true;
-    nextBtn.innerText = "Жыйынтык сакталууда...";
-
+    
     let score = 0;
-    questionsList.forEach((q, idx) => {
-        if (userAnswers[idx] !== undefined && userAnswers[idx] === q.correct) {
-            score++;
+    testData.questions.forEach((q, idx) => {
+        const userAns = userAnswers[idx];
+        if (!userAns) return;
+
+        if (q.type === 'matching') {
+            let correctCount = 0;
+            q.options.forEach((pair, pIdx) => {
+                if (userAns[pIdx] === pair.right) correctCount++;
+            });
+            if (correctCount === q.options.length) score++;
+        } else {
+            const correctIndices = q.options
+                .map((o, i) => (typeof o === 'object' && o.isCorrect) ? i : null)
+                .filter(i => i !== null);
+
+            if (JSON.stringify(correctIndices.sort()) === JSON.stringify(userAns.sort())) {
+                score++;
+            }
         }
     });
 
-    const percentage = Math.round((score / questionsList.length) * 100);
-    const sName = document.getElementById('studentName').value.trim();
-    const sClass = document.getElementById('studentClass').value.trim();
-
-    try {
-        const resultsRef = ref(db, `results/${testId}`);
-        const newResultRef = push(resultsRef);
-        
-        const resultPayload = {
-            studentName: sName,
-            studentClass: sClass,
-            score: score,
-            totalQuestions: questionsList.length,
-            percentage: percentage,
-            completedAt: Date.now()
-        };
-
-        await set(newResultRef, resultPayload);
-
-        // Жыйынтык баракчасына артка кайталбагыдай багыттоо (replace)
-        const resultUrl = `/test-result.html?testId=${testId}&score=${score}&total=${questionsList.length}&perc=${percentage}&name=${encodeURIComponent(sName)}`;
-        window.location.replace(resultUrl);
-
-    } catch (error) {
-        console.error("Жыйынтыкты сактоодо ката:", error);
-        alert("Жыйынтыкты сактоодо ката болду, бирок жыйынтыгыңыз эсептелди.");
-    }
-}
-
-function escapeHtml(str) {
-    return String(str || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const percent = Math.round((score / testData.questions.length) * 100);
+    
+    document.getElementById('runningScreen').innerHTML = `
+        <div style="text-align:center; padding: 20px;">
+            <h2 style="color:#00f0ff; margin-bottom:15px;">🎉 Тест Аяктады!</h2>
+            <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${testData.questions.length}</strong> (${percent}%)</p>
+            <a href="tests-center.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:10px 25px;">Башкы баракчага кайтуу</a>
+        </div>
+    `;
 }
