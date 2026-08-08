@@ -1,5 +1,5 @@
 import { db } from '/firebase/firebase-config.js';
-import { ref, get, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { ref, get } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let allTests = [];
 let selectedSubject = 'all';
@@ -11,14 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFilters();
 });
 
-// Firebase'ден Жарыяланган тесттерди гана тартуу
+// Firebase'ден бардык тесттерди тартуу жана client-side ичинде чыпкалоо
 async function fetchPublicTests() {
     const grid = document.getElementById('testsGrid');
     try {
         const testsRef = ref(db, 'tests');
-        // Болгону опубликованный тесттерди тартуу
-        const testsQuery = query(testsRef, orderByChild('published'), equalTo(true));
-        const snapshot = await get(testsQuery);
+        const snapshot = await get(testsRef);
 
         if (!snapshot.exists()) {
             grid.innerHTML = '<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">Азырынча ачык тесттер жок.</p>';
@@ -28,9 +26,17 @@ async function fetchPublicTests() {
         const data = snapshot.val();
         allTests = [];
 
+        // Индекс талап кылбаш үчүн: JS аркылуу published === true болгондорду гана алуу
         Object.entries(data).forEach(([id, test]) => {
-            allTests.push({ id, ...test });
+            if (test.published !== false) {
+                allTests.push({ id, ...test });
+            }
         });
+
+        if (allTests.length === 0) {
+            grid.innerHTML = '<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">Азырынча ачык тесттер жок.</p>';
+            return;
+        }
 
         // Акыркы сакталган тесттерди башына чыгаруу (сортировка)
         allTests.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
