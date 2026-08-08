@@ -198,7 +198,6 @@ async function finishTest(reason = 'normal') {
                     if (correctCount === q.options.length) score++;
                 }
             } else if (Array.isArray(q.options)) {
-                // Туура индекстерди аныктоо (Объект же жөнөкөй массив үчүн)
                 const correctIndices = [];
                 q.options.forEach((o, i) => {
                     if (typeof o === 'object' && o !== null) {
@@ -223,7 +222,7 @@ async function finishTest(reason = 'normal') {
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
 
-    // БАЗАГА САКТОО (Коопсуз Promise агымы)
+    // БАЗАГА САКТОО
     try {
         const payload = {
             testId: testId,
@@ -257,8 +256,20 @@ async function finishTest(reason = 'normal') {
                 <h2 style="color:#00f0ff; margin-bottom:15px;">🎉 Тест Аяктады!</h2>
                 ${statusHtml}
                 <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${totalQ}</strong> (${percent}%)</p>
-                <p style="color:#a5b4fc; font-size:0.9rem;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
-                <a href="tests-center.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:10px 25px; margin-top:15px;">Башкы баракчага кайтуу</a>
+                <p style="color:#a5b4fc; font-size:0.9rem; margin-bottom: 20px;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
+                
+                <!-- БИЛИМДАРЛАР ҮЧҮН ЭЛЕКТРОНДУК КИТЕПХАНА СУНУШ БЛОГУ -->
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+                    <h3 style="color: #38bdf8; margin-bottom: 10px; font-size: 1.1rem;"><i class="fa-solid fa-book-open"></i> Билимиңизди андан ары тереңдетиңиз!</h3>
+                    <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 15px; line-height: 1.5;">
+                        Тестти ийгиликтүү аяктадыңыз! Каалаган темаңыз боюнча билимиңизди улантуу жана кошумча адабияттарды окуу үчүн Биздин Электрондук Китепканага өтүңүз.
+                    </p>
+                    <a href="/sections/ebooks1.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:12px 25px; background: linear-gradient(135deg, #00f0ff, #7000ff); color: #fff; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
+                        <i class="fa-solid fa-graduation-cap"></i> Электрондук китепканага өтүү
+                    </a>
+                </div>
+
+                <a href="tests-center.html" style="text-decoration:none; display:inline-block; color: #a5b4fc; font-size: 0.9rem; margin-top:10px;">Башкы баракчага кайтуу</a>
             </div>
         `;
     }
@@ -294,19 +305,18 @@ function activateTabSwitchProtection() {
     const handleViolation = () => {
         if (isTestFinished) return;
         
-        warningCount++;
-        if (warningCount < MAX_WARNINGS) {
-            alert(`⚠️ ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS})!\nТест учурунда башка баракчага өтүүгө болбойт.`);
-        } else {
-            alert("❌ Эрежелер кайра-кайра бузулгандыктан тест бөгөттөлдү!");
-            finishTest('cheating');
+        // 1 ЖОЛУ ГАНА ЭСЕПТӨӨ: visibilityState жашыруун болгондо гана эсептейт
+        if (document.hidden) {
+            warningCount++;
+            if (warningCount < MAX_WARNINGS) {
+                alert(`⚠️ ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS})!\nТест учурунда башка баракчага өтүүгө болбойт.`);
+            } else {
+                alert("❌ Эрежелер кайра-кайра бузулгандыктан тест бөгөттөлдү!");
+                finishTest('cheating');
+            }
         }
     };
 
-    window.addEventListener('blur', handleViolation);
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            handleViolation();
-        }
-    });
+    // Кайталануучу window.blur чакыруусун өчүрүп, visibilitychange окуясын гана калтырабыз
+    document.addEventListener('visibilitychange', handleViolation);
 }
