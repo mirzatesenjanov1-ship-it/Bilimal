@@ -1,6 +1,4 @@
-// Эски сап: import { db } from './firebase-config.js';
-// ЖАҢЫ ОҢДОЛГОН САП:
-import { db } from '../js/firebase-config.js'; 
+import { db } from './firebase-config.js';
 import { collection, addDoc, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 let questionCount = 0;
@@ -8,7 +6,6 @@ const container = document.getElementById('questionsContainer');
 const addBtn = document.getElementById('addQuestionBtn');
 const form = document.getElementById('builderForm');
 
-// URL аркылуу оңдоо режимин текшерүү
 const urlParams = new URLSearchParams(window.location.search);
 const editId = urlParams.get('id');
 
@@ -17,7 +14,6 @@ if (editId) {
     if (editBadge) editBadge.style.display = 'inline-block';
     loadTestForEdit(editId);
 } else {
-    // Баракча ачылганда автоматтык түрдө 1-суроону чыгаруу
     addQuestion();
 }
 
@@ -49,13 +45,13 @@ function addQuestion(data = null) {
                 <option value="single" ${qType === 'single' ? 'selected' : ''}>1 туура варианттуу</option>
                 <option value="multiple" ${qType === 'multiple' ? 'selected' : ''}>Көп туура варианттуу</option>
                 <option value="pisa" ${qType === 'pisa' ? 'selected' : ''}>PISA суроосу (Контекст / Текст менен)</option>
-                <option value="matching" ${qType === 'matching' ? 'selected' : ''}>Дал келтирүү (Сайкештик)</option>
+                <option value="matching" ${qType === 'matching' ? 'selected' : ''}>Дал келтирүү (Шайкештик)</option>
             </select>
         </div>
 
         <div class="pisa-box pisa-context" style="display: ${qType === 'pisa' ? 'block' : 'none'};">
-            <label>PISA Контекст / Окуя / Текст:</label>
-            <textarea class="pisa-text" rows="3" placeholder="Бул жерге текст, окуя же графиктин сүрөттөлүшүн жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+            <label>PISA Контекст / Текст / Сүрөттөмө:</label>
+            <textarea class="pisa-text" rows="3" placeholder="Бул жерге контексттик текстти же сүрөттөмөнү жазыңыз...">${data && data.context ? data.context : ''}</textarea>
         </div>
 
         <div class="form-group">
@@ -63,9 +59,7 @@ function addQuestion(data = null) {
             <textarea class="q-text" rows="2" required placeholder="Суроону жазыңыз...">${data ? data.text : ''}</textarea>
         </div>
 
-        <div class="options-container" style="margin-top: 15px;">
-            <!-- Варианттар ушул жерге чыгат -->
-        </div>
+        <div class="options-container" style="margin-top: 15px;"></div>
     `;
 
     container.appendChild(qBox);
@@ -162,8 +156,8 @@ window.addMatchPair = function(qId, leftText = '', rightText = '') {
     const pair = document.createElement('div');
     pair.className = 'match-pair';
     pair.innerHTML = `
-        <input type="text" class="match-left" required placeholder="Сол жагы (мис: Ампер)" value="${leftText}">
-        <input type="text" class="match-right" required placeholder="Оң жагы (мис: Ток күчү)" value="${rightText}">
+        <input type="text" class="match-left" required placeholder="Сол жагы" value="${leftText}">
+        <input type="text" class="match-right" required placeholder="Оң жагы" value="${rightText}">
         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding: 4px 8px;">
             <i class="fa-solid fa-xmark"></i>
         </button>
