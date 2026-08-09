@@ -29,7 +29,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (snapshot.exists()) {
             testData = snapshot.val();
             document.getElementById('lblTitle').innerText = testData.title || 'Тест';
-            document.getElementById('lblMeta').innerText = `${testData.subject || ''} | ${testData.grade || ''}-класс | Убакыт: ${testData.duration || 15} мүнөт`;
+            
+            const maxAtt = testData.maxAttempts !== undefined ? testData.maxAttempts : 0;
+            const attText = maxAtt === 0 ? "Чексиз" : `${maxAtt} жолу`;
+
+            document.getElementById('lblMeta').innerText = `${testData.subject || ''} | ${testData.grade || ''}-класс | Убакыт: ${testData.duration || 15} мүнөт | Тапшыруу чеги: ${attText}`;
             document.getElementById('startBtn').disabled = false;
         } else {
             document.getElementById('lblTitle').innerText = "Тест табылган жок!";
@@ -43,14 +47,45 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('nextBtn').addEventListener('click', nextQuestion);
 });
 
-function startTest() {
-    const name = document.getElementById('studentName').value.trim();
-    const cls = document.getElementById('studentClass').value.trim();
+async function startTest() {
+    const nameInput = document.getElementById('studentName');
+    const classInput = document.getElementById('studentClass');
+
+    const name = nameInput ? nameInput.value.trim() : '';
+    const cls = classInput ? classInput.value.trim() : '';
 
     if (!name || !cls) {
         alert("Аты-жөнүңүздү жана классыңызды жазыңыз!");
         return;
     }
+
+    const startBtn = document.getElementById('startBtn');
+    startBtn.disabled = true;
+    startBtn.innerText = "Текшерилүүдө...";
+
+    // 1. АРАКЕТТЕР САНЫН ТЕКШЕРҮҮ (maxAttempts)
+    const maxAttempts = testData.maxAttempts !== undefined ? parseInt(testData.maxAttempts) : 0;
+
+    if (maxAttempts > 0) {
+        // Базадан ушул окуучу канча жолу тапшырганын эсептөө
+        const studentAttempts = await getStudentAttemptsCount(testId, name);
+
+        // Браузердин LocalStorage эсинен да текшерүү
+        const localKey = `bilimal_att_${testId}_${cleanName(name)}`;
+        const localAttempts = parseInt(localStorage.getItem(localKey) || "0");
+
+        const realAttempts = Math.max(studentAttempts, localAttempts);
+
+        if (realAttempts >= maxAttempts) {
+            alert(`⚠️ Кечириңиз, ${name}!\nБул тестти мугалим ${maxAttempts} жолу гана тапшырууга уруксат берген.\nСиз бул тестти буга чейин тапшыргансыз!`);
+            startBtn.disabled = false;
+            startBtn.innerText = "Баштоо";
+            return;
+        }
+    }
+
+    startBtn.disabled = false;
+    startBtn.innerText = "Баштоо";
 
     document.getElementById('startScreen').style.display = 'none';
     document.getElementById('runningScreen').style.display = 'block';
@@ -58,6 +93,34 @@ function startTest() {
     activateTabSwitchProtection();
     startTimer((testData.duration || 15) * 60);
     renderQuestion();
+}
+
+// Окуучунун аты-жөнү боюнча базадагы тапшырган санын эсептөөчү функция
+async function getStudentAttemptsCount(targetTestId, studentName) {
+    let count = 0;
+    try {
+        const dbRef = ref(db);
+        const snap = await get(child(dbRef, `test_results/${targetTestId}`));
+        if (snap.exists()) {
+            const results = snap.val();
+            const cleanedInputName = cleanName(studentName);
+
+            Object.values(results).forEach(r => {
+                if (r.studentName && cleanName(r.studentName) === cleanedInputName) {
+                    count++;
+                }
+            });
+        }
+    } catch (e) {
+        console.warn("Аракеттер санын алууда эскертүү:", e.message);
+    }
+    return count;
+}
+
+// Стрингди тазалоо функциясы (Аралык боштуктарды жана регистрацияны тегиздөө)
+function cleanName(str) {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
 function renderQuestion() {
@@ -222,7 +285,7 @@ async function finishTest(reason = 'normal') {
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
 
-    // БАЗАГА САКТОО
+    // БАЗАГА САКТОО ЖАНА LOCALSTORAGE ЖАҢЫРТУУ
     try {
         const payload = {
             testId: testId,
@@ -238,6 +301,12 @@ async function finishTest(reason = 'normal') {
 
         const resultsRef = ref(db, `test_results/${testId}`);
         await push(resultsRef, payload);
+
+        // LocalStorage ичиндеги тапшыруу эсебин +1 көбөйтүү
+        const localKey = `bilimal_att_${testId}_${cleanName(name)}`;
+        const prevLocal = parseInt(localStorage.getItem(localKey) || "0");
+        localStorage.setItem(localKey, (prevLocal + 1).toString());
+
     } catch (e) {
         console.error("Жыйынтыкты Firebase'ке сактоодо ката чыкты:", e);
     }
@@ -258,7 +327,6 @@ async function finishTest(reason = 'normal') {
                 <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${totalQ}</strong> (${percent}%)</p>
                 <p style="color:#a5b4fc; font-size:0.9rem; margin-bottom: 20px;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
                 
-                <!-- БИЛИМДАРЛАР ҮЧҮН ЭЛЕКТРОНДУК КИТЕПХАНА СУНУШ БЛОГУ -->
                 <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
                     <h3 style="color: #38bdf8; margin-bottom: 10px; font-size: 1.1rem;"><i class="fa-solid fa-book-open"></i> Билимиңизди андан ары тереңдетиңиз!</h3>
                     <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 15px; line-height: 1.5;">
@@ -304,8 +372,6 @@ function enableStrictProtection() {
 function activateTabSwitchProtection() {
     const handleViolation = () => {
         if (isTestFinished) return;
-        
-        // 1 ЖОЛУ ГАНА ЭСЕПТӨӨ: visibilityState жашыруун болгондо гана эсептейт
         if (document.hidden) {
             warningCount++;
             if (warningCount < MAX_WARNINGS) {
@@ -317,6 +383,5 @@ function activateTabSwitchProtection() {
         }
     };
 
-    // Кайталануучу window.blur чакыруусун өчүрүп, visibilitychange окуясын гана калтырабыз
     document.addEventListener('visibilitychange', handleViolation);
 }
