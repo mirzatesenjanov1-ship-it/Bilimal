@@ -46,6 +46,8 @@ async function loadTests() {
                 const test = data[id];
                 const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
                 const isHidden = test.hidden || false;
+                const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0; // 0 = чексиз
+                const attemptsText = maxAttempts === 0 ? 'Чексиз' : `${maxAttempts} жолу`;
 
                 const card = document.createElement('div');
                 card.className = 'test-card';
@@ -54,11 +56,12 @@ async function loadTests() {
                     <span class="badge ${isHidden ? 'badge-unpub' : 'badge-pub'}">
                         ${isHidden ? '• Жашырылган' : '• Жарыяланган'}
                     </span>
-                    <h3>${test.title || 'Аталышы жок тест'}</h3>
-                    <p><i class="fa-solid fa-book"></i> Предмет: <strong>${test.subject || '-'}</strong> (${test.grade || '-'}-класс)</p>
+                    <h3>${escapeHtml(test.title || 'Аталышы жок тест')}</h3>
+                    <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
                     <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
                     <p><i class="fa-solid fa-circle-question"></i> Суроолор саны: <strong>${qCount}</strong></p>
-                    ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${test.topic}</p>` : ''}
+                    <p><i class="fa-solid fa-rotate-right"></i> Тапшыруу чеги: <strong>${attemptsText}</strong></p>
+                    ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${escapeHtml(test.topic)}</p>` : ''}
 
                     <div class="card-actions">
                         <button class="btn-action btn-copy" data-id="${id}">
@@ -67,10 +70,13 @@ async function loadTests() {
                         <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
                             <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Көрсөтүү' : 'Жашыруу'}
                         </button>
+                        <button class="btn-action btn-attempts" data-id="${id}" data-attempts="${maxAttempts}">
+                            <i class="fa-solid fa-repeat"></i> Аракеттер
+                        </button>
                         <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
                             <i class="fa-solid fa-pen"></i> Оңдоо
                         </a>
-                        <button class="btn-action btn-results" data-id="${id}" data-title="${test.title || 'Тест'}">
+                        <button class="btn-action btn-results" data-id="${id}" data-title="${escapeHtml(test.title || 'Тест')}">
                             <i class="fa-solid fa-chart-column"></i> Жыйынтыктар
                         </button>
                         <button class="btn-action btn-delete" data-id="${id}">
@@ -93,6 +99,7 @@ async function loadTests() {
 }
 
 function attachEventListeners() {
+    // Шилтемени көчүрүү
     document.querySelectorAll('.btn-copy').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -105,6 +112,7 @@ function attachEventListeners() {
         });
     });
 
+    // Жашыруу / Көрсөтүү
     document.querySelectorAll('.btn-toggle').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -118,6 +126,33 @@ function attachEventListeners() {
         });
     });
 
+    // Тапшыруу санын башкаруу (maxAttempts)
+    document.querySelectorAll('.btn-attempts').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const currentAttempts = btn.getAttribute('data-attempts');
+            
+            const userInput = prompt("Окуучу бул тестти канча жолу тапшыра аларын жазыңыз:\n(0 - чексиз жолу, же сан киргизиңиз: 1, 2, 3...)", currentAttempts);
+            
+            if (userInput !== null) {
+                const newAttempts = parseInt(userInput.trim());
+                if (isNaN(newAttempts) || newAttempts < 0) {
+                    alert("Сураныч, туура сан жазыңыз (0 же андан чоң)!");
+                    return;
+                }
+
+                try {
+                    await update(ref(db, `tests/${id}`), { maxAttempts: newAttempts });
+                    alert("Тапшыруу жолу ийгиликтүү жаңыртылды!");
+                    loadTests();
+                } catch (err) {
+                    alert("Базаны жаңыртууда ката чыкты: " + err.message);
+                }
+            }
+        });
+    });
+
+    // Жыйынтыктарды көрүү
     document.querySelectorAll('.btn-results').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -126,6 +161,7 @@ function attachEventListeners() {
         });
     });
 
+    // Өчүрүү
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -167,7 +203,7 @@ async function viewResults(testId, title) {
             console.warn("test_results ичинен окулган жок:", e1.message);
         }
 
-        // Эгер табылбаса эски results/TEST_ID аркылуу издөө
+        // Эгер табылбаса эски results/TEST_ID аркылуу издөө (ката оңдолду: snap = await)
         if (foundResults.length === 0) {
             try {
                 const snap = await get(child(dbRef, `results/${testId}`));
@@ -197,8 +233,8 @@ async function viewResults(testId, title) {
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${r.studentName || '-'}</td>
-                    <td>${r.studentClass || '-'}</td>
+                    <td>${escapeHtml(r.studentName || '-')}</td>
+                    <td>${escapeHtml(r.studentClass || '-')}</td>
                     <td><strong>${r.score || 0}</strong> / ${r.totalQuestions || '-'}</td>
                     <td><strong>${r.percent || 0}%</strong></td>
                     <td>${cheatedBadge}</td>
@@ -213,4 +249,15 @@ async function viewResults(testId, title) {
         console.error("Жыйынтыктарды жүктөөдө ката:", err);
         tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
     }
+}
+
+// Экранирование функциясы (XSS бөгөттөө үчүн)
+function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
