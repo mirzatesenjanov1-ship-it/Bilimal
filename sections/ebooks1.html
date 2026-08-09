@@ -149,8 +149,50 @@
             outline: none;
         }
         .form-control:focus { border-color: #ff00ff; box-shadow: 0 0 10px rgba(255, 0, 255, 0.3); }
-        textarea.form-control { height: 200px; resize: vertical; line-height: 1.6; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        /* WYSIWYG ИНТЕРАКТИВДҮҮ РЕДАКТОР СТИЛИ */
+        .editor-toolbar {
+            display: flex;
+            gap: 8px;
+            background: #090d16;
+            padding: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-bottom: none;
+            border-radius: 8px 8px 0 0;
+            flex-wrap: wrap;
+        }
+        .editor-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .editor-btn:hover { background: rgba(0,240,255,0.2); border-color: #00f0ff; }
+        .rich-editor {
+            min-height: 250px;
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 0 0 8px 8px !important;
+            background: #020208;
+            color: #e2e8f0;
+            line-height: 1.6;
+            outline: none;
+            padding: 15px;
+        }
+        .rich-editor img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 10px 0;
+            display: block;
+            border: 1px solid rgba(0, 240, 255, 0.4);
+        }
 
         .save-btn {
             background: linear-gradient(90deg, #00f0ff, #0077ff);
@@ -266,7 +308,6 @@
             line-height: 1.8;
             font-size: 1.1rem;
             color: #e2e8f0;
-            white-space: pre-wrap;
         }
         .article-content img {
             max-width: 100%;
@@ -345,8 +386,20 @@
             </div>
 
             <div class="form-group" id="textContentGroup">
-                <label>Макала / Китептин тексти (кандай көчүрүп чаптасаңыз ошол боюнча сакталат):</label>
-                <textarea id="postContent" class="form-control" placeholder="Текстти ушул жерге чаптаңыз..."></textarea>
+                <label>Макала / Китептин тексти (Word же башка жерден сүрөттөрү менен көчүрүп чаптасаңыз болот):</label>
+                
+                <div class="editor-toolbar">
+                    <button class="editor-btn" onclick="execCmd('bold')"><b>B</b></button>
+                    <button class="editor-btn" onclick="execCmd('italic')"><i>I</i></button>
+                    <button class="editor-btn" onclick="execCmd('underline')"><u>U</u></button>
+                    <button class="editor-btn" onclick="execCmd('justifyLeft')">⬅️ Солго</button>
+                    <button class="editor-btn" onclick="execCmd('justifyCenter')">↔️ Ортого</button>
+                    <button class="editor-btn" onclick="execCmd('justifyRight')">➡️ Оңго</button>
+                    <button class="editor-btn" onclick="triggerImageUpload()">📷 Сүрөт кошуу</button>
+                    <input type="file" id="imageUploader" accept="image/*" style="display:none;" onchange="insertUploadedImage(this)">
+                </div>
+
+                <div id="postContent" class="form-control rich-editor" contenteditable="true" placeholder="Текстти жана сүрөттөрдү ушул жерге чаптаңыз..."></div>
             </div>
 
             <button class="save-btn" onclick="savePost()">Сайтка жарыялоо 🚀</button>
@@ -395,13 +448,30 @@
             }
         ];
 
+        function execCmd(command, value = null) {
+            document.execCommand(command, false, value);
+        }
+
+        function triggerImageUpload() {
+            document.getElementById('imageUploader').click();
+        }
+
+        function insertUploadedImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    execCmd('insertImage', e.target.result);
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function getStoredPosts() {
             const stored = localStorage.getItem('bilimal_posts');
             if (!stored) return defaultPosts;
             
             const parsed = JSON.parse(stored);
             
-            // story3.pdf сакталган болсо, аталышын жаңылоо
             parsed.forEach(p => {
                 if (p.id === 3 || (p.url && p.url.includes('story3.pdf'))) {
                     p.title = 'Физикалык чоңдуктар';
@@ -412,7 +482,6 @@
             const hasStory2 = parsed.some(p => p.id === 2 || (p.url && p.url.includes('story2.pdf')));
             const hasStory3 = parsed.some(p => p.id === 3 || (p.url && p.url.includes('story3.pdf')));
             
-            let updated = true;
             if (!hasStory1) parsed.unshift(defaultPosts[0]);
             if (!hasStory2) {
                 const story1Index = parsed.findIndex(p => p.id === 1 || (p.url && p.url.includes('story1.pdf')));
@@ -423,7 +492,7 @@
                 }
             }
             if (!hasStory3) {
-                const story2Index = parsed.findIndex(p => p.id === 2 || (p.url && p.url.includes('story2.pdf')));
+                const story2Index = parsed.findIndex(p => p.id === 2 || (p.url && p.url.includes('story3.pdf')));
                 if (story2Index !== -1) {
                     parsed.splice(story2Index + 1, 0, defaultPosts[2]);
                 } else {
@@ -432,7 +501,6 @@
             }
 
             localStorage.setItem('bilimal_posts', JSON.stringify(parsed));
-            
             return parsed;
         }
 
@@ -459,7 +527,6 @@
                 `;
                 grid.appendChild(card);
 
-                // Ар бир 3-карточкадан кийин AdSense жарнак карточкасын кошуу
                 if ((index + 1) % 3 === 0) {
                     const adCard = document.createElement('div');
                     adCard.className = 'ads-card';
@@ -499,7 +566,7 @@
             const title = document.getElementById('postTitle').value;
             const desc = document.getElementById('postDesc').value;
             const pdfUrl = document.getElementById('postPdfUrl').value;
-            const content = document.getElementById('postContent').value;
+            const content = document.getElementById('postContent').innerHTML;
 
             if (!title) {
                 alert("Сураныч, теманын аталышын жазыңыз!");
@@ -521,7 +588,7 @@
 
             document.getElementById('postTitle').value = '';
             document.getElementById('postDesc').value = '';
-            document.getElementById('postContent').value = '';
+            document.getElementById('postContent').innerHTML = '';
             document.getElementById('postPdfUrl').value = '';
             toggleAdminPanel();
 
@@ -545,7 +612,6 @@
             document.getElementById('modalTitle').innerText = post.title;
             const container = document.getElementById('modalBody');
 
-            // Макала же PDF ачылганда ичине жарнама кошуу
             const adHtml = `
                 <div class="ads-container" style="max-width: 850px; margin: 20px auto;">
                     <ins class="adsbygoogle"
@@ -571,7 +637,6 @@
             document.getElementById('contentModal').style.display = 'flex';
             document.body.style.overflow = 'hidden';
 
-            // Модалдагы жарнаманы инициализациялоо
             setTimeout(() => {
                 (adsbygoogle = window.adsbygoogle || []).push({});
             }, 100);
