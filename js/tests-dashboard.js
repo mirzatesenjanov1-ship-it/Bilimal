@@ -185,41 +185,41 @@ async function viewResults(testId, title) {
     const tableBody = document.getElementById('resultsTableBody');
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
-    tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
 
     try {
         const dbRef = ref(db);
-        let foundResults = [];
+        let foundResultsObj = null;
 
         // test_results/TEST_ID аркылуу издөө
         try {
             const snap = await get(child(dbRef, `test_results/${testId}`));
             if (snap.exists()) {
-                const val = snap.val();
-                foundResults = Array.isArray(val) ? val : Object.values(val);
+                foundResultsObj = snap.val();
             }
         } catch (e1) {
             console.warn("test_results ичинен окулган жок:", e1.message);
         }
 
-        // Эгер табылбаса эски results/TEST_ID аркылуу издөө (ката оңдолду: snap = await)
-        if (foundResults.length === 0) {
+        // Эгер табылбаса эски results/TEST_ID аркылуу издөө
+        if (!foundResultsObj) {
             try {
                 const snap = await get(child(dbRef, `results/${testId}`));
                 if (snap.exists()) {
-                    const val = snap.val();
-                    foundResults = Array.isArray(val) ? val : Object.values(val);
+                    foundResultsObj = snap.val();
                 }
             } catch (e2) {
                 console.warn("results ичинен окулган жок:", e2.message);
             }
         }
 
-        if (foundResults.length > 0) {
+        if (foundResultsObj) {
             tableBody.innerHTML = '';
+            
+            const entries = Object.entries(foundResultsObj);
 
-            foundResults.forEach(r => {
+            entries.forEach(([key, r]) => {
                 const cheatedCount = r.cheatedCount || 0;
                 let cheatedBadge = `<span style="color:#10b981;">Таза (0)</span>`;
 
@@ -231,23 +231,51 @@ async function viewResults(testId, title) {
                     cheatedBadge += ` <small style="color:#ff0055;">(Бөгөттөлгөн)</small>`;
                 }
 
+                // Уникалдуу ID: key же r.id же Name+Date комби
+                const resultUniqueId = key || (r.studentName ? `${r.studentName}_${r.date}` : Math.random().toString());
+                const storageKey = `checked_result_${testId}_${resultUniqueId}`;
+                const isChecked = localStorage.getItem(storageKey) === 'true';
+
                 const tr = document.createElement('tr');
+                if (isChecked) tr.classList.add('checked-row-bg');
+
                 tr.innerHTML = `
-                    <td>${escapeHtml(r.studentName || '-')}</td>
+                    <td class="check-col">
+                        <input type="checkbox" class="result-checkbox" ${isChecked ? 'checked' : ''} data-key="${storageKey}">
+                    </td>
+                    <td class="student-name-td ${isChecked ? 'checked-student-name' : ''}">${escapeHtml(r.studentName || '-')}</td>
                     <td>${escapeHtml(r.studentClass || '-')}</td>
                     <td><strong>${r.score || 0}</strong> / ${r.totalQuestions || '-'}</td>
                     <td><strong>${r.percent || 0}%</strong></td>
                     <td>${cheatedBadge}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
                 `;
+
+                // Чекбокс клик окуясы
+                const chk = tr.querySelector('.result-checkbox');
+                chk.addEventListener('change', (e) => {
+                    const checked = e.target.checked;
+                    const nameTd = tr.querySelector('.student-name-td');
+
+                    if (checked) {
+                        nameTd.classList.add('checked-student-name');
+                        tr.classList.add('checked-row-bg');
+                        localStorage.setItem(storageKey, 'true');
+                    } else {
+                        nameTd.classList.remove('checked-student-name');
+                        tr.classList.remove('checked-row-bg');
+                        localStorage.removeItem(storageKey);
+                    }
+                });
+
                 tableBody.appendChild(tr);
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
         console.error("Жыйынтыктарды жүктөөдө ката:", err);
-        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
     }
 }
 
