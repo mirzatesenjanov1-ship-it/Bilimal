@@ -3,311 +3,483 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ Панель: Китепкананы башкаруу — BiliMal</title>
+    <title>BilimAl.org - Бала бакча китепканасы (Админ)</title>
 
-    <!-- FIREBASE SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- FontAwesome & Google Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #060214; color: #fff; padding: 30px 4%; min-height: 100vh; }
-        
-        /* AUTH SCREEN */
-        .auth-container { display: flex; justify-content: center; align-items: center; min-height: 80vh; }
-        .auth-card { background: #0c0926; border: 2px solid #a855f7; padding: 35px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 0 30px rgba(168,85,247,0.2); }
-        .auth-card h2 { color: #a855f7; margin-bottom: 10px; }
-        .auth-card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 25px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
 
-        /* MAIN DASHBOARD (Protected) */
-        .dashboard-container { display: none; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid rgba(168,85,247,0.2); padding-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .title-area h1 { font-size: 2rem; color: #a855f7; }
-        .title-area p { color: #94a3b8; font-size: 0.95rem; }
+        body {
+            background-color: #080a0f;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-        .header-actions { display: flex; gap: 10px; }
-        .btn-view-public { background: rgba(255,255,255,0.08); border: 1px solid #a855f7; color: #a855f7; padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: bold; transition: 0.3s; }
-        .btn-view-public:hover { background: #a855f7; color: #fff; }
-        .btn-logout { background: rgba(255,51,102,0.2); border: 1px solid #ff3366; color: #ff3366; padding: 10px 18px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-logout:hover { background: #ff3366; color: #fff; }
+        .header {
+            max-width: 1200px;
+            margin: 0 auto 25px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e2640;
+            padding-bottom: 15px;
+        }
 
-        /* FORM & TABLE LAYOUT */
-        .admin-grid { display: grid; grid-template-columns: 380px 1fr; gap: 30px; }
-        @media (max-width: 900px) { .admin-grid { grid-template-columns: 1fr; } }
+        .header h1 {
+            font-size: 22px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        .card-box { background: #0c0926; border: 1px solid rgba(168,85,247,0.2); border-radius: 16px; padding: 25px; }
-        .card-box h3 { color: #00ff96; margin-bottom: 20px; font-size: 1.2rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+        .btn-back {
+            background: #1e2640;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: 0.3s;
+        }
 
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; margin-bottom: 6px; color: #cbd5e1; font-size: 0.9rem; font-weight: bold; }
-        .form-control { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px; color: #fff; font-size: 0.95rem; outline: none; }
-        .form-control:focus { border-color: #a855f7; }
-        textarea.form-control { resize: vertical; min-height: 110px; }
+        .btn-back:hover {
+            background: #00d2ff;
+            color: #080a0f;
+        }
 
-        .submit-btn { width: 100%; background: #00ff96; color: #000; border: none; padding: 14px; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .submit-btn:hover { background: #00cc78; box-shadow: 0 0 15px rgba(0,255,150,0.3); }
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 25px;
+        }
 
-        /* TABLE STYLES */
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: rgba(168,85,247,0.15); color: #a855f7; padding: 14px; font-size: 0.9rem; border-bottom: 2px solid rgba(168,85,247,0.3); }
-        td { padding: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; color: #e2e8f0; }
-        tr:hover { background: rgba(255,255,255,0.02); }
+        @media (max-width: 900px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+        }
 
-        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; }
-        .badge-pdf { background: rgba(168,85,247,0.2); color: #a855f7; border: 1px solid #a855f7; }
-        .badge-text { background: rgba(0,255,150,0.2); color: #00ff96; border: 1px solid #00ff96; }
+        .form-card {
+            background: #111622;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 24px;
+            height: fit-content;
+        }
 
-        .btn-del { background: rgba(255,51,102,0.15); border: 1px solid #ff3366; color: #ff3366; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: 0.3s; }
-        .btn-del:hover { background: #ff3366; color: #fff; }
+        .form-card h2 {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #1e2640;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #a0aec0;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            background: #0b0e14;
+            border: 1px solid #1e2640;
+            color: #ffffff;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #00d2ff;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .btn-save {
+            width: 100%;
+            background: #00e676;
+            color: #000000;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .btn-save:hover {
+            background: #00c853;
+            box-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+        }
+
+        .btn-save:disabled {
+            background: #4a5568;
+            color: #a0aec0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .list-card {
+            background: #111622;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 24px;
+            min-height: 500px;
+        }
+
+        .list-card h2 {
+            font-size: 18px;
+            color: #ffffff;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #1e2640;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .book-item {
+            background: #0b0e14;
+            border: 1px solid #1e2640;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .book-info h3 {
+            font-size: 16px;
+            color: #00d2ff;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .book-info .meta {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 8px;
+        }
+
+        .book-info p {
+            font-size: 14px;
+            color: #cbd5e0;
+            white-space: pre-line;
+        }
+
+        .btn-delete {
+            background: rgba(229, 62, 62, 0.2);
+            color: #feb2b2;
+            border: 1px solid #e53e3e;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.3s;
+        }
+
+        .btn-delete:hover {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #718096;
+            padding: 40px 0;
+            font-size: 14px;
+        }
+
+        .status-toast {
+            display: none;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .status-toast.success {
+            display: block;
+            background: rgba(0, 230, 118, 0.15);
+            border: 1px solid #00e676;
+            color: #00e676;
+        }
+        .status-toast.error {
+            display: block;
+            background: rgba(229, 62, 62, 0.15);
+            border: 1px solid #e53e3e;
+            color: #feb2b2;
+        }
     </style>
 </head>
 <body>
 
-    <!-- 1. АВТОРИЗАЦИЯ ЭКРАНЫ -->
-    <div class="auth-container" id="authScreen">
-        <div class="auth-card">
-            <h2>🔐 Админ Кирүү</h2>
-            <p>Башкаруу панелине кирүү үчүн PIN-кодду киргизиңиз</p>
-            <form onsubmit="handleAuth(event)">
+    <div class="header">
+        <h1><i class="fas fa-child"></i> Бала бакча китепканасы (Админ)</h1>
+        <a href="../dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу</a>
+    </div>
+
+    <div class="main-container">
+        <!-- ФОРМА (САКТОО БӨЛҮМҮ) -->
+        <div class="form-card">
+            <h2>Жаңы материал кошуу</h2>
+
+            <div id="status-toast" class="status-toast"></div>
+
+            <form id="library-form" onsubmit="return false;">
                 <div class="form-group">
-                    <input type="password" id="pinInput" class="form-control" placeholder="PIN кодду жазыңыз" style="text-align: center; font-size: 1.2rem; letter-spacing: 3px;" required>
+                    <label for="book-title">Аталышы / Темасы *</label>
+                    <input type="text" id="book-title" placeholder="Мисалы: Алтын балык жомогу" required>
                 </div>
-                <button type="submit" class="submit-btn" style="background: #a855f7; color: #fff;">Кирүү</button>
+
+                <div class="form-group">
+                    <label for="book-category">Категориясы *</label>
+                    <select id="book-category" required>
+                        <option value="Эл жомоктору">Эл жомоктору</option>
+                        <option value="Дүйнөлүк жомок">Дүйнөлүк жомок</option>
+                        <option value="Ырлар жана ыр саптары">Ырлар жана ыр саптары</option>
+                        <option value="Табышмактар">Табышмактар</option>
+                        <option value="Өнүктүрүүчү оюндар">Өнүктүрүүчү оюндар</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="book-icon">Иконка (Эмоджи) *</label>
+                    <input type="text" id="book-icon" value="📖" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="book-format">Форматы *</label>
+                    <select id="book-format" required>
+                        <option value="text">Текст түрүндө (Мазмунун жазуу)</option>
+                        <option value="audio">Аудио шилтеме (MP3 / Audio URL)</option>
+                        <option value="video">Видео шилтеме (YouTube / Video URL)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="content-text-group">
+                    <label for="book-content">Текст мазмуну *</label>
+                    <textarea id="book-content" placeholder="Китептин же жомоктун тексти ушул жерге жазылат..."></textarea>
+                </div>
+
+                <div class="form-group" id="content-url-group" style="display: none;">
+                    <label for="book-url">Медиа шилтемеси (URL) *</label>
+                    <input type="url" id="book-url" placeholder="https://example.com/audio.mp3">
+                </div>
+
+                <button type="submit" id="save-book-btn" class="btn-save">
+                    <i class="fas fa-save"></i> Базага сактоо
+                </button>
             </form>
         </div>
-    </div>
 
-    <!-- 2. ДАШБОРД (ПИН КИРГИЗИЛГЕНДЕН КИЙИН ГАНА АЧЫЛАТ) -->
-    <div class="dashboard-container" id="dashboardScreen">
-        <header>
-            <div class="title-area">
-                <h1>⚙️ Китепкананы Башкаруу Панели</h1>
-                <p>Балдар китепканасына жаңы китеп кошуу жана базаны башкаруу</p>
-            </div>
-            <div class="header-actions">
-                <a href="kids-library.html" target="_blank" class="btn-view-public">👁️ Сайтка өтүү</a>
-                <button class="btn-logout" onclick="logoutAdmin()">Выйти</button>
-            </div>
-        </header>
-
-        <div class="admin-grid">
-            <!-- КИТЕП КОШУУ ФОРМАСЫ -->
-            <div class="card-box">
-                <h3>➕ Жаңы Китеп / Жомок Кошуу</h3>
-                <form id="addBookForm" onsubmit="saveBook(event)">
-                    <div class="form-group">
-                        <label>Китептин аталышы *</label>
-                        <input type="text" id="bookTitle" class="form-control" placeholder="Мисалы: Алтын балык" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Автору / Булагы *</label>
-                        <input type="text" id="bookAuthor" class="form-control" placeholder="Мисалы: Кыргыз эл жомогу" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Категориясы *</label>
-                        <select id="bookCategory" class="form-control" required>
-                            <option value="jomok">Эл жомоктору</option>
-                            <option value="picture">Сүрөттүү / PDF китеп</option>
-                            <option value="audio">Аудио жомок</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Иконка (Эмоджи) *</label>
-                        <input type="text" id="bookIcon" class="form-control" placeholder="📖" value="📖" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Форматы *</label>
-                        <select id="bookFormat" class="form-control" onchange="toggleFormatFields()" required>
-                            <option value="text">Текст түрүндө (Мазмунун жазуу)</option>
-                            <option value="pdf">PDF Шилтемеси (Google Drive / Түз URL)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group" id="textGroup">
-                        <label>Текст мазмуну *</label>
-                        <textarea id="bookContent" class="form-control" placeholder="Жомоктун же китептин текстин ушул жерге жазыңыз..."></textarea>
-                    </div>
-
-                    <div class="form-group" id="pdfGroup" style="display: none;">
-                        <label>PDF Файлдын Шилтемеси (URL) *</label>
-                        <input type="url" id="bookPdfUrl" class="form-control" placeholder="https://drive.google.com/... же түз URL">
-                    </div>
-
-                    <button type="submit" class="submit-btn">💾 Базага сактоо</button>
-                </form>
-            </div>
-
-            <!-- КИТЕПТЕРДИН ТИЗМЕСИ ЖАНА БАШКАРУУ -->
-            <div class="card-box">
-                <h3>📚 Базадагы Бардык Китептер</h3>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Иконка</th>
-                                <th>Аталышы</th>
-                                <th>Автору</th>
-                                <th>Формат</th>
-                                <th>Аракет</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminBooksTable">
-                            <!-- JS аркылуу толтурулат -->
-                        </tbody>
-                    </table>
-                </div>
+        <!-- КИТЕПТЕРДИН ТИЗМЕСИ -->
+        <div class="list-card">
+            <h2>Базадагы материалдар <span id="books-count" style="font-size: 14px; color: #00d2ff;">(0)</span></h2>
+            <div id="books-list">
+                <div class="empty-msg">Жүктөлүүдө...</div>
             </div>
         </div>
     </div>
 
-    <script>
-        // FIREBASE CONFIGURATION
+    <!-- FIREBASE INTEGRATION -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+        // Firebase Конфигурациясы
         const firebaseConfig = {
-            databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
         };
-        
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const database = firebase.database();
 
-        // СИЗДИН ЖАШЫРУУН ПИН-КОДУҢУЗ
-        const ADMIN_SECRET_PIN = "7788"; 
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const libraryRef = ref(db, 'kindergarten_library');
 
-        function checkSession() {
-            const isAuth = sessionStorage.getItem('bilimal_admin_authed');
-            if (isAuth === 'true') {
-                document.getElementById('authScreen').style.display = 'none';
-                document.getElementById('dashboardScreen').style.display = 'block';
-                loadAdminBooks();
-            } else {
-                document.getElementById('authScreen').style.display = 'flex';
-                document.getElementById('dashboardScreen').style.display = 'none';
-            }
-        }
+        // DOM Элементтери
+        const form = document.getElementById('library-form');
+        const saveBtn = document.getElementById('save-book-btn');
+        const formatSelect = document.getElementById('book-format');
+        const textGroup = document.getElementById('content-text-group');
+        const urlGroup = document.getElementById('content-url-group');
+        const toast = document.getElementById('status-toast');
+        const booksListDiv = document.getElementById('books-list');
+        const booksCountSpan = document.getElementById('books-count');
 
-        function handleAuth(e) {
-            e.preventDefault();
-            const pin = document.getElementById('pinInput').value;
-            if (pin === ADMIN_SECRET_PIN) {
-                sessionStorage.setItem('bilimal_admin_authed', 'true');
-                checkSession();
-            } else {
-                alert('Ката PIN код! Кайра текшерип киргизиңиз.');
-            }
-        }
-
-        function logoutAdmin() {
-            sessionStorage.removeItem('bilimal_admin_authed');
-            checkSession();
-        }
-
-        function toggleFormatFields() {
-            const format = document.getElementById('bookFormat').value;
-            const textGroup = document.getElementById('textGroup');
-            const pdfGroup = document.getElementById('pdfGroup');
-
-            if (format === 'pdf') {
-                textGroup.style.display = 'none';
-                pdfGroup.style.display = 'block';
-                document.getElementById('bookPdfUrl').required = true;
-                document.getElementById('bookContent').required = false;
-            } else {
+        // Формат өзгөргөндө талааларды көрсөтүү/жашыруу
+        formatSelect.addEventListener('change', () => {
+            if (formatSelect.value === 'text') {
                 textGroup.style.display = 'block';
-                pdfGroup.style.display = 'none';
-                document.getElementById('bookPdfUrl').required = false;
-                document.getElementById('bookContent').required = true;
+                urlGroup.style.display = 'none';
+            } else {
+                textGroup.style.display = 'none';
+                urlGroup.style.display = 'block';
             }
+        });
+
+        // Билдирүү көрсөтүү функциясы
+        function showToast(message, type = 'success') {
+            toast.textContent = message;
+            toast.className = `status-toast ${type}`;
+            setTimeout(() => {
+                toast.className = 'status-toast';
+            }, 4000);
         }
 
-        function saveBook(e) {
+        // БАЗАГА САКТОО ЛОГИКАСЫ (САКТОО БАШКЫЧЫ ИШТӨӨСҮ ҮЧҮН)
+        form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const title = document.getElementById('bookTitle').value.trim();
-            const author = document.getElementById('bookAuthor').value.trim();
-            const category = document.getElementById('bookCategory').value;
-            const icon = document.getElementById('bookIcon').value.trim() || '📖';
-            const format = document.getElementById('bookFormat').value;
-            const content = document.getElementById('bookContent').value.trim();
-            const pdfUrl = document.getElementById('bookPdfUrl').value.trim();
+            const title = document.getElementById('book-title').value.trim();
+            const category = document.getElementById('book-category').value;
+            const icon = document.getElementById('book-icon').value.trim() || '📖';
+            const format = formatSelect.value;
+            const contentText = document.getElementById('book-content').value.trim();
+            const mediaUrl = document.getElementById('book-url').value.trim();
 
-            const newBook = {
-                title: title,
-                author: author,
-                category: category,
-                badge: format === 'pdf' ? 'PDF Китеп' : 'Жомок',
-                cover: icon,
-                format: format,
-                content: content,
-                pdfUrl: pdfUrl,
-                createdAt: Date.now()
-            };
+            if (!title) {
+                showToast('Сураныч, маалыматтын аталышын жазыңыз!', 'error');
+                return;
+            }
 
-            const newBookRef = database.ref('kids_library/books').push();
-            newBookRef.set(newBook).then(() => {
-                document.getElementById('addBookForm').reset();
-                toggleFormatFields();
-                alert("Китеп маалымат базасына ийгиликтүү кошулду!");
-            }).catch(err => {
-                alert("Ката чыкты: " + err.message);
-            });
-        }
+            if (format === 'text' && !contentText) {
+                showToast('Сураныч, текст мазмунун жазыңыз!', 'error');
+                return;
+            }
 
-        function loadAdminBooks() {
-            const booksRef = database.ref('kids_library/books');
-            booksRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                const tbody = document.getElementById('adminBooksTable');
-                tbody.innerHTML = '';
+            if (format !== 'text' && !mediaUrl) {
+                showToast('Сураныч, медиа шилтемени жазыңыз!', 'error');
+                return;
+            }
 
-                if (!data) {
-                    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #94a3b8;">Базада китеп жок</td></tr>`;
-                    return;
+            // Баскычты катыруу
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Сакталууда...`;
+
+            try {
+                const newBookData = {
+                    title: title,
+                    category: category,
+                    icon: icon,
+                    format: format,
+                    content: format === 'text' ? contentText : mediaUrl,
+                    createdAt: serverTimestamp()
+                };
+
+                // Firebase Realtime Database'ге жөнөтүү
+                await push(libraryRef, newBookData);
+
+                showToast('Материал ийгиликтүү базага сакталды!', 'success');
+                
+                // Форманы тазалоо
+                document.getElementById('book-title').value = '';
+                document.getElementById('book-content').value = '';
+                document.getElementById('book-url').value = '';
+
+            } catch (error) {
+                console.error("Firebase'ге сактоодо ката чыкты:", error);
+                showToast('Ката кетти: ' + error.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = `<i class="fas fa-save"></i> Базага сактоо`;
+            }
+        });
+
+        // БАЗАДАН РЕАЛДУУ УБАКТА ОКУУ ЖАНА ТИЗМЕНИ ЖАҢЫРТУУ
+        onValue(libraryRef, (snapshot) => {
+            booksListDiv.innerHTML = '';
+            
+            if (!snapshot.exists()) {
+                booksListDiv.innerHTML = `<div class="empty-msg">Базага азырынча эч кандай материал кошула элек.</div>`;
+                booksCountSpan.textContent = '(0)';
+                return;
+            }
+
+            const data = snapshot.val();
+            const bookKeys = Object.keys(data).reverse(); // акыркы сакталгандар өйдө чыгат
+            booksCountSpan.textContent = `(${bookKeys.length})`;
+
+            bookKeys.forEach((key) => {
+                const book = data[key];
+                const bookEl = document.createElement('div');
+                bookEl.className = 'book-item';
+
+                let displayContent = '';
+                if (book.format === 'text') {
+                    displayContent = `<p>${book.content.length > 150 ? book.content.substring(0, 150) + '...' : book.content}</p>`;
+                } else {
+                    displayContent = `<p><a href="${book.content}" target="_blank" style="color:#00d2ff;"><i class="fas fa-external-link-alt"></i> Медианы ачуу (${book.format})</a></p>`;
                 }
 
-                Object.keys(data).forEach(key => {
-                    const book = data[key];
-                    const tr = document.createElement('tr');
-                    const badgeClass = book.format === 'pdf' ? 'badge-pdf' : 'badge-text';
+                bookEl.innerHTML = `
+                    <div class="book-info">
+                        <h3><span>${book.icon || '📖'}</span> ${book.title}</h3>
+                        <div class="meta">Категория: <b>${book.category}</b> | Формат: <b>${book.format}</b></div>
+                        ${displayContent}
+                    </div>
+                    <button class="btn-delete" data-id="${key}"><i class="fas fa-trash"></i> Өчүрүү</button>
+                `;
 
-                    tr.innerHTML = `
-                        <td style="font-size: 1.5rem;">${book.cover || '📖'}</td>
-                        <td><strong>${escapeHtml(book.title)}</strong></td>
-                        <td>${escapeHtml(book.author)}</td>
-                        <td><span class="badge ${badgeClass}">${book.format.toUpperCase()}</span></td>
-                        <td><button class="btn-del" onclick="deleteBook('${key}')">🗑️ Өчүрүү</button></td>
-                    `;
-                    tbody.appendChild(tr);
+                // Өчүрүү баскычын иштетүү
+                bookEl.querySelector('.btn-delete').addEventListener('click', async () => {
+                    if (confirm(`"${book.title}" материалын өчүрүүнү каалайсызбы?`)) {
+                        try {
+                            await remove(ref(db, `kindergarten_library/${key}`));
+                            showToast('Материал өчүрүлдү!', 'success');
+                        } catch (err) {
+                            showToast('Өчүрүүдө ката: ' + err.message, 'error');
+                        }
+                    }
                 });
+
+                booksListDiv.appendChild(bookEl);
             });
-        }
-
-        function deleteBook(key) {
-            if (confirm('Бул китепти базадан өчүргүңүз келеби?')) {
-                database.ref(`kids_library/books/${key}`).remove().then(() => {
-                    alert("Китеп өчүрүлдү!");
-                });
-            }
-        }
-
-        function escapeHtml(text) {
-            if(!text) return '';
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // БАШТАЛГАНДА ИШКЕ ТҮШҮРҮҮ
-        checkSession();
+        });
     </script>
 </body>
 </html>
