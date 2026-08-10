@@ -315,7 +315,7 @@
         <div class="list-card">
             <h2>Базадагы материалдар <span id="books-count" style="font-size: 14px; color: #00d2ff;">(0)</span></h2>
             <div id="books-list">
-                <div class="empty-msg">Жүктөлүүдө...</div>
+                <div class="empty-msg">Маалымат жүктөлүүдө же авторизация күтүлүүдө...</div>
             </div>
         </div>
     </div>
@@ -324,8 +324,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, remove, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        // Auth модулун коштук
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
-        // Firebase Конфигурациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -339,9 +340,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const auth = getAuth(app); // Auth инициализация кылынды
         const libraryRef = ref(db, 'kindergarten_library');
 
-        // DOM Элементтери
         const form = document.getElementById('library-form');
         const saveBtn = document.getElementById('save-book-btn');
         const formatSelect = document.getElementById('book-format');
@@ -351,7 +352,8 @@
         const booksListDiv = document.getElementById('books-list');
         const booksCountSpan = document.getElementById('books-count');
 
-        // Формат өзгөргөндө талааларды көрсөтүү/жашыруу
+        let currentUser = null; // Учурдагы колдонуучуну сактоо үчүн
+
         formatSelect.addEventListener('change', () => {
             if (formatSelect.value === 'text') {
                 textGroup.style.display = 'block';
@@ -362,7 +364,6 @@
             }
         });
 
-        // Билдирүү көрсөтүү функциясы
         function showToast(message, type = 'success') {
             toast.textContent = message;
             toast.className = `status-toast ${type}`;
@@ -371,9 +372,26 @@
             }, 4000);
         }
 
-        // БАЗАГА САКТОО ЛОГИКАСЫ (САКТОО БАШКЫЧЫ ИШТӨӨСҮ ҮЧҮН)
+        // 1. АВТОРИЗАЦИЯНЫ ТЕКШЕРҮҮ ЖӨНДӨГҮЧҮ
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                loadLibraryData(); // Уруксат болгондон кийин гана базаны окуйбуз
+            } else {
+                currentUser = null;
+                booksListDiv.innerHTML = `<div class="empty-msg" style="color: #e53e3e;">Сиз системага кирген жоксуз. Маалыматты көрүү жана өзгөртүү үчүн админ катары кириңиз.</div>`;
+                showToast("Авторизация катасы: Системада логин кылынган эмес.", "error");
+            }
+        });
+
+        // 2. БАЗАГА САКТОО ЛОГИКАСЫ (КООПСУЗ)
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            if (!currentUser) {
+                showToast('Уруксат жок! Базага сактоо үчүн системага кириңиз.', 'error');
+                return;
+            }
 
             const title = document.getElementById('book-title').value.trim();
             const category = document.getElementById('book-category').value;
@@ -382,26 +400,17 @@
             const contentText = document.getElementById('book-content').value.trim();
             const mediaUrl = document.getElementById('book-url').value.trim();
 
-            if (!title) {
-                showToast('Сураныч, маалыматтын аталышын жазыңыз!', 'error');
-                return;
-            }
+            if (!title) { showToast('Сураныч, маалыматтын аталышын жазыңыз!', 'error'); return; }
+            if (format === 'text' && !contentText) { showToast('Сураныч, текст мазмунун жазыңыз!', 'error'); return; }
+            if (format !== 'text' && !mediaUrl) { showToast('Сураныч, медиа шилтемени жазыңыз!', 'error'); return; }
 
-            if (format === 'text' && !contentText) {
-                showToast('Сураныч, текст мазмунун жазыңыз!', 'error');
-                return;
-            }
-
-            if (format !== 'text' && !mediaUrl) {
-                showToast('Сураныч, медиа шилтемени жазыңыз!', 'error');
-                return;
-            }
-
-            // Баскычты катыруу
             saveBtn.disabled = true;
             saveBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Сакталууда...`;
 
             try {
+                // Токенди жаңыртуу (эскирип кеткен сессиядан улам Permission Denied чыкпашы үчүн)
+                await currentUser.getIdToken(true);
+
                 const newBookData = {
                     title: title,
                     category: category,
@@ -411,75 +420,91 @@
                     createdAt: serverTimestamp()
                 };
 
-                // Firebase Realtime Database'ге жөнөтүү
                 await push(libraryRef, newBookData);
 
                 showToast('Материал ийгиликтүү базага сакталды!', 'success');
                 
-                // Форманы тазалоо
                 document.getElementById('book-title').value = '';
                 document.getElementById('book-content').value = '';
                 document.getElementById('book-url').value = '';
 
             } catch (error) {
                 console.error("Firebase'ге сактоодо ката чыкты:", error);
-                showToast('Ката кетти: ' + error.message, 'error');
+                if (error.code === 'PERMISSION_DENIED') {
+                    showToast('Сактоого уруксат жок (Permission Denied). Админ укуктарыңызды текшериңиз.', 'error');
+                } else {
+                    showToast('Ката кетти: ' + error.message, 'error');
+                }
             } finally {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = `<i class="fas fa-save"></i> Базага сактоо`;
             }
         });
 
-        // БАЗАДАН РЕАЛДУУ УБАКТА ОКУУ ЖАНА ТИЗМЕНИ ЖАҢЫРТУУ
-        onValue(libraryRef, (snapshot) => {
-            booksListDiv.innerHTML = '';
-            
-            if (!snapshot.exists()) {
-                booksListDiv.innerHTML = `<div class="empty-msg">Базага азырынча эч кандай материал кошула элек.</div>`;
-                booksCountSpan.textContent = '(0)';
-                return;
-            }
-
-            const data = snapshot.val();
-            const bookKeys = Object.keys(data).reverse(); // акыркы сакталгандар өйдө чыгат
-            booksCountSpan.textContent = `(${bookKeys.length})`;
-
-            bookKeys.forEach((key) => {
-                const book = data[key];
-                const bookEl = document.createElement('div');
-                bookEl.className = 'book-item';
-
-                let displayContent = '';
-                if (book.format === 'text') {
-                    displayContent = `<p>${book.content.length > 150 ? book.content.substring(0, 150) + '...' : book.content}</p>`;
-                } else {
-                    displayContent = `<p><a href="${book.content}" target="_blank" style="color:#00d2ff;"><i class="fas fa-external-link-alt"></i> Медианы ачуу (${book.format})</a></p>`;
+        // 3. БАЗАДАН ОКУУ ЖАНА ТИЗМЕНИ ЖАҢЫРТУУ (ОБОЧОЛОНГОН ФУНКЦИЯ)
+        function loadLibraryData() {
+            onValue(libraryRef, (snapshot) => {
+                booksListDiv.innerHTML = '';
+                
+                if (!snapshot.exists()) {
+                    booksListDiv.innerHTML = `<div class="empty-msg">Базага азырынча эч кандай материал кошула элек.</div>`;
+                    booksCountSpan.textContent = '(0)';
+                    return;
                 }
 
-                bookEl.innerHTML = `
-                    <div class="book-info">
-                        <h3><span>${book.icon || '📖'}</span> ${book.title}</h3>
-                        <div class="meta">Категория: <b>${book.category}</b> | Формат: <b>${book.format}</b></div>
-                        ${displayContent}
-                    </div>
-                    <button class="btn-delete" data-id="${key}"><i class="fas fa-trash"></i> Өчүрүү</button>
-                `;
+                const data = snapshot.val();
+                const bookKeys = Object.keys(data).reverse(); 
+                booksCountSpan.textContent = `(${bookKeys.length})`;
 
-                // Өчүрүү баскычын иштетүү
-                bookEl.querySelector('.btn-delete').addEventListener('click', async () => {
-                    if (confirm(`"${book.title}" материалын өчүрүүнү каалайсызбы?`)) {
-                        try {
-                            await remove(ref(db, `kindergarten_library/${key}`));
-                            showToast('Материал өчүрүлдү!', 'success');
-                        } catch (err) {
-                            showToast('Өчүрүүдө ката: ' + err.message, 'error');
-                        }
+                bookKeys.forEach((key) => {
+                    const book = data[key];
+                    const bookEl = document.createElement('div');
+                    bookEl.className = 'book-item';
+
+                    let displayContent = '';
+                    if (book.format === 'text') {
+                        displayContent = `<p>${book.content.length > 150 ? book.content.substring(0, 150) + '...' : book.content}</p>`;
+                    } else {
+                        displayContent = `<p><a href="${book.content}" target="_blank" style="color:#00d2ff;"><i class="fas fa-external-link-alt"></i> Медианы ачуу (${book.format})</a></p>`;
                     }
-                });
 
-                booksListDiv.appendChild(bookEl);
+                    bookEl.innerHTML = `
+                        <div class="book-info">
+                            <h3><span>${book.icon || '📖'}</span> ${book.title}</h3>
+                            <div class="meta">Категория: <b>${book.category}</b> | Формат: <b>${book.format}</b></div>
+                            ${displayContent}
+                        </div>
+                        <button class="btn-delete" data-id="${key}"><i class="fas fa-trash"></i> Өчүрүү</button>
+                    `;
+
+                    // 4. ӨЧҮРҮҮ ЛОГИКАСЫ (КООПСУЗ)
+                    bookEl.querySelector('.btn-delete').addEventListener('click', async () => {
+                        if (!currentUser) {
+                            showToast('Өчүрүүгө уруксат жок! Системада жоксуз.', 'error');
+                            return;
+                        }
+
+                        if (confirm(`"${book.title}" материалын өчүрүүнү каалайсызбы?`)) {
+                            try {
+                                await currentUser.getIdToken(true); // Токен жаңыртуу
+                                await remove(ref(db, `kindergarten_library/${key}`));
+                                showToast('Материал өчүрүлдү!', 'success');
+                            } catch (err) {
+                                console.error("Өчүрүү катасы:", err);
+                                showToast('Өчүрүүдө ката: ' + err.message, 'error');
+                            }
+                        }
+                    });
+
+                    booksListDiv.appendChild(bookEl);
+                });
+            }, (error) => {
+                // Базадан окууга уруксат берилбесе ката чыгаруу
+                console.error("Окуу катасы:", error);
+                booksListDiv.innerHTML = `<div class="empty-msg" style="color: #e53e3e;">Маалыматты окууга уруксат жок.</div>`;
+                showToast("Базадан окууга уруксат жок.", "error");
             });
-        });
+        }
     </script>
 </body>
 </html>
