@@ -8,66 +8,72 @@
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
     
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV60QV0"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-9GSQV60QV0');
-    </script>
+    <!-- FIREBASE SDKs (v9 Modular for 100% Compatibility) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-    <!-- FIREBASE SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const libraryRef = ref(db, 'kindergarten_library');
+
+        window.booksData = [];
+        window.currentCategory = 'all';
+
+        // АЧЫК БАЗАДАН МААЛЫМАТТЫ ТҮЗ ОКУУ
+        onValue(libraryRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                window.booksData = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key]
+                }));
+            } else {
+                window.booksData = [];
+            }
+            window.renderBooks();
+        }, (error) => {
+            console.error("Базаны окууда ката:", error);
+        });
+    </script>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: #050312; color: #fff; padding: 30px 4%; min-height: 100vh; }
-        
         header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; flex-wrap: wrap; gap: 15px; }
-        
-        .back-btn { background: rgba(255,255,255,0.08); border: 1px solid #a855f7; color: #a855f7; padding: 10px 20px; border-radius: 12px; text-decoration: none; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; }
-        .back-btn:hover { background: #a855f7; color: #fff; box-shadow: 0 0 15px rgba(168,85,247,0.4); }
-        
+        .back-btn { background: rgba(255,255,255,0.08); border: 1px solid #a855f7; color: #a855f7; padding: 10px 20px; border-radius: 12px; text-decoration: none; font-weight: bold; transition: 0.3s; }
+        .back-btn:hover { background: #a855f7; color: #fff; }
         .header-title { text-align: center; flex: 1; }
-        .header-title h1 { font-size: 2.2rem; color: #a855f7; text-shadow: 0 0 15px rgba(168,85,247,0.3); }
-        .header-title p { color: #94a3b8; font-size: 1rem; margin-top: 5px; }
-
-        /* ИЗДӨӨ ЖАНА ЧЫПКАЛАР */
+        .header-title h1 { font-size: 2.2rem; color: #a855f7; }
         .controls-box { background: rgba(15, 15, 40, 0.7); border: 1px solid rgba(168,85,247,0.3); border-radius: 16px; padding: 20px; margin-bottom: 30px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; }
-        .search-input { flex: 1; min-width: 250px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 18px; color: #fff; font-size: 1rem; outline: none; transition: 0.3s; }
-        .search-input:focus { border-color: #a855f7; box-shadow: 0 0 10px rgba(168,85,247,0.3); }
-        
+        .search-input { flex: 1; min-width: 250px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 18px; color: #fff; font-size: 1rem; outline: none; }
         .categories-filter { display: flex; gap: 10px; flex-wrap: wrap; }
         .cat-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #ccc; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: 0.3s; font-size: 0.9rem; font-weight: bold; }
         .cat-btn.active, .cat-btn:hover { background: #a855f7; color: #fff; border-color: #a855f7; }
-
-        /* ЖАРНАМА ЗОНАСЫ */
-        .ad-banner { width: 100%; margin-bottom: 30px; text-align: center; }
-
-        /* КИТЕПТЕР СЕТКАСЫ */
         .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 25px; }
-        .book-card { background: #0c0926; border: 1px solid rgba(168,85,247,0.2); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; transition: 0.3s; position: relative; overflow: hidden; }
-        .book-card:hover { transform: translateY(-7px); border-color: #a855f7; box-shadow: 0 10px 25px rgba(168,85,247,0.25); }
-        
+        .book-card { background: #0c0926; border: 1px solid rgba(168,85,247,0.2); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; transition: 0.3s; position: relative; }
+        .book-card:hover { transform: translateY(-7px); border-color: #a855f7; }
         .book-cover { width: 100%; height: 180px; border-radius: 10px; margin-bottom: 15px; background: rgba(168,85,247,0.08); display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #a855f7; border: 1px dashed rgba(168,85,247,0.3); }
-        .book-title { font-size: 1.15rem; font-weight: bold; color: #fff; margin-bottom: 6px; line-height: 1.3; }
+        .book-title { font-size: 1.15rem; font-weight: bold; color: #fff; margin-bottom: 6px; }
         .book-author { font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px; }
-        .book-badge { position: absolute; top: 25px; right: 25px; background: rgba(168,85,247,0.85); color: #fff; font-size: 0.75rem; padding: 4px 10px; border-radius: 10px; font-weight: bold; backdrop-filter: blur(5px); }
-
-        .book-actions { margin-top: auto; display: flex; gap: 8px; }
-        .btn-read { flex: 1; background: #a855f7; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; text-align: center; text-decoration: none; font-size: 0.9rem; }
-        .btn-read:hover { background: #9333ea; }
-
-        /* МОДАЛДЫК ТЕРЕЗЕ */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 10000; backdrop-filter: blur(8px); }
-        .modal-box { background: #0c0926; border: 2px solid #a855f7; width: 90%; max-width: 900px; height: 85vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .modal-header { padding: 18px 25px; background: rgba(168,85,247,0.1); border-bottom: 1px solid rgba(168,85,247,0.3); display: flex; justify-content: space-between; align-items: center; }
-        .modal-title { font-size: 1.3rem; color: #fff; font-weight: bold; }
-        .close-btn { background: #ff3366; border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; font-weight: bold; }
-        .modal-body { flex: 1; padding: 25px; overflow-y: auto; color: #e2e8f0; font-size: 1.1rem; line-height: 1.8; }
-        .reader-frame { width: 100%; height: 100%; border: none; border-radius: 10px; background: #fff; }
+        .btn-read { background: #a855f7; color: #fff; border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: auto; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; justify-content: center; align-items: center; z-index: 10000; }
+        .modal-box { background: #0c0926; border: 2px solid #a855f7; width: 90%; max-width: 900px; height: 85vh; border-radius: 20px; display: flex; flex-direction: column; overflow: hidden; }
+        .modal-header { padding: 18px 25px; background: rgba(168,85,247,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .close-btn { background: #ff3366; border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-weight: bold; }
+        .modal-body { flex: 1; padding: 25px; overflow-y: auto; color: #e2e8f0; line-height: 1.8; }
+        .reader-frame { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
@@ -76,13 +82,12 @@
         <a href="kindergarten.html" class="back-btn">← Бала бакчага кайтуу</a>
         <div class="header-title">
             <h1>📚 Жомоктор жана Балдар Китептери</h1>
-            <p>Балдар үчүн кызыктуу элдик жомоктор, сүрөттүү китептер жана PDF/тексттик аңгемелер</p>
+            <p>Ачык китепкана — аңгемелер, жомоктор жана сүрөттүү китептер</p>
         </div>
     </header>
 
-    <!-- ИЗДӨӨ ЖАНА ЧЫПКАЛАР -->
     <div class="controls-box">
-        <input type="text" id="searchInput" class="search-input" placeholder="Жомок же китептин атын издеңиз..." oninput="filterBooks()">
+        <input type="text" id="searchInput" class="search-input" placeholder="Издөө..." oninput="filterBooks()">
         <div class="categories-filter">
             <button class="cat-btn active" onclick="setCategory('all', this)">Бардыгы</button>
             <button class="cat-btn" onclick="setCategory('jomok', this)">Эл жомоктору</button>
@@ -91,180 +96,87 @@
         </div>
     </div>
 
-    <!-- GOOGLE ADSENSE BANNER (PUBLIC SAFE ZONE) -->
-    <div class="ad-banner">
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-1495571814896964"
-             data-ad-slot="1574613769"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-    </div>
-
-    <!-- КИТЕПТЕР СЕТКАСЫ -->
     <div class="books-grid" id="booksGrid"></div>
 
-    <!-- КИТЕП ОКУУ МОДАЛДЫК ТЕРЕЗЕСИ -->
     <div class="modal-overlay" id="readerModal">
         <div class="modal-box">
             <div class="modal-header">
-                <span class="modal-title" id="modalBookTitle">Китеп аталышы</span>
-                <button class="close-btn" onclick="closeModal('readerModal')">✕</button>
+                <span id="modalBookTitle" style="font-weight: bold; font-size: 1.2rem;"></span>
+                <button class="close-btn" onclick="closeModal()">✕</button>
             </div>
             <div class="modal-body" id="modalBody"></div>
         </div>
     </div>
 
     <script>
-        // FIREBASE CONFIGURATION
-        const firebaseConfig = {
-            databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
-        };
-        
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const database = firebase.database();
-
-        // ДЕФОЛТТУК КИТЕПТЕР (Эгер база бош болсо көрсөтүү үчүн)
-        const defaultBooks = [
-            {
-                id: "default_1",
-                title: "Алтын Куш Жомогу",
-                author: "Кыргыз эл жомогу",
-                category: "jomok",
-                badge: "Элдик жомок",
-                cover: "🦚",
-                format: "text",
-                content: "Бир бар экен, бир жок экен, байыркы заманда бир акылман хан жашаптыр. Анын багында алтын алма берүүчү дарак бар экен. Бирок күн сайын түн ичинде бир сыйкырдуу Алтын Куш учуп келип, бактагы эң таттуу алтын алманы жеп кетет экен..."
-            },
-            {
-                id: "default_2",
-                title: "Боорсоктун Жоруктары",
-                author: "Сүйүктүү жомок",
-                category: "jomok",
-                badge: "Жомок",
-                cover: "🥖",
-                format: "text",
-                content: "Бир күнү кемпир чалга боорсок бышырып бериптир. Боорсок терезеден секирип түшүп, токойду көздөй качып жөнөптүр. Жолдон ага коён, карышкыр, аюу жолугуптур..."
-            }
-        ];
-
-        let booksData = [];
-        let currentCategory = 'all';
-
-        // FIREBASE'ДЕН КИТЕПТЕРДИ РЕАЛДУУ УБАКТА АЛУУ
-        function loadBooks() {
-            const booksRef = database.ref('kids_library/books');
-            booksRef.on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    booksData = Object.keys(data).map(key => ({
-                        id: key,
-                        ...data[key]
-                    }));
-                } else {
-                    booksData = defaultBooks;
-                }
-                renderBooks();
-            }, (error) => {
-                console.warn("Firebase туташуу катасы:", error);
-                const stored = localStorage.getItem('bilimal_kids_books');
-                booksData = stored ? JSON.parse(stored) : defaultBooks;
-                renderBooks();
-            });
-        }
-
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
             const searchVal = document.getElementById('searchInput').value.toLowerCase();
             grid.innerHTML = '';
 
-            const filtered = booksData.filter(book => {
-                const matchesCat = (currentCategory === 'all' || book.category === currentCategory);
-                const matchesSearch = book.title.toLowerCase().includes(searchVal) || book.author.toLowerCase().includes(searchVal);
+            const list = window.booksData || [];
+            const filtered = list.filter(book => {
+                const matchesCat = (window.currentCategory === 'all' || book.category === window.currentCategory);
+                const matchesSearch = (book.title || '').toLowerCase().includes(searchVal) || (book.author || '').toLowerCase().includes(searchVal);
                 return matchesCat && matchesSearch;
             });
 
             if (filtered.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #94a3b8; font-size: 1.1rem;">Эч кандай китеп же жомок табылган жок 🔍</div>`;
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">Эч кандай китеп табылган жок 🔍</div>`;
                 return;
             }
 
             filtered.forEach(book => {
                 const card = document.createElement('div');
                 card.className = 'book-card';
-                const badgeText = book.format === 'pdf' ? 'PDF Китеп' : (book.badge || 'Жомок');
-
                 card.innerHTML = `
-                    <span class="book-badge">${badgeText}</span>
                     <div class="book-cover">${book.cover || '📖'}</div>
                     <div class="book-title">${escapeHtml(book.title)}</div>
-                    <div class="book-author">${escapeHtml(book.author)}</div>
-                    <div class="book-actions">
-                        <button class="btn-read" onclick="openReader('${book.id}')">Окуу 📖</button>
-                    </div>
+                    <div class="book-author">${escapeHtml(book.author || 'Белгисиз')}</div>
+                    <button class="btn-read" onclick="openReader('${book.id}')">Окуу 📖</button>
                 `;
                 grid.appendChild(card);
             });
         }
 
         function setCategory(cat, btn) {
-            currentCategory = cat;
+            window.currentCategory = cat;
             document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             renderBooks();
         }
 
-        function filterBooks() {
-            renderBooks();
-        }
+        function filterBooks() { renderBooks(); }
 
         function openReader(bookId) {
-            const book = booksData.find(b => String(b.id) === String(bookId));
+            const book = (window.booksData || []).find(b => String(b.id) === String(bookId));
             if (!book) return;
 
             document.getElementById('modalBookTitle').innerText = book.title;
             const body = document.getElementById('modalBody');
 
             if (book.format === 'pdf' && book.pdfUrl) {
-                let embedUrl = book.pdfUrl;
-                if(embedUrl.includes('drive.google.com') && embedUrl.includes('/view')) {
-                    embedUrl = embedUrl.replace('/view', '/preview');
+                let url = book.pdfUrl;
+                if(url.includes('drive.google.com') && url.includes('/view')) {
+                    url = url.replace('/view', '/preview');
                 }
-                body.innerHTML = `<iframe src="${embedUrl}" class="reader-frame" allow="autoplay"></iframe>`;
+                body.innerHTML = `<iframe src="${url}" class="reader-frame"></iframe>`;
             } else {
                 body.innerHTML = `
-                    <div style="background: rgba(255,255,255,0.02); padding: 25px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <h2 style="color: #a855f7; margin-bottom: 15px; font-size: 1.5rem;">${escapeHtml(book.title)}</h2>
-                        <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 20px;">Автору: ${escapeHtml(book.author)}</div>
-                        <p style="font-size: 1.15rem; line-height: 2; white-space: pre-line;">${escapeHtml(book.content)}</p>
-                    </div>
+                    <h2 style="color: #a855f7; margin-bottom: 10px;">${escapeHtml(book.title)}</h2>
+                    <p style="color: #94a3b8; margin-bottom: 20px;">Автору: ${escapeHtml(book.author)}</p>
+                    <p style="font-size: 1.15rem; line-height: 2; white-space: pre-line;">${escapeHtml(book.content)}</p>
                 `;
             }
-
             document.getElementById('readerModal').style.display = 'flex';
         }
 
-        function closeModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
+        function closeModal() { document.getElementById('readerModal').style.display = 'none'; }
 
         function escapeHtml(text) {
             if(!text) return '';
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
-
-        // БАШТАПКЫ ИШКЕ ТҮШҮРҮҮ
-        loadBooks();
     </script>
 </body>
 </html>
