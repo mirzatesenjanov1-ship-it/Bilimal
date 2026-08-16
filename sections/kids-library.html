@@ -55,6 +55,12 @@
         .back-btn:hover { background: #a855f7; color: #fff; }
         .header-title { text-align: center; flex: 1; }
         .header-title h1 { font-size: 2.2rem; color: #a855f7; }
+        
+        /* Language Selector Styles */
+        .lang-selector { display: flex; gap: 8px; }
+        .lang-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); color: #ccc; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: 0.3s; }
+        .lang-btn.active, .lang-btn:hover { background: #a855f7; color: #fff; border-color: #a855f7; }
+
         .controls-box { background: rgba(15, 15, 40, 0.7); border: 1px solid rgba(168,85,247,0.3); border-radius: 16px; padding: 20px; margin-bottom: 30px; display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; }
         .search-input { flex: 1; min-width: 250px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 12px 18px; color: #fff; font-size: 1rem; outline: none; }
         .categories-filter { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -79,20 +85,25 @@
 <body>
 
     <header>
-        <a href="kindergarten.html" class="back-btn">← Бала бакчага кайтуу</a>
+        <a href="kindergarten.html" class="back-btn" id="lblBack">← Бала бакчага кайтуу</a>
         <div class="header-title">
-            <h1>📚 Жомоктор жана Балдар Китептери</h1>
-            <p>Ачык китепкана — аңгемелер, жомоктор жана сүрөттүү китептер</p>
+            <h1 id="lblTitle">📚 Жомоктор жана Балдар Китептери</h1>
+            <p id="lblSubtitle">Ачык китепкана — аңгемелер, жомоктор жана сүрөттүү китептер</p>
+        </div>
+        <div class="lang-selector">
+            <button class="lang-btn" onclick="setLanguage('ky')">KG</button>
+            <button class="lang-btn" onclick="setLanguage('ru')">RU</button>
+            <button class="lang-btn" onclick="setLanguage('en')">EN</button>
         </div>
     </header>
 
     <div class="controls-box">
         <input type="text" id="searchInput" class="search-input" placeholder="Издөө..." oninput="filterBooks()">
         <div class="categories-filter">
-            <button class="cat-btn active" onclick="setCategory('all', this)">Бардыгы</button>
-            <button class="cat-btn" onclick="setCategory('jomok', this)">Эл жомоктору</button>
-            <button class="cat-btn" onclick="setCategory('audio', this)">Аудио жомоктор</button>
-            <button class="cat-btn" onclick="setCategory('picture', this)">Сүрөттүү / PDF</button>
+            <button class="cat-btn active" data-cat="all" onclick="setCategory('all', this)" id="catAll">Бардыгы</button>
+            <button class="cat-btn" data-cat="jomok" onclick="setCategory('jomok', this)" id="catJomok">Эл жомоктору</button>
+            <button class="cat-btn" data-cat="audio" onclick="setCategory('audio', this)" id="catAudio">Аудио жомоктор</button>
+            <button class="cat-btn" data-cat="picture" onclick="setCategory('picture', this)" id="catPicture">Сүрөттүү / PDF</button>
         </div>
     </div>
 
@@ -109,9 +120,81 @@
     </div>
 
     <script>
+        const translations = {
+            ky: {
+                back: "← Бала бакчага кайтуу",
+                title: "📚 Жомоктор жана Балдар Китептери",
+                subtitle: "Ачык китепкана — аңгемелер, жомоктор жана сүрөттүү китептер",
+                searchPlaceholder: "Издөө...",
+                catAll: "Бардыгы",
+                catJomok: "Эл жомоктору",
+                catAudio: "Аудио жомоктор",
+                catPicture: "Сүрөттүү / PDF",
+                notFound: "Эч кандай китеп табылган жок 🔍",
+                readBtn: "Окуу 📖",
+                authorUnknown: "Белгисиз",
+                authorLabel: "Автору:"
+            },
+            ru: {
+                back: "← Назад в детский сад",
+                title: "📚 Сказки и детские книги",
+                subtitle: "Открытая библиотека — рассказы, сказки и иллюстрированные книги",
+                searchPlaceholder: "Поиск...",
+                catAll: "Все",
+                catJomok: "Народные сказки",
+                catAudio: "Аудио сказки",
+                catPicture: "Иллюстрации / PDF",
+                notFound: "Книги не найдены 🔍",
+                readBtn: "Читать 📖",
+                authorUnknown: "Неизвестен",
+                authorLabel: "Автор:"
+            },
+            en: {
+                back: "← Back to Kindergarten",
+                title: "📚 Fairy Tales & Kids Books",
+                subtitle: "Open library — stories, fairy tales, and picture books",
+                searchPlaceholder: "Search...",
+                catAll: "All",
+                catJomok: "Folk Tales",
+                catAudio: "Audio Stories",
+                catPicture: "Picture / PDF",
+                notFound: "No books found 🔍",
+                readBtn: "Read 📖",
+                authorUnknown: "Unknown",
+                authorLabel: "Author:"
+            }
+        };
+
+        window.currentLang = localStorage.getItem('bilimal_lang') || 'ky';
+
+        function setLanguage(lang) {
+            window.currentLang = lang;
+            localStorage.setItem('bilimal_lang', lang);
+            document.documentElement.lang = lang;
+            
+            // Update active state on language buttons
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase() === lang || (lang === 'ky' && btn.textContent === 'KG') || (lang === 'ru' && btn.textContent === 'RU') || (lang === 'en' && btn.textContent === 'EN'));
+            });
+
+            // Update Static Texts
+            const t = translations[lang];
+            document.getElementById('lblBack').innerText = t.back;
+            document.getElementById('lblTitle').innerText = t.title;
+            document.getElementById('lblSubtitle').innerText = t.subtitle;
+            document.getElementById('searchInput').placeholder = t.searchPlaceholder;
+            document.getElementById('catAll').innerText = t.catAll;
+            document.getElementById('catJomok').innerText = t.catJomok;
+            document.getElementById('catAudio').innerText = t.catAudio;
+            document.getElementById('catPicture').innerText = t.catPicture;
+
+            renderBooks();
+        }
+
         function renderBooks() {
             const grid = document.getElementById('booksGrid');
             const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const t = translations[window.currentLang];
             grid.innerHTML = '';
 
             const list = window.booksData || [];
@@ -122,7 +205,7 @@
             });
 
             if (filtered.length === 0) {
-                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">Эч кандай китеп табылган жок 🔍</div>`;
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">${t.notFound}</div>`;
                 return;
             }
 
@@ -132,8 +215,8 @@
                 card.innerHTML = `
                     <div class="book-cover">${book.cover || '📖'}</div>
                     <div class="book-title">${escapeHtml(book.title)}</div>
-                    <div class="book-author">${escapeHtml(book.author || 'Белгисиз')}</div>
-                    <button class="btn-read" onclick="openReader('${book.id}')">Окуу 📖</button>
+                    <div class="book-author">${escapeHtml(book.author || t.authorUnknown)}</div>
+                    <button class="btn-read" onclick="openReader('${book.id}')">${t.readBtn}</button>
                 `;
                 grid.appendChild(card);
             });
@@ -152,6 +235,7 @@
             const book = (window.booksData || []).find(b => String(b.id) === String(bookId));
             if (!book) return;
 
+            const t = translations[window.currentLang];
             document.getElementById('modalBookTitle').innerText = book.title;
             const body = document.getElementById('modalBody');
 
@@ -164,7 +248,7 @@
             } else {
                 body.innerHTML = `
                     <h2 style="color: #a855f7; margin-bottom: 10px;">${escapeHtml(book.title)}</h2>
-                    <p style="color: #94a3b8; margin-bottom: 20px;">Автору: ${escapeHtml(book.author)}</p>
+                    <p style="color: #94a3b8; margin-bottom: 20px;">${t.authorLabel} ${escapeHtml(book.author || t.authorUnknown)}</p>
                     <p style="font-size: 1.15rem; line-height: 2; white-space: pre-line;">${escapeHtml(book.content)}</p>
                 `;
             }
@@ -177,6 +261,11 @@
             if(!text) return '';
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
+
+        // Initialize language settings on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setLanguage(window.currentLang);
+        });
     </script>
 </body>
 </html>
