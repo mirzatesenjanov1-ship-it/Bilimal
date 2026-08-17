@@ -34,6 +34,7 @@
         .game-card { background: rgba(17, 24, 39, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; transition: 0.3s; position: relative; overflow: hidden; }
         .game-card:hover { transform: translateY(-5px); border-color: #ec4899; box-shadow: 0 10px 25px rgba(236, 72, 153, 0.15); }
         .game-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(#ec4899, #f43f5e); }
+        .game-card.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(1); }
 
         .game-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
         .game-icon { font-size: 2.5rem; }
@@ -98,7 +99,7 @@
         <div class="games-grid">
             
             <!-- 1. Түс менен таанышалы -->
-            <div class="game-card">
+            <div class="game-card" id="card-intro">
                 <div>
                     <div class="game-header">
                         <span class="game-icon">🌈</span>
@@ -110,7 +111,7 @@
             </div>
 
             <!-- 2. Түстү тап -->
-            <div class="game-card">
+            <div class="game-card" id="card-find">
                 <div>
                     <div class="game-header">
                         <span class="game-icon">🔍</span>
@@ -122,7 +123,7 @@
             </div>
 
             <!-- 3. Түстөрдү аралаштыр -->
-            <div class="game-card">
+            <div class="game-card" id="card-mix">
                 <div>
                     <div class="game-header">
                         <span class="game-icon">🧪</span>
@@ -134,7 +135,7 @@
             </div>
 
             <!-- 4. Түсүнө жараша топто -->
-            <div class="game-card">
+            <div class="game-card" id="card-sort">
                 <div>
                     <div class="game-header">
                         <span class="game-icon">🧺</span>
@@ -165,8 +166,8 @@
             <div class="setup-group">
                 <label data-i18n="lblRestriction">Интерактивдүү чектөө:</label>
                 <select class="setup-select" id="restriction-select">
-                    <option data-i18n="optRestr1">Тандалган түстөгү оюндар гана ачылсын</option>
-                    <option selected data-i18n="optRestr2">Бардык оюндарга уруксат</option>
+                    <option value="only_intro" data-i18n="optRestr1">Таанышуу оюну гана ачылсын</option>
+                    <option value="all" selected data-i18n="optRestr2">Бардык оюндарга уруксат</option>
                 </select>
             </div>
 
@@ -222,7 +223,7 @@
                 optYellow: "🟡 Сары күн",
                 optGreen: "🟢 Жашыл күн",
                 lblRestriction: "Интерактивдүү чектөө:",
-                optRestr1: "Тандалган түстөгү оюндар гана ачылсын",
+                optRestr1: "Таанышуу оюну гана ачылсын",
                 optRestr2: "Бардык оюндарга уруксат",
                 lblTeacherNote: "Жекече тапшырма:",
                 phTeacherNote: "Мисалы: Сары унааны тап...",
@@ -251,7 +252,7 @@
                 alertMixSuccess: "Керемет! Кызгылт сары түс пайда болду! 🟠",
                 alertSortCorrect: "🎉 Гүлдөр ачылды! Туура себет!",
                 alertSortWrong: "Бул кызыл себет, жалбыракты жашылга сал!",
-                alertTeacherSaved: "Тарбиячы режими ийгиликтүү жандырылды! Күндүн түсү: "
+                alertTeacherSaved: "Тарбиячы режими ийгиликтүү жандырылды!"
             },
             ru: {
                 backBtn: "← Назад в раздел садика",
@@ -277,7 +278,7 @@
                 optYellow: "🟡 Желтый день",
                 optGreen: "🟢 Зеленый день",
                 lblRestriction: "Интерактивное ограничение:",
-                optRestr1: "Открыть игры только выбранного цвета",
+                optRestr1: "Открыть только ознакомительную игру",
                 optRestr2: "Разрешить все игры",
                 lblTeacherNote: "Индивидуальное задание:",
                 phTeacherNote: "Например: Найди желтую машину...",
@@ -306,7 +307,7 @@
                 alertMixSuccess: "Замечательно! Получился оранжевый цвет! 🟠",
                 alertSortCorrect: "🎉 Цветы распустились! Правильная корзина!",
                 alertSortWrong: "Это красная корзина, положи листик в зеленую!",
-                alertTeacherSaved: "Режим воспитателя успешно активирован! Цвет дня: "
+                alertTeacherSaved: "Режим воспитателя успешно активирован!"
             },
             en: {
                 backBtn: "← Back to Kindergarten",
@@ -332,7 +333,7 @@
                 optYellow: "🟡 Yellow Day",
                 optGreen: "🟢 Green Day",
                 lblRestriction: "Interactive Restriction:",
-                optRestr1: "Allow games of selected color only",
+                optRestr1: "Allow introduction game only",
                 optRestr2: "Allow all games",
                 lblTeacherNote: "Custom Assignment:",
                 phTeacherNote: "E.g., Find the yellow car...",
@@ -361,7 +362,7 @@
                 alertMixSuccess: "Awesome! You created orange color! 🟠",
                 alertSortCorrect: "🎉 Flowers bloomed! Correct basket!",
                 alertSortWrong: "That is the red basket, put the leaf in the green one!",
-                alertTeacherSaved: "Teacher mode activated successfully! Color of the day: "
+                alertTeacherSaved: "Teacher mode activated successfully!"
             }
         };
 
@@ -480,27 +481,41 @@
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         }
 
-        // Keyboard navigation (Escape to close modal)
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeColorModal();
         });
 
         function saveTeacherSettings() {
             const color = document.getElementById('day-color').value;
+            const restriction = document.getElementById('restriction-select').value;
             const note = document.getElementById('teacher-note').value;
             const t = translations[currentLang];
             
             localStorage.setItem('bm_day_color', color);
+            localStorage.setItem('bm_restriction', restriction);
             localStorage.setItem('bm_teacher_note', note);
             
-            alert(t.alertTeacherSaved + color);
+            applyRestrictions(restriction);
+            alert(t.alertTeacherSaved);
         }
 
-        // Restore settings on load
+        function applyRestrictions(restriction) {
+            const isOnlyIntro = restriction === 'only_intro';
+            document.getElementById('card-find').classList.toggle('disabled', isOnlyIntro);
+            document.getElementById('card-mix').classList.toggle('disabled', isOnlyIntro);
+            document.getElementById('card-sort').classList.toggle('disabled', isOnlyIntro);
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             const savedColor = localStorage.getItem('bm_day_color');
+            const savedRestriction = localStorage.getItem('bm_restriction');
             const savedNote = localStorage.getItem('bm_teacher_note');
+
             if (savedColor) document.getElementById('day-color').value = savedColor;
+            if (savedRestriction) {
+                document.getElementById('restriction-select').value = savedRestriction;
+                applyRestrictions(savedRestriction);
+            }
             if (savedNote) document.getElementById('teacher-note').value = savedNote;
         });
     </script>
