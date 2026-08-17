@@ -9,7 +9,7 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5636365922849544" crossorigin="anonymous"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #0b0f19; color: #fff; min-height: 100vh; padding: 25px 4%; overflow-x: hidden; transition: background 0.5s ease; }
 
         /* Тил тандагыч жана Жогорку панель */
@@ -32,7 +32,7 @@
         /* Оюндар сеткасы */
         .games-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .game-card { background: rgba(17, 24, 39, 0.8); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; padding: 25px; display: flex; flex-direction: column; justify-content: space-between; transition: 0.3s; position: relative; overflow: hidden; }
-        .game-card:hover { transform: translateY(-5px); border-color: #ec4899; box-shadow: 0 10px 25px rgba(236, 42, 153, 0.15); }
+        .game-card:hover { transform: translateY(-5px); border-color: #ec4899; box-shadow: 0 10px 25px rgba(236, 72, 153, 0.15); }
         .game-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: linear-gradient(#ec4899, #f43f5e); }
 
         .game-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
@@ -60,7 +60,7 @@
         .close-modal { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; color: #9ca3af; cursor: pointer; transition: 0.2s; }
         .close-modal:hover { color: #fff; }
         
-        .zone-display { font-size: 6rem; margin: 20px 0; display: inline-block; }
+        .zone-display { font-size: 6rem; margin: 20px 0; display: inline-block; transition: transform 0.3s ease; }
         .color-box-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 20px 0; }
         .color-circle { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.2s; margin: auto; }
         .color-circle:hover { transform: scale(1.15); }
@@ -68,6 +68,8 @@
         .options-container { display: flex; justify-content: center; gap: 15px; margin-top: 25px; flex-wrap: wrap; }
         .option-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 15px 25px; border-radius: 12px; color: white; font-size: 1.1rem; cursor: pointer; transition: 0.2s; min-width: 120px; }
         .option-btn:hover { background: rgba(236, 72, 153, 0.2); border-color: #ec4899; }
+
+        .feedback-msg { margin-top: 15px; font-size: 1rem; font-weight: bold; min-height: 24px; color: #38bdf8; }
 
         @media (max-width: 968px) {
             .main-container { grid-template-columns: 1fr; }
@@ -162,7 +164,7 @@
 
             <div class="setup-group">
                 <label data-i18n="lblRestriction">Интерактивдүү чектөө:</label>
-                <select class="setup-select">
+                <select class="setup-select" id="restriction-select">
                     <option data-i18n="optRestr1">Тандалган түстөгү оюндар гана ачылсын</option>
                     <option selected data-i18n="optRestr2">Бардык оюндарга уруксат</option>
                 </select>
@@ -179,7 +181,7 @@
     </div>
 
     <!-- ИНТЕРАКТИВДҮҮ МОДАЛДЫК ТЕРЕЗЕ -->
-    <div class="game-modal" id="colorModal">
+    <div class="game-modal" id="colorModal" role="dialog" aria-modal="true">
         <div class="modal-content" id="modalFrame">
             <span class="close-modal" onclick="closeColorModal()">&times;</span>
             <h2 id="modalTitle">Түстөр оюну</h2>
@@ -190,11 +192,11 @@
             </div>
             
             <div class="options-container" id="colorOptions"></div>
+            <div class="feedback-msg" id="feedbackMsg"></div>
         </div>
     </div>
 
     <script>
-        // Үч тилдеги котормолор базасы (Kyrgyz, Russian, English)
         const translations = {
             ky: {
                 backBtn: "← Бакча бөлүмүнө кайт",
@@ -373,7 +375,6 @@
             document.getElementById('btn-ru').classList.toggle('active', lang === 'ru');
             document.getElementById('btn-en').classList.toggle('active', lang === 'en');
 
-            // Тексттерди которуу
             document.querySelectorAll('[data-i18n]').forEach(elem => {
                 const key = elem.getAttribute('data-i18n');
                 if (translations[lang][key]) {
@@ -381,7 +382,6 @@
                 }
             });
 
-            // Placeholder'лерди которуу
             document.querySelectorAll('[data-i18n-ph]').forEach(elem => {
                 const key = elem.getAttribute('data-i18n-ph');
                 if (translations[lang][key]) {
@@ -390,7 +390,6 @@
             });
         }
 
-        // Үн коштоо функциясы (Speech Synthesis)
         function speakText(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -401,6 +400,13 @@
             }
         }
 
+        function setFeedback(msg, isSuccess = true) {
+            const feedback = document.getElementById('feedbackMsg');
+            feedback.innerText = msg;
+            feedback.style.color = isSuccess ? '#4ade80' : '#f87171';
+            speakText(msg);
+        }
+
         function startColorGame(gameType) {
             const modal = document.getElementById('colorModal');
             const title = document.getElementById('modalTitle');
@@ -408,10 +414,12 @@
             const emoji = document.getElementById('colorEmoji');
             const options = document.getElementById('colorOptions');
             const frame = document.getElementById('modalFrame');
+            const feedback = document.getElementById('feedbackMsg');
             const t = translations[currentLang];
             
             modal.style.display = 'flex';
             options.innerHTML = '';
+            feedback.innerText = '';
             frame.style.background = "#111827";
 
             if (gameType === 'intro') {
@@ -435,9 +443,9 @@
                 speakText(t.modalFindVoice);
 
                 options.innerHTML = `
-                    <button class="option-btn" style="background: #ef4444;" onclick="alert('${t.alertCorrect}'); closeColorModal();">${t.btnRed}</button>
-                    <button class="option-btn" style="background: #22c55e;" onclick="alert('${t.alertTryAgain}')">${t.btnGreen}</button>
-                    <button class="option-btn" style="background: #3b82f6;" onclick="alert('${t.alertTryAgain}')">${t.btnBlue}</button>
+                    <button class="option-btn" style="background: #ef4444;" onclick="setFeedback('${t.alertCorrect}', true); setTimeout(closeColorModal, 1800);">${t.btnRed}</button>
+                    <button class="option-btn" style="background: #22c55e;" onclick="setFeedback('${t.alertTryAgain}', false)">${t.btnGreen}</button>
+                    <button class="option-btn" style="background: #3b82f6;" onclick="setFeedback('${t.alertTryAgain}', false)">${t.btnBlue}</button>
                 `;
             }
             else if (gameType === 'mix') {
@@ -446,7 +454,7 @@
                 emoji.innerText = "🔴 + 🟡";
 
                 options.innerHTML = `
-                    <button class="option-btn" onclick="document.getElementById('colorEmoji').innerText = '🟠'; alert('${t.alertMixSuccess}');">${t.btnMix}</button>
+                    <button class="option-btn" onclick="document.getElementById('colorEmoji').innerText = '🟠'; setFeedback('${t.alertMixSuccess}', true);">${t.btnMix}</button>
                 `;
             }
             else if (gameType === 'sort') {
@@ -455,8 +463,8 @@
                 emoji.innerText = "🍃";
 
                 options.innerHTML = `
-                    <button class="option-btn" style="border-color: #22c55e;" onclick="alert('${t.alertSortCorrect}'); closeColorModal();">${t.btnGreenBasket}</button>
-                    <button class="option-btn" style="border-color: #ef4444;" onclick="alert('${t.alertSortWrong}')">${t.btnRedBasket}</button>
+                    <button class="option-btn" style="border-color: #22c55e;" onclick="setFeedback('${t.alertSortCorrect}', true); setTimeout(closeColorModal, 1800);">${t.btnGreenBasket}</button>
+                    <button class="option-btn" style="border-color: #ef4444;" onclick="setFeedback('${t.alertSortWrong}', false)">${t.btnRedBasket}</button>
                 `;
             }
         }
@@ -464,8 +472,7 @@
         function changeBg(bgColor, text, itemEmoji) {
             document.getElementById('modalFrame').style.background = bgColor;
             document.getElementById('colorEmoji').innerText = itemEmoji;
-            speakText(text);
-            alert(text);
+            setFeedback(text, true);
         }
 
         function closeColorModal() {
@@ -473,11 +480,29 @@
             if ('speechSynthesis' in window) window.speechSynthesis.cancel();
         }
 
+        // Keyboard navigation (Escape to close modal)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeColorModal();
+        });
+
         function saveTeacherSettings() {
             const color = document.getElementById('day-color').value;
+            const note = document.getElementById('teacher-note').value;
             const t = translations[currentLang];
+            
+            localStorage.setItem('bm_day_color', color);
+            localStorage.setItem('bm_teacher_note', note);
+            
             alert(t.alertTeacherSaved + color);
         }
+
+        // Restore settings on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedColor = localStorage.getItem('bm_day_color');
+            const savedNote = localStorage.getItem('bm_teacher_note');
+            if (savedColor) document.getElementById('day-color').value = savedColor;
+            if (savedNote) document.getElementById('teacher-note').value = savedNote;
+        });
     </script>
 </body>
 </html>
