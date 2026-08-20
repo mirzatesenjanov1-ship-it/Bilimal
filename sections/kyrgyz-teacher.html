@@ -28,7 +28,6 @@
             margin: 0 auto;
         }
 
-        /* Үстүңкү навигация */
         .top-nav {
             display: flex;
             justify-content: space-between;
@@ -57,9 +56,17 @@
         .page-title {
             font-size: 20px;
             color: #00d2ff;
+            font-weight: bold;
         }
 
-        /* Форма бөлүгү (Материал түзүү) */
+        .user-badge {
+            font-size: 13px;
+            background: #1e2640;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: #a0aec0;
+        }
+
         .card {
             background: #111622;
             border: 1px solid #1e2640;
@@ -126,7 +133,11 @@
             background: #00a3cc;
         }
 
-        /* Тизме бөлүгү */
+        .btn-submit:disabled {
+            background: #4a5568;
+            cursor: not-allowed;
+        }
+
         .materials-list {
             display: flex;
             flex-direction: column;
@@ -141,7 +152,7 @@
             position: relative;
         }
 
-        .item-card.published {
+        .item-card.public {
             border-left: 4px solid #2ecc71;
         }
 
@@ -232,6 +243,7 @@
 
         @media (max-width: 600px) {
             .form-row { grid-template-columns: 1fr; }
+            .top-nav { flex-direction: column; gap: 10px; align-items: flex-start; }
         }
     </style>
 </head>
@@ -244,6 +256,7 @@
                 <i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу
             </a>
             <div class="page-title">Кыргыз тили мугалими</div>
+            <div id="user-email-display" class="user-badge"><i class="fas fa-user-circle"></i> Текшерилүүдө...</div>
         </div>
 
         <!-- Жаңы материал кошуу -->
@@ -287,14 +300,14 @@
                     <textarea id="content" rows="5" placeholder="Сабактын баяндамасы, эрежелер же окуучуларга тапшырма..." required></textarea>
                 </div>
 
-                <button type="submit" class="btn-submit" id="save-btn">Материалды сактоо</button>
+                <button type="submit" class="btn-submit" id="save-btn" disabled>Материалды сактоо</button>
             </form>
         </div>
 
         <!-- Түзүлгөн материалдар -->
         <h3 style="margin-bottom: 15px; color: #fff;"><i class="fas fa-folder-open"></i> Менин сакталган материалдарым:</h3>
         
-        <div id="loader"><i class="fas fa-spinner fa-spin"></i> Юктөлүүдө...</div>
+        <div id="loader"><i class="fas fa-spinner fa-spin"></i> Жүктөлүүдө...</div>
         <div class="materials-list" id="materials-container"></div>
     </div>
 
@@ -319,63 +332,82 @@
         const db = getDatabase(app);
 
         let currentUser = null;
+        const saveBtn = document.getElementById('save-btn');
+        const userEmailDisplay = document.getElementById('user-email-display');
 
-        // Кирген мугалимди текшерүү
+        // Авторизацияны текшерүү
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
+                userEmailDisplay.innerHTML = `<i class="fas fa-user-circle"></i> ${user.email}`;
+                saveBtn.disabled = false;
                 loadTeacherMaterials(user.uid);
             } else {
-                // Кирбеген болсо башкаруу панелине кайтаруу
+                userEmailDisplay.innerText = "Кирбей калдыңыз";
+                saveBtn.disabled = true;
                 window.location.href = "../dashboard.html";
             }
         });
 
-        // Форманы тапшыруу
+        // Форманы сактоо
         const materialForm = document.getElementById('material-form');
-        materialForm.addEventListener('submit', (e) => {
+        materialForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!currentUser) return;
+            if (!currentUser) {
+                alert("Аккаунтка киришиңиз керек!");
+                return;
+            }
 
-            const title = document.getElementById('title').value;
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Сакталууда...";
+
+            const title = document.getElementById('title').value.trim();
             const grade = document.getElementById('grade').value;
             const status = document.getElementById('status').value;
-            const fileUrl = document.getElementById('file-url').value;
-            const content = document.getElementById('content').value;
+            const fileUrl = document.getElementById('file-url').value.trim();
+            const content = document.getElementById('content').value.trim();
 
-            // Колдонуучунун ID сине жараша зашифрованный UID түзүү
-            const userEmailSafe = currentUser.email.replace(/\./g, '_');
-            const materialRef = ref(db, `kyrgyz_teacher_materials/${currentUser.uid}`);
-            const newPostRef = push(materialRef);
+            try {
+                // Firebase Security Rules: users/$uid уруксат берилген
+                const teacherMaterialsRef = ref(db, `users/${currentUser.uid}/kyrgyz_teacher_materials`);
+                const newPostRef = push(teacherMaterialsRef);
 
-            const postData = {
-                id: newPostRef.key,
-                teacherEmail: currentUser.email,
-                title: title,
-                grade: grade,
-                status: status,
-                fileUrl: fileUrl,
-                content: content,
-                createdAt: new Date().toLocaleString("ky-KG")
-            };
+                const postData = {
+                    id: newPostRef.key,
+                    authorUid: currentUser.uid,
+                    teacherEmail: currentUser.email,
+                    title: title,
+                    grade: grade,
+                    status: status,
+                    fileUrl: fileUrl,
+                    content: content,
+                    createdAt: new Date().toLocaleString("ky-KG")
+                };
 
-            set(newPostRef, postData).then(() => {
-                // Эгер жарыяланган болсо, окуучулар үчүн жалпы базага да көчүрүлөт
+                // 1. Өзүнүн жеке профилине сактоо (users/$uid/kyrgyz_teacher_materials)
+                await set(newPostRef, postData);
+
+                // 2. Эгер 'public' болсо, library/kyrgyz_teacher_materials түйүнүнө сактоо (library түйүнү ачык)
                 if (status === 'public') {
-                    set(ref(db, `public_student_materials/${newPostRef.key}`), postData);
+                    await set(ref(db, `library/kyrgyz_teacher_materials/${newPostRef.key}`), postData);
                 }
+
                 materialForm.reset();
                 alert("Материал ийгиликтүү сакталды!");
-            }).catch((err) => {
-                alert("Ката кетти: " + err.message);
-            });
+            } catch (error) {
+                console.error("Firebase write error:", error);
+                alert("Ката кетти: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Материалды сактоо";
+            }
         });
 
-        // Мугалимдин МЕШИН МАТЕРИАЛДАРЫН жүктөө (Башкаларга көрүнбөйт)
+        // Мугалимдин МАТЕРИАЛДАРЫН жүктөө (users/$uid астынан окуйт)
         function loadTeacherMaterials(uid) {
             const loader = document.getElementById('loader');
             const container = document.getElementById('materials-container');
-            const teacherRef = ref(db, `kyrgyz_teacher_materials/${uid}`);
+            const teacherRef = ref(db, `users/${uid}/kyrgyz_teacher_materials`);
 
             onValue(teacherRef, (snapshot) => {
                 loader.style.display = 'none';
@@ -408,25 +440,38 @@
                         <div class="item-desc">${item.content}</div>
                         <div class="item-footer">
                             <span><i class="far fa-clock"></i> ${item.createdAt}</span>
-                            <button class="btn-delete" onclick="deleteMaterial('${uid}', '${item.id}', '${item.status}')">
+                            <button class="btn-delete" data-id="${item.id}" data-status="${item.status}">
                                 <i class="fas fa-trash-alt"></i> Өчүрүү
                             </button>
                         </div>
                     `;
+
+                    const deleteBtn = card.querySelector('.btn-delete');
+                    deleteBtn.addEventListener('click', () => deleteMaterial(uid, item.id, item.status));
+
                     container.prepend(card);
                 });
+            }, (error) => {
+                loader.style.display = 'none';
+                console.error("Read error:", error);
+                container.innerHTML = `<div class="empty-msg" style="color: #ff5252;">Ката: ${error.message}</div>`;
             });
         }
 
         // Өчүрүү функциясы
-        window.deleteMaterial = function(uid, itemId, status) {
+        async function deleteMaterial(uid, itemId, status) {
             if (confirm("Бул материалды өчүрүүнү каалайсызбы?")) {
-                remove(ref(db, `kyrgyz_teacher_materials/${uid}/${itemId}`));
-                if (status === 'public') {
-                    remove(ref(db, `public_student_materials/${itemId}`));
+                try {
+                    await remove(ref(db, `users/${uid}/kyrgyz_teacher_materials/${itemId}`));
+                    if (status === 'public') {
+                        await remove(ref(db, `library/kyrgyz_teacher_materials/${itemId}`));
+                    }
+                    alert("Материал өчүрүлдү.");
+                } catch (err) {
+                    alert("Өчүрүүдө ката кетти: " + err.message);
                 }
             }
-        };
+        }
     </script>
 </body>
 </html>
