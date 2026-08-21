@@ -6,20 +6,103 @@ let selectedSubject = 'all';
 let selectedGrade = 'all';
 let searchQuery = '';
 
+// 🌐 UI ЛОКАЛИЗАЦИЯ СӨЗДҮГҮ
+const uiTranslations = {
+    ky: {
+        noPublicTests: "Азырынча ачык тесттер жок.",
+        fetchError: "Тесттерди жүктөөдө ката болду.",
+        noSearchResults: "Сиздин сурооңуз боюнча тест табылган жок.",
+        generalSubject: "Жалпы",
+        untitledTest: "Аталышсыз тест",
+        noTopic: "Тема белгиленген эмес",
+        gradeSuffix: "-класс",
+        gradePrefix: "",
+        questionsSuffix: " суроо",
+        minSuffix: " мүн",
+        startBtn: "ТЕСТТИ БАШТОО 🚀",
+        subjects: {
+            "Физика": "Физика",
+            "Математика": "Математика",
+            "Химия": "Химия",
+            "Биология": "Биология",
+            "Кыргыз тили": "Кыргыз тили",
+            "Информатика": "Информатика"
+        }
+    },
+    ru: {
+        noPublicTests: "Пока нет открытых тестов.",
+        fetchError: "Ошибка при загрузке тестов.",
+        noSearchResults: "По вашему запросу тестов не найдено.",
+        generalSubject: "Общий",
+        untitledTest: "Тест без названия",
+        noTopic: "Тема не указана",
+        gradeSuffix: " класс",
+        gradePrefix: "",
+        questionsSuffix: " вопр.",
+        minSuffix: " мин",
+        startBtn: "НАЧАТЬ ТЕСТ 🚀",
+        subjects: {
+            "Физика": "Физика",
+            "Математика": "Математика",
+            "Химия": "Химия",
+            "Биология": "Биология",
+            "Кыргыз тили": "Кыргызский язык",
+            "Информатика": "Информатика"
+        }
+    },
+    en: {
+        noPublicTests: "No public tests available yet.",
+        fetchError: "Error loading tests.",
+        noSearchResults: "No tests found matching your request.",
+        generalSubject: "General",
+        untitledTest: "Untitled Test",
+        noTopic: "Topic not specified",
+        gradeSuffix: " Grade",
+        gradePrefix: "Grade ",
+        questionsSuffix: " q's",
+        minSuffix: " min",
+        startBtn: "START TEST 🚀",
+        subjects: {
+            "Физика": "Physics",
+            "Математика": "Mathematics",
+            "Химия": "Chemistry",
+            "Биология": "Biology",
+            "Кыргыз тили": "Kyrgyz Language",
+            "Информатика": "Computer Science"
+        }
+    }
+};
+
+function getCurrentLang() {
+    return localStorage.getItem('site_lang') || 'ky';
+}
+
+function getTranslation() {
+    const lang = getCurrentLang();
+    return uiTranslations[lang] || uiTranslations.ky;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     fetchPublicTests();
     setupFilters();
 });
 
+// 🌐 ТИЛ ӨЗГӨРГӨНДӨ КАРТОЧКАЛАРДЫ КАЙРА РЕНДЕРЛӨӨ
+window.addEventListener('languageChanged', () => {
+    renderTests();
+});
+
 // Firebase'ден бардык тесттерди тартуу жана client-side ичинде чыпкалоо
 async function fetchPublicTests() {
     const grid = document.getElementById('testsGrid');
+    const t = getTranslation();
+
     try {
         const testsRef = ref(db, 'tests');
         const snapshot = await get(testsRef);
 
         if (!snapshot.exists()) {
-            grid.innerHTML = '<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">Азырынча ачык тесттер жок.</p>';
+            grid.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">${t.noPublicTests}</p>`;
             return;
         }
 
@@ -34,7 +117,7 @@ async function fetchPublicTests() {
         });
 
         if (allTests.length === 0) {
-            grid.innerHTML = '<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">Азырынча ачык тесттер жок.</p>';
+            grid.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">${t.noPublicTests}</p>`;
             return;
         }
 
@@ -45,14 +128,18 @@ async function fetchPublicTests() {
 
     } catch (error) {
         console.error("Тесттерди жүктөөдө ката:", error);
-        grid.innerHTML = '<p style="color:#ff0055; text-align:center; grid-column:1/-1;">Тесттерди жүктөөдө ката болду.</p>';
+        grid.innerHTML = `<p style="color:#ff0055; text-align:center; grid-column:1/-1;">${t.fetchError}</p>`;
     }
 }
 
 // Фильтрленген тесттерди экранга чыгаруу
 function renderTests() {
     const grid = document.getElementById('testsGrid');
+    if (!grid) return;
+
     grid.innerHTML = '';
+    const t = getTranslation();
+    const currentLang = getCurrentLang();
 
     const filtered = allTests.filter(test => {
         const matchSubject = selectedSubject === 'all' || (test.subject && test.subject.toLowerCase() === selectedSubject.toLowerCase());
@@ -68,7 +155,7 @@ function renderTests() {
     });
 
     if (filtered.length === 0) {
-        grid.innerHTML = '<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">Сиздин сурооңуз боюнча тест табылган жок.</p>';
+        grid.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">${t.noSearchResults}</p>`;
         return;
     }
 
@@ -78,19 +165,31 @@ function renderTests() {
 
         const qCount = test.questions ? Object.keys(test.questions).length : 0;
 
+        // Предмет аталышын которуу
+        let rawSubject = test.subject || '';
+        let displaySubject = t.subjects[rawSubject] || rawSubject || t.generalSubject;
+
+        // Класс форматын тууралоо
+        let displayGrade = '-';
+        if (test.grade) {
+            displayGrade = currentLang === 'en' 
+                ? `${t.gradePrefix}${test.grade}` 
+                : `${test.grade}${t.gradeSuffix}`;
+        }
+
         card.innerHTML = `
             <div>
-                <span class="card-tag">${escapeHtml(test.subject || 'Жалпы')}</span>
-                <h3 class="card-title">${escapeHtml(test.title || 'Аталышсыз тест')}</h3>
-                <p class="card-topic">${escapeHtml(test.topic || 'Тема белгиленген эмес')}</p>
+                <span class="card-tag">${escapeHtml(displaySubject)}</span>
+                <h3 class="card-title">${escapeHtml(test.title || t.untitledTest)}</h3>
+                <p class="card-topic">${escapeHtml(test.topic || t.noTopic)}</p>
             </div>
             <div>
                 <div class="card-meta">
-                    <span>🎓 ${escapeHtml(String(test.grade || '-'))}-класс</span>
-                    <span>📝 ${qCount} суроо</span>
-                    <span>⏱ ${test.duration || 15} мүн</span>
+                    <span>🎓 ${escapeHtml(displayGrade)}</span>
+                    <span>📝 ${qCount}${t.questionsSuffix}</span>
+                    <span>⏱ ${test.duration || 15}${t.minSuffix}</span>
                 </div>
-                <a href="/test.html?testId=${test.id}" class="btn-start-test">ТЕСТТИ БАШТОО 🚀</a>
+                <a href="/test.html?testId=${test.id}" class="btn-start-test">${t.startBtn}</a>
             </div>
         `;
 
@@ -109,18 +208,20 @@ function renderTests() {
                      data-full-width-responsive="true"></ins>
             `;
             grid.appendChild(adCard);
-            (adsbygoogle = window.adsbygoogle || []).push({});
+            (window.adsbygoogle = window.adsbygoogle || []).push({});
         }
     });
 }
 
 // Издөө жана фильтр баскычтарынын окуялары
 function setupFilters() {
-    // Издөө тилкеси
-    document.getElementById('searchInput').addEventListener('input', (e) => {
-        searchQuery = e.target.value.trim();
-        renderTests();
-    });
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+            renderTests();
+        });
+    }
 
     // Предметтерди чыкылдатуу
     document.querySelectorAll('#subjectFilters .filter-btn').forEach(btn => {
