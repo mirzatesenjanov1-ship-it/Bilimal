@@ -1,28 +1,565 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Лабораториялык иштер (VIP) - BilimAl.org</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0e14; color: #ffffff; padding: 20px; min-height: 100vh; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 1px solid #1e2640; padding-bottom: 15px; }
-        .back-btn { background: #1e2640; color: #00d2ff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; border: 1px solid #00d2ff; }
-        .back-btn:hover { background: #00d2ff; color: #0b0e14; }
-        .title { color: #e67e22; font-size: 24px; display: flex; align-items: center; gap: 10px; }
-        .content-box { background: #111622; border: 1px solid #1e2640; border-radius: 12px; padding: 25px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VIP Лабораториялык иштер - Bilimal.org</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .modal-backdrop { background-color: rgba(0, 0, 0, 0.75); }
+  </style>
 </head>
-<body>
-    <div class="header">
-        <h1 class="title"><i class="fas fa-flask-vial"></i> Лабораториялык иштер (VIP)</h1>
-        <a href="../dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу</a>
+<body class="min-h-screen pb-12">
+
+  <!-- TOP BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2">
+        <i class="fa-solid fa-flask-vial"></i> Bilimal.org
+      </a>
+      <div id="auth-status-container" class="flex items-center gap-3">
+        <!-- Auth status injected via JS -->
+      </div>
     </div>
-    <div class="content-box">
-        <h2>Виртуалдык лабораториялар жана симуляциялар</h2>
-        <p style="margin-top: 10px; color: #aaa;">Бул жерден лабораториялык тажрыйбаларды виртуалдык режимде аткаруу үчүн симуляторлорду колдоно аласыз.</p>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 mt-6">
+
+    <!-- LOADING SPINNER -->
+    <div id="loading-spinner" class="text-center py-20">
+      <i class="fa-solid fa-circle-notch fa-spin text-4xl text-amber-500"></i>
+      <p class="mt-3 text-slate-400">Лабораториялык иштер базасы жүктөлүүдө...</p>
     </div>
+
+    <!-- VIEW 1: AUTHENTICATION FORM -->
+    <section id="view-auth" class="hidden max-w-md mx-auto bg-slate-800/60 p-6 rounded-2xl border border-slate-700 mt-10">
+      <h2 class="text-2xl font-bold text-center mb-6 text-white">Сайтка кирүү</h2>
+      <button id="btn-google-auth" class="w-full py-3 bg-white text-slate-900 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-100 transition mb-4">
+        <i class="fa-brands fa-google text-red-500"></i> Google аркылуу кирүү
+      </button>
+      <div class="relative flex py-3 items-center">
+        <div class="flex-grow border-t border-slate-700"></div>
+        <span class="flex-shrink mx-4 text-slate-400 text-sm">же Email менен</span>
+        <div class="flex-grow border-t border-slate-700"></div>
+      </div>
+      <form id="form-auth-email" class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Email</label>
+          <input type="email" id="auth-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Пароль</label>
+          <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
+          Кирүү / Катталуу
+        </button>
+      </form>
+    </section>
+
+    <!-- VIEW 2: PAYWALL -->
+    <section id="view-paywall" class="hidden max-w-4xl mx-auto text-center py-8">
+      <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-8 rounded-3xl border border-amber-500/30 mb-10">
+        <span class="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase border border-amber-500/30">
+          🧪 VIP Виртуалдык Лаборатория
+        </span>
+        <h1 class="text-4xl font-extrabold text-white mt-4 mb-2">Лабораториялык иштер (VIP)</h1>
+        <p class="text-slate-300 text-lg">Виртуалдык лабораториялар, симуляциялар жана даяр методикалык колдонмолор</p>
+      </div>
+
+      <h3 class="text-xl font-bold mb-6 text-white">Тарифти тандаңыз:</h3>
+      <div class="grid md:grid-cols-3 gap-6 mb-10">
+        <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between">
+          <div>
+            <h4 class="text-lg font-bold text-slate-200">1 айлык мүмкүндүк</h4>
+            <div class="text-3xl font-black text-white my-4">200 <span class="text-base font-normal text-slate-400">сом</span></div>
+          </div>
+          <button onclick="openPaymentModal('1 ай', 200)" class="mt-6 w-full bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-white font-bold py-2.5 rounded-xl transition">
+            Тандоо
+          </button>
+        </div>
+
+        <div class="bg-slate-800/80 border-2 border-amber-500 p-6 rounded-2xl flex flex-col justify-between relative shadow-lg shadow-amber-500/10">
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase">Сунушталат</span>
+          <div>
+            <h4 class="text-lg font-bold text-amber-400">6 айлык мүмкүндүк</h4>
+            <div class="text-3xl font-black text-white my-4">900 <span class="text-base font-normal text-slate-400">сом</span></div>
+          </div>
+          <button onclick="openPaymentModal('6 ай', 900)" class="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl transition">
+            Тандоо
+          </button>
+        </div>
+
+        <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between">
+          <div>
+            <h4 class="text-lg font-bold text-slate-200">1 жылдык мүмкүндүк</h4>
+            <div class="text-3xl font-black text-white my-4">1500 <span class="text-base font-normal text-slate-400">сом</span></div>
+          </div>
+          <button onclick="openPaymentModal('1 жыл', 1500)" class="mt-6 w-full bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-white font-bold py-2.5 rounded-xl transition">
+            Тандоо
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-slate-800">
+        <button onclick="openAdminPasswordModal()" class="text-xs text-slate-500 hover:text-amber-500 underline transition">
+          🔑 Администратордук кирүү (Пароль менен)
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 3: MAIN DASHBOARD HUB -->
+    <section id="view-dashboard" class="hidden">
+      <!-- USER CABINET BANNER -->
+      <div id="user-cabinet-card" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl mb-8 flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-bold text-white">🧪 Виртуалдык Лаборатория Кабинети</h2>
+            <span id="cabinet-vip-badge" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-xs font-semibold">
+              🔐 VIP АКТИВДҮҮ
+            </span>
+          </div>
+          <p id="cabinet-email" class="text-sm text-slate-400 mt-1">user@example.com</p>
+        </div>
+        <div id="admin-panel-link-container"></div>
+      </div>
+
+      <!-- SEARCH BAR -->
+      <div class="mb-8">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="input-search-labs" placeholder="Лабораториялык иштин аталышын же классын издөө..." 
+                 class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:border-amber-500">
+        </div>
+      </div>
+
+      <!-- LAB WORKS GRID -->
+      <div id="labs-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Dynamic content -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: ADMIN PANEL (CREATE & EDIT LAB WORKS) -->
+    <section id="view-admin-panel" class="hidden space-y-10">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+        <h2 class="text-2xl font-bold text-amber-500"><i class="fa-solid fa-shield-halved"></i> Админ Панель (Лабораториялар)</h2>
+        <button onclick="backToDashboard()" class="bg-slate-700 text-white px-4 py-2 rounded-xl text-sm">Башкыга кайтуу</button>
+      </div>
+
+      <!-- FORM -->
+      <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
+        <h3 id="admin-form-title" class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-plus-circle text-amber-500"></i> Жаңы Лабораториялык Иш Кошуу</h3>
+        <form id="form-add-lab" class="space-y-4">
+          <input type="hidden" id="lab-editing-id" value="">
+
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Аталышы (мис: №1 Лабораториялык иш) *</label>
+              <input type="text" id="lab-title" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Предмет *</label>
+              <input type="text" id="lab-subject" placeholder="Физика" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Класс *</label>
+              <input type="text" id="lab-grade" placeholder="7-класс" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm text-slate-300 mb-1">Кыскача сүрөттөмө же максаты</label>
+            <textarea id="lab-description" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Симуляция URL (Виртуалдык лаборатория)</label>
+              <input type="url" id="lab-sim-url" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">PDF Колдонмо URL</label>
+              <input type="url" id="lab-pdf-url" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+            </div>
+            <div>
+              <label class="block text-sm text-slate-300 mb-1">Жарыялоо Статусу *</label>
+              <select id="lab-is-public" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-semibold">
+                <option value="false">🔒 Жабык (Бир гана VIP колдонуучуларга)</option>
+                <option value="true">🌐 Ачык (lab-works.html 'де да көрүнөт)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="flex gap-3">
+            <button type="submit" id="btn-save-lab" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition">
+              💾 САКТОО (lab_works түйүнүнө)
+            </button>
+            <button type="button" id="btn-cancel-edit" onclick="resetLabForm()" class="hidden bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2.5 rounded-xl transition">
+              Баш тартуу
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- TABLE OF LAB WORKS -->
+      <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
+        <h3 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-list-check text-amber-500"></i> Бардык Лабораториялык Иштер жана Оңдоо</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-700 text-slate-400 text-sm">
+                <th class="p-3">Аталышы</th>
+                <th class="p-3">Предмет / Класс</th>
+                <th class="p-3">Статус</th>
+                <th class="p-3 text-right">Оңдоо</th>
+              </tr>
+            </thead>
+            <tbody id="admin-labs-table-body">
+              <!-- Dynamically injected -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ADMIN PASSWORD MODAL -->
+  <div id="modal-admin-auth" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative">
+      <button onclick="closeAdminPasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+          <i class="fa-solid fa-key"></i>
+        </div>
+        <h3 class="text-xl font-bold text-white">Админ панелге кирүү</h3>
+      </div>
+
+      <form id="form-admin-password" class="space-y-4">
+        <div>
+          <label class="block text-sm text-slate-300 mb-1">Сыр сөз (Пароль)</label>
+          <input type="password" id="input-admin-pass" required placeholder="••••••••"
+                 class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
+        </div>
+        <div id="admin-pass-error" class="hidden text-red-400 text-xs font-semibold">
+          ❌ Сыр сөз туура эмес!
+        </div>
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
+          Кирүү
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PAYMENT MODAL -->
+  <div id="modal-payment" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative">
+      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+      <h3 class="text-xl font-bold text-white mb-4">Төлөм жасоо</h3>
+      <div class="bg-white p-4 rounded-xl text-center mb-4 flex flex-col items-center">
+        <img src="/qrmbank.png" alt="MBank QR Code" class="w-48 h-48 object-contain">
+        <p class="text-slate-900 text-sm font-semibold mt-2">📱 QR кодду банк тиркемеңиз менен сканерлеңиз</p>
+      </div>
+      <button id="btn-send-whatsapp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-3">
+        <img src="/qrvotsap.png" alt="WhatsApp" class="w-6 h-6 object-contain">
+        <span>🟢 Чекти WhatsApp аркылуу жөнөтүү</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- FIREBASE SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+      authDomain: "bilimal-org.firebaseapp.com",
+      databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bilimal-org",
+      storageBucket: "bilimal-org.firebasestorage.app",
+      messagingSenderId: "241750360816",
+      appId: "1:241750360816:web:a991434eb5afbc470d7835",
+      measurementId: "G-9GSQV60QV0"
+    };
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let currentUser = null;
+    let currentUserProfile = null;
+    let cachedLabs = [];
+
+    auth.onAuthStateChanged(async (user) => {
+      document.getElementById('loading-spinner').classList.add('hidden');
+      if (user) {
+        currentUser = user;
+        await loadUserProfile(user.uid);
+        renderAuthStatusHeader(true);
+        checkVipAndRoute();
+      } else {
+        currentUser = null;
+        currentUserProfile = null;
+        renderAuthStatusHeader(false);
+        showView('view-auth');
+      }
+    });
+
+    async function loadUserProfile(uid) {
+      try {
+        const snapshot = await db.ref(`users/${uid}`).once('value');
+        currentUserProfile = snapshot.val() || { email: currentUser.email, role: 'teacher', vip: false };
+      } catch (e) {
+        console.error("Profile load error:", e);
+      }
+    }
+
+    document.getElementById('btn-google-auth').addEventListener('click', () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(err => alert("Каталык: " + err.message));
+    });
+
+    document.getElementById('form-auth-email').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      auth.signInWithEmailAndPassword(email, password).catch((error) => {
+        if (error.code === 'auth/user-not-found') {
+          auth.createUserWithEmailAndPassword(email, password).then((cred) => {
+            db.ref(`users/${cred.user.uid}`).set({ email: cred.user.email, role: 'teacher', vip: false, createdAt: Date.now() });
+          }).catch(err => alert(err.message));
+        } else {
+          alert(error.message);
+        }
+      });
+    });
+
+    function logout() { auth.signOut(); }
+
+    function renderAuthStatusHeader(isLoggedIn) {
+      const container = document.getElementById('auth-status-container');
+      if (isLoggedIn) {
+        const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+        container.innerHTML = `
+          <button onclick="openAdminPasswordModal()" class="text-xs ${isAdmin ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-amber-400 border border-amber-500/30'} px-3 py-1.5 rounded-lg transition">
+            <i class="fa-solid fa-shield-halved"></i> ${isAdmin ? 'Админ Панель' : 'Админ Кирүү'}
+          </button>
+          <span class="text-sm text-slate-300 hidden md:inline">${currentUser.email}</span>
+          <button onclick="logout()" class="text-xs bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">Чыгуу</button>
+        `;
+      } else {
+        container.innerHTML = `<span class="text-xs text-slate-400">Кире элексиз</span>`;
+      }
+    }
+
+    function openAdminPasswordModal() {
+      if (!currentUser) { alert("Адегенде сайтка кирүүңүз керек!"); return; }
+      if (currentUserProfile && currentUserProfile.role === 'admin') { openAdminPanel(); return; }
+      document.getElementById('modal-admin-auth').classList.remove('hidden');
+    }
+
+    function closeAdminPasswordModal() { document.getElementById('modal-admin-auth').classList.add('hidden'); }
+
+    document.getElementById('form-admin-password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (document.getElementById('input-admin-pass').value === 'mirzat14051999') {
+        await db.ref(`users/${currentUser.uid}`).update({ role: 'admin', vip: true });
+        currentUserProfile.role = 'admin';
+        currentUserProfile.vip = true;
+        closeAdminPasswordModal();
+        renderAuthStatusHeader(true);
+        openAdminPanel();
+      } else {
+        document.getElementById('admin-pass-error').classList.remove('hidden');
+      }
+    });
+
+    function checkVipAndRoute() {
+      const now = Date.now();
+      const isVipValid = currentUserProfile && currentUserProfile.vip && (currentUserProfile.expiresAt ? currentUserProfile.expiresAt > now : true);
+      const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+
+      if (isAdmin || isVipValid) {
+        setupUserCabinet();
+        showView('view-dashboard');
+        loadLabWorks();
+      } else {
+        showView('view-paywall');
+      }
+    }
+
+    function showView(viewId) {
+      ['view-auth', 'view-paywall', 'view-dashboard', 'view-admin-panel'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById(viewId).classList.remove('hidden');
+    }
+
+    function setupUserCabinet() {
+      document.getElementById('cabinet-email').innerText = currentUser.email;
+      const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+      if (isAdmin) {
+        document.getElementById('admin-panel-link-container').innerHTML = `
+          <button onclick="openAdminPanel()" class="bg-amber-500 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm">
+            <i class="fa-solid fa-gear"></i> Админ панель
+          </button>`;
+      }
+    }
+
+    async function loadLabWorks() {
+      try {
+        const snap = await db.ref('lab_works').once('value');
+        const data = snap.val() || {};
+        cachedLabs = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        renderLabsGrid(cachedLabs);
+      } catch (e) {
+        console.error("Error loading labs:", e);
+      }
+    }
+
+    function renderLabsGrid(labs) {
+      const grid = document.getElementById('labs-grid');
+      grid.innerHTML = '';
+
+      if (labs.length === 0) {
+        grid.innerHTML = `<p class="text-slate-400 col-span-full text-center py-10">Эч кандай лабораториялык иш табылган жок.</p>`;
+        return;
+      }
+
+      labs.forEach(lab => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-800 border border-slate-700 hover:border-amber-500/50 p-5 rounded-2xl flex flex-col justify-between transition";
+        const statusBadge = lab.isPublic === true 
+          ? `<span class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">🌐 Ачык</span>`
+          : `<span class="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">🔒 Бир гана VIP</span>`;
+
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs bg-slate-700 text-amber-400 px-2.5 py-0.5 rounded-full font-medium">
+                ${lab.subject || 'Физика'} • ${lab.grade || '7-класс'}
+              </span>
+              ${statusBadge}
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">${lab.title}</h3>
+            <p class="text-xs text-slate-400 line-clamp-3">${lab.description || 'Сүрөттөмө жок'}</p>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-700/50 flex gap-2">
+            ${lab.simUrl ? `
+              <a href="${lab.simUrl}" target="_blank" class="flex-1 bg-amber-500 text-slate-950 font-bold py-2 rounded-xl text-center text-xs hover:bg-amber-600 transition">
+                🚀 Тажрыйбаны баштоо
+              </a>
+            ` : ''}
+            ${lab.pdfUrl ? `
+              <a href="${lab.pdfUrl}" target="_blank" class="bg-slate-700 text-white font-semibold px-3 py-2 rounded-xl text-xs hover:bg-slate-600 transition flex items-center gap-1">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+              </a>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    document.getElementById('input-search-labs').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      renderLabsGrid(cachedLabs.filter(l => l.title.toLowerCase().includes(q) || (l.grade && l.grade.toLowerCase().includes(q))));
+    });
+
+    function openAdminPanel() {
+      showView('view-admin-panel');
+      renderAdminLabsTable();
+    }
+
+    function backToDashboard() { showView('view-dashboard'); }
+
+    function renderAdminLabsTable() {
+      const tbody = document.getElementById('admin-labs-table-body');
+      tbody.innerHTML = '';
+      cachedLabs.forEach(lab => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-700/50 text-sm";
+        tr.innerHTML = `
+          <td class="p-3 font-semibold text-white">${lab.title}</td>
+          <td class="p-3 text-slate-300">${lab.subject || '-'} (${lab.grade || '-'})</td>
+          <td class="p-3">${lab.isPublic === true ? '<span class="text-emerald-400">🌐 Ачык</span>' : '<span class="text-amber-400">🔒 Жабык</span>'}</td>
+          <td class="p-3 text-right">
+            <button onclick="startEditLab('${lab.id}')" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1 rounded-lg font-bold text-xs">
+              ✏️ Оңдоо
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function startEditLab(labId) {
+      const lab = cachedLabs.find(l => l.id === labId);
+      if (!lab) return;
+
+      document.getElementById('lab-editing-id').value = lab.id;
+      document.getElementById('lab-title').value = lab.title || '';
+      document.getElementById('lab-subject').value = lab.subject || '';
+      document.getElementById('lab-grade').value = lab.grade || '';
+      document.getElementById('lab-description').value = lab.description || '';
+      document.getElementById('lab-sim-url').value = lab.simUrl || '';
+      document.getElementById('lab-pdf-url').value = lab.pdfUrl || '';
+      document.getElementById('lab-is-public').value = lab.isPublic === true ? "true" : "false";
+
+      document.getElementById('admin-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> Лабораториялык ишти оңдоо`;
+      document.getElementById('btn-save-lab').innerText = "🔄 ӨЗГӨРТҮҮЛӨРДҮ САКТОО";
+      document.getElementById('btn-cancel-edit').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetLabForm() {
+      document.getElementById('lab-editing-id').value = '';
+      document.getElementById('form-add-lab').reset();
+      document.getElementById('admin-form-title').innerHTML = `<i class="fa-solid fa-plus-circle text-amber-500"></i> Жаңы Лабораториялык Иш Кошуу`;
+      document.getElementById('btn-save-lab').innerText = "💾 САКТОО (lab_works түйүнүнө)";
+      document.getElementById('btn-cancel-edit').classList.add('hidden');
+    }
+
+    document.getElementById('form-add-lab').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const editingId = document.getElementById('lab-editing-id').value;
+      const labData = {
+        title: document.getElementById('lab-title').value,
+        subject: document.getElementById('lab-subject').value,
+        grade: document.getElementById('lab-grade').value,
+        description: document.getElementById('lab-description').value,
+        simUrl: document.getElementById('lab-sim-url').value,
+        pdfUrl: document.getElementById('lab-pdf-url').value,
+        isPublic: document.getElementById('lab-is-public').value === "true",
+        updatedAt: Date.now()
+      };
+
+      if (editingId) {
+        await db.ref(`lab_works/${editingId}`).update(labData);
+        alert("✅ Ийгиликтүү жаңыланды!");
+      } else {
+        labData.createdAt = Date.now();
+        await db.ref('lab_works').push(labData);
+        alert("✅ Жаңы лабораториялык иш кошулду!");
+      }
+
+      resetLabForm();
+      await loadLabWorks();
+      renderAdminLabsTable();
+    });
+  </script>
 </body>
 </html>
