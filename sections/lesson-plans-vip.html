@@ -320,23 +320,25 @@
     </div>
   </div>
 
-  <!-- FIREBASE SDKs -->
+  <!-- FIREBASE SDKs (Compat Bundle for Cross-Browser Compatibility) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
-    // 1. FIREBASE CONFIGURATION
+    // 1. FIREBASE CONFIGURATION (Сиз берген реалдуу консоль параметрлери)
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
+      apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
       authDomain: "bilimal-org.firebaseapp.com",
-      databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
+      databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org",
-      storageBucket: "bilimal-org.appspot.com",
-      messagingSenderId: "1234567890",
-      appId: "1:1234567890:web:abcdef"
+      storageBucket: "bilimal-org.firebasestorage.app",
+      messagingSenderId: "241750360816",
+      appId: "1:241750360816:web:a991434eb5afbc470d7835",
+      measurementId: "G-9GSQV60QV0"
     };
 
+    // Initialize Firebase
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
@@ -350,7 +352,7 @@
     let selectedTariff = { name: '', price: 0 };
     let cachedPlans = [];
 
-    // 2. AUTHENTICATION & DATABASE RULES COMPATIBILITY
+    // 2. AUTHENTICATION LOGIC
     auth.onAuthStateChanged(async (user) => {
       document.getElementById('loading-spinner').classList.add('hidden');
       if (user) {
@@ -366,7 +368,6 @@
       }
     });
 
-    // Reading under "users/$uid" path -> allowed by rules (.read: true)
     async function loadUserProfile(uid) {
       try {
         const snapshot = await db.ref(`users/${uid}`).once('value');
@@ -395,7 +396,6 @@
       auth.signInWithEmailAndPassword(email, password).catch((error) => {
         if (error.code === 'auth/user-not-found') {
           auth.createUserWithEmailAndPassword(email, password).then((cred) => {
-            // Save initial user entry under users/$uid (.write: auth.uid === $uid allowed)
             db.ref(`users/${cred.user.uid}`).set({
               email: cred.user.email,
               role: 'teacher',
@@ -471,7 +471,7 @@
       }
     }
 
-    // 4. PAYMENTS & WHATSAPP (Uses "applications" path -> .write: true allowed)
+    // 4. PAYMENTS & WHATSAPP
     function openPaymentModal(planName, price) {
       selectedTariff = { name: planName, price: price };
       document.getElementById('modal-plan-name').innerText = planName;
@@ -486,7 +486,6 @@
     document.getElementById('btn-send-whatsapp').addEventListener('click', async () => {
       if (!currentUser) return;
 
-      // Save under "applications" -> allowed by Firebase rule (.write: true)
       const payRef = db.ref('applications').push();
       await payRef.set({
         appId: payRef.key,
@@ -507,7 +506,7 @@
       window.open(url, '_blank');
     });
 
-    // 5. LESSON PLANS (Uses "library" path -> .read: true, .write: auth != null)
+    // 5. LESSON PLANS (Uses "library" path)
     async function loadLessonPlans() {
       try {
         const snap = await db.ref('library').once('value');
@@ -640,13 +639,12 @@ ${plan.assessment || ''}
       showView('view-dashboard');
     }
 
-    // 6. ADMIN PANEL (Uses "library" and "applications" nodes)
+    // 6. ADMIN PANEL
     function openAdminPanel() {
       showView('view-admin-panel');
       loadAdminApplications();
     }
 
-    // Write under "library" -> allowed by rule (.write: auth != null)
     document.getElementById('form-add-plan').addEventListener('submit', async (e) => {
       e.preventDefault();
       const newPlan = {
@@ -668,7 +666,6 @@ ${plan.assessment || ''}
       loadLessonPlans();
     });
 
-    // Read under "applications" -> allowed (.read: auth != null)
     function loadAdminApplications() {
       db.ref('applications').on('value', (snap) => {
         const tableBody = document.getElementById('admin-payments-table-body');
@@ -705,7 +702,6 @@ ${plan.assessment || ''}
       });
     }
 
-    // VIP статус берүү: Колдонуучу өзү же админ киргенде users/$uid жаза алат
     async function approvePayment(appId, targetUid, plan) {
       let durationMonths = 1;
       if (plan && plan.includes('6 ай')) durationMonths = 6;
@@ -714,7 +710,6 @@ ${plan.assessment || ''}
       const now = Date.now();
       const expiresAt = now + (durationMonths * 30 * 24 * 60 * 60 * 1000);
 
-      // Update VIP expiry in "users/$uid"
       await db.ref(`users/${targetUid}`).update({
         vip: true,
         plan: plan,
@@ -722,7 +717,6 @@ ${plan.assessment || ''}
         expiresAt: expiresAt
       });
 
-      // Update application status
       await db.ref(`applications/${appId}`).update({ status: 'approved' });
 
       alert("✅ Төлөм ырасталды! Колдонуучуга VIP берилди.");
