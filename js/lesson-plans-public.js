@@ -11,37 +11,34 @@ const uiTranslations = {
         noPlans: "Азырынча жарыяланган сабак пландары же материалдар жок.",
         searchEmpty: "Сиздин сурооңуз боюнча материал табылган жок.",
         gradeSuffix: "-класс",
-        viewBtn: "👁 Көрүү",
-        downloadBtn: "📥 Көчүрүү",
+        viewBtn: "👁 Киришүүнү окуу",
         generalSubject: "Жалпы",
         typePlan: "Сабак планы",
         typePresentation: "Презентация",
         typeCalendar: "Календардык план",
-        modalCabinetNote: "💡 Өзүңүздүн ушундай материалдарыңызды сактоо же генерациялоо үчүн жеке кабинетти колдонуңуз."
+        modalCabinetNote: "📌 Толук DOCX/PDF вариантты алуу үчүн Жеке Кабинеттеги VIP баракчага катталыңыз."
     },
     ru: {
         noPlans: "Пока нет опубликованных планов уроков или материалов.",
         searchEmpty: "По вашему запросу материалов не найдено.",
         gradeSuffix: " класс",
-        viewBtn: "👁 Просмотр",
-        downloadBtn: "📥 Скачать",
+        viewBtn: "👁 Читать конспект",
         generalSubject: "Общий",
         typePlan: "План урока",
         typePresentation: "Презентация",
         typeCalendar: "Календарный план",
-        modalCabinetNote: "💡 Для сохранения или генерации собственных материалов используйте личный кабинет."
+        modalCabinetNote: "📌 Для получения полной версии DOCX/PDF подпишитесь на VIP-страницу в Личном Кабинете."
     },
     en: {
         noPlans: "No published lesson plans or materials available yet.",
         searchEmpty: "No materials found matching your request.",
         gradeSuffix: " Grade",
-        viewBtn: "👁 View",
-        downloadBtn: "📥 Download",
+        viewBtn: "👁 Read Summary",
         generalSubject: "General",
         typePlan: "Lesson Plan",
         typePresentation: "Presentation",
         typeCalendar: "Calendar Plan",
-        modalCabinetNote: "💡 Use your personal cabinet to save or generate your own materials."
+        modalCabinetNote: "📌 Subscribe to the VIP page in Personal Cabinet to get the full DOCX/PDF version."
     }
 };
 
@@ -130,10 +127,7 @@ function renderPlans() {
         card.className = 'plan-card';
 
         const gradeDisplay = plan.grade ? (lang === 'en' ? `Grade ${plan.grade}` : `${plan.grade}${t.gradeSuffix}`) : t.generalSubject;
-        const shortDesc = plan.description || plan.previewText || plan.topic || 'Ачык сабак планы же усулдук материал...';
-        
-        // Файлды жүктөө шилтемесин табуу
-        const fileUrl = plan.fileUrl || plan.docxUrl || plan.pdfUrl || plan.pptUrl || plan.driveUrl || '';
+        const shortDesc = plan.description || plan.previewText || plan.topic || 'Ачык сабак планынын кыскача киришүү мазмуну...';
 
         card.innerHTML = `
             <div>
@@ -147,18 +141,16 @@ function renderPlans() {
             </div>
             <div class="plan-actions">
                 <button class="btn-action btn-view" data-id="${plan.id}">${t.viewBtn}</button>
-                ${fileUrl ? `<a href="${escapeHtml(fileUrl)}" target="_blank" download class="btn-action btn-download">${t.downloadBtn}</a>` : ''}
             </div>
         `;
 
-        // Модал ачуу үчүн click event
         card.querySelector('.btn-view').addEventListener('click', () => {
             openViewModal(plan);
         });
 
         container.appendChild(card);
 
-        // Жарнама блогу (ар бир 6 карточкадан кийин)
+        // AdSense жарнама блогу
         if ((index + 1) % 6 === 0) {
             const adCard = document.createElement('div');
             adCard.className = 'ad-card';
@@ -180,7 +172,6 @@ function openViewModal(plan) {
     const modal = document.getElementById('viewModal');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
-    const modalFooter = document.getElementById('modalFooter');
     const t = getTranslation();
 
     modalTitle.innerText = plan.title || 'Сабак планы';
@@ -189,18 +180,13 @@ function openViewModal(plan) {
         <p><strong>Предмет:</strong> ${escapeHtml(plan.subject || 'Жалпы')} | <strong>Класс:</strong> ${escapeHtml(String(plan.grade || '-'))}</p>
         <p><strong>Тема:</strong> ${escapeHtml(plan.topic || '-')}</p>
         <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:15px 0;">
-        <div style="white-space: pre-wrap;">${escapeHtml(plan.content || plan.description || 'Толук тексттик мазмуну жазылган эмес.')}</div>
+        <div style="white-space: pre-wrap;">${escapeHtml(plan.content || plan.description || 'Киришүү мазмуну берилген.')}</div>
+        <div style="margin-top:20px; padding:12px; background:rgba(0,240,255,0.05); border:1px dashed rgba(0,240,255,0.3); border-radius:8px; font-size:0.88rem; color:#a5b4fc;">
+            ${t.modalCabinetNote}
+        </div>
     `;
 
     modalBody.innerHTML = contentHtml;
-
-    const fileUrl = plan.fileUrl || plan.docxUrl || plan.pdfUrl || plan.pptUrl || plan.driveUrl || '';
-    
-    modalFooter.innerHTML = `
-        <span style="font-size:0.85rem; color:#94a3b8;">${t.modalCabinetNote}</span>
-        ${fileUrl ? `<a href="${escapeHtml(fileUrl)}" target="_blank" download class="btn-action btn-download" style="flex:0 0 auto;">${t.downloadBtn}</a>` : ''}
-    `;
-
     modal.style.display = 'flex';
 }
 
@@ -209,7 +195,7 @@ function setupEvents() {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             searchQuery = e.target.value.trim();
-            renderTests(); // Re-render
+            renderPlans();
         });
     }
 
