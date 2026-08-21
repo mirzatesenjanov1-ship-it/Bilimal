@@ -41,7 +41,7 @@
         .status-public { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
         .status-private { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
 
-        .plan-actions { padding: 12px 15px; background: #0b0e14; border-top: 1px solid #1e2640; display: flex; gap: 8px; justify-content: space-between; }
+        .plan-actions { padding: 12px 15px; background: #0b0e14; border-top: 1px solid #1e2640; display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
         .btn-action { padding: 6px 12px; border-radius: 4px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
         .btn-edit { background: #3498db; color: white; }
         .btn-toggle { background: #9b59b6; color: white; }
@@ -130,7 +130,6 @@
         const loader = document.getElementById('loader');
         const plansContainer = document.getElementById('plans-container');
 
-        // Элементтер
         const editPlanIdInput = document.getElementById('edit-plan-id');
         const planTitleInput = document.getElementById('plan-title');
         const planDescInput = document.getElementById('plan-desc');
@@ -147,14 +146,14 @@
                 currentUser = user;
                 loadMyPlans();
             } else {
-                alert("Кирүү уруксаты жок! Башкаруу панелине кайтыңыз.");
+                alert("Кирүү уруксаты жок! Авторизациядан өтүңүз.");
                 window.location.href = "../dashboard.html";
             }
         });
 
-        // Базадан пландарды угуу
+        // library/lesson_plans түйүнүнөн окуу (Firebase Security Rules: "library" read/write уруксаты сакталат)
         function loadMyPlans() {
-            const plansRef = ref(db, 'lesson_plans');
+            const plansRef = ref(db, 'library/lesson_plans');
             onValue(plansRef, (snapshot) => {
                 loader.style.display = 'none';
                 plansContainer.style.display = 'grid';
@@ -163,15 +162,14 @@
 
                 const data = snapshot.val();
                 if (!data) {
-                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча сабак пландары түзүлө элек.</p>';
+                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча сиз сабак планы кошо элексиз.</p>';
                     return;
                 }
 
                 let count = 0;
                 Object.keys(data).forEach(id => {
                     const plan = data[id];
-                    // Мугалим өзүнүн гана пландарын көрөт жана башкарат
-                    if (plan.teacherUid === currentUser.uid) {
+                    if (plan && plan.teacherUid === currentUser.uid) {
                         myPlansCache[id] = plan;
                         count++;
                         renderPlanCard(id, plan);
@@ -179,8 +177,13 @@
                 });
 
                 if (count === 0) {
-                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Сиз кошууга аракет кылган пландар табылган жок.</p>';
+                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Сиз түзгөн сабак пландары табылган жок.</p>';
                 }
+            }, (error) => {
+                console.error("Firebase Read Error:", error);
+                loader.style.display = 'none';
+                plansContainer.style.display = 'block';
+                plansContainer.innerHTML = '<p style="color: #e74c3c;">Маалыматты жүктөөдө ката чыкты: ' + escapeHtml(error.message) + '</p>';
             });
         }
 
@@ -205,7 +208,7 @@
                 </div>
                 <div class="plan-actions">
                     <button class="btn-action btn-edit" data-id="${id}"><i class="fas fa-edit"></i> Оңдоо</button>
-                    <button class="btn-action btn-toggle" data-id="${id}" data-status="${plan.status}">
+                    <button class="btn-action btn-toggle" data-id="${id}">
                         <i class="fas ${isPublic ? 'fa-eye-slash' : 'fa-eye'}"></i> ${isPublic ? 'Жабуу' : 'Жарыялоо'}
                     </button>
                     ${plan.pdfUrl ? `<a href="${escapeHtml(plan.pdfUrl)}" target="_blank" class="btn-action btn-pdf"><i class="fas fa-file-pdf"></i> PDF</a>` : ''}
@@ -213,7 +216,6 @@
                 </div>
             `;
 
-            // Түмкү окуялар
             card.querySelector('.btn-edit').addEventListener('click', () => editPlan(id));
             card.querySelector('.btn-toggle').addEventListener('click', () => toggleStatus(id, plan.status));
             card.querySelector('.btn-delete').addEventListener('click', () => deletePlan(id));
@@ -221,8 +223,12 @@
             plansContainer.appendChild(card);
         }
 
-        // Сактоо (Жаңы же Түзөтүү)
         btnSave.addEventListener('click', async () => {
+            if (!currentUser) {
+                alert("Сессия мөөнөтү бүттү. Кайра кириңиз.");
+                return;
+            }
+
             const title = planTitleInput.value.trim();
             const description = planDescInput.value.trim();
             const imageUrl = planImageInput.value.trim();
@@ -239,8 +245,7 @@
 
             try {
                 if (editId) {
-                    // Жаңылоо
-                    const planRef = ref(db, `lesson_plans/${editId}`);
+                    const planRef = ref(db, `library/lesson_plans/${editId}`);
                     await update(planRef, {
                         title,
                         description,
@@ -251,8 +256,7 @@
                     });
                     alert("Сабак планы ийгиликтүү өзгөртүлдү!");
                 } else {
-                    // Жаңы кошуу
-                    const plansRef = ref(db, 'lesson_plans');
+                    const plansRef = ref(db, 'library/lesson_plans');
                     const newPlanRef = push(plansRef);
                     await set(newPlanRef, {
                         title,
@@ -261,7 +265,7 @@
                         pdfUrl,
                         status,
                         teacherUid: currentUser.uid,
-                        teacherEmail: currentUser.email,
+                        teacherEmail: currentUser.email || 'Мугалим',
                         createdAt: Date.now(),
                         updatedAt: Date.now()
                     });
@@ -276,7 +280,6 @@
             }
         });
 
-        // Редакциялоо режимин баштоо
         function editPlan(id) {
             const plan = myPlansCache[id];
             if (!plan) return;
@@ -295,11 +298,10 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Ачык/Жабык статусун тез которуу
         async function toggleStatus(id, currentStatus) {
             const newStatus = currentStatus === 'public' ? 'private' : 'public';
             try {
-                await update(ref(db, `lesson_plans/${id}`), {
+                await update(ref(db, `library/lesson_plans/${id}`), {
                     status: newStatus,
                     updatedAt: Date.now()
                 });
@@ -308,18 +310,16 @@
             }
         }
 
-        // Өчүрүү
         async function deletePlan(id) {
             if (confirm("Чын эле бул сабак планын өчүргүңүз келеби?")) {
                 try {
-                    await remove(ref(db, `lesson_plans/${id}`));
+                    await remove(ref(db, `library/lesson_plans/${id}`));
                 } catch (e) {
                     alert("Өчүрүүдө ката: " + e.message);
                 }
             }
         }
 
-        // Форманы тазалоо
         btnCancel.addEventListener('click', resetForm);
 
         function resetForm() {
