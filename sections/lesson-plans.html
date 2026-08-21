@@ -57,7 +57,8 @@
         const loader = document.getElementById('loader');
         const container = document.getElementById('public-plans-container');
 
-        const plansRef = ref(db, 'lesson_plans');
+        // "library/lesson_plans" аркылуу бардык ачык пландарды окуйбуз (Firebase Rules: "library" түйүнүнө .read: true берилген)
+        const plansRef = ref(db, 'library/lesson_plans');
         onValue(plansRef, (snapshot) => {
             loader.style.display = 'none';
             container.style.display = 'grid';
@@ -72,8 +73,7 @@
             let publicCount = 0;
             Object.keys(data).forEach(id => {
                 const plan = data[id];
-                // Текшерүү: Тек гана status === 'public' болгон материалдар чагылдырылат!
-                if (plan.status === 'public') {
+                if (plan && plan.status === 'public') {
                     publicCount++;
                     renderPublicCard(plan);
                 }
@@ -82,6 +82,11 @@
             if (publicCount === 0) {
                 container.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча жарыяланган сабак пландары жок.</p>';
             }
+        }, (error) => {
+            console.error("Firebase Public Read Error:", error);
+            loader.style.display = 'none';
+            container.style.display = 'block';
+            container.innerHTML = '<p style="color: #e74c3c;">Маалыматты жүктөөдө ката пайда болду: ' + escapeHtml(error.message) + '</p>';
         });
 
         function renderPublicCard(plan) {
