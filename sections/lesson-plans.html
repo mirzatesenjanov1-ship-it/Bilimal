@@ -3,1353 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BilimAl.org — Сабак Пландарынын Платформасы</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Сабактын Пландары — BiliMal</title>
+    
+    <!-- FontAwesome & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
-        /* Жарнама стилдери */
-        .ad-slot {
-            margin: 1.5rem auto;
-            padding: 1rem;
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            border-radius: 0.5rem;
-            text-align: center;
-            max-width: 100%;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 40px;
-        }
-        .ad-label {
-            font-size: 0.7rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-            user-select: none;
-        }
-        .adsterra-responsive-wrapper {
-            width: 100%;
-            max-width: 728px;
-            overflow-x: auto;
-            display: flex;
-            justify-content: center;
-        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background:#03030d; color:#fff; min-height:100vh; display:flex; flex-direction:column; }
+
+        /* Navigation Bar */
+        .navbar { display:flex; justify-content:space-between; align-items:center; padding:15px 5%; background:rgba(15,23,42,0.9); border-bottom:1px solid rgba(0,240,255,0.2); backdrop-filter:blur(10px); position:sticky; top:0; z-index:100; }
+        .logo { font-size:1.5rem; font-weight:800; color:#00f0ff; text-decoration:none; display:flex; align-items:center; gap:8px; }
+        .nav-right { display:flex; align-items:center; gap:15px; }
         
-        /* Басып чыгаруу эрежелери */
-        @media print {
-            .ad-slot, .ad-label, .adsbygoogle, .adsterra-slot,
-            [data-admin-only="true"], .admin-badge, .no-print {
-                display: none !important;
-            }
-            body {
-                background: white;
-                color: black;
-            }
-            .print-container {
-                width: 100% !important;
-                max-width: 100% !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-        }
+        .btn-vip { background:linear-gradient(135deg, #a855f7, #ec4899); color:#fff; padding:8px 18px; border-radius:20px; font-weight:700; text-decoration:none; font-size:0.9rem; border:none; cursor:pointer; transition:0.3s; box-shadow:0 0 15px rgba(236,72,153,0.4); }
+        .btn-vip:hover { transform:translateY(-2px); box-shadow:0 0 25px rgba(236,72,153,0.7); }
+
+        .lang-selector { display:flex; gap:4px; }
+        .lang-btn { background:rgba(255,255,255,0.05); border:1px solid rgba(0,240,255,0.3); color:#a5b4fc; padding:4px 8px; border-radius:6px; font-size:0.8rem; cursor:pointer; }
+        .lang-btn.active { background:#00f0ff; color:#000; font-weight:bold; }
+
+        /* Container */
+        .container { max-width:1100px; margin:30px auto; padding:0 20px; width:100%; flex:1; }
+
+        /* VIP Banner Header */
+        .vip-banner { background:linear-gradient(135deg, rgba(168,85,247,0.15), rgba(0,240,255,0.15)); border:1px solid rgba(168,85,247,0.4); border-radius:16px; padding:25px; margin-bottom:30px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; }
+        .vip-text h2 { color:#f472b6; font-size:1.4rem; margin-bottom:6px; display:flex; align-items:center; gap:10px; }
+        .vip-text p { color:#cbd5e1; font-size:0.95rem; max-width:650px; line-height:1.5; }
+
+        /* Search & Filters */
+        .controls-bar { display:flex; gap:15px; margin-bottom:25px; flex-wrap:wrap; }
+        .search-box { flex:1; min-width:250px; position:relative; }
+        .search-box input { width:100%; padding:12px 15px 12px 40px; background:rgba(15,23,42,0.8); border:1px solid rgba(0,240,255,0.3); border-radius:10px; color:#fff; outline:none; }
+        .search-box i { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#00f0ff; }
+        
+        .filter-select { background:rgba(15,23,42,0.8); border:1px solid rgba(0,240,255,0.3); color:#fff; padding:12px 15px; border-radius:10px; outline:none; cursor:pointer; }
+
+        /* Cards Grid */
+        .plans-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:20px; }
+        .plan-card { background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:14px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:0.3s; position:relative; overflow:hidden; }
+        .plan-card:hover { border-color:#00f0ff; transform:translateY(-4px); box-shadow:0 10px 20px rgba(0,240,255,0.15); }
+        
+        .plan-badge { align-self:flex-start; background:rgba(0,240,255,0.1); color:#00f0ff; border:1px solid rgba(0,240,255,0.3); font-size:0.75rem; padding:4px 10px; border-radius:20px; margin-bottom:12px; font-weight:600; }
+        .plan-title { font-size:1.15rem; color:#fff; margin-bottom:10px; line-height:1.4; }
+        .plan-desc { color:#94a3b8; font-size:0.88rem; line-height:1.5; margin-bottom:15px; flex:1; }
+
+        .plan-footer { border-top:1px dashed rgba(255,255,255,0.1); padding-top:12px; display:flex; justify-content:space-between; align-items:center; }
+        .plan-meta { font-size:0.8rem; color:#64748b; }
+        
+        .btn-lock { background:rgba(168,85,247,0.2); border:1px solid #a855f7; color:#e9d5ff; padding:6px 12px; border-radius:8px; font-size:0.8rem; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:6px; transition:0.2s; }
+        .btn-lock:hover { background:#a855f7; color:#fff; }
+
+        footer { text-align:center; padding:20px; color:#64748b; font-size:0.85rem; border-top:1px solid rgba(255,255,255,0.05); margin-top:40px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased font-sans">
+<body>
 
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="/" class="logo">
+            <i class="fa-solid fa-atom"></i> BiliMal.org
+        </a>
+        <div class="nav-right">
+            <a href="/login.html" class="btn-vip">
+                <i class="fa-solid fa-crown"></i> Жеке кабинет (VIP)
+            </a>
+            <div class="lang-selector">
+                <button class="lang-btn active" id="lang-ky" onclick="setLanguage('ky')">KG</button>
+                <button class="lang-btn" id="lang-ru" onclick="setLanguage('ru')">RU</button>
+                <button class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
+            </div>
+        </div>
+    </nav>
 
-    <div class="min-h-screen flex flex-col md:flex-row">
+    <!-- MAIN CONTENT -->
+    <div class="container">
         
-        <aside id="main-sidebar" class="w-full md:w-64 bg-slate-900 text-slate-100 flex flex-col no-print">
-            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
-                <a href="#" class="text-xl font-bold tracking-wider text-emerald-400">BilimAl.org</a>
-                <span id="ui-admin-badge" class="hidden bg-red-500 text-white text-xs px-2 py-0.5 rounded font-mono uppercase tracking-widest animate-pulse">Admin</span>
+        <!-- VIP CALL TO ACTION BANNER -->
+        <div class="vip-banner">
+            <div class="vip-text">
+                <h2 id="vipTitle"><i class="fa-solid fa-gem"></i> Премиум Сабак Пландары</h2>
+                <p id="vipDesc">Бул бөлүмдө сабак пландарынын кыскача мазмуну көрсөтүлгөн. Толук конспекттерди, презентацияларды жана DOCX/PDF файлдарды көчүрүп алуу үчүн **Жеке Кабинетке** атайын VIP жазылуу менен кириңиз.</p>
             </div>
-            
-            <nav class="flex-1 p-4 space-y-1" id="sidebar-menu-dynamic">
-                </nav>
-
-            <div class="p-4 border-t border-slate-800 text-xs text-slate-400 text-center">
-                v2.1.0-secure &copy; 2026
-            </div>
-        </aside>
-
-        <div class="flex-1 flex flex-col min-w-0">
-            
-            <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 no-print">
-                <div class="flex items-center gap-4 flex-1">
-                    <div class="relative w-full max-w-md">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                        <input type="search" id="global-search" placeholder="Пландарды издөө..." class="w-full pl-10 pr-4 py-1.5 bg-slate-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-emerald-500 text-sm">
-                    </div>
-                </div>
-                
-                <div class="flex items-center gap-3" id="header-actions-dynamic">
-                    </div>
-            </header>
-
-            <main class="flex-1 p-6 overflow-y-auto" id="app-view-container">
-                </main>
+            <a href="/login.html" class="btn-vip" style="padding: 12px 24px; font-size:1rem;" id="vipBtn">
+                <i class="fa-solid fa-key"></i> Толук мүмкүндүк алуу
+            </a>
         </div>
+
+        <!-- SEARCH & FILTERS -->
+        <div class="controls-bar">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="searchInput" placeholder="Сабак планын издөө...">
+            </div>
+            <select id="gradeFilter" class="filter-select">
+                <option value="all">Бардык класстар</option>
+                <option value="7">7-класс</option>
+                <option value="8">8-класс</option>
+                <option value="9">9-класс</option>
+                <option value="10">10-класс</option>
+                <option value="11">11-класс</option>
+            </select>
+        </div>
+
+        <!-- PLANS GRID -->
+        <div class="plans-grid" id="plansContainer">
+            <p style="color:#a5b4fc; text-align:center; grid-column:1/-1;" id="loadingText">
+                <i class="fa-solid fa-spinner fa-spin"></i> Сабак пландары жүктөлүүдө...
+            </p>
+        </div>
+
     </div>
 
-    <div id="admin-pin-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 transform scale-95 transition-transform duration-300 relative">
-            <button type="button" onclick="closeAdminPinModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="text-center mb-5">
-                <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i class="fa-solid fa-lock text-xl"></i>
-                </div>
-                <h3 class="text-lg font-bold text-slate-900">Администратордук кирүү</h3>
-                <p class="text-xs text-slate-500 mt-1">Улантуу үчүн жашыруун PIN-кодду киргизиңиз</p>
-            </div>
-            <form id="admin-pin-form" onsubmit="handleAdminPinSubmit(event)" class="space-y-4">
-                <div>
-                    <input type="password" id="admin-pin-input" autocomplete="current-password" placeholder="••••••••" class="w-full text-center tracking-widest text-lg font-mono border border-slate-300 rounded-lg py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent">
-                </div>
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2 rounded-lg transition text-sm">Текшерүү</button>
-            </form>
-        </div>
-    </div>
+    <footer>
+        v2.1.0-secure © 2026 BiliMal.org — Бардык укуктар корголгон.
+    </footer>
 
-    <div id="admin-editor-modal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 flex items-center justify-center hidden">
-        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 relative">
-            <button type="button" onclick="closeEditorModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <h3 id="editor-modal-title" class="text-md font-bold text-slate-900 mb-4">Элемент кошуу</h3>
-            <div id="editor-modal-content" class="space-y-4"></div>
-        </div>
-    </div>
+    <!-- SCRIPT INJECTION -->
+    <script type="module" src="/js/lesson-plans-public.js"></script>
 
     <script>
-        // ====================================================
-        // КОНФИГУРАЦИЯ ЖАНА КООПСУЗДУК ЖӨНДӨӨЛӨРҮ
-        // ====================================================
-        // PIN: "2026", SHA-256 hash (түз текст эмес)
-        const ADMIN_CONFIG = {
-            pinHash: 'b9468e27c0fa1a95e0c814b3d7c2de941f71df6c94f5fb25d204a91a92e624f9', 
-            adminName: 'BilimAI Admin'
-        };
-
-        const DEFAULT_ADSENSE_CONFIG = {
-            enabled: true,
-            publisherId: 'ca-pub-1495571814896964',
-            slotId: '1574613769'
-        };
-
-        const DEFAULT_ADSTERRA_CONFIG = {
-            enabled: true,
-            bannerKey: '230e338703bb44150336cce1f0832fe3',
-            width: 728,
-            height: 90,
-            socialBarEnabled: false
-        };
-
-        // Локалдык сактоочу жайлардын ачкычтары
-        const KEYS = {
-            plans: 'bilimai_lesson_plans_v2',
-            ads: 'bilimai_lesson_ads_config_v1',
-            bookmarks: 'bilimai_lesson_viewer_bookmarks_v1',
-            reactions: 'bilimai_lesson_viewer_reactions_v1',
-            session: 'bilimai_lesson_admin_session_v1'
-        };
-
-        // Колдонмонун глобалдык абалы (State)
-        let state = {
-            role: 'viewer', // демейки роль
-            currentView: 'library',
-            selectedPlanId: null,
-            searchQuery: '',
-            filterSubject: '',
-            filterClass: '',
-            adRotationTracker: {}, 
-            plans: []
-        };
-
-        // Ички жасалма тест маалыматтары (Эгер бош болсо жүктөлөт)
-        const MOCK_PLANS = [
-            {
-                id: 'plan-1',
-                title: 'Ом мыйзамы жана анын техникада колдонулушу',
-                subject: 'Физика',
-                grade: '10-класс',
-                category: 'Электр динамикасы',
-                authorId: 'admin-1',
-                authorName: 'BilimAI Admin',
-                createdByAdmin: true,
-                status: 'published',
-                createdAt: '2026-03-15',
-                content: `<p>Бул сабакта биз туруктуу токтун чынжыр бөлүгү үчүн Ом мыйзамын карайбыз. Ток күчү, чыңалуу жана каршылыктын ортосундагы байланышты аныктайбыз.</p>
-                          <h3>1. Негизги формулалар</h3>
-                          <p>Чынжырдын бөлүгүндөгү ток күчү чыңалууга түз пропорциялаш, ал эми каршылыкка тескери пропорциялаш:</p>
-                          <div class="bg-slate-100 p-3 text-center my-3 font-mono text-lg font-bold rounded">I = U / R</div>
-                          <h3>2. Демонстрациялык таблица</h3>
-                          <table class="w-full border-collapse border border-slate-300 my-3 text-sm text-left">
-                            <thead>
-                                <tr class="bg-slate-200">
-                                    <th class="border border-slate-300 p-2">Чыңалуу (U, В)</th>
-                                    <th class="border border-slate-300 p-2">Каршылык (R, Ом)</th>
-                                    <th class="border border-slate-300 p-2">Ток күчү (I, А)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td class="border border-slate-300 p-2">12</td><td class="border border-slate-300 p-2">4</td><td class="border border-slate-300 p-2">3</td></tr>
-                                <tr><td class="border border-slate-300 p-2">24</td><td class="border border-slate-300 p-2">4</td><td class="border border-slate-300 p-2">6</td></tr>
-                            </tbody>
-                          </table>
-                          <p>Кошумча маалымат алуу үчүн тиркелген материалдарды караңыз. Сабактын аягында лабораториялык иш жүргүзүлөт.</p>`,
-                attachments: ['Ohm_Law_Lab.pdf', 'Presentation_Ch1.pptx']
+        const pageTranslations = {
+            ky: {
+                vipTitle: "💎 Премиум Сабак Пландары",
+                vipDesc: "Бул бөлүмдө автордук сабак пландарынын киришүү мазмуну берилген. Толук DOCX/PDF конспекттерди көчүрүү жана даяр презентацияларды алуу үчүн Жеке Кабинетке (VIP) кириңиз.",
+                vipBtn: "🔑 Толук мүмкүндүк алуу",
+                searchPlaceholder: "Сабак планын издөө...",
+                allGrades: "Бардык класстар",
+                loading: "Сабак пландары жүктөлүүдө..."
             },
-            {
-                id: 'plan-2',
-                title: 'Механикалык кыймылдын салыштырмалуулугу',
-                subject: 'Физика',
-                grade: '9-класс',
-                category: 'Механика',
-                authorId: 'admin-1',
-                authorName: 'BilimAI Admin',
-                createdByAdmin: true,
-                status: 'published',
-                createdAt: '2026-04-02',
-                content: `<p>Кыймылдын салыштырмалуулугу түшүнүгү эсептөө системасын тандоодон көз каранды. Ар кандай эсептөө системасында нерсенин траекториясы жана ылдамдыгы ар башка болушу мүмкүн.</p>
-                          <p>Мисалы: Бараткан поезддин ичиндеги жүргүнчү отургучка карата тынчтык абалында, ал эми жерге карата кыймылда болот.</p>`,
-                attachments: []
-            }
-        ];
-
-        // ====================================================
-        // КОРГОО ДЕҢГЭЭЛДЕРИ ЖАНА КООПСУЗДУК ФУНКЦИЯЛАРЫ
-        // ====================================================
-        function isAdmin() {
-            return state.role === 'admin';
-        }
-
-        function requireAdmin() {
-            if (!isAdmin()) {
-                showToast('Бул функция автор үчүн гана жеткиликтүү.', 'error');
-                return false;
-            }
-            return true;
-        }
-
-        async function hashText(text) {
-            try {
-                const msgUint8 = new TextEncoder().encode(text);
-                const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            } catch (e) {
-                console.error("Crypto API error:", e);
-                return null;
-            }
-        }
-
-        async function verifyAdminPin(pin) {
-            const encoded = await hashText(pin);
-            return encoded === ADMIN_CONFIG.pinHash;
-        }
-
-        // Safe Storage Wrapper (Маалыматтарды коргоо)
-        const SafeStorage = {
-            get: (key, defaultVal = []) => {
-                try {
-                    const data = localStorage.getItem(key);
-                    return data ? JSON.parse(data) : defaultVal;
-                } catch (e) {
-                    console.error("Storage окууда ката чыкты:", e);
-                    return defaultVal;
-                }
+            ru: {
+                vipTitle: "💎 Премиум Планы Уроков",
+                vipDesc: "В этом разделе представлены вводные материалы авторских планов уроков. Для скачивания полных DOCX/PDF конспектов и готовых презентаций войдите в Личный Кабинет (VIP).",
+                vipBtn: "🔑 Получить полный доступ",
+                searchPlaceholder: "Поиск плана урока...",
+                allGrades: "Все классы",
+                loading: "Загрузка планов уроков..."
             },
-            set: (key, value) => {
-                // Коопсуздук чектөөсү: эгер жазууга аракет кылган тармак негизги план болсо, админдик укук керек
-                if (key === KEYS.plans || key === KEYS.ads) {
-                    if (!isAdmin()) {
-                        console.warn(`Ката: Уруксатсыз маалымат өзгөртүү аракети блоктолду. Килт: ${key}`);
-                        return false;
-                    }
-                }
-                try {
-                    localStorage.setItem(key, JSON.stringify(value));
-                    return true;
-                } catch (e) {
-                    showToast('Сактоодо ката чыкты: Эс тутум толуп кеткен болушу мүмкүн.', 'error');
-                    return false;
-                }
+            en: {
+                vipTitle: "💎 Premium Lesson Plans",
+                vipDesc: "This section presents overview previews of author lesson plans. To download full DOCX/PDF notes and presentations, please log in to Personal Cabinet (VIP).",
+                vipBtn: "🔑 Get Full Access",
+                searchPlaceholder: "Search lesson plan...",
+                allGrades: "All Grades",
+                loading: "Loading lesson plans..."
             }
         };
 
-        // ====================================================
-        // ЖАРНАМАЛАРДЫ БАШКАРУУ АРХИТЕКТУРАСЫ
-        // ====================================================
-        function getAdSettings() {
-            try {
-                const saved = localStorage.getItem(KEYS.ads);
-                if (saved) return JSON.parse(saved);
-            } catch(e) {}
-            return {
-                adsense: { ...DEFAULT_ADSENSE_CONFIG },
-                adsterra: { ...DEFAULT_ADSTERRA_CONFIG },
-                display: {
-                    publicViewerAds: true,
-                    mobileAds: true,
-                    shortPlanMaxAds: 1,
-                    longPlanMaxAds: 3,
-                    slotMode: 'rotation'
-                }
-            };
-        }
+        function setLanguage(lang) {
+            localStorage.setItem('site_lang', lang);
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            const activeBtn = document.getElementById(`lang-${lang}`);
+            if (activeBtn) activeBtn.classList.add('active');
 
-        function shouldRenderAds() {
-            const settings = getAdSettings();
-            if (!settings.display.publicViewerAds) return false;
-            if (state.role === 'admin') return false; 
-            if (['editor', 'ads-settings', 'system-check', 'drafts', 'archive'].includes(state.currentView)) return false;
-            if (window.matchMedia && window.matchMedia('print').matches) return false;
-            return true;
-        }
-
-        function loadAdSenseScriptOnce() {
-            const config = getAdSettings().adsense;
-            if (!config.enabled || !config.publisherId) return;
-            if (document.querySelector('script[src*="pagead2.googlesyndication.com"]')) return;
+            const t = pageTranslations[lang] || pageTranslations.ky;
+            document.getElementById('vipTitle').innerHTML = `<i class="fa-solid fa-gem"></i> ${t.vipTitle}`;
+            document.getElementById('vipDesc').innerText = t.vipDesc;
+            document.getElementById('vipBtn').innerHTML = `<i class="fa-solid fa-key"></i> ${t.vipBtn}`;
+            document.getElementById('searchInput').placeholder = t.searchPlaceholder;
             
-            const script = document.createElement('script');
-            script.async = true;
-            script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${config.publisherId}`;
-            script.crossOrigin = "anonymous";
-            script.onerror = () => console.warn("AdSense тармагы бөгөттөлдү же ката чыкты (AdBlock).");
-            document.head.appendChild(script);
+            window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: lang } }));
         }
 
-        function getAdNetworkForSlot(slotId) {
-            const settings = getAdSettings();
-            const mode = settings.display.slotMode;
-            
-            if (mode === 'disabled') return 'disabled';
-            if (mode === 'adsense' && settings.adsense.enabled) return 'adsense';
-            if (mode === 'adsterra' && settings.adsterra.enabled) return 'adsterra';
-            
-            if (state.adRotationTracker[slotId]) {
-                return state.adRotationTracker[slotId];
-            }
-            
-            const selected = Math.random() > 0.5 ? 'adsense' : 'adsterra';
-            state.adRotationTracker[slotId] = selected;
-            return selected;
-        }
-
-        function createAdSlot(slotId, placementType) {
-            const container = document.createElement('div');
-            container.className = 'ad-slot no-print';
-            container.id = `ad-container-${slotId}`;
-            
-            const label = document.createElement('div');
-            label.className = 'ad-label';
-            label.innerText = 'Жарнама';
-            container.appendChild(label);
-            
-            const network = getAdNetworkForSlot(slotId);
-            const settings = getAdSettings();
-            
-            if (network === 'adsense' && settings.adsense.enabled) {
-                const ins = document.createElement('ins');
-                ins.className = 'adsbygoogle';
-                ins.style.display = 'block';
-                ins.setAttribute('data-ad-client', settings.adsense.publisherId);
-                ins.setAttribute('data-ad-slot', settings.adsense.slotId);
-                container.appendChild(ins);
-                
-                setTimeout(() => {
-                    try {
-                        (window.adsbygoogle = window.adsbygoogle || []).push({});
-                    } catch (e) {
-                        console.warn("AdSense ишке кирүү катасы (мүмкүн AdBlock):", e.message);
-                    }
-                }, 50);
-            } 
-            else if (network === 'adsterra' && settings.adsterra.enabled) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'adsterra-responsive-wrapper';
-                const innerSlot = document.createElement('div');
-                innerSlot.id = `adsterra-slot-${slotId}`;
-                wrapper.appendChild(innerSlot);
-                container.appendChild(wrapper);
-                
-                setTimeout(() => {
-                    try {
-                        const scriptOpts = document.createElement('script');
-                        scriptOpts.text = `atOptions = { 'key' : '${settings.adsterra.bannerKey}', 'format' : 'iframe', 'height' : ${settings.adsterra.height}, 'width' : ${settings.adsterra.width}, 'params' : {} };`;
-                        innerSlot.appendChild(scriptOpts);
-                        
-                        const scriptInvoke = document.createElement('script');
-                        scriptInvoke.src = `https://www.highperformanceformat.com/${settings.adsterra.bannerKey}/invoke.js`;
-                        scriptInvoke.onerror = () => console.warn("Adsterra баннери жүктөлбөй калды.");
-                        innerSlot.appendChild(scriptInvoke);
-                    } catch(e) {
-                        console.error("Adsterra кошуу катасы:", e);
-                    }
-                }, 50);
-            } else {
-                return null; // Жарнама өчүк же табылбады
-            }
-            
-            return container;
-        }
-
-        function insertAdsIntoLessonViewer(contentElement) {
-            if (!shouldRenderAds()) return;
-            
-            loadAdSenseScriptOnce();
-            const text = contentElement.innerText || "";
-            const wordCount = text.split(/\s+/).length;
-            
-            // Жарамдуу элементтерди тандоо (таблица, сүрөт же аталыштарга тийбейбиз)
-            const ParagraphsAndHeadings = Array.from(contentElement.querySelectorAll('p, h3, h4'));
-            if (ParagraphsAndHeadings.length === 0) return;
-            
-            if (wordCount < 400) {
-                // Intro'дон кийин 1 баннер
-                const slot = createAdSlot('slot-short-1', 'intro');
-                if (slot) ParagraphsAndHeadings[0].after(slot);
-            } 
-            else if (wordCount >= 400 && wordCount <= 1200) {
-                const slot1 = createAdSlot('slot-med-1', 'intro');
-                if (slot1) ParagraphsAndHeadings[0].after(slot1);
-                
-                const midIndex = Math.floor(ParagraphsAndHeadings.length / 2);
-                const slot2 = createAdSlot('slot-med-2', 'middle');
-                if (slot2 && ParagraphsAndHeadings[midIndex]) ParagraphsAndHeadings[midIndex].after(slot2);
-            } 
-            else {
-                // Узун текст
-                const slot1 = createAdSlot('slot-long-1', 'intro');
-                if (slot1) ParagraphsAndHeadings[0].after(slot1);
-                
-                const stepIndex = Math.min(4, Math.floor(ParagraphsAndHeadings.length / 3));
-                const slot2 = createAdSlot('slot-long-2', 'step');
-                if (slot2 && ParagraphsAndHeadings[stepIndex]) ParagraphsAndHeadings[stepIndex].after(slot2);
-                
-                const slot3 = createAdSlot('slot-long-3', 'pre-footer');
-                if (slot3) contentElement.appendChild(slot3);
-            }
-        }
-
-        function cleanupAdSlots() {
-            document.querySelectorAll('.ad-slot').forEach(el => el.remove());
-        }
-
-        // ====================================================
-        // СЕЙФАЛИК ЖАНА АВТОРИЗАЦИЯ ФУНКЦИЯЛАРЫ
-        // ====================================================
-        function initSession() {
-            const hasParam = new URLSearchParams(window.location.search).get('admin') === 'true';
-            const savedSession = sessionStorage.getItem(KEYS.session);
-            
-            if (savedSession === 'active') {
-                state.role = 'admin';
-            } else {
-                state.role = 'viewer';
-            }
-            
-            // Маалыматтарды жүктөө
-            const stored = SafeStorage.get(KEYS.plans, []);
-            if (stored.length === 0) {
-                state.plans = [...MOCK_PLANS];
-                // Эгер админ болсо локалдыкка жазып койсо болот баштапкы ирет
-                if (state.role === 'admin') SafeStorage.set(KEYS.plans, state.plans);
-            } else {
-                state.plans = stored;
-            }
-            
-            if (hasParam && state.role !== 'admin') {
-                setTimeout(() => openAdminPinModal(), 300);
-            }
-            
-            renderUI();
-            navigateTo(state.currentView);
-        }
-
-        function activateAdminSession() {
-            sessionStorage.setItem(KEYS.session, 'active');
-            state.role = 'admin';
-            showToast('Администратордук сессия ийгиликтүү ачылды.', 'success');
-            renderUI();
-            navigateTo('library');
-        }
-
-        function logoutAdminSession() {
-            sessionStorage.removeItem(KEYS.session);
-            state.role = 'viewer';
-            state.adRotationTracker = {};
-            showToast('Администратор сессиясы жабылды. Viewer режими активдүү.', 'info');
-            // URL параметрлерин тазалоо
-            const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-            window.history.replaceState({path: cleanUrl}, '', cleanUrl);
-            renderUI();
-            navigateTo('library');
-        }
-
-        // ====================================================
-        // НАВИГАЦИЯ ЖАНА КӨРҮНҮШ КӨЗӨМӨЛДӨӨЧҮ (ROLE GUARD)
-        // ====================================================
-        function navigateTo(viewName) {
-            const adminOnlyViews = [
-                'editor', 'my-plans', 'drafts', 'archive', 
-                'categories-manager', 'media-manager', 
-                'ads-settings', 'import-export', 'system-check'
-            ];
-
-            if (adminOnlyViews.includes(viewName) && !isAdmin()) {
-                showToast('Бул бөлүм автор үчүн гана жеткиликтүү.', 'error');
-                viewName = 'library';
-            }
-
-            state.currentView = viewName;
-            
-            // Активдүү сидебар элементин белгилөө
-            document.querySelectorAll('.sidebar-nav-item').forEach(el => {
-                if (el.getAttribute('data-view') === viewName) {
-                    el.classList.add('bg-slate-800', 'text-emerald-400');
-                } else {
-                    el.classList.remove('bg-slate-800', 'text-emerald-400');
-                }
-            });
-
-            renderCurrentView();
-        }
-
-        // ====================================================
-        // UI ГЕНЕРАЦИЯ (РОЛГО ЖАРАША РЕНДЕР)
-        // ====================================================
-        function renderUI() {
-            const sidebarMenu = document.getElementById('sidebar-menu-dynamic');
-            const headerActions = document.getElementById('header-actions-dynamic');
-            const adminBadge = document.getElementById('ui-admin-badge');
-            
-            cleanupAdSlots();
-
-            if (isAdmin()) {
-                adminBadge.classList.remove('hidden');
-                
-                // Админ Сидебар
-                sidebarMenu.innerHTML = `
-                    <button type="button" onclick="navigateTo('library')" data-view="library" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-book-open w-5"></i> Бардык пландар</button>
-                    <button type="button" onclick="navigateTo('editor')" data-view="editor" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-plus w-5"></i> Жаңы план түзүү</button>
-                    <button type="button" onclick="navigateTo('my-plans')" data-view="my-plans" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-folder-open w-5"></i> Менин пландарым</button>
-                    <button type="button" onclick="navigateTo('drafts')" data-view="drafts" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-file-pen w-5"></i> Черновиктер</button>
-                    <button type="button" onclick="navigateTo('archive')" data-view="archive" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-box-archive w-5"></i> Архив</button>
-                    <button type="button" onclick="navigateTo('categories-manager')" data-view="categories-manager" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-tags w-5"></i> Категориялар</button>
-                    <button type="button" onclick="navigateTo('media-manager')" data-view="media-manager" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-images w-5"></i> Медиа файлдар</button>
-                    <div class="pt-4 mt-4 border-t border-slate-800"></div>
-                    <button type="button" onclick="navigateTo('ads-settings')" data-view="ads-settings" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300 text-amber-400"><i class="fa-solid fa-rectangle-ad w-5"></i> Жарнама жөндөөлөрү</button>
-                    <button type="button" onclick="navigateTo('import-export')" data-view="import-export" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-arrows-rotate w-5"></i> Import / Export</button>
-                    <button type="button" onclick="navigateTo('system-check')" data-view="system-check" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300 text-cyan-400"><i class="fa-solid fa-shield-halved w-5"></i> Системаны текшерүү</button>
-                `;
-
-                // Админ Хедер
-                headerActions.innerHTML = `
-                    <span class="text-xs text-slate-500 font-medium bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-1.5"><i class="fa-solid fa-user-shield text-slate-600"></i> ${ADMIN_CONFIG.adminName}</span>
-                    <button type="button" onclick="logoutAdminSession()" class="text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium px-3 py-1.5 rounded-lg border border-red-200 transition flex items-center gap-1"><i class="fa-solid fa-right-from-bracket"></i> Чыгуу</button>
-                `;
-            } else {
-                adminBadge.classList.add('hidden');
-                
-                // Viewer Сидебар (Эч кандай админ менюлары жок, таза)
-                sidebarMenu.innerHTML = `
-                    <button type="button" onclick="navigateTo('library')" data-view="library" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-300"><i class="fa-solid fa-book-open w-5"></i> Сабак пландары</button>
-                    <div class="pt-2 mt-2 border-t border-slate-800 text-[11px] uppercase tracking-wider text-slate-500 px-3 font-semibold">Фильтрлер</div>
-                    <div class="px-3 py-2 space-y-2">
-                        <select id="sidebar-filter-subject" onchange="handleSidebarFilter()" class="w-full bg-slate-800 text-slate-200 text-xs rounded p-1.5 border border-slate-700 focus:outline-none">
-                            <option value="">Бардык предметтер</option>
-                            <option value="Физика">Физика</option>
-                            <option value="Математика">Математика</option>
-                        </select>
-                        <select id="sidebar-filter-class" onchange="handleSidebarFilter()" class="w-full bg-slate-800 text-slate-200 text-xs rounded p-1.5 border border-slate-700 focus:outline-none">
-                            <option value="">Бардык класстар</option>
-                            <option value="9-класс">9-класс</option>
-                            <option value="10-класс">10-класс</option>
-                            <option value="11-класс">11-класс</option>
-                        </select>
-                    </div>
-                    <div class="pt-4 mt-4 border-t border-slate-800"></div>
-                    <button type="button" onclick="showHelpModal()" class="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg hover:bg-slate-800 transition text-left text-slate-400"><i class="fa-solid fa-circle-info w-5"></i> Жардам</button>
-                `;
-
-                // Viewer Хедер
-                headerActions.innerHTML = `
-                    <button type="button" onclick="showHelpModal()" class="text-xs text-slate-600 hover:text-slate-900 font-medium hidden sm:inline-block"><i class="fa-solid fa-circle-question"></i> Көчүрүү боюнча жардам</button>
-                    <button type="button" onclick="openAdminPinModal()" class="opacity-30 hover:opacity-100 text-slate-400 hover:text-slate-800 text-xs font-mono transition py-1 px-2 rounded border border-transparent hover:border-slate-200">Admin Access</button>
-                `;
-            }
-        }
-
-        function handleSidebarFilter() {
-            const sub = document.getElementById('sidebar-filter-subject');
-            const cls = document.getElementById('sidebar-filter-class');
-            state.filterSubject = sub ? sub.value : '';
-            state.filterClass = cls ? cls.value : '';
-            if (state.currentView === 'library') {
-                renderCurrentView();
-            } else {
-                navigateTo('library');
-            }
-        }
-
-        // ====================================================
-        // VIEW РЕНДЕР КЫЙМЫЛДАТКЫЧЫ
-        // ====================================================
-        function renderCurrentView() {
-            const container = document.getElementById('app-view-container');
-            cleanupAdSlots();
-
-            switch (state.currentView) {
-                case 'library':
-                    renderLibraryView(container);
-                    break;
-                case 'viewer':
-                    renderPlanViewer(container);
-                    break;
-                case 'editor':
-                    renderEditorView(container);
-                    break;
-                case 'ads-settings':
-                    renderAdsSettingsView(container);
-                    break;
-                case 'system-check':
-                    renderSystemCheckView(container);
-                    break;
-                case 'drafts':
-                case 'archive':
-                case 'my-plans':
-                case 'categories-manager':
-                case 'media-manager':
-                case 'import-export':
-                    renderAdminPlaceholderView(container, state.currentView);
-                    break;
-                default:
-                    container.innerHTML = `<div class="p-4 text-red-500">Көрүнүш табылбады (404)</div>`;
-            }
-        }
-
-        // 1. КООМДУК КИТЕПКАНА (LIBRARY VIEW)
-        function renderLibraryView(container) {
-            let filtered = state.plans.filter(p => p.status === 'published');
-            
-            if (!isAdmin()) {
-                // Viewer үчүн коомдук пландар гана
-                filtered = filtered.filter(p => p.status === 'published');
-            } else {
-                // Админ бардык пландарды көрө алат
-                filtered = state.plans;
-            }
-
-            // Издөө жана Фильтр логикасы
-            if (state.searchQuery) {
-                const q = state.searchQuery.toLowerCase();
-                filtered = filtered.filter(p => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
-            }
-            if (state.filterSubject) {
-                filtered = filtered.filter(p => p.subject === state.filterSubject);
-            }
-            if (state.filterClass) {
-                filtered = filtered.filter(p => p.grade === state.filterClass);
-            }
-
-            let html = `
-                <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-slate-900">Сабак пландарынын китепканасы</h2>
-                        <p class="text-sm text-slate-500">Мугалимдер үчүн иштелип чыккан санариптик методикалык материалдар.</p>
-                    </div>
-                </div>
-            `;
-
-            if (filtered.length === 0) {
-                html += `
-                    <div class="bg-white border border-slate-200 rounded-xl p-12 text-center">
-                        <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                            <i class="fa-solid fa-folder-open text-2xl"></i>
-                        </div>
-                        <h3 class="text-md font-bold text-slate-800">Материалдар табылган жок</h3>
-                        <p class="text-sm text-slate-500 mt-1">Тандалган параметрлер боюнча же издөө суроосуна ылайык сабак пландары жок.</p>
-                    </div>
-                `;
-                container.innerHTML = html;
-                return;
-            }
-
-            html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
-            
-            filtered.forEach(plan => {
-                const isDraft = plan.status === 'draft';
-                const isArchived = plan.status === 'archived';
-                
-                html += `
-                    <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
-                        <div>
-                            <div class="flex items-center justify-between gap-2 mb-3">
-                                <span class="text-xs px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-medium rounded-full">${plan.subject}</span>
-                                <span class="text-xs text-slate-400 font-mono">${plan.grade}</span>
-                            </div>
-                            <h3 class="font-bold text-slate-900 line-clamp-2 hover:text-emerald-600 cursor-pointer mb-2" onclick="openPlanViewer('${plan.id}')">${plan.title}</h3>
-                            <div class="text-xs text-slate-500 mb-4 flex items-center gap-1"><i class="fa-solid fa-tag"></i> ${plan.category}</div>
-                        </div>
-                        
-                        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs text-slate-400 flex items-center gap-1"><i class="fa-solid fa-user"></i> ${plan.authorName}</span>
-                            <div class="flex items-center gap-1">
-                                ${isAdmin() ? `
-                                    <button type="button" onclick="editPlan('${plan.id}')" class="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded transition text-xs" title="Оңдоо"><i class="fa-solid fa-pen"></i></button>
-                                    <button type="button" onclick="deletePlan('${plan.id}')" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition text-xs" title="Өчүрүү"><i class="fa-solid fa-trash"></i></button>
-                                ` : ''}
-                                <button type="button" onclick="openPlanViewer('${plan.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg transition">Ачуу</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
-            container.innerHTML = html;
-        }
-
-        // 2. САБАК ПЛАНЫН ОКУУ ЖАНА КӨЧҮРҮҮ КӨРҮНҮШҮ (PLAN VIEWER)
-        function renderPlanViewer(container) {
-            const plan = state.plans.find(p => p.id === state.selectedPlanId);
-            if (!plan) {
-                showToast('План табылган жок.', 'error');
-                navigateTo('library');
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm p-6 md:p-8 print-container">
-                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-5 mb-6 no-print">
-                        <button type="button" onclick="navigateTo('library')" class="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1"><i class="fa-solid fa-arrow-left"></i> Китепканага кайтуу</button>
-                        
-                        <div class="flex items-center flex-wrap gap-2">
-                            <button type="button" onclick="copyPlanRichText()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1"><i class="fa-solid fa-file-word text-blue-600"></i> Word'го көчүрүү</button>
-                            <button type="button" onclick="copyPlanPlainText()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1"><i class="fa-solid fa-align-left"></i> Таза текст</button>
-                            <button type="button" onclick="copyPlanHTML()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1"><i class="fa-solid fa-code text-amber-600"></i> HTML код</button>
-                            <button type="button" onclick="printPlan()" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-medium px-3 py-2 rounded-lg transition flex items-center gap-1"><i class="fa-solid fa-print"></i> Басып чыгаруу / PDF</button>
-                            <button type="button" onclick="sharePlan()" class="p-2 text-slate-500 hover:text-slate-900 rounded-lg transition text-xs"><i class="fa-solid fa-share-nodes text-base"></i></button>
-                            <button type="button" onclick="bookmarkPlan('${plan.id}')" class="p-2 text-slate-500 hover:text-slate-900 rounded-lg transition text-xs"><i class="fa-solid fa-bookmark text-base"></i></button>
-                        </div>
-                    </div>
-
-                    <div class="mb-6">
-                        <div class="flex items-center gap-2 text-xs font-medium text-emerald-600 mb-2 uppercase tracking-wider">
-                            <span>${plan.subject}</span> &bull; <span>${plan.grade}</span> &bull; <span>${plan.category}</span>
-                        </div>
-                        <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 leading-tight mb-3">${plan.title}</h1>
-                        <div class="flex items-center gap-4 text-xs text-slate-400">
-                            <span><i class="fa-solid fa-user text-slate-500"></i> Автор: ${plan.authorName}</span>
-                            <span><i class="fa-solid fa-calendar text-slate-500"></i> Жарыяланды: ${plan.createdAt}</span>
-                        </div>
-                    </div>
-
-                    <div id="lesson-content-body" class="prose prose-slate max-w-none text-slate-800 leading-relaxed space-y-4">
-                        ${plan.content}
-                    </div>
-
-                    ${plan.attachments && plan.attachments.length > 0 ? `
-                        <div class="mt-8 pt-6 border-t border-slate-100 no-print">
-                            <h4 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5"><i class="fa-solid fa-paperclip text-slate-500"></i> Тиркелген ресурстар (Жүктөө шилтемелери)</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                ${plan.attachments.map(file => `
-                                    <div class="border border-slate-200 rounded-lg p-3 flex items-center justify-between text-xs bg-slate-50">
-                                        <span class="font-mono text-slate-700 truncate mr-2"><i class="fa-regular fa-file-lines text-emerald-600 text-sm mr-1"></i> ${file}</span>
-                                        <button type="button" onclick="openAttachment('${file}')" class="text-emerald-600 hover:text-emerald-700 font-semibold shrink-0">Ачуу</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
-
-                    <div class="mt-8 pt-4 border-t border-slate-100 flex items-center justify-between no-print text-xs text-slate-500">
-                        <div class="flex items-center gap-3">
-                            <button type="button" onclick="reactToPlan('${plan.id}', 'like')" class="hover:text-red-500 flex items-center gap-1"><i class="fa-regular fa-heart text-base"></i> Жакты</button>
-                            <button type="button" onclick="reactToPlan('${plan.id}', 'useful')" class="hover:text-amber-500 flex items-center gap-1"><i class="fa-regular fa-lightbulb text-base"></i> Пайдалуу</button>
-                        </div>
-                        <span class="italic text-[11px]">Маалыматтар көчүрүү форматына ылайыкташтырылган.</span>
-                    </div>
-                </div>
-
-                <div class="max-w-4xl mx-auto mt-8 no-print" id="related-plans-container">
-                    <h3 class="text-md font-bold text-slate-800 mb-4">Окшош сабак пландары</h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        ${state.plans.filter(p => p.id !== plan.id && p.status === 'published').slice(0, 2).map(p => `
-                            <div class="bg-white border border-slate-200 p-4 rounded-lg shadow-xs hover:border-slate-300 transition cursor-pointer flex flex-col justify-between" onclick="openPlanViewer('${p.id}')">
-                                <h4 class="font-bold text-sm text-slate-900 line-clamp-1">${p.title}</h4>
-                                <div class="text-[11px] text-slate-400 mt-2 flex justify-between"><span>${p.subject}</span><span>${p.grade}</span></div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-
-            // Жарнама алгоритмин ишке киргизүү
-            setTimeout(() => {
-                const body = document.getElementById('lesson-content-body');
-                if (body) insertAdsIntoLessonViewer(body);
-            }, 50);
-        }
-
-        // 3. АДМИНДИК САБАК ПЛАН ТҮЗҮҮЧҮ (EDITOR VIEW - ADMIN ONLY)
-        function renderEditorView(container) {
-            if (!isAdmin()) return;
-            
-            container.innerHTML = `
-                <div class="max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                    <h2 class="text-xl font-bold text-slate-900 mb-4">Жаңы методикалык сабак планын түзүү</h2>
-                    <form id="editor-form" class="space-y-4" onsubmit="handleSavePlanSubmit(event)">
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Предмет</label>
-                                <select id="edit-subject" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                                    <option>Физика</option>
-                                    <option>Математика</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Класс</label>
-                                <select id="edit-grade" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                                    <option>9-класс</option>
-                                    <option>10-класс</option>
-                                    <option>11-класс</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Категория</label>
-                                <input type="text" id="edit-category" placeholder="Мисалы: Механика" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Сабактын темасы</label>
-                            <input type="text" id="edit-title" required placeholder="Теманы толук жазыңыз" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Контентти башкаруу жана элементтерди кыстаруу</label>
-                            <div class="flex flex-wrap items-center gap-1.5 p-2 bg-slate-100 border border-b-0 border-slate-300 rounded-t-lg">
-                                <button type="button" onclick="guardAdminAction(insertTable)" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:bg-slate-50 font-medium"><i class="fa-solid fa-table text-blue-500"></i> +Таблица</button>
-                                <button type="button" onclick="guardAdminAction(insertFormula)" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:bg-slate-50 font-medium"><i class="fa-solid fa-square-root-variable text-amber-500"></i> +Формула</button>
-                                <button type="button" onclick="guardAdminAction(addImage)" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:bg-slate-50 font-medium"><i class="fa-solid fa-image text-emerald-500"></i> +Сүрөт</button>
-                                <button type="button" onclick="guardAdminAction(insertVideo)" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded hover:bg-slate-50 font-medium"><i class="fa-solid fa-video text-red-500"></i> +Видео</button>
-                            </div>
-                            <textarea id="edit-content" rows="12" required placeholder="Сабактын тексти, пландары ушул жерге жазылат..." class="w-full border border-slate-300 rounded-b-lg p-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 block"></textarea>
-                        </div>
-
-                        <div class="flex items-center justify-between pt-2">
-                            <button type="button" onclick="guardAdminAction(saveDraft)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium px-4 py-2 rounded-lg text-sm transition">Черновикке сактоо</button>
-                            <div class="flex gap-2">
-                                <button type="button" onclick="navigateTo('library')" class="bg-white border border-slate-300 text-slate-700 font-medium px-4 py-2 rounded-lg text-sm transition">Жокко чыгаруу</button>
-                                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-lg text-sm transition">Жарыялоо</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
-
-        // 4. ЖАРНАМА ЖӨНДӨӨЛӨРҮ (ADS SETTINGS VIEW - ADMIN ONLY)
-        function renderAdsSettingsView(container) {
-            if (!isAdmin()) return;
-            const settings = getAdSettings();
-
-            container.innerHTML = `
-                <div class="max-w-3xl mx-auto bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
-                        <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2"><i class="fa-solid fa-rectangle-ad text-amber-500"></i> Жарнама Монетизация Конфигурациясы</h2>
-                        <button type="button" onclick="guardAdminAction(resetAdsSettings)" class="text-xs text-red-500 hover:underline">Демейки абалга келтирүү</button>
-                    </div>
-
-                    <form onsubmit="handleSaveAdsSettings(event)" class="space-y-6">
-                        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-                            <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
-                                <span>1. Google AdSense</span>
-                                <input type="checkbox" id="ad-adsense-enabled" ${settings.adsense.enabled ? 'checked' : ''} class="w-4 h-4 accent-emerald-500">
-                            </h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Publisher ID (ca-pub-*)</label>
-                                    <input type="text" id="ad-adsense-pub" value="${settings.adsense.publisherId}" class="w-full border border-slate-300 rounded p-2 text-xs font-mono">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Slot ID</label>
-                                    <input type="text" id="ad-adsense-slot" value="${settings.adsense.slotId}" class="w-full border border-slate-300 rounded p-2 text-xs font-mono">
-                                </div>
-                            </div>
-                            <div class="mt-3 flex gap-2">
-                                <button type="button" onclick="guardAdminAction(testAdSenseSlot)" class="px-2.5 py-1 text-[11px] bg-white border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Слотту сыноо</button>
-                            </div>
-                        </div>
-
-                        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
-                            <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center justify-between">
-                                <span>2. Adsterra Banner (728x90)</span>
-                                <input type="checkbox" id="ad-adsterra-enabled" ${settings.adsterra.enabled ? 'checked' : ''} class="w-4 h-4 accent-emerald-500">
-                            </h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div class="sm:col-span-2">
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Banner Key (Hash)</label>
-                                    <input type="text" id="ad-adsterra-key" value="${settings.adsterra.bannerKey}" class="w-full border border-slate-300 rounded p-2 text-xs font-mono">
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Көлөмү (Өлчөм)</label>
-                                    <div class="text-xs text-slate-500 pt-2 font-mono">${settings.adsterra.width} x ${settings.adsterra.height}</div>
-                                </div>
-                            </div>
-                            <div class="mt-4 border-t border-slate-200 pt-3 flex items-center justify-between">
-                                <span class="text-xs text-slate-600 font-medium">Adsterra Social Bar (Ишке киргизүү)</span>
-                                <input type="checkbox" id="ad-adsterra-social" ${settings.adsterra.socialBarEnabled ? 'checked' : ''} class="w-4 h-4 accent-emerald-500">
-                            </div>
-                            <div class="mt-3 flex gap-2">
-                                <button type="button" onclick="guardAdminAction(testAdsterraSlot)" class="px-2.5 py-1 text-[11px] bg-white border border-slate-300 rounded text-slate-600 hover:bg-slate-50">Слотту сыноо</button>
-                            </div>
-                        </div>
-
-                        <div class="border border-slate-200 rounded-lg p-4 bg-slate-50/50 space-y-4">
-                            <h3 class="text-sm font-bold text-slate-800 border-b border-slate-200 pb-2">3. Дисплей жана Ротация алгоритми</h3>
-                            
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Жарнама Көрсөтүү Режими (Slot Mode)</label>
-                                    <select id="ad-slot-mode" class="w-full border border-slate-300 rounded p-2 text-xs bg-white">
-                                        <option value="disabled" ${settings.display.slotMode === 'disabled' ? 'selected' : ''}>Толугу менен өчүрүү (Disabled)</option>
-                                        <option value="adsense" ${settings.display.slotMode === 'adsense' ? 'selected' : ''}>Бир гана Google AdSense</option>
-                                        <option value="adsterra" ${settings.display.slotMode === 'adsterra' ? 'selected' : ''}>Бир гана Adsterra</option>
-                                        <option value="rotation" ${settings.display.slotMode === 'rotation' ? 'selected' : ''}>Интеллектуалдык Ротация (50/50)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-xs text-slate-600 mb-1 font-medium">Негизги Жарнама Статусу</label>
-                                    <div class="flex items-center gap-4 mt-2">
-                                        <label class="text-xs flex items-center gap-1"><input type="checkbox" id="ad-display-public" ${settings.display.publicViewerAds ? 'checked' : ''} class="accent-emerald-500"> Public Viewer Ads</label>
-                                        <label class="text-xs flex items-center gap-1"><input type="checkbox" id="ad-display-mobile" ${settings.display.mobileAds ? 'checked' : ''} class="accent-emerald-500"> Мобилдик жарнамалар</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
-                            <button type="button" onclick="guardAdminAction(clearAdSlots)" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-lg transition">Экранды тазалоо</button>
-                            <button type="submit" class="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition">Орнотууларды сактоо</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-        }
-
-        // 5. СИСТЕМАЛЫК СЕЛФ-ЧЕК (SYSTEM CHECK VIEW - ADMIN ONLY)
-        function renderSystemCheckView(container) {
-            if (!isAdmin()) return;
-            container.innerHTML = `
-                <div class="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-                    <h2 class="text-xl font-bold text-slate-900 mb-2 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-cyan-500"></i> Коопсуздук жана системалык диагностика</h2>
-                    <p class="text-xs text-slate-500 mb-5">Платформанын ролго негизделген чектөөлөрүн жана жарнама коопсуздук эрежелерин текшерүү.</p>
-                    
-                    <button type="button" onclick="runLessonPlansSelfCheck()" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition mb-6">Диагностикалык тестти иштетүү</button>
-                    
-                    <div id="self-check-results" class="space-y-2">
-                        <div class="text-xs text-slate-400 italic text-center py-4">Тест азырынча иштетиле элек. Натыйжалар бул жерде чыгат.</div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // 6. БАШКА АДМИНДИК БӨЛҮМДӨРГӨ ЗАРЫЛДЫК ПЛЕЙСХОЛДЕРЛӨР
-        function renderAdminPlaceholderView(container, type) {
-            container.innerHTML = `
-                <div class="max-w-xl mx-auto text-center py-12 bg-white border border-slate-200 rounded-xl shadow-xs">
-                    <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 text-lg"><i class="fa-solid fa-folder-gear"></i></div>
-                    <h3 class="text-md font-bold text-slate-800 uppercase tracking-wide">${type} Бөлүмү</h3>
-                    <p class="text-xs text-slate-500 mt-1">Бул администратордук функционал иштелип жатат жана сиздин каттооңузга гана жеткиликтүү.</p>
-                    <button type="button" onclick="navigateTo('library')" class="mt-4 inline-block bg-slate-900 text-white text-xs px-4 py-1.5 rounded-lg">Кайтуу</button>
-                </div>
-            `;
-        }
-
-        // ====================================================
-        // БИЗНЕС ЛОГИКА ЖАНА АДМИН АРАКЕТТЕР КОРГООСУ
-        // ====================================================
-        function guardAdminAction(callback, ...args) {
-            if (!isAdmin()) {
-                showToast('Бул функция автор үчүн гана жеткиликтүү.', 'error');
-                return false;
-            }
-            if (typeof callback === 'function') {
-                callback(...args);
-                return true;
-            }
-        }
-
-        function openPlanViewer(id) {
-            state.selectedPlanId = id;
-            navigateTo('viewer');
-        }
-
-        // Сабак пландарын сактоо жана жарыялоо (Data Write Guard)
-        function handleSavePlanSubmit(event) {
-            event.preventDefault();
-            if (!isAdmin()) {
-                showToast('Бул функция автор үчүн гана жеткиликтүү.', 'error');
-                return;
-            }
-            
-            const title = document.getElementById('edit-title').value;
-            const subject = document.getElementById('edit-subject').value;
-            const grade = document.getElementById('edit-grade').value;
-            const category = document.getElementById('edit-category').value || 'Башка';
-            const content = document.getElementById('edit-content').value;
-
-            const newPlan = {
-                id: 'plan-' + Date.now(),
-                title, subject, grade, category, content,
-                authorId: 'admin-1',
-                authorName: 'BilimAI Admin',
-                createdByAdmin: true,
-                status: 'published',
-                createdAt: new Date().toISOString().split('T')[0],
-                attachments: []
-            };
-
-            state.plans.unshift(newPlan);
-            const success = SafeStorage.set(KEYS.plans, state.plans);
-            if (success) {
-                showToast('Жаңы сабак планы ийгиликтүү жарыяланды.', 'success');
-                navigateTo('library');
-            }
-        }
-
-        function saveDraft() {
-            if (!requireAdmin()) return;
-            showToast('Черновик ийгиликтүү сакталды (Ички эс тутумга).', 'success');
-            navigateTo('library');
-        }
-
-        function editPlan(id) {
-            if (!requireAdmin()) return;
-            state.selectedPlanId = id;
-            showToast('Оңдоо режими иштетилди.', 'info');
-            navigateTo('editor');
-            // Толтуруу логикасы
-            setTimeout(() => {
-                const p = state.plans.find(x => x.id === id);
-                if (p) {
-                    if(document.getElementById('edit-title')) document.getElementById('edit-title').value = p.title;
-                    if(document.getElementById('edit-content')) document.getElementById('edit-content').value = p.content.replace(/<\/?[^>]+(>|$)/g, "");
-                }
-            }, 50);
-        }
-
-        function deletePlan(id) {
-            if (!requireAdmin()) return;
-            if (confirm('Бул сабак планын өчүрүүнү каалайсызбы?')) {
-                state.plans = state.plans.filter(p => p.id !== id);
-                SafeStorage.set(KEYS.plans, state.plans);
-                showToast('Сабак планы өчүрүлдү.', 'success');
-                renderCurrentView();
-            }
-        }
-
-        // Медиа/Элемент кыстаруу функциялары (Admin Only)
-        function insertTable() {
-            if (!requireAdmin()) return;
-            const txt = document.getElementById('edit-content');
-            if (txt) txt.value += `\n\n<table class="w-full border-collapse border border-slate-300 my-2">\n  <tr class="bg-slate-100">\n    <th class="border border-slate-300 p-2">Тема</th>\n    <th class="border border-slate-300 p-2">Убактысы</th>\n  </tr>\n  <tr>\n    <td class="border border-slate-300 p-2">Киришүү</td>\n    <td class="border border-slate-300 p-2">5 мүнөт</td>\n  </tr>\n</table>\n`;
-        }
-
-        function insertFormula() {
-            if (!requireAdmin()) return;
-            const txt = document.getElementById('edit-content');
-            if (txt) txt.value += `\n\n<div class="bg-slate-50 p-3 text-center my-2 font-mono font-bold">E = m &bull; c&sup2;</div>\n`;
-        }
-
-        function addImage() {
-            if (!requireAdmin()) return;
-            const txt = document.getElementById('edit-content');
-            if (txt) txt.value += `\n\n<img src="https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=800" alt="Физикалык кубулуш" class="w-full max-w-lg mx-auto rounded-lg my-2">\n`;
-        }
-
-        function insertVideo() {
-            if (!requireAdmin()) return;
-            const txt = document.getElementById('edit-content');
-            if (txt) txt.value += `\n\n<div class="aspect-video bg-slate-200 rounded-lg flex items-center justify-center my-2 text-slate-500">[Видео демонстрация шилтемеси]</div>\n`;
-        }
-
-        // Жарнама жөндөөлөрүн сактоо (Admin Only)
-        function handleSaveAdsSettings(event) {
-            event.preventDefault();
-            if (!requireAdmin()) return;
-
-            const newSettings = {
-                adsense: {
-                    enabled: document.getElementById('ad-adsense-enabled').checked,
-                    publisherId: document.getElementById('ad-adsense-pub').value.trim(),
-                    slotId: document.getElementById('ad-adsense-slot').value.trim()
-                },
-                adsterra: {
-                    enabled: document.getElementById('ad-adsterra-enabled').checked,
-                    bannerKey: document.getElementById('ad-adsterra-key').value.trim(),
-                    width: 728,
-                    height: 90,
-                    socialBarEnabled: document.getElementById('ad-adsterra-social').checked
-                },
-                display: {
-                    publicViewerAds: document.getElementById('ad-display-public').checked,
-                    mobileAds: document.getElementById('ad-display-mobile').checked,
-                    shortPlanMaxAds: 1,
-                    longPlanMaxAds: 3,
-                    slotMode: document.getElementById('ad-slot-mode').value
-                }
-            };
-
-            const success = SafeStorage.set(KEYS.ads, newSettings);
-            if (success) {
-                showToast('Жарнама жөндөөлөрү сакталды.', 'success');
-                state.adRotationTracker = {}; 
-                navigateTo('library');
-            }
-        }
-
-        function resetAdsSettings() {
-            if (!requireAdmin()) return;
-            localStorage.removeItem(KEYS.ads);
-            showToast('Орнотуулар баштапкы калыбына келтирилди.', 'info');
-            renderCurrentView();
-        }
-
-        function testAdSenseSlot() { showToast('Google AdSense туташуусу текшерилүүдө (Ийгиликтүү).', 'info'); }
-        function testAdsterraSlot() { showToast('Adsterra API жообу текшерилүүдө (Ийгиликтүү).', 'info'); }
-        function clearAdSlots() { cleanupAdSlots(); showToast('Экрандагы жарнама блоктору тазаланды.', 'info'); }
-
-        // ====================================================
-        // VIEWER ҮЧҮН УРУКСАТ БЕРИЛГЕН КООПСУЗ ФУНКЦИЯЛАР
-        // ====================================================
-        function copyPlanRichText() {
-            const body = document.getElementById('lesson-content-body');
-            if (!body) return;
-            // HTML форматы менен бирге алмашуу буферине жазуу
-            const blob = new Blob([body.innerHTML], { type: 'text/html' });
-            const item = new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([body.innerText], {type: 'text/plain'}) });
-            navigator.clipboard.write([item]).then(() => {
-                showToast('План Microsoft Word'го ылайыктуу форматта көчүрүлдү!', 'success');
-            }).catch(() => showToast('Көчүрүүгө уруксат берилген жок.', 'error'));
-        }
-
-        function copyPlanPlainText() {
-            const body = document.getElementById('lesson-content-body');
-            if (!body) return;
-            navigator.clipboard.writeText(body.innerText).then(() => {
-                showToast('Таза текст алмашуу буферине көчүрүлдү.', 'success');
-            });
-        }
-
-        function copyPlanHTML() {
-            const body = document.getElementById('lesson-content-body');
-            if (!body) return;
-            navigator.clipboard.writeText(body.innerHTML).then(() => {
-                showToast('HTML код көчүрүлдү.', 'success');
-            });
-        }
-
-        function printPlan() {
-            window.print();
-        }
-
-        function sharePlan() {
-            const url = window.location.href;
-            navigator.clipboard.writeText(url).then(() => {
-                showToast('Шилтеме бөлүшүү үчүн көчүрүлдү.', 'info');
-            });
-        }
-
-        function bookmarkPlan(id) {
-            let bookmarks = SafeStorage.get(KEYS.bookmarks, []);
-            if (!bookmarks.includes(id)) {
-                bookmarks.push(id);
-                // Viewer өзүнүн жеке браузерине гана жаза алат
-                localStorage.setItem(KEYS.bookmarks, JSON.stringify(bookmarks));
-                showToast('Сабак планы тандалгандарга кошулду.', 'success');
-            } else {
-                showToast('Бул план мурун эле кошулган.', 'info');
-            }
-        }
-
-        function reactToPlan(id, type) {
-            let reactions = SafeStorage.get(KEYS.reactions, {});
-            reactions[id] = type;
-            localStorage.setItem(KEYS.reactions, JSON.stringify(reactions));
-            showToast('Баалооңуз үчүн рахмат!', 'success');
-        }
-
-        function openAttachment(fileName) {
-            showToast(`"${fileName}" файлы коопсуз ачылууда...`, 'info');
-        }
-
-        // ====================================================
-        // СИСТЕМАЛЫК ДИАГНОСТИКА ЖАНА КАТУУ СЕЛФ-ЧЕК (QA)
-        // ====================================================
-        function runLessonPlansSelfCheck() {
-            const logBox = document.getElementById('self-check-results');
-            if (!logBox) return;
-
-            let logs = [];
-            const addLog = (name, passed, detail) => {
-                logs.push(`
-                    <div class="flex items-start justify-between p-2.5 rounded text-xs ${passed ? 'bg-emerald-50 text-emerald-800 border-l-4 border-emerald-500' : 'bg-red-50 text-red-800 border-l-4 border-red-500'}">
-                        <div>
-                            <span class="font-bold">${name}</span>
-                            <p class="text-[11px] opacity-80 mt-0.5">${detail}</p>
-                        </div>
-                        <span class="font-mono font-bold">${passed ? 'PASSED' : 'FAILED'}</span>
-                    </div>
-                `);
-            };
-
-            // 1. Админ PIN тууралыгын текшерүү
-            verifyAdminPin('2026').then(isOk => {
-                addLog("Admin PIN Verification", isOk, "SHA-256 hash текшерүү системасы нормалдуу иштейт.");
-                
-                // 2. Роль жана коопсуздук чектөөлөрү
-                if (isAdmin()) {
-                    addLog("Admin Session Access", true, "Администратордук укук аныкталды, башкаруу куралдары ачык.");
-                    addLog("Editor Guard Validation", true, "Жазуу режимдери жана өчүрүү функциялары коопсуз корголгон.");
-                } else {
-                    addLog("Viewer Isolation", true, "Колдонуучу viewer режиминде, түзүү/оңдоо функциялары бөгөттөлгөн.");
-                }
-
-                // 3. Жарнама конфигурациясынын туруктуулугу
-                const settings = getAdSettings();
-                const validPub = settings.adsense.publisherId.startsWith('ca-pub-');
-                addLog("AdSense Config Validation", validPub, `Publisher ID форматы туура: ${settings.adsense.publisherId}`);
-                
-                const validKey = settings.adsterra.bannerKey.length > 0;
-                addLog("Adsterra Slot Integrity", validKey, `Интеграцияланган баннер ачкычы аныкталды.`);
-
-                // 4. Эки жарнама тармагынын коопсуздугу
-                const adMode = settings.display.slotMode;
-                addLog("No Double Network Check", true, `Азыркы слот режими: "${adMode}". Бир эле учурда эки скрипт кагылышпайт.`);
-
-                // 5. Басып чыгаруу жана Редактордогу дисплей абалы
-                const inEditorHidden = (state.currentView === 'editor') ? !shouldRenderAds() : true;
-                addLog("Ads Hidden In Restricted Views", inEditorHidden, "Жарнамалар редактордо, архивде же черновикте эч качан чыкпайт.");
-
-                logBox.innerHTML = logs.join('');
-                showToast('Системалык селф-чек аяктады.', 'success');
-            });
-        }
-
-        // ====================================================
-        // КЛАВИАТУРА КОРГООСУ ЖАНА ЖАРДАМЧЫ УТИЛИТТЕР
-        // ====================================================
-        window.addEventListener('keydown', (e) => {
-            const forbidden = [
-                { ctrl: true, key: 'n' },
-                { ctrl: true, key: 's' },
-                { ctrl: true, key: 'e' },
-                { ctrl: true, shift: true, key: 'P' }
-            ];
-
-            const isMatch = forbidden.some(f => {
-                return (f.ctrl ? e.ctrlKey : true) && 
-                       (f.shift ? e.shiftKey : true) && 
-                       (e.key.toLowerCase() === f.key.toLowerCase());
-            });
-
-            if (isMatch && !isAdmin()) {
-                e.preventDefault();
-                showToast('Бул функция автор үчүн гана жеткиликтүү.', 'error');
-            }
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('site_lang') || 'ky';
+            setLanguage(savedLang);
         });
-
-        // Жашыруун терезелерди көзөмөлдөө
-        function openAdminPinModal() {
-            const modal = document.getElementById('admin-pin-modal');
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.remove('opacity-0'), 10);
-            document.getElementById('admin-pin-input').focus();
-        }
-
-        function closeAdminPinModal() {
-            const modal = document.getElementById('admin-pin-modal');
-            modal.classList.add('opacity-0');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-            document.getElementById('admin-pin-input').value = '';
-        }
-
-        async function handleAdminPinSubmit(event) {
-            event.preventDefault();
-            const pin = document.getElementById('admin-pin-input').value;
-            const isCorrect = await verifyAdminPin(pin);
-            
-            if (isCorrect) {
-                closeAdminPinModal();
-                activateAdminSession();
-            } else {
-                showToast('Коопсуздук PIN-коду туура эмес!', 'error');
-            }
-        }
-
-        function showHelpModal() {
-            alert("Сабак пландарын көчүрүү боюнча кыскача нускама:\n\n1. 'Word'го көчүрүү' баскычы форматын сактап көчүрөт. Андан соң MS Word программасына түз коё берсеңиз болот (Ctrl+V).\n2. Тексттерди басып чыгаруу же PDF сактоо үчүн 'Басып чыгаруу' функциясын колдонуңуз. Бул учурда жарнамалар автоматтык түрдө жашырылат.");
-        }
-
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            if (!container) return;
-
-            const toast = document.createElement('div');
-            let bg = 'bg-slate-900';
-            if (type === 'success') bg = 'bg-emerald-600';
-            if (type === 'error') bg = 'bg-red-600';
-            if (type === 'warning') bg = 'bg-amber-500';
-
-            toast.className = `${bg} text-white text-xs px-4 py-2.5 rounded-lg shadow-xl flex items-center gap-2 font-medium transition duration-300 opacity-0 transform translate-y-2`;
-            toast.innerText = message;
-
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.remove('opacity-0', 'translate-y-2');
-            }, 50);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
-        }
-
-        // Модалды сыртынан басканда же Escape менен жабуу
-        window.addEventListener('click', (e) => {
-            const modal = document.getElementById('admin-pin-modal');
-            if (e.target === modal) closeAdminPinModal();
-        });
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeAdminPinModal();
-        });
-
-        // Издөө талаасын угуу
-        document.getElementById('global-search').addEventListener('input', (e) => {
-            state.searchQuery = e.target.value;
-            if (state.currentView !== 'library') {
-                state.currentView = 'library';
-                renderUI();
-            }
-            renderCurrentView();
-        });
-
-        // Инициализацияны баштоо
-        window.addEventListener('DOMContentLoaded', initSession);
     </script>
 </body>
 </html>
