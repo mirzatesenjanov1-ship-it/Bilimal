@@ -80,18 +80,27 @@
     let publicLabs = [];
 
     async function loadPublicLabs() {
+      const container = document.getElementById('public-labs-container');
       try {
-        const snap = await db.ref('lab_works').once('value');
+        // Firebase Security Rules эрежесинде уруксат берилген 'library' түйүнүн колдонобуз
+        const snap = await db.ref('library').once('value');
         const data = snap.val() || {};
 
-        // FILTER ONLY isPublic === true
+        // Лабораториялык иш катары белгиленген же ачык материалдарды фильтрлөө
         publicLabs = Object.keys(data)
           .map(id => ({ id, ...data[id] }))
-          .filter(lab => lab.isPublic === true);
+          .filter(item => item.isPublic === true || item.type === 'lab_work' || item.category === 'lab_works');
 
         renderPublicLabs(publicLabs);
       } catch (err) {
         console.error("Error loading public labs:", err);
+        container.innerHTML = `
+          <div class="text-center py-10 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6">
+            <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
+            <p class="font-bold">Маалыматтарды жүктөөдө ката чыкты.</p>
+            <p class="text-xs text-slate-400 mt-1">Сервер менен байланышты текшериңиз.</p>
+          </div>
+        `;
       }
     }
 
@@ -125,7 +134,7 @@
                   <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase">АКТИВДҮҮ</span>
                   <span class="text-xs text-slate-400">${lab.subject || 'Физика'}</span>
                 </div>
-                <h3 class="text-xl font-bold text-cyan-400 mb-2">${lab.title}</h3>
+                <h3 class="text-xl font-bold text-cyan-400 mb-2">${lab.title || 'Аталышы жок'}</h3>
                 <p class="text-sm text-slate-300 leading-relaxed">${lab.description || ''}</p>
               </div>
               <div class="mt-6 flex flex-wrap gap-3">
@@ -136,7 +145,7 @@
                 ` : ''}
                 ${lab.pdfUrl ? `
                   <a href="${lab.pdfUrl}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2 border border-slate-700">
-                    <i class="fa-solid fa-file-pdf"></i> Нүскама
+                    <i class="fa-solid fa-file-pdf"></i> Нускама
                   </a>
                 ` : ''}
               </div>
@@ -156,7 +165,10 @@
 
     document.getElementById('public-lab-search').addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase();
-      const filtered = publicLabs.filter(l => l.title.toLowerCase().includes(q) || (l.grade && l.grade.toLowerCase().includes(q)));
+      const filtered = publicLabs.filter(l => 
+        (l.title && l.title.toLowerCase().includes(q)) || 
+        (l.grade && l.grade.toLowerCase().includes(q))
+      );
       renderPublicLabs(filtered);
     });
 
