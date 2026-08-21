@@ -8,21 +8,337 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #0b0e14; color: #ffffff; padding: 20px; min-height: 100vh; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 1px solid #1e2640; padding-bottom: 15px; }
-        .back-btn { background: #1e2640; color: #00d2ff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; border: 1px solid #00d2ff; }
-        .back-btn:hover { background: #00d2ff; color: #0b0e14; }
+        
+        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-bottom: 1px solid #1e2640; padding-bottom: 15px; flex-wrap: wrap; gap: 15px; }
         .title { color: #f39c12; font-size: 24px; display: flex; align-items: center; gap: 10px; }
-        .content-box { background: #111622; border: 1px solid #1e2640; border-radius: 12px; padding: 25px; }
+        .back-btn { background: #1e2640; color: #00d2ff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; border: 1px solid #00d2ff; transition: 0.3s; }
+        .back-btn:hover { background: #00d2ff; color: #0b0e14; }
+
+        .banner { background: #111622; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; margin-bottom: 25px; }
+        .banner h2 { color: #00d2ff; font-size: 20px; margin-bottom: 8px; }
+        .banner p { color: #aaa; font-size: 14px; }
+
+        .form-card { background: #111622; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .form-title { color: #f39c12; font-size: 18px; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; color: #ccc; margin-bottom: 5px; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid #1e2640; background: #0b0e14; color: #fff; font-size: 14px; outline: none; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: #00d2ff; }
+        .input-group textarea { resize: vertical; min-height: 80px; }
+
+        .btn-submit { background: #f39c12; color: #0b0e14; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn-submit:hover { background: #e67e22; }
+        .btn-cancel { background: #7f8c8d; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; display: none; margin-left: 10px; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .plan-card { background: #111622; border: 1px solid #1e2640; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
+        .plan-card img { width: 100%; height: 160px; object-fit: cover; background: #1e2640; }
+        .plan-body { padding: 15px; flex-grow: 1; }
+        .plan-title { font-size: 16px; color: #00d2ff; margin-bottom: 8px; }
+        .plan-desc { font-size: 13px; color: #aaa; margin-bottom: 12px; line-height: 1.4; }
+        .badge-status { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; }
+        .status-public { background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
+        .status-private { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
+
+        .plan-actions { padding: 12px 15px; background: #0b0e14; border-top: 1px solid #1e2640; display: flex; gap: 8px; justify-content: space-between; }
+        .btn-action { padding: 6px 12px; border-radius: 4px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-edit { background: #3498db; color: white; }
+        .btn-toggle { background: #9b59b6; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .btn-pdf { background: #1abc9c; color: white; }
+
+        #loader { text-align: center; padding: 40px; color: #00d2ff; font-size: 18px; }
     </style>
 </head>
 <body>
+
     <div class="header">
         <h1 class="title"><i class="fas fa-scroll"></i> Сабактын пландары (VIP)</h1>
         <a href="../dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу</a>
     </div>
-    <div class="content-box">
-        <h2>Премиум сабак пландарынын базасы</h2>
-        <p style="margin-top: 10px; color: #aaa;">Бул жерден сиз VIP статус аркылуу стандарттык жана интерактивдүү сабак пландарын алуу мүмкүндүгүнө ээ болосуз.</p>
+
+    <div class="banner">
+        <h2>Премиум сабак пландарынын админ панели</h2>
+        <p>Бул жерден сиз өзүңүздүн сабак пландарыңызды, сүрөттөрдү жана PDF документтерди кошуп, алардын көрүнүү статусун (Ачык / Жабык) башкара аласыз.</p>
     </div>
+
+    <!-- ФОРМА: ЖАҢЫ КОШУУ / ӨЗГӨРТҮҮ -->
+    <div class="form-card">
+        <h3 class="form-title" id="form-header-title"><i class="fas fa-plus-circle"></i> Жаңы сабак планын кошуу</h3>
+        <input type="hidden" id="edit-plan-id">
+        
+        <div class="input-group">
+            <label>Сабактын темасы / Аталышы *</label>
+            <input type="text" id="plan-title" placeholder="Мисалы: Физика 9-класс - Ньютондун экинчи мыйзамы" required>
+        </div>
+
+        <div class="input-group">
+            <label>Кыскача сүрөттөмө же пландын мазмуну</label>
+            <textarea id="plan-desc" placeholder="Сабактын максаты, колдонулуучу усулдар..."></textarea>
+        </div>
+
+        <div class="input-group">
+            <label>Сүрөт шилтемеси (URL) же мукабасы</label>
+            <input type="url" id="plan-image" placeholder="https://example.com/image.jpg">
+        </div>
+
+        <div class="input-group">
+            <label>PDF документ шилтемеси (Google Drive, Firebase же каалаган URL)</label>
+            <input type="url" id="plan-pdf" placeholder="https://example.com/document.pdf">
+        </div>
+
+        <div class="input-group">
+            <label>Көрүнүү статусу</label>
+            <select id="plan-status">
+                <option value="private">Жабык (Жеке - Өзүм гана көрөм)</option>
+                <option value="public">Ачык (Жарыялоо - Баарына көрүнөт)</option>
+            </select>
+        </div>
+
+        <button class="btn-submit" id="btn-save-plan"><i class="fas fa-save"></i> Сактоо</button>
+        <button class="btn-cancel" id="btn-cancel-edit"><i class="fas fa-times"></i> Баш тартуу</button>
+    </div>
+
+    <!-- МЕНИН САБАК ПЛАНДАРЫМДЫН ТИЗМЕСИ -->
+    <h3 style="margin-bottom: 15px; color: #00d2ff;"><i class="fas fa-list"></i> Менин сабак пландарым</h3>
+    <div id="loader"><i class="fas fa-spinner fa-spin"></i> Маалыматтар жүктөлүүдө...</div>
+    <div class="cards-grid" id="plans-container" style="display: none;"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getDatabase, ref, push, set, update, remove, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        let currentUser = null;
+        let myPlansCache = {};
+
+        const loader = document.getElementById('loader');
+        const plansContainer = document.getElementById('plans-container');
+
+        // Элементтер
+        const editPlanIdInput = document.getElementById('edit-plan-id');
+        const planTitleInput = document.getElementById('plan-title');
+        const planDescInput = document.getElementById('plan-desc');
+        const planImageInput = document.getElementById('plan-image');
+        const planPdfInput = document.getElementById('plan-pdf');
+        const planStatusSelect = document.getElementById('plan-status');
+
+        const btnSave = document.getElementById('btn-save-plan');
+        const btnCancel = document.getElementById('btn-cancel-edit');
+        const formHeaderTitle = document.getElementById('form-header-title');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                loadMyPlans();
+            } else {
+                alert("Кирүү уруксаты жок! Башкаруу панелине кайтыңыз.");
+                window.location.href = "../dashboard.html";
+            }
+        });
+
+        // Базадан пландарды угуу
+        function loadMyPlans() {
+            const plansRef = ref(db, 'lesson_plans');
+            onValue(plansRef, (snapshot) => {
+                loader.style.display = 'none';
+                plansContainer.style.display = 'grid';
+                plansContainer.innerHTML = '';
+                myPlansCache = {};
+
+                const data = snapshot.val();
+                if (!data) {
+                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча сабак пландары түзүлө элек.</p>';
+                    return;
+                }
+
+                let count = 0;
+                Object.keys(data).forEach(id => {
+                    const plan = data[id];
+                    // Мугалим өзүнүн гана пландарын көрөт жана башкарат
+                    if (plan.teacherUid === currentUser.uid) {
+                        myPlansCache[id] = plan;
+                        count++;
+                        renderPlanCard(id, plan);
+                    }
+                });
+
+                if (count === 0) {
+                    plansContainer.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Сиз кошууга аракет кылган пландар табылган жок.</p>';
+                }
+            });
+        }
+
+        function renderPlanCard(id, plan) {
+            const card = document.createElement('div');
+            card.className = 'plan-card';
+
+            const defaultImg = 'https://via.placeholder.com/400x200/1e2640/00d2ff?text=BilimAl+Lesson+Plan';
+            const imageUrl = plan.imageUrl && plan.imageUrl.trim() !== '' ? plan.imageUrl : defaultImg;
+            const isPublic = plan.status === 'public';
+
+            card.innerHTML = `
+                <div>
+                    <img src="${escapeHtml(imageUrl)}" alt="Plan Cover" onerror="this.src='${defaultImg}'">
+                    <div class="plan-body">
+                        <span class="badge-status ${isPublic ? 'status-public' : 'status-private'}">
+                            <i class="fas ${isPublic ? 'fa-globe' : 'fa-lock'}"></i> ${isPublic ? 'Ачык (Public)' : 'Жабык (Private)'}
+                        </span>
+                        <h4 class="plan-title">${escapeHtml(plan.title || 'Аталышсыз')}</h4>
+                        <p class="plan-desc">${escapeHtml(plan.description || 'Сүрөттөмө жок')}</p>
+                    </div>
+                </div>
+                <div class="plan-actions">
+                    <button class="btn-action btn-edit" data-id="${id}"><i class="fas fa-edit"></i> Оңдоо</button>
+                    <button class="btn-action btn-toggle" data-id="${id}" data-status="${plan.status}">
+                        <i class="fas ${isPublic ? 'fa-eye-slash' : 'fa-eye'}"></i> ${isPublic ? 'Жабуу' : 'Жарыялоо'}
+                    </button>
+                    ${plan.pdfUrl ? `<a href="${escapeHtml(plan.pdfUrl)}" target="_blank" class="btn-action btn-pdf"><i class="fas fa-file-pdf"></i> PDF</a>` : ''}
+                    <button class="btn-action btn-delete" data-id="${id}"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+
+            // Түмкү окуялар
+            card.querySelector('.btn-edit').addEventListener('click', () => editPlan(id));
+            card.querySelector('.btn-toggle').addEventListener('click', () => toggleStatus(id, plan.status));
+            card.querySelector('.btn-delete').addEventListener('click', () => deletePlan(id));
+
+            plansContainer.appendChild(card);
+        }
+
+        // Сактоо (Жаңы же Түзөтүү)
+        btnSave.addEventListener('click', async () => {
+            const title = planTitleInput.value.trim();
+            const description = planDescInput.value.trim();
+            const imageUrl = planImageInput.value.trim();
+            const pdfUrl = planPdfInput.value.trim();
+            const status = planStatusSelect.value;
+            const editId = editPlanIdInput.value;
+
+            if (!title) {
+                alert("Сураныч, сабактын темасын киргизиңиз!");
+                return;
+            }
+
+            btnSave.disabled = true;
+
+            try {
+                if (editId) {
+                    // Жаңылоо
+                    const planRef = ref(db, `lesson_plans/${editId}`);
+                    await update(planRef, {
+                        title,
+                        description,
+                        imageUrl,
+                        pdfUrl,
+                        status,
+                        updatedAt: Date.now()
+                    });
+                    alert("Сабак планы ийгиликтүү өзгөртүлдү!");
+                } else {
+                    // Жаңы кошуу
+                    const plansRef = ref(db, 'lesson_plans');
+                    const newPlanRef = push(plansRef);
+                    await set(newPlanRef, {
+                        title,
+                        description,
+                        imageUrl,
+                        pdfUrl,
+                        status,
+                        teacherUid: currentUser.uid,
+                        teacherEmail: currentUser.email,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    });
+                    alert("Жаңы сабак планы кошулду!");
+                }
+                resetForm();
+            } catch (error) {
+                console.error("Сактоо катасы:", error);
+                alert("Ката кетти: " + error.message);
+            } finally {
+                btnSave.disabled = false;
+            }
+        });
+
+        // Редакциялоо режимин баштоо
+        function editPlan(id) {
+            const plan = myPlansCache[id];
+            if (!plan) return;
+
+            editPlanIdInput.value = id;
+            planTitleInput.value = plan.title || '';
+            planDescInput.value = plan.description || '';
+            planImageInput.value = plan.imageUrl || '';
+            planPdfInput.value = plan.pdfUrl || '';
+            planStatusSelect.value = plan.status || 'private';
+
+            formHeaderTitle.innerHTML = '<i class="fas fa-edit"></i> Сабак планын оңдоо';
+            btnSave.innerHTML = '<i class="fas fa-save"></i> Өзгөртүүлөрдү сактоо';
+            btnCancel.style.display = 'inline-block';
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Ачык/Жабык статусун тез которуу
+        async function toggleStatus(id, currentStatus) {
+            const newStatus = currentStatus === 'public' ? 'private' : 'public';
+            try {
+                await update(ref(db, `lesson_plans/${id}`), {
+                    status: newStatus,
+                    updatedAt: Date.now()
+                });
+            } catch (e) {
+                alert("Статусту өзгөртүүдө ката кетти: " + e.message);
+            }
+        }
+
+        // Өчүрүү
+        async function deletePlan(id) {
+            if (confirm("Чын эле бул сабак планын өчүргүңүз келеби?")) {
+                try {
+                    await remove(ref(db, `lesson_plans/${id}`));
+                } catch (e) {
+                    alert("Өчүрүүдө ката: " + e.message);
+                }
+            }
+        }
+
+        // Форманы тазалоо
+        btnCancel.addEventListener('click', resetForm);
+
+        function resetForm() {
+            editPlanIdInput.value = '';
+            planTitleInput.value = '';
+            planDescInput.value = '';
+            planImageInput.value = '';
+            planPdfInput.value = '';
+            planStatusSelect.value = 'private';
+
+            formHeaderTitle.innerHTML = '<i class="fas fa-plus-circle"></i> Жаңы сабак планын кошуу';
+            btnSave.innerHTML = '<i class="fas fa-save"></i> Сактоо';
+            btnCancel.style.display = 'none';
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
 </body>
 </html>
