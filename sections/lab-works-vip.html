@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Лабораториялык иштер (VIP) - Bilimal.org</title>
-    <!-- FontAwesome Font for Icons -->
+    <!-- FontAwesome иконкалары -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
     <style>
         /* Базалык стилдер */
         :root {
@@ -17,8 +22,8 @@
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --border-color: #334155;
-            --info-bg: #0369a1;
-            --info-border: #0284c7;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
         }
 
         body {
@@ -35,82 +40,132 @@
             padding: 20px;
         }
 
-        /* Колдонуучунун E-mail дарегин киргизүү/көрсөтүү блогу */
-        .user-auth-card {
+        /* Колдонуучунун авторизация / Почта текшерүү блогу */
+        .auth-check-box {
             background-color: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 25px;
+            padding: 20px;
+            margin-bottom: 30px;
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
             gap: 15px;
         }
 
-        .user-auth-info {
+        .auth-check-box h3 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--accent-color);
+        }
+
+        .email-input-group {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .input-email {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: #0f172a;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .input-email:focus {
+            border-color: var(--accent-color);
+        }
+
+        .btn-check {
+            padding: 10px 20px;
+            background-color: var(--accent-color);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-check:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* VIP БАРАКЧАМАР (Уруксаты барлар үчүн) */
+        .vip-content-section {
+            display: none; /* Алгач жашыруун */
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .vip-badge-active {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            padding: 12px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
             display: flex;
             align-items: center;
             gap: 12px;
         }
 
-        .user-auth-info i {
-            font-size: 24px;
-            color: var(--accent-color);
+        .labs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
         }
 
-        .user-email-input-group {
-            display: flex;
-            gap: 10px;
-            flex-grow: 1;
-            max-width: 400px;
-        }
-
-        .user-email-input-group input {
-            width: 100%;
-            padding: 10px 14px;
-            border-radius: 8px;
+        .lab-card {
+            background-color: var(--card-bg);
             border: 1px solid var(--border-color);
-            background-color: #0f172a;
-            color: var(--text-main);
-            font-size: 14px;
-            outline: none;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
         }
 
-        .user-email-input-group input:focus {
+        .lab-card:hover {
+            transform: translateY(-4px);
             border-color: var(--accent-color);
         }
 
-        /* 24 Сааттык эскертүүчү баннер */
-        .notice-banner {
-            background-color: rgba(3, 105, 161, 0.15);
-            border: 1px solid var(--info-border);
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            color: #e0f2fe;
-        }
-
-        .notice-banner i {
-            font-size: 24px;
+        .lab-card h4 {
+            margin-top: 0;
             color: #38bdf8;
-            flex-shrink: 0;
+            font-size: 18px;
         }
 
-        .notice-banner p {
-            margin: 0;
-            font-size: 15px;
+        .lab-card p {
+            color: var(--text-muted);
+            font-size: 14px;
             line-height: 1.5;
         }
 
-        /* Тарифтер контейнери */
+        .btn-open-lab {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background-color: var(--accent-color);
+            color: #000;
+            text-decoration: none;
+            font-weight: bold;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        /* ТАРИФТЕР СЕКЦИЯСЫ (Уруксаты жоктор үчүн) */
+        .pricing-section {
+            display: block;
+        }
+
         .pricing-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .pricing-header h2 {
@@ -204,7 +259,7 @@
 
         /* MODAL (Төлөм терезеси) STYLES */
         .modal-overlay {
-            display: none; /* Жашыруун */
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
@@ -265,9 +320,7 @@
             border-radius: 8px;
             padding: 12px;
             margin: 15px 0;
-            font-size: 14px;
-            text-align: left;
-            line-height: 1.6;
+            font-size: 15px;
         }
 
         .qr-box {
@@ -279,21 +332,22 @@
         }
 
         .qr-box img {
-            width: 200px;
-            height: 200px;
+            width: 190px;
+            height: 190px;
             display: block;
             object-fit: contain;
         }
 
-        .modal-notice {
-            background-color: rgba(245, 158, 11, 0.1);
-            border-left: 3px solid var(--accent-color);
+        .notice-24h {
+            background-color: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--accent-color);
+            color: #fcd34d;
             padding: 10px;
-            border-radius: 4px;
+            border-radius: 8px;
             font-size: 13px;
-            color: #fef3c7;
-            margin-bottom: 15px;
-            text-align: left;
+            margin: 12px 0;
+            line-height: 1.4;
+            font-weight: 600;
         }
 
         .payment-instructions {
@@ -324,222 +378,250 @@
         .btn-whatsapp:hover {
             background-color: #1da851;
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
 
-        <!-- Колдонуучунун электрондук почтасын аныктоо блогу -->
-        <div class="user-auth-card">
-            <div class="user-auth-info">
-                <i class="fa-solid fa-user-check"></i>
+        <!-- 1. ЭЛЕКТРОНДУК ПОЧТАНЫ ТЕКШЕРҮҮ БЛОГУ -->
+        <div class="auth-check-box">
+            <div>
+                <h3><i class="fa-solid fa-user-lock"></i> VIP Эсепти Текшерүү</h3>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted);">
+                    Төлөм кылган Электрондук почтаңызды (E-mail) киргизип статусту текшериңиз.
+                </p>
+            </div>
+            <div class="email-input-group">
+                <input type="email" id="userEmailInput" class="input-email" placeholder="мисалы: user@gmail.com">
+                <button class="btn-check" onclick="verifyVipAccess()"><i class="fa-solid fa-magnifying-glass"></i> Текшерүү</button>
+            </div>
+        </div>
+
+        <!-- 2. VIP МАЗМУН (Төлөм кылган жана активдүү колдонуучуларга гана көрүнөт) -->
+        <div id="vipContentSection" class="vip-content-section">
+            <div class="vip-badge-active">
+                <i class="fa-solid fa-circle-check" style="font-size: 24px;"></i>
                 <div>
-                    <div style="font-size: 12px; color: var(--text-muted);">Аккаунт (E-mail):</div>
-                    <strong id="userEmailDisplay" class="user-email">Кирип жатат...</strong>
+                    <b>VIP Мүмкүнчүлүк Активдүү!</b>
+                    <div id="vipExpireText" style="font-size: 13px; color: var(--text-muted);">Иштөө мөөнөтү: Чектелбеген</div>
                 </div>
             </div>
-            <div class="user-email-input-group">
-                <input type="email" id="userEmailInput" placeholder="Электрондук почтаңызды жазыңыз" onchange="updateUserEmail(this.value)">
+
+            <h2 style="color: var(--accent-color); margin-bottom: 20px;"><i class="fa-solid fa-flask"></i> VIP Лабораториялык Иштер</h2>
+            
+            <div class="labs-grid">
+                <!-- Лаборатория 1 -->
+                <div class="lab-card">
+                    <h4>1. Ом Мыйзамын Изилдеп Үйрөнүү</h4>
+                    <p>Электр тизмегиндеги чыңалуу, ток күчү жана каршылыктын ортосундагы көз карандылыкты интерактивдүү симуляцияда изилдөө.</p>
+                    <a href="#" class="btn-open-lab"><i class="fa-solid fa-play"></i> Лабораторияны Ачуу</a>
+                </div>
+
+                <!-- Лаборатория 2 -->
+                <div class="lab-card">
+                    <h4>2. Математикалык Маятник</h4>
+                    <p>Маятниктин термелүү мезгилин жана эркин түшүү ылдамдануусун эсептөө модулу.</p>
+                    <a href="#" class="btn-open-lab"><i class="fa-solid fa-play"></i> Лабораторияны Ачуу</a>
+                </div>
+
+                <!-- Лаборатория 3 -->
+                <div class="lab-card">
+                    <h4>3. Оптика: Линзалардагы Жарыктын Сынуусу</h4>
+                    <p>Топтоочу жана чачуучу линзалардагы сүрөттөлүштү алуу жана фокус аралыгын аныктоо.</p>
+                    <a href="#" class="btn-open-lab"><i class="fa-solid fa-play"></i> Лабораторияны Ачуу</a>
+                </div>
             </div>
         </div>
 
-        <!-- 24 Сааттык мүмкүнчүлүк тууралуу маалымат баннери -->
-        <div class="notice-banner">
-            <i class="fa-solid fa-circle-info"></i>
-            <p>
-                <b>Маанилүү маалымат:</b> Төлөм жүргүзгөндөн кийин сизге VIP Лабораториялык иштерге уруксат <b>24 сааттын ичинде</b> берилет. Чекти жөнөткөндө аккаунт почтаңызды так көрсөтүңүз.
-            </p>
-        </div>
-
-        <div class="pricing-header">
-            <h2>Тарифти тандаңыз:</h2>
-        </div>
-
-        <div class="pricing-cards">
-            <!-- 1 Айлык -->
-            <div class="card">
-                <div class="plan-title">1 айлык мүмкүнчүлүк</div>
-                <div class="plan-price">200 <span>сом</span></div>
-                <button class="btn-select" onclick="openPaymentModal('1 айлык мүмкүнчүлүк', 200)">Тандоо</button>
+        <!-- 3. ТАРИФТЕР СЕКЦИЯСЫ (Уруксаты жоктор же текшериле электер үчүн) -->
+        <div id="pricingSection" class="pricing-section">
+            <div class="pricing-header">
+                <h2>VIP Доступ Тарифтерин Тандаңыз:</h2>
+                <p style="color: var(--text-muted);">Лабораториялык иштерге толук мүмкүнчүлүк алуу үчүн тарифти тандап төлөм кылыңыз.</p>
             </div>
 
-            <!-- 6 Айлык (Сунушталат) -->
-            <div class="card featured">
-                <div class="badge-featured">Сунушталат</div>
-                <div class="plan-title">6 айлык мүмкүнчүлүк</div>
-                <div class="plan-price">900 <span>сом</span></div>
-                <button class="btn-select" onclick="openPaymentModal('6 айлык мүмкүнчүлүк', 900)">Тандоо</button>
-            </div>
+            <div class="pricing-cards">
+                <!-- 1 Айлык -->
+                <div class="card">
+                    <div class="plan-title">1 айлык мүмкүнчүлүк</div>
+                    <div class="plan-price">200 <span>сом</span></div>
+                    <button class="btn-select" onclick="openPaymentModal('1 айлык мүмкүнчүлүк', 200)">Тандоо</button>
+                </div>
 
-            <!-- 1 Жылдык -->
-            <div class="card">
-                <div class="plan-title">1 жылдык мүмкүнчүлүк</div>
-                <div class="plan-price">1500 <span>сом</span></div>
-                <button class="btn-select" onclick="openPaymentModal('1 жылдык мүмкүнчүлүк', 1500)">Тандоо</button>
+                <!-- 6 Айлык (Сунушталат) -->
+                <div class="card featured">
+                    <div class="badge-featured">Сунушталат</div>
+                    <div class="plan-title">6 айлык мүмкүнчүлүк</div>
+                    <div class="plan-price">900 <span>сом</span></div>
+                    <button class="btn-select" onclick="openPaymentModal('6 айлык мүмкүнчүлүк', 900)">Тандоо</button>
+                </div>
+
+                <!-- 1 Жылдык -->
+                <div class="card">
+                    <div class="plan-title">1 жылдык мүмкүнчүлүк</div>
+                    <div class="plan-price">1500 <span>сом</span></div>
+                    <button class="btn-select" onclick="openPaymentModal('1 жылдык мүмкүнчүлүк', 1500)">Тандоо</button>
+                </div>
             </div>
         </div>
+
     </div>
 
-    <!-- PAYMENT MODAL (Төлөм терезеси) -->
+    <!-- 4. ТӨЛӨМ МОДАЛ ТЕРЕЗЕСИ -->
     <div id="paymentModal" class="modal-overlay">
         <div class="modal-card">
             <button class="modal-close" onclick="closePaymentModal()">&times;</button>
             
             <div class="modal-header">
-                <h3>Төлөм жасоо</h3>
+                <h3><i class="fa-solid fa-qrcode"></i> Төлөм Жасоо</h3>
             </div>
 
             <div class="payment-summary">
                 Тандалган тариф: <b id="modalPlanTitle" style="color: #f59e0b;">-</b><br>
-                Төлөнүүчү сумма: <b id="modalPlanPrice" style="color: #f59e0b;">-</b> сом<br>
-                Аккаунт E-mail: <b id="modalUserEmail" style="color: #38bdf8;">-</b>
+                Төлөнүүчү сумма: <b id="modalPlanPrice" style="color: #f59e0b;">-</b> сом
             </div>
 
-            <!-- 24 Сааттык эскертме модаль ичинде -->
-            <div class="modal-notice">
-                <i class="fa-solid fa-clock"></i> Төлөм жүргүзүлгөндөн кийин 24 сааттын ичинде сизге VIP уруксат берилет.
-            </div>
-
-            <!-- MBank QR код сүрөтү -->
+            <!-- МБанк QR код сүрөтү -->
             <div class="qr-box">
-                <img id="qrImage" src="/qrmbank.png" alt="MBank Төлөм QR коду">
+                <img id="qrImage" src="/qrmbank.png" alt="MBank Төлөм QR коду" onerror="this.src='https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=https://bilimal.org'">
+            </div>
+
+            <!-- 24 сааттын ичинде уруксат берилери тууралуу эскертүү -->
+            <div class="notice-24h">
+                <i class="fa-solid fa-clock"></i> Сизге уруксат төлөм жүргүзгөндөн кийин 24 сааттын ичинде берилет.
             </div>
 
             <div class="payment-instructions">
-                1. Жогорудагы MBank QR кодун банк колдонмоңуз (MBank, O!Dengi, MegaPay) аркылуу сканерлеңиз жана төлөмдү аткарыңыз.<br>
-                2. Төлөм аткарылгандан кийин, <b>"Чекти WhatsApp'ка жөнөтүү"</b> баскычын басып чекти жөнөтүңүз.
+                1. MBank, O!Dengi же MegaPay колдонмоңуз аркылуу жогорудагы QR кодду сканерлеп, төлөмдү аткарыңыз.<br>
+                2. Төлөм аткарылгандан кийин, төмөнкү баскычты басып чекти WhatsApp аркылуу жөнөтүңүз.
             </div>
 
-            <a id="whatsappBtn" href="#" target="_blank" onclick="return validateAndSend(event)" class="btn-whatsapp">
+            <a id="whatsappBtn" href="#" target="_blank" class="btn-whatsapp">
                 <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Чекти WhatsApp'ка жөнөтүү
             </a>
         </div>
     </div>
 
     <script>
-        // БАЙЛАНЫШ НОМЕРИ (WhatsApp үчүн өлкө коду менен)
+        // FIREBASE КОНФИГУРАЦИЯСЫ
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForBilimalOrgPublicInit",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:abcdef123456"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+
+        // БАЙЛАНЫШ НОМЕРИ
         const ADMIN_WHATSAPP_NUMBER = "996556400477";
 
-        let currentSelectedPlan = "";
-        let currentSelectedPrice = 0;
-
-        /**
-         * Баракча жүктөлгөндө колдонуучунун почтасын текшерүү
-         */
+        // Баракча жүктөлгөндө мурда киргизилген E-mail болсо авто-текшерүү
         window.addEventListener('DOMContentLoaded', () => {
-            initUserEmail();
+            const savedEmail = localStorage.getItem('bilimal_user_email');
+            if (savedEmail) {
+                document.getElementById('userEmailInput').value = savedEmail;
+                verifyVipAccess();
+            }
         });
 
-        function initUserEmail() {
-            let userEmail = "";
-
-            // 1. Firebase Auth текшерүү (эгер туташтырылган болсо)
-            if (typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-                userEmail = firebase.auth().currentUser.email;
-            } 
-            
-            // 2. localStorage текшерүү
-            if (!userEmail) {
-                userEmail = localStorage.getItem('bilimal_user_email') || "";
-            }
-
-            const emailDisplayElem = document.getElementById('userEmailDisplay');
-            const emailInputElem = document.getElementById('userEmailInput');
-
-            if (userEmail) {
-                emailDisplayElem.innerText = userEmail;
-                emailInputElem.value = userEmail;
-            } else {
-                emailDisplayElem.innerText = "Киргизилген эмес";
-            }
-        }
-
         /**
-         * Колдонуучу электрондук почтасын өзгөрткөндө сактоо
+         * E-mail ачкычын Firebase үчүн стерилизациялоо
          */
-        function updateUserEmail(val) {
-            const trimmedEmail = val.trim();
-            if (trimmedEmail) {
-                localStorage.setItem('bilimal_user_email', trimmedEmail);
-                document.getElementById('userEmailDisplay').innerText = trimmedEmail;
-            } else {
-                document.getElementById('userEmailDisplay').innerText = "Киргизилген эмес";
-            }
+        function sanitizeEmail(email) {
+            return email.toLowerCase().replace(/\./g, '_dot_').replace(/@/g, '_at_');
         }
 
         /**
-         * Модаль терезени ачуу функциясы
-         * @param {string} planTitle - Тарифтин аты
-         * @param {number} planPrice - Тарифтин баасы
+         * VIP Доступту Firebase Realtime Database'ден текшерүү
+         */
+        function verifyVipAccess() {
+            const emailInput = document.getElementById('userEmailInput').value.trim();
+
+            if (!emailInput || !emailInput.includes('@')) {
+                alert('Сураныч, туура E-mail даректи киргизиңиз!');
+                return;
+            }
+
+            // Сактап коюу
+            localStorage.setItem('bilimal_user_email', emailInput);
+            const emailKey = sanitizeEmail(emailInput);
+
+            db.ref('vip_users/' + emailKey).once('value').then((snapshot) => {
+                if (snapshot.exists()) {
+                    const userData = snapshot.val();
+                    const now = new Date();
+                    const expireDate = new Date(userData.expiresAt);
+
+                    if (userData.status === 'active' && expireDate > now) {
+                        // VIP УРУКСАТ БАР
+                        showVipContent(expireDate);
+                        return;
+                    }
+                }
+                
+                // VIP уруксат жок же мөөнөтү бүткөн
+                showPricingSection();
+                alert('Бул E-mail дарек үчүн VIP уруксат табылган жок же мөөнөтү аяктаган. Сураныч, тарифти тандап төлөм кылыңыз.');
+            }).catch((err) => {
+                console.error('Firebase катасы:', err);
+                showPricingSection();
+            });
+        }
+
+        function showVipContent(expireDate) {
+            document.getElementById('vipContentSection').style.display = 'block';
+            document.getElementById('pricingSection').style.display = 'none';
+            document.getElementById('vipExpireText').innerText = `Иштөө мөөнөтү: ${expireDate.toLocaleDateString()} чейин активдүү`;
+        }
+
+        function showPricingSection() {
+            document.getElementById('vipContentSection').style.display = 'none';
+            document.getElementById('pricingSection').style.display = 'block';
+        }
+
+        /**
+         * Төлөм модалын ачуу
          */
         function openPaymentModal(planTitle, planPrice) {
-            currentSelectedPlan = planTitle;
-            currentSelectedPrice = planPrice;
-
             document.getElementById('modalPlanTitle').innerText = planTitle;
             document.getElementById('modalPlanPrice').innerText = planPrice;
 
-            // Колдонуучунун почтасын аныктоо
-            let userEmail = document.getElementById('userEmailInput').value.trim();
-            if (!userEmail && typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser) {
-                userEmail = firebase.auth().currentUser.email;
-            }
+            const userEmail = document.getElementById('userEmailInput').value.trim() || "Көрсөтүлгөн эмес";
 
-            document.getElementById('modalUserEmail').innerText = userEmail || "Киргизилген эмес (Сураныч, жазыңыз)";
-
-            // WhatsApp шилтемесин жаңылоо
-            buildWhatsAppUrl(planTitle, planPrice, userEmail);
-
-            // Модалды көрсөтүү
-            document.getElementById('paymentModal').classList.add('active');
-        }
-
-        /**
-         * WhatsApp шилтемесин түзүү
-         */
-        function buildWhatsAppUrl(planTitle, planPrice, userEmail) {
-            const emailText = userEmail ? userEmail : "[E-mail киргизилген эмес]";
-            
+            // WhatsApp кабарын даярдоо
             const message = `Саламатсызбы! Мен Bilimal.org сайтынан VIP Лабораторияга жазылуу үчүн төлөм кылдым.\n\n` +
                             `📌 Тариф: ${planTitle}\n` +
                             `💰 Суммасы: ${planPrice} сом\n` +
-                            `📧 Почтам: ${emailText}\n\n` +
+                            `📧 Почтам: ${userEmail}\n\n` +
                             `Төлөм чегин тиркеп жатам:`;
 
             const waUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
             document.getElementById('whatsappBtn').href = waUrl;
+
+            document.getElementById('paymentModal').classList.add('active');
         }
 
         /**
-         * WhatsApp'ка чекти жөнөтүүдөн мурун E-mail текшерүү
-         */
-        function validateAndSend(event) {
-            let userEmail = document.getElementById('userEmailInput').value.trim();
-            
-            if (!userEmail) {
-                userEmail = prompt("Сураныч, VIP уруксат ачуу үчүн электрондук почтаңызды (E-mail) киргизиңиз:");
-                if (userEmail && userEmail.trim()) {
-                    updateUserEmail(userEmail);
-                    openPaymentModal(currentSelectedPlan, currentSelectedPrice);
-                    return true;
-                } else {
-                    alert("Электрондук почтаңызды киргизбесеңиз, VIP мүмкүндүк ачылбай калышы мүмкүн!");
-                    event.preventDefault();
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /**
-         * Модаль терезени жабуу функциясы
+         * Төлөм модалын жабуу
          */
         function closePaymentModal() {
             document.getElementById('paymentModal').classList.remove('active');
         }
 
-        // Модаль терезеден сырткары аймак басылганда жабуу
+        // Модаль сырты басылганда жабуу
         window.onclick = function(event) {
             const modal = document.getElementById('paymentModal');
             if (event.target === modal) {
