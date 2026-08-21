@@ -1,122 +1,142 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ачык сабак пландары - BilimAl.org</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0e14; color: #ffffff; padding: 20px; min-height: 100vh; }
-        
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; border-bottom: 1px solid #1e2640; padding-bottom: 15px; flex-wrap: wrap; gap: 15px; }
-        .title { color: #00d2ff; font-size: 24px; display: flex; align-items: center; gap: 10px; }
-        .back-btn { background: #1e2640; color: #00d2ff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; border: 1px solid #00d2ff; }
-
-        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .plan-card { background: #111622; border: 1px solid #1e2640; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; }
-        .plan-card img { width: 100%; height: 160px; object-fit: cover; background: #1e2640; }
-        .plan-body { padding: 15px; flex-grow: 1; }
-        .plan-title { font-size: 16px; color: #00d2ff; margin-bottom: 8px; }
-        .plan-desc { font-size: 13px; color: #aaa; margin-bottom: 12px; line-height: 1.4; }
-        .teacher-info { font-size: 11px; color: #7f8c8d; margin-top: 5px; }
-
-        .plan-actions { padding: 12px 15px; background: #0b0e14; border-top: 1px solid #1e2640; display: flex; justify-content: flex-end; }
-        .btn-pdf { background: #1abc9c; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 5px; }
-
-        #loader { text-align: center; padding: 40px; color: #00d2ff; font-size: 18px; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ачык Сабак Пландары - Bilimal.org</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+  </style>
 </head>
-<body>
+<body class="min-h-screen pb-12">
 
-    <div class="header">
-        <h1 class="title"><i class="fas fa-book-reader"></i> Жарыяланган Сабак Пландары</h1>
-        <a href="../dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Башкы баракка</a>
+  <!-- TOP BAR -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2">
+        <i class="fa-solid fa-graduation-cap"></i> Bilimal.org
+      </a>
+      <a href="/sections/lesson-plans-vip.html" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
+        🔐 VIP Бардык Пландар
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 mt-8">
+
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-extrabold text-white">📚 Ачык Сабак Пландары</h1>
+      <p class="text-slate-400 mt-2">Мугалимдер үчүн даярдалган акысыз ачык сабак пландарынын базасы</p>
     </div>
 
-    <div id="loader"><i class="fas fa-spinner fa-spin"></i> Материалдар жүктөлүүдө...</div>
-    <div class="cards-grid" id="public-plans-container" style="display: none;"></div>
+    <!-- SEARCH BAR -->
+    <div class="max-w-xl mx-auto mb-8">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input type="text" id="public-search" placeholder="Сабак планын издөө..." 
+               class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3 pl-11 pr-4 text-white focus:outline-none focus:border-amber-500">
+      </div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    <!-- PUBLIC PLANS GRID -->
+    <div id="public-plans-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="col-span-full text-center py-10 text-slate-400">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl text-amber-500"></i>
+        <p class="mt-2">Пландар жүктөлүүдө...</p>
+      </div>
+    </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-            authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "bilimal-org",
-            storageBucket: "bilimal-org.firebasestorage.app",
-            messagingSenderId: "241750360816",
-            appId: "1:241750360816:web:a991434eb5afbc470d7835"
-        };
+  </main>
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
+  <!-- FIREBASE SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-        const loader = document.getElementById('loader');
-        const container = document.getElementById('public-plans-container');
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+      authDomain: "bilimal-org.firebaseapp.com",
+      databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bilimal-org",
+      storageBucket: "bilimal-org.firebasestorage.app",
+      messagingSenderId: "241750360816",
+      appId: "1:241750360816:web:a991434eb5afbc470d7835",
+      measurementId: "G-9GSQV60QV0"
+    };
 
-        // "library/lesson_plans" аркылуу бардык ачык пландарды окуйбуз (Firebase Rules: "library" түйүнүнө .read: true берилген)
-        const plansRef = ref(db, 'library/lesson_plans');
-        onValue(plansRef, (snapshot) => {
-            loader.style.display = 'none';
-            container.style.display = 'grid';
-            container.innerHTML = '';
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
 
-            const data = snapshot.val();
-            if (!data) {
-                container.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча жарыяланган сабак пландары жок.</p>';
-                return;
-            }
+    const db = firebase.database();
+    let publicPlans = [];
 
-            let publicCount = 0;
-            Object.keys(data).forEach(id => {
-                const plan = data[id];
-                if (plan && plan.status === 'public') {
-                    publicCount++;
-                    renderPublicCard(plan);
-                }
-            });
+    async function loadPublicPlans() {
+      try {
+        const snap = await db.ref('library').once('value');
+        const data = snap.val() || {};
 
-            if (publicCount === 0) {
-                container.innerHTML = '<p style="color: #aaa; grid-column: 1/-1;">Азырынча жарыяланган сабак пландары жок.</p>';
-            }
-        }, (error) => {
-            console.error("Firebase Public Read Error:", error);
-            loader.style.display = 'none';
-            container.style.display = 'block';
-            container.innerHTML = '<p style="color: #e74c3c;">Маалыматты жүктөөдө ката пайда болду: ' + escapeHtml(error.message) + '</p>';
-        });
+        // FILTER: ONLY KEEP isPublic === true
+        publicPlans = Object.keys(data)
+          .map(id => ({ id, ...data[id] }))
+          .filter(plan => plan.isPublic === true);
 
-        function renderPublicCard(plan) {
-            const card = document.createElement('div');
-            card.className = 'plan-card';
+        renderPublicGrid(publicPlans);
+      } catch (err) {
+        console.error("Error loading public plans:", err);
+      }
+    }
 
-            const defaultImg = 'https://via.placeholder.com/400x200/1e2640/00d2ff?text=BilimAl+Lesson+Plan';
-            const imageUrl = plan.imageUrl && plan.imageUrl.trim() !== '' ? plan.imageUrl : defaultImg;
+    function renderPublicGrid(plans) {
+      const container = document.getElementById('public-plans-grid');
+      container.innerHTML = '';
 
-            card.innerHTML = `
-                <div>
-                    <img src="${escapeHtml(imageUrl)}" alt="Plan Cover" onerror="this.src='${defaultImg}'">
-                    <div class="plan-body">
-                        <h4 class="plan-title">${escapeHtml(plan.title || 'Аталышсыз')}</h4>
-                        <p class="plan-desc">${escapeHtml(plan.description || '')}</p>
-                        <div class="teacher-info"><i class="fas fa-user-chalkboard"></i> Мугалим: ${escapeHtml(plan.teacherEmail || 'Аноним')}</div>
-                    </div>
-                </div>
-                <div class="plan-actions">
-                    ${plan.pdfUrl ? `<a href="${escapeHtml(plan.pdfUrl)}" target="_blank" class="btn-pdf"><i class="fas fa-file-pdf"></i> Документти көрүү / Жүктөө</a>` : '<span style="font-size: 12px; color: #7f8c8d;">Документ жок</span>'}
-                </div>
-            `;
+      if (plans.length === 0) {
+        container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">Азырынча ачык жарыяланган сабак пландары жок.</p>`;
+        return;
+      }
 
-            container.appendChild(card);
-        }
+      plans.forEach(plan => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full font-medium">
+                ${plan.subject || 'Предмет'} • ${plan.grade || 'Класс'}
+              </span>
+              <span class="text-xs text-emerald-400">🌐 Ачык</span>
+            </div>
+            <h3 class="text-lg font-bold text-white mb-2">${plan.title}</h3>
+            <p class="text-xs text-slate-400 line-clamp-3">${plan.goals || ''}</p>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center">
+            <span class="text-xs text-slate-400">Акысыз маалымат</span>
+            ${plan.pdfUrl ? `
+              <a href="${plan.pdfUrl}" target="_blank" class="text-xs bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg hover:bg-amber-600 transition">
+                📄 PDF жүктөө
+              </a>
+            ` : '<span class="text-xs text-slate-500">PDF жок</span>'}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-        }
-    </script>
+    document.getElementById('public-search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = publicPlans.filter(p => 
+        p.title.toLowerCase().includes(q) || 
+        (p.subject && p.subject.toLowerCase().includes(q))
+      );
+      renderPublicGrid(filtered);
+    });
+
+    // Initial Load
+    loadPublicPlans();
+  </script>
 </body>
 </html>
