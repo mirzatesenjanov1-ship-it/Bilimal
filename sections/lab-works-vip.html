@@ -24,6 +24,7 @@
             --border-color: #334155;
             --success-color: #10b981;
             --danger-color: #ef4444;
+            --admin-bg: #0f172a;
         }
 
         body {
@@ -97,7 +98,7 @@
             background-color: var(--accent-hover);
         }
 
-        /* VIP БАРАКЧАМАР (Уруксаты барлар үчүн) */
+        /* VIP БАРАКЧАЛАР (Уруксаты барлар үчүн) */
         .vip-content-section {
             display: none; /* Алгач жашыруун */
             animation: fadeIn 0.4s ease-in-out;
@@ -383,6 +384,160 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+
+        /* 5. АДМИН ПАНЕЛЬ СТИЛДЕРИ (ЖАҢЫ КОШУЛДУ) */
+        .admin-trigger-container {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .btn-toggle-admin {
+            background: transparent;
+            border: 1px dashed var(--border-color);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-toggle-admin:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .admin-panel {
+            display: none;
+            background-color: var(--admin-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 20px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .admin-header h3 {
+            margin: 0;
+            color: var(--accent-color);
+            font-size: 20px;
+        }
+
+        .admin-form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 25px;
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .admin-form input, .admin-form select {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: #0f172a;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .admin-form input[type="email"] {
+            flex: 2;
+            min-width: 220px;
+        }
+
+        .admin-form select, .admin-form input[type="date"] {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-admin-add {
+            background-color: var(--success-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-admin-add:hover {
+            opacity: 0.9;
+        }
+
+        .admin-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .admin-table th, .admin-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .admin-table th {
+            background-color: var(--card-bg);
+            color: var(--text-muted);
+        }
+
+        .admin-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .btn-delete-user {
+            background-color: var(--danger-color);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-delete-user:hover {
+            opacity: 0.8;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-active {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+        }
+
+        .status-expired {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: var(--danger-color);
+        }
     </style>
 </head>
 <body>
@@ -471,6 +626,53 @@
             </div>
         </div>
 
+        <!-- 5. АДМИН ПАНЕЛЬ БӨЛҮГҮ (ЖАҢЫ КОШУЛДУ) -->
+        <div class="admin-trigger-container">
+            <button class="btn-toggle-admin" onclick="openAdminModal()">
+                <i class="fa-solid fa-user-shield"></i> Админ Панель (Уруксат Берүү)
+            </button>
+        </div>
+
+        <div id="adminPanel" class="admin-panel">
+            <div class="admin-header">
+                <h3><i class="fa-solid fa-sliders"></i> VIP Колдонуучуларды Башкаруу Панели</h3>
+                <button class="btn-delete-user" onclick="closeAdminPanel()"><i class="fa-solid fa-xmark"></i> Жабуу</button>
+            </div>
+
+            <!-- Колдонуучу кошуу/жаңыртуу формасы -->
+            <div class="admin-form">
+                <input type="email" id="adminUserEmail" placeholder="Колдонуучунун E-mail дареги">
+                <select id="adminDurationSelect" onchange="toggleCustomDateInput()">
+                    <option value="1m">1 Айлык Уруксат</option>
+                    <option value="6m">6 Айлык Уруксат</option>
+                    <option value="1y">1 Жылдык Уруксат</option>
+                    <option value="custom">Атайын күн тандаңыз...</option>
+                </select>
+                <input type="date" id="adminCustomDate" style="display: none;">
+                <button class="btn-admin-add" onclick="grantVipAccess()"><i class="fa-solid fa-plus"></i> Уруксат Берүү / Жаңыртуу</button>
+            </div>
+
+            <!-- Базадагы VIP Колдонуучулардын Тизмеси -->
+            <h4 style="margin: 15px 0 10px 0; color: var(--text-main);"><i class="fa-solid fa-list"></i> VIP Колдонуучулардын Тизмеси</h4>
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>E-mail</th>
+                            <th>Статус</th>
+                            <th>Мөөнөтү Аяктайт</th>
+                            <th>Аракет</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminUsersTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-muted);">Жүктөлүүдө...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- 4. ТӨЛӨМ МОДАЛ ТЕРЕЗЕСИ -->
@@ -525,8 +727,11 @@
         }
         const db = firebase.database();
 
-        // БАЙЛАНЫШ НОМЕРИ
+        // БАЙЛАНЫШ НОМЕРИ ЖАНА АДМИН ПАРОЛУ
         const ADMIN_WHATSAPP_NUMBER = "996556400477";
+        const ADMIN_PASSWORD_HASH = "bilimal2026"; // Админ сырсөзү
+
+        let isAdminAuthenticated = false;
 
         // Баракча жүктөлгөндө мурда киргизилген E-mail болсо авто-текшерүү
         window.addEventListener('DOMContentLoaded', () => {
@@ -534,6 +739,11 @@
             if (savedEmail) {
                 document.getElementById('userEmailInput').value = savedEmail;
                 verifyVipAccess();
+            }
+
+            // Эгер мурда админ болуп кирген болсо сессияны сактоо
+            if (sessionStorage.getItem('bilimal_admin_logged') === 'true') {
+                isAdminAuthenticated = true;
             }
         });
 
@@ -619,6 +829,149 @@
          */
         function closePaymentModal() {
             document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        // ==========================================
+        // АДМИН ПАНЕЛЬ ФУНКЦИОНАЛДАРЫ (ЖАҢЫ КОШУЛДУ)
+        // ==========================================
+
+        /**
+         * Админ авторизациясы жана панелди ачуу
+         */
+        function openAdminModal() {
+            if (!isAdminAuthenticated) {
+                const pass = prompt("Администратор сырсөзүн киргизиңиз:");
+                if (pass === ADMIN_PASSWORD_HASH) {
+                    isAdminAuthenticated = true;
+                    sessionStorage.setItem('bilimal_admin_logged', 'true');
+                    alert("Ийгиликтүү кирдиңиз!");
+                } else {
+                    if (pass !== null) alert("Сырсөз туура эмес!");
+                    return;
+                }
+            }
+
+            document.getElementById('adminPanel').classList.add('active');
+            loadAdminVipUsers();
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminPanel').classList.remove('active');
+        }
+
+        function toggleCustomDateInput() {
+            const selectVal = document.getElementById('adminDurationSelect').value;
+            const customInput = document.getElementById('adminCustomDate');
+            if (selectVal === 'custom') {
+                customInput.style.display = 'inline-block';
+            } else {
+                customInput.style.display = 'none';
+            }
+        }
+
+        /**
+         * Колдонуучуга VIP Уруксат кошуу же жаңыртуу
+         */
+        function grantVipAccess() {
+            const email = document.getElementById('adminUserEmail').value.trim();
+            const durationChoice = document.getElementById('adminDurationSelect').value;
+            const customDateVal = document.getElementById('adminCustomDate').value;
+
+            if (!email || !email.includes('@')) {
+                alert('Сураныч, туура E-mail киргизиңиз!');
+                return;
+            }
+
+            let expireDate = new Date();
+
+            if (durationChoice === '1m') {
+                expireDate.setMonth(expireDate.getMonth() + 1);
+            } else if (durationChoice === '6m') {
+                expireDate.setMonth(expireDate.getMonth() + 6);
+            } else if (durationChoice === '1y') {
+                expireDate.setFullYear(expireDate.getFullYear() + 1);
+            } else if (durationChoice === 'custom') {
+                if (!customDateVal) {
+                    alert('Сураныч, мөөнөт күнүн тандаңыз!');
+                    return;
+                }
+                expireDate = new Date(customDateVal + 'T23:59:59');
+            }
+
+            const emailKey = sanitizeEmail(email);
+            const payload = {
+                email: email,
+                status: 'active',
+                createdAt: new Date().toISOString(),
+                expiresAt: expireDate.toISOString()
+            };
+
+            db.ref('vip_users/' + emailKey).set(payload).then(() => {
+                alert(`Ийгиликтүү! ${email} дарегине ${expireDate.toLocaleDateString()} чейин уруксат берилди.`);
+                document.getElementById('adminUserEmail').value = '';
+                loadAdminVipUsers();
+            }).catch(err => {
+                console.error("Сактоо катасы:", err);
+                alert("Ката чыкты: " + err.message);
+            });
+        }
+
+        /**
+         * Базадагы колдонуучуларды алуу жана таблицага чыгаруу
+         */
+        function loadAdminVipUsers() {
+            const tbody = document.getElementById('adminUsersTableBody');
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Жүктөлүүдө...</td></tr>';
+
+            db.ref('vip_users').once('value').then(snapshot => {
+                tbody.innerHTML = '';
+                if (!snapshot.exists()) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Бир да VIP колдонуучу табылган жок.</td></tr>';
+                    return;
+                }
+
+                const now = new Date();
+                snapshot.forEach(childSnap => {
+                    const u = childSnap.val();
+                    const key = childSnap.key;
+                    const exp = new Date(u.expiresAt);
+                    const isActive = u.status === 'active' && exp > now;
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><b>${u.email || key}</b></td>
+                        <td>
+                            <span class="status-badge ${isActive ? 'status-active' : 'status-expired'}">
+                                ${isActive ? 'Активдүү' : 'Мөөнөтү бүткөн'}
+                            </span>
+                        </td>
+                        <td>${exp.toLocaleDateString()} ${exp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                        <td>
+                            <button class="btn-delete-user" onclick="deleteVipUser('${key}', '${u.email || key}')">
+                                <i class="fa-solid fa-trash"></i> Өчүрүү
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }).catch(err => {
+                console.error("Жүктөө катасы:", err);
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger-color);">Маалыматтарды алууда ката чыкты.</td></tr>';
+            });
+        }
+
+        /**
+         * VIP Колдонуучуну өчүрүү
+         */
+        function deleteVipUser(emailKey, userEmail) {
+            if (confirm(`Чын эле ${userEmail} колдонуучусунун уруксатын өчүрүүнү каалайсызбы?`)) {
+                db.ref('vip_users/' + emailKey).remove().then(() => {
+                    alert("Колдонуучу ийгиликтүү өчүрүлдү.");
+                    loadAdminVipUsers();
+                }).catch(err => {
+                    alert("Өчүрүүдө ката чыкты: " + err.message);
+                });
+            }
         }
 
         // Модаль сырты басылганда жабуу
