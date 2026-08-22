@@ -6,7 +6,7 @@
     <title>VIP Лабораториялык Иштер - Bilimal.org</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Firebase SDK v8 (Браузердик шайкештик жана туруктуулук үчүн) -->
+    <!-- Firebase SDK v8 -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
@@ -253,6 +253,90 @@
             background-color: var(--accent-hover);
         }
 
+        /* ТӨЛӨМ МОДАЛДЫК ТЕРЕЗЕСИ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background-color: var(--card-bg);
+            border: 2px solid var(--accent-color);
+            border-radius: 16px;
+            max-width: 480px;
+            width: 100%;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .payment-details {
+            background-color: var(--admin-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .payment-row strong {
+            color: var(--accent-color);
+        }
+
+        .btn-whatsapp {
+            background-color: #25D366;
+            color: #fff;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+            margin-top: 10px;
+        }
+
+        .btn-whatsapp:hover {
+            background-color: #1eb956;
+        }
+
         /* Админ Стилдери */
         .admin-trigger-container {
             margin-top: 50px;
@@ -442,18 +526,18 @@
                 <div class="card">
                     <div class="plan-title">1 айлык мүмкүнчүлүк</div>
                     <div class="plan-price">200 <span>сом</span></div>
-                    <button class="btn-select" onclick="alert('Сураныч, адегенде E-mail дарегиңизди жазып текшериңиз.')">Тандоо</button>
+                    <button class="btn-select" onclick="openPaymentModal('1 айлык тариф', 200)">Тандоо</button>
                 </div>
                 <div class="card featured">
                     <div class="badge-featured">Сунушталат</div>
                     <div class="plan-title">6 айлык мүмкүнчүлүк</div>
                     <div class="plan-price">900 <span>сом</span></div>
-                    <button class="btn-select" onclick="alert('Сураныч, адегенде E-mail дарегиңизди жазып текшериңиз.')">Тандоо</button>
+                    <button class="btn-select" onclick="openPaymentModal('6 айлык тариф', 900)">Тандоо</button>
                 </div>
                 <div class="card">
                     <div class="plan-title">1 жылдык мүмкүнчүлүк</div>
                     <div class="plan-price">1500 <span>сом</span></div>
-                    <button class="btn-select" onclick="alert('Сураныч, адегенде E-mail дарегиңизди жазып текшериңиз.')">Тандоо</button>
+                    <button class="btn-select" onclick="openPaymentModal('1 жылдык тариф', 1500)">Тандоо</button>
                 </div>
             </div>
         </div>
@@ -505,8 +589,48 @@
 
     </div>
 
+    <!-- ТӨЛӨМ МҮМКҮНЧҮЛҮГҮ ҮЧҮН МОДАЛДЫК ТЕРЕЗЕ -->
+    <div id="paymentModal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+            <h3 style="margin-top:0; color: var(--accent-color); text-align: center;">
+                <i class="fa-solid fa-credit-card"></i> Төлөм Жүргүзүү
+            </h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted);">Активдештирилүүчү E-mail дарегиңиз:</label>
+                <input type="email" id="modalUserEmail" class="input-email" style="width: 100%; margin-top: 5px; box-sizing: border-box;" placeholder="user@gmail.com">
+            </div>
+
+            <div class="payment-details">
+                <div class="payment-row">
+                    <span>Тандалган тариф:</span>
+                    <strong id="modalPlanName">6 айлык тариф</strong>
+                </div>
+                <div class="payment-row">
+                    <span>Төлөнүүчү сумма:</span>
+                    <strong id="modalPlanPrice">900 сом</strong>
+                </div>
+                <hr style="border-color: var(--border-color); margin: 10px 0;">
+                <div style="font-size: 13px; color: var(--text-muted); text-align: center; margin-bottom: 8px;">
+                    Төлөм реквизиттери (MBank / O!Dengi):
+                </div>
+                <div style="font-size: 18px; font-weight: bold; text-align: center; color: #38bdf8; letter-spacing: 1px;">
+                    +996 (700) 00-00-00
+                </div>
+            </div>
+
+            <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin: 10px 0;">
+                Төлөмдү которгон соң, чекти WhatsApp аркылуу жөнөтүп VIP доступту 5 мүнөттө активдештириңиз.
+            </p>
+
+            <a id="whatsappPayBtn" href="#" target="_blank" class="btn-whatsapp" onclick="submitVipOrder()">
+                <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Чекти WhatsApp аркылуу жөнөтүү
+            </a>
+        </div>
+    </div>
+
     <script>
-        // Сиз берген дал өзүңүздүн Firebase конфигурацияңыз
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -518,7 +642,6 @@
             measurementId: "G-9GSQV60QV0"
         };
 
-        // Firebase-ди инициализациялоо
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         }
@@ -527,10 +650,9 @@
 
         const ADMIN_PASSWORD_HASH = "bilimal2026";
         let isAdminAuthenticated = false;
+        let selectedPlan = "";
+        let selectedPrice = 0;
 
-        /**
-         * Анонимдүү түрдө кирип, "auth != null" эрежесин канааттандырат
-         */
         function ensureAuth() {
             return new Promise((resolve, reject) => {
                 auth.onAuthStateChanged((user) => {
@@ -553,10 +675,9 @@
                 const savedEmail = localStorage.getItem('bilimal_user_email');
                 if (savedEmail) {
                     document.getElementById('userEmailInput').value = savedEmail;
+                    document.getElementById('modalUserEmail').value = savedEmail;
                     verifyVipAccess();
                 }
-            }).catch(err => {
-                console.error("Авторизацияда ката пайда болду:", err);
             });
 
             if (sessionStorage.getItem('bilimal_admin_logged') === 'true') {
@@ -564,15 +685,10 @@
             }
         });
 
-        // Email ичиндеги белгилерди Firebase Key үчүн тазалоо
         function sanitizeEmail(email) {
             return email.toLowerCase().replace(/\./g, '_dot_').replace(/@/g, '_at_');
         }
 
-        /**
-         * 'applications/vip_users' сактагычынан уруксатты текшерүү
-         * (Себеби 'applications' нодунда .write: true, .read: "auth != null" эрежеси коюлган)
-         */
         function verifyVipAccess() {
             const emailInput = document.getElementById('userEmailInput').value.trim();
 
@@ -582,6 +698,7 @@
             }
 
             localStorage.setItem('bilimal_user_email', emailInput);
+            document.getElementById('modalUserEmail').value = emailInput;
             const emailKey = sanitizeEmail(emailInput);
 
             ensureAuth().then(() => {
@@ -597,7 +714,6 @@
                         }
                     }
                     showPricingSection();
-                    alert('VIP уруксат табылган жок же мөөнөтү аяктаган.');
                 }).catch((err) => {
                     console.error('Firebase катасы:', err);
                     showPricingSection();
@@ -616,7 +732,58 @@
             document.getElementById('pricingSection').style.display = 'block';
         }
 
-        // АДМИН ПАНЕЛЬ ЛОГИКАСЫ
+        /* ТӨЛӨМ ЛОГИКАСЫ */
+        function openPaymentModal(planName, price) {
+            selectedPlan = planName;
+            selectedPrice = price;
+
+            const currentEmail = document.getElementById('userEmailInput').value.trim();
+            if (currentEmail) {
+                document.getElementById('modalUserEmail').value = currentEmail;
+            }
+
+            document.getElementById('modalPlanName').innerText = planName;
+            document.getElementById('modalPlanPrice').innerText = price + " сом";
+            document.getElementById('paymentModal').classList.add('active');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+        }
+
+        function submitVipOrder() {
+            const email = document.getElementById('modalUserEmail').value.trim();
+            if (!email || !email.includes('@')) {
+                alert('Сураныч, E-mail дарегиңизди киргизиңиз!');
+                return false;
+            }
+
+            localStorage.setItem('bilimal_user_email', email);
+            document.getElementById('userEmailInput').value = email;
+
+            const orderData = {
+                email: email,
+                plan: selectedPlan,
+                price: selectedPrice,
+                timestamp: new Date().toISOString()
+            };
+
+            const emailKey = sanitizeEmail(email);
+
+            // Firebase'дин 'applications/orders' бөлүгүнө сактайбыз (.write: true уруксаты сакталган)
+            ensureAuth().then(() => {
+                db.ref('applications/vip_orders/' + emailKey).set(orderData);
+            });
+
+            // WhatsApp шилтемесин даярдоо
+            const phone = "996700000000"; // Өзүңүздүн номериңизди жазыңыз
+            const text = `Саламатсызбы! Мен Bilimal.org сайтынан VIP мүмкүндүк үчүн төлөм кылдым.%0A%0AE-mail: ${email}%0AТариф: ${selectedPlan}%0AСумма: ${selectedPrice} сом%0AЧек тиркелди.`;
+            
+            document.getElementById('whatsappPayBtn').href = `https://wa.me/${phone}?text=${text}`;
+            closePaymentModal();
+        }
+
+        // АДМИН ПАНЕЛЬ
         function openAdminModal() {
             if (!isAdminAuthenticated) {
                 const pass = prompt("Администратор сырсөзүн киргизиңиз:");
@@ -719,7 +886,7 @@
                     });
                 }).catch(err => {
                     console.error("Жүктөө катасы:", err);
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger-color);">Маалыматтарды алууда ката чыкты. Эрежелерди жана туташууну текшериңиз.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger-color);">Маалыматтарды алууда ката чыкты.</td></tr>';
                 });
             });
         }
