@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BilimAl.org - Электрондук Китептер & Админ Панель</title>
+
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b0e14;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Header */
+        .nav-header {
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #111622;
+            padding: 15px 24px;
+            border-radius: 12px;
+            border: 1px solid #1e2640;
+        }
+
+        .nav-header h1 {
+            font-size: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back {
+            background: #1e2640;
+            color: #fff;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: 0.3s;
+            border: 1px solid #34495e;
+        }
+
+        .btn-back:hover {
+            background: #00d2ff;
+            color: #0b0e14;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0b0e14;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #00d2ff;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border-left-color: #00d2ff;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Access Locked Banner */
+        .paywall-box {
+            background: #111622;
+            border: 2px solid #f39c12;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+            max-width: 600px;
+            margin: 40px auto;
+            box-shadow: 0 0 20px rgba(243, 156, 18, 0.2);
+        }
+
+        .paywall-box h2 {
+            color: #f39c12;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .paywall-box p {
+            color: #ccc;
+            margin-bottom: 20px;
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .qr-img {
+            width: 220px;
+            height: 220px;
+            object-fit: contain;
+            border-radius: 12px;
+            border: 2px solid #fff;
+            margin: 15px 0;
+            background: #fff;
+        }
+
+        .notice-badge {
+            background: rgba(243, 156, 18, 0.15);
+            color: #f39c12;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(243, 156, 18, 0.4);
+            font-weight: bold;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .btn-whatsapp {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #25d366;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+
+        .btn-whatsapp:hover {
+            background: #1ebd56;
+        }
+
+        .btn-request {
+            background: #00d2ff;
+            color: #0b0e14;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        /* Admin Controls Block */
+        .admin-section {
+            background: #111622;
+            border: 1px solid #00d2ff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .admin-section h2 {
+            color: #00d2ff;
+            font-size: 18px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: #0b0e14;
+            border: 1px solid #1e2640;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group textarea:focus {
+            border-color: #00d2ff;
+        }
+
+        .btn-save {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-save:hover {
+            background: #219150;
+        }
+
+        .btn-cancel {
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        /* Grid books catalog */
+        .books-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .book-card {
+            background: #111622;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: 0.3s;
+        }
+
+        .book-card:hover {
+            border-color: #00d2ff;
+            transform: translateY(-3px);
+        }
+
+        .book-card h3 {
+            font-size: 18px;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .book-card p {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 15px;
+            line-height: 1.4;
+            flex-grow: 1;
+        }
+
+        .status-tag {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .status-public {
+            background: rgba(39, 174, 96, 0.2);
+            color: #2ecc71;
+            border: 1px solid #27ae60;
+        }
+
+        .status-private {
+            background: rgba(192, 57, 43, 0.2);
+            color: #e74c3c;
+            border: 1px solid #c0392b;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn-read {
+            flex: 1;
+            background: #00d2ff;
+            color: #0b0e14;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .btn-edit-card {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-delete-card {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Requests Admin Table */
+        .requests-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .requests-table th, .requests-table td {
+            border: 1px solid #1e2640;
+            padding: 10px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .requests-table th {
+            background: #1b2438;
+            color: #00d2ff;
+        }
+
+        .btn-approve {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-reject {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Reader Modal */
+        .reader-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .reader-header {
+            background: #111622;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e2640;
+        }
+
+        .reader-header h3 {
+            color: #00d2ff;
+            font-size: 16px;
+        }
+
+        .btn-close-reader {
+            background: #c0392b;
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .reader-body {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #525659;
+        }
+
+        .reader-body iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <div class="spinner"></div>
+        <span>Иштеп жатат...</span>
+    </div>
+
+    <div class="nav-header">
+        <h1><i class="fas fa-book-reader"></i> Электрондук Китептер (VIP)</h1>
+        <a href="../dashboard.html" class="btn-back"><i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу</a>
+    </div>
+
+    <div class="container">
+
+        <!-- VIP PAYWALL / ТӨЛӨМ БӨЛҮМҮ (Уруксаты жокторго) -->
+        <div id="paywall-container" style="display: none;">
+            <div class="paywall-box">
+                <h2><i class="fas fa-lock"></i> Мүмкүнчүлүк чектелген</h2>
+                <p>Электрондук китептер бөлүмүн колдонуу үчүн тарифти тандап, QR код аркылуу төлөм жүргүзүңүз жана чекти WhatsApp аркылуу жөнөтүңүз.</p>
+                
+                <img src="../qrmbank.png" alt="MBANK QR Code" class="qr-img" onerror="this.src='https://via.placeholder.com/220?text=QR+Code+MBANK'">
+
+                <div class="notice-badge">
+                    <i class="fas fa-info-circle"></i> Төлөм жүргүзүлгөндөн кийин 24 сааттын ичинде сизге уруксат берилет.
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <a href="https://wa.me/996556400477?text=Саламатсызбы!%20Мен%20электрондук%20китептерге%20уруксат%20алуу%20үчүн%20төлөм%20кылдым." target="_blank" class="btn-whatsapp">
+                        <i class="fab fa-whatsapp"></i> Чекти WhatsApp-ка жөнөтүү (0556 400 477)
+                    </a>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <button class="btn-request" id="btn-send-access-request"><i class="fas fa-paper-plane"></i> Админге уруксат сурамын жөнөтүү</button>
+                </div>
+                <div id="request-status-msg" style="margin-top: 10px; font-size: 13px; color: #00ffcc;"></div>
+            </div>
+        </div>
+
+        <!-- АДМИН ПАНЕЛ (Макала/PDF жүктөө жана Уруксаттарды башкаруу) -->
+        <div id="admin-panel" class="admin-section" style="display: none;">
+            <h2><i class="fas fa-tools"></i> Админ Панели: Китеп/Макала Башкаруу</h2>
+            
+            <form id="book-form" onsubmit="return false;">
+                <input type="hidden" id="edit-book-id">
+                <div class="form-group">
+                    <label>Китептин/Макаланын аты</label>
+                    <input type="text" id="book-title" placeholder="Мисалы: Физика 10-класс китеби" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Кыскача маалымат / Макала текси</label>
+                    <textarea id="book-desc" rows="4" placeholder="Мазмуну же китеп жөнүндө кыскача маалымат..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>PDF Файл (Шилтеме/URL же Файл таңдоо)</label>
+                    <input type="url" id="book-pdf-url" placeholder="https://example.com/book.pdf">
+                    <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же PDF файлды тандаңыз (Base64 форматында сакталат):</div>
+                    <input type="file" id="book-pdf-file" accept="application/pdf">
+                </div>
+
+                <div class="form-group">
+                    <label>Статус (Көрүнүү мүмкүндүгү)</label>
+                    <select id="book-visibility">
+                        <option value="public">Ачык (Окурмандарга көрүнөт)</option>
+                        <option value="private">Жабык (Админ панелиде гана сакталат)</option>
+                    </select>
+                </div>
+
+                <button type="button" class="btn-save" id="btn-save-book"><i class="fas fa-save"></i> Сактоо</button>
+                <button type="button" class="btn-cancel" id="btn-cancel-edit" style="display: none;">Жокко чыгаруу</button>
+            </form>
+
+            <hr style="border-color: #1e2640; margin: 25px 0;">
+
+            <h2><i class="fas fa-user-shield"></i> Уруксат Сурамдары (Төлөм Текшерүү)</h2>
+            <div style="overflow-x: auto;">
+                <table class="requests-table">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Убактысы</th>
+                            <th>Статус</th>
+                            <th>Аракет</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-table-body">
+                        <tr><td colspan="4" style="text-align: center;">Сурамдар жок...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- КИТЕПТЕР КАТАЛОГУ (Окурмандар / Админ үчүн) -->
+        <div id="catalog-section" style="display: none;">
+            <h2 style="font-size: 20px; margin-bottom: 20px; color: #00d2ff;"><i class="fas fa-books"></i> Колдо бар китептер жана макалалар</h2>
+            <div class="books-grid" id="books-grid-container">
+                <!-- Карталар ушул жерге жүктөлөт -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ -->
+    <div class="reader-modal" id="pdf-reader-modal">
+        <div class="reader-header">
+            <h3 id="reader-book-title">Китеп окуу</h3>
+            <button class="btn-close-reader" id="btn-close-reader"><i class="fas fa-times"></i> Жабуу</button>
+        </div>
+        <div class="reader-body">
+            <iframe id="pdf-frame" src="about:blank"></iframe>
+        </div>
+    </div>
+
+    <!-- FIREBASE INITIALIZATION & LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getDatabase, ref, set, get, child, push, remove, update, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // АДМИН ЭЛЕКТРОНДУК ПОЧТАЛАРЫ
+        const ADMIN_EMAILS = ["admin@bilimal.org", "mugalim@gmail.com"]; // Зарыл болсо өзгөртүңүз
+
+        let currentUser = null;
+        let isAdmin = false;
+        let hasAccess = false;
+        let uploadedBase64Pdf = "";
+
+        const loader = document.getElementById('loader');
+        const paywallContainer = document.getElementById('paywall-container');
+        const adminPanel = document.getElementById('admin-panel');
+        const catalogSection = document.getElementById('catalog-section');
+        const booksGridContainer = document.getElementById('books-grid-container');
+
+        // Электрондук почтадагы чекиттерди Firebase key форматына ылайыктоо
+        function encodeEmail(email) {
+            return email.replace(/\./g, '_dot_').replace(/@/g, '_at_');
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                // Кире элек болсо кайтаруу
+                window.location.href = "../dashboard.html";
+                return;
+            }
+
+            currentUser = user;
+            isAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
+
+            // Уруксатты текшерүү
+            await checkUserPermissions();
+            
+            loader.style.display = 'none';
+
+            if (isAdmin) {
+                adminPanel.style.display = 'block';
+                catalogSection.style.display = 'block';
+                paywallContainer.style.display = 'none';
+                loadAdminRequests();
+                loadBooks();
+            } else if (hasAccess) {
+                adminPanel.style.display = 'none';
+                catalogSection.style.display = 'block';
+                paywallContainer.style.display = 'none';
+                loadBooks();
+            } else {
+                adminPanel.style.display = 'none';
+                catalogSection.style.display = 'none';
+                paywallContainer.style.display = 'block';
+            }
+        });
+
+        async function checkUserPermissions() {
+            if (isAdmin) {
+                hasAccess = true;
+                return;
+            }
+            try {
+                const encodedKey = encodeEmail(currentUser.email);
+                const permSnap = await get(ref(db, `ebook_permissions/${encodedKey}`));
+                if (permSnap.exists() && permSnap.val().granted === true) {
+                    hasAccess = true;
+                } else {
+                    hasAccess = false;
+                }
+            } catch (e) {
+                console.error("Access Check Error:", e);
+                hasAccess = false;
+            }
+        }
+
+        // Сурам жөнөтүү (Колдонуучу)
+        document.getElementById('btn-send-access-request').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const reqRef = ref(db, `ebook_access_requests/${encodeEmail(currentUser.email)}`);
+            await set(reqRef, {
+                email: currentUser.email,
+                status: "PENDING",
+                timestamp: Date.now()
+            });
+            document.getElementById('request-status-msg').innerText = "Сурамыңыз ийгиликтүү жөнөтүлдү! 24 сааттын ичинде текшерилет.";
+        });
+
+        // Админ: Сурамдарды жүктөө
+        function loadAdminRequests() {
+            const reqTableBody = document.getElementById('requests-table-body');
+            onValue(ref(db, 'ebook_access_requests'), (snapshot) => {
+                reqTableBody.innerHTML = '';
+                if (!snapshot.exists()) {
+                    reqTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Сурамдар азырынча жок</td></tr>';
+                    return;
+                }
+                const data = snapshot.val();
+                Object.keys(data).forEach(key => {
+                    const req = data[key];
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${req.email}</td>
+                        <td>${new Date(req.timestamp).toLocaleString()}</td>
+                        <td><span style="color:${req.status === 'APPROVED' ? '#2ecc71' : '#f39c12'}">${req.status}</span></td>
+                        <td>
+                            <button class="btn-approve" data-email="${req.email}">Уруксат берүү</button>
+                            <button class="btn-reject" data-email="${req.email}" style="margin-left:5px;">Баш тартуу</button>
+                        </td>
+                    `;
+                    reqTableBody.appendChild(tr);
+                });
+
+                // Button listeners
+                document.querySelectorAll('.btn-approve').forEach(btn => {
+                    btn.addEventListener('click', (e) => grantPermission(e.target.getAttribute('data-email'), true));
+                });
+                document.querySelectorAll('.btn-reject').forEach(btn => {
+                    btn.addEventListener('click', (e) => grantPermission(e.target.getAttribute('data-email'), false));
+                });
+            });
+        }
+
+        async function grantPermission(email, isGranted) {
+            const key = encodeEmail(email);
+            await set(ref(db, `ebook_permissions/${key}`), {
+                email: email,
+                granted: isGranted,
+                updatedAt: Date.now()
+            });
+            await update(ref(db, `ebook_access_requests/${key}`), {
+                status: isGranted ? 'APPROVED' : 'REJECTED'
+            });
+            alert(`${email} үчүн уруксат ${isGranted ? 'берилди' : 'баш тартылды'}.`);
+        }
+
+        // PDF Файлды кабыл алуу (Base64 форматында конвертациялоо)
+        document.getElementById('book-pdf-file').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.type !== "application/pdf") {
+                alert("Сураныч, PDF форматындагы файлды тандаңыз!");
+                return;
+            }
+            if (file.size > 15 * 1024 * 1024) { // Limit ~15MB
+                alert("Файлдын көлөмү 15MB ашпоосу керек!");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                uploadedBase64Pdf = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Китеп сактоо / Өзгөртүү (Админ)
+        document.getElementById('btn-save-book').addEventListener('click', async () => {
+            const editId = document.getElementById('edit-book-id').value;
+            const title = document.getElementById('book-title').value.trim();
+            const desc = document.getElementById('book-desc').value.trim();
+            let pdfUrl = document.getElementById('book-pdf-url').value.trim();
+            const isPublic = document.getElementById('book-visibility').value === 'public';
+
+            if (!title || !desc) {
+                alert("Аты жана Макала сүрөттөмөсү толтурулушу керек!");
+                return;
+            }
+
+            if (uploadedBase64Pdf) {
+                pdfUrl = uploadedBase64Pdf;
+            }
+
+            const bookData = {
+                title,
+                desc,
+                pdfUrl: pdfUrl || "",
+                isPublic,
+                updatedAt: Date.now()
+            };
+
+            if (editId) {
+                await update(ref(db, `ebooks/${editId}`), bookData);
+                alert("Китеп ийгиликтүү оңдолду!");
+            } else {
+                bookData.createdAt = Date.now();
+                await push(ref(db, 'ebooks'), bookData);
+                alert("Жаңы китеп/макала сакталды!");
+            }
+
+            resetForm();
+        });
+
+        function resetForm() {
+            document.getElementById('edit-book-id').value = '';
+            document.getElementById('book-title').value = '';
+            document.getElementById('book-desc').value = '';
+            document.getElementById('book-pdf-url').value = '';
+            document.getElementById('book-pdf-file').value = '';
+            document.getElementById('btn-cancel-edit').style.display = 'none';
+            uploadedBase64Pdf = "";
+        }
+
+        document.getElementById('btn-cancel-edit').addEventListener('click', resetForm);
+
+        // Китептерди жүктөөнү баштоо
+        function loadBooks() {
+            onValue(ref(db, 'ebooks'), (snapshot) => {
+                booksGridContainer.innerHTML = '';
+                if (!snapshot.exists()) {
+                    booksGridContainer.innerHTML = '<p style="color:#aaa;">Азырынча эч кандай китептер кошула элек.</p>';
+                    return;
+                }
+
+                const books = snapshot.val();
+                Object.keys(books).forEach(id => {
+                    const item = books[id];
+
+                    // Эгер колдонуучу админ эмес болсо жана сакталган китеп 'private' болсо, аны окурманга көрсөтпөө
+                    if (!isAdmin && !item.isPublic) return;
+
+                    const card = document.createElement('div');
+                    card.className = 'book-card';
+                    card.innerHTML = `
+                        ${isAdmin ? `<span class="status-tag ${item.isPublic ? 'status-public' : 'status-private'}">${item.isPublic ? 'Ачык' : 'Жабык'}</span>` : ''}
+                        <h3>${escapeHtml(item.title)}</h3>
+                        <p>${escapeHtml(item.desc)}</p>
+                        <div class="card-actions">
+                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Толук экранда окуу</button>` : '<span style="font-size:12px; color:#aaa;">(Макала гана)</span>'}
+                            ${isAdmin ? `
+                                <button class="btn-edit-card" data-id="${id}"><i class="fas fa-edit"></i></button>
+                                <button class="btn-delete-card" data-id="${id}"><i class="fas fa-trash"></i></button>
+                            ` : ''}
+                        </div>
+                    `;
+                    booksGridContainer.appendChild(card);
+                });
+
+                // Attach Event Listeners
+                document.querySelectorAll('.btn-read').forEach(b => {
+                    b.addEventListener('click', (e) => {
+                        const target = e.currentTarget;
+                        openReader(target.getAttribute('data-pdf'), target.getAttribute('data-title'));
+                    });
+                });
+
+                if (isAdmin) {
+                    document.querySelectorAll('.btn-edit-card').forEach(b => {
+                        b.addEventListener('click', (e) => {
+                            const id = e.currentTarget.getAttribute('data-id');
+                            editBook(id, books[id]);
+                        });
+                    });
+                    document.querySelectorAll('.btn-delete-card').forEach(b => {
+                        b.addEventListener('click', (e) => {
+                            const id = e.currentTarget.getAttribute('data-id');
+                            deleteBook(id);
+                        });
+                    });
+                }
+            });
+        }
+
+        function editBook(id, data) {
+            document.getElementById('edit-book-id').value = id;
+            document.getElementById('book-title').value = data.title;
+            document.getElementById('book-desc').value = data.desc;
+            document.getElementById('book-pdf-url').value = data.pdfUrl.startsWith('data:') ? '' : data.pdfUrl;
+            document.getElementById('book-visibility').value = data.isPublic ? 'public' : 'private';
+            document.getElementById('btn-cancel-edit').style.display = 'inline-block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteBook(id) {
+            if (confirm("Чынында эле бул маалыматты өчүрүүнү каалайсызбы?")) {
+                await remove(ref(db, `ebooks/${id}`));
+                alert("Өчүрүлдү!");
+            }
+        }
+
+        // Reader Modal Control
+        const readerModal = document.getElementById('pdf-reader-modal');
+        const pdfFrame = document.getElementById('pdf-frame');
+        const readerTitle = document.getElementById('reader-book-title');
+
+        function openReader(url, title) {
+            readerTitle.innerText = title;
+            pdfFrame.src = url;
+            readerModal.style.display = 'flex';
+        }
+
+        document.getElementById('btn-close-reader').addEventListener('click', () => {
+            readerModal.style.display = 'none';
+            pdfFrame.src = 'about:blank';
+        });
+
+        function escapeHtml(str) {
+            return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+        }
+    </script>
+</body>
+</html>
