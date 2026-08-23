@@ -733,10 +733,11 @@
             renderView();
         });
 
+        // БҮГҮНКҮ ТҮЗӨТҮҮ: `ebook_permissions` ордуна Firebase Rules'теги `vip_users` колдонулду
         async function checkUserVIPStatus() {
             try {
                 const key = encodeEmail(currentUser.email);
-                const permSnap = await get(ref(db, `ebook_permissions/${key}`));
+                const permSnap = await get(ref(db, `vip_users/${key}`));
                 if (permSnap.exists()) {
                     const data = permSnap.val();
                     if (data.granted && data.expiresAt > Date.now()) {
@@ -800,7 +801,6 @@
                     const encodedText = encodeURIComponent(waText);
                     whatsappBtn.href = `https://wa.me/996556400477?text=${encodedText}`;
 
-                    // QR бөлүмүнө автоматтык түрдө жылдыруу
                     qrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 });
             });
@@ -832,7 +832,7 @@
             }
         });
 
-        // Админ: Уруксат берүү (Email аркылуу)
+        // БҮГҮНКҮ ТҮЗӨТҮҮ: Админ уруксаттарды сактоо `vip_users` жолуна багытталды
         document.getElementById('btn-grant-access').addEventListener('click', async () => {
             const email = document.getElementById('grant-email-input').value.trim();
             const duration = document.getElementById('grant-duration-select').value;
@@ -849,22 +849,27 @@
             const expiresAt = Date.now() + (days * 24 * 60 * 60 * 1000);
             const key = encodeEmail(email);
 
-            await set(ref(db, `ebook_permissions/${key}`), {
-                email: email,
-                granted: true,
-                plan: duration,
-                expiresAt: expiresAt,
-                updatedAt: Date.now()
-            });
+            try {
+                await set(ref(db, `vip_users/${key}`), {
+                    email: email,
+                    granted: true,
+                    plan: duration,
+                    expiresAt: expiresAt,
+                    updatedAt: Date.now()
+                });
 
-            document.getElementById('grant-email-input').value = '';
-            alert(`${email} почтасына ${days} күнгө ийгиликтүү уруксат берилди!`);
+                document.getElementById('grant-email-input').value = '';
+                alert(`${email} почтасына ${days} күнгө ийгиликтүү уруксат берилди!`);
+            } catch (err) {
+                console.error("Grant access error:", err);
+                alert("Ката чыкты: " + err.message);
+            }
         });
 
-        // Активдүү уруксаттарды тизмелөө
+        // БҮГҮНКҮ ТҮЗӨТҮҮ: Уруксаттар тизмеси `vip_users` жолунан тартылат
         function loadAdminPermissionsList() {
             const tableBody = document.getElementById('permissions-table-body');
-            onValue(ref(db, 'ebook_permissions'), (snapshot) => {
+            onValue(ref(db, 'vip_users'), (snapshot) => {
                 tableBody.innerHTML = '';
                 if (!snapshot.exists()) {
                     tableBody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Уруксат берилгендер жок</td></tr>';
@@ -888,10 +893,13 @@
                     b.addEventListener('click', async (e) => {
                         const k = e.currentTarget.getAttribute('data-key');
                         if (confirm("Уруксатты алып салууну каалайсызбы?")) {
-                            await remove(ref(db, `ebook_permissions/${k}`));
+                            await remove(ref(db, `vip_users/${k}`));
                         }
                     });
                 });
+            }, (error) => {
+                console.error("Firebase Read Error:", error);
+                tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#e74c3c;">Ката: ${error.message}</td></tr>`;
             });
         }
 
@@ -914,7 +922,7 @@
             reader.readAsDataURL(file);
         });
 
-        // Китеп/Макала Сактоо
+        // БҮГҮНКҮ ТҮЗӨТҮҮ: Китептер сакталуучу жол `ebooks` эмес, `library` деп өзгөртүлдү
         document.getElementById('btn-save-book').addEventListener('click', async () => {
             const editId = document.getElementById('edit-book-id').value;
             const title = document.getElementById('book-title').value.trim();
@@ -939,16 +947,20 @@
                 updatedAt: Date.now()
             };
 
-            if (editId) {
-                await update(ref(db, `ebooks/${editId}`), bookData);
-                alert("Ийгиликтүү оңдолду!");
-            } else {
-                bookData.createdAt = Date.now();
-                await push(ref(db, 'ebooks'), bookData);
-                alert("Ийгиликтүү сакталды!");
+            try {
+                if (editId) {
+                    await update(ref(db, `library/${editId}`), bookData);
+                    alert("Ийгиликтүү оңдолду!");
+                } else {
+                    bookData.createdAt = Date.now();
+                    await push(ref(db, 'library'), bookData);
+                    alert("Ийгиликтүү сакталды!");
+                }
+                resetForm();
+            } catch (err) {
+                console.error("Save book error:", err);
+                alert("Сактоодо ката чыкты: " + err.message);
             }
-
-            resetForm();
         });
 
         function resetForm() {
@@ -963,9 +975,9 @@
 
         document.getElementById('btn-cancel-edit').addEventListener('click', resetForm);
 
-        // Китептер каталогун жүктөө
+        // БҮГҮНКҮ ТҮЗӨТҮҮ: Китептер `library` жолунан окулат
         function loadBooks() {
-            onValue(ref(db, 'ebooks'), (snapshot) => {
+            onValue(ref(db, 'library'), (snapshot) => {
                 booksGridContainer.innerHTML = '';
                 if (!snapshot.exists()) {
                     booksGridContainer.innerHTML = '<p style="color:#aaa;">Азырынча китептер жок.</p>';
@@ -1031,7 +1043,7 @@
 
         async function deleteBook(id) {
             if (confirm("Маалыматты өчүрүүнү каалайсызбы?")) {
-                await remove(ref(db, `ebooks/${id}`));
+                await remove(ref(db, `library/${id}`));
             }
         }
 
