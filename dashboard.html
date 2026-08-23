@@ -3,61 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Bilimal</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>BilimAl.org - Башкаруу панели</title>
+
+    <!-- FontAwesome & CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #0b0e14;
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Жүктөлүү экраны */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0b0e14;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #00d2ff;
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border-left-color: #00d2ff;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: none;
+        }
+
+        /* Профиль башы */
+        .profile-card {
+            background-color: #111622;
+            border: 1px solid #1e2640;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .user-info h2 {
+            color: #00d2ff;
+            font-size: 22px;
+            margin-bottom: 8px;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 14px;
+            background: rgba(0, 210, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+            color: #00ffcc;
+            margin-top: 5px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .lang-selector button, .btn-action {
+            background-color: #1e2640;
+            color: #fff;
+            border: 1px solid #34495e;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .lang-selector button.active {
+            background-color: #00d2ff;
+            color: #0b0e14;
+            font-weight: bold;
+        }
+
+        .lang-selector button:hover, .btn-action:hover {
+            background-color: #00d2ff;
+            color: #0b0e14;
+        }
+
+        .btn-role {
+            background-color: #8e44ad;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn-logout {
+            background-color: #c0392b;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-logout:hover {
+            background-color: #e74c3c;
+        }
+
+        .section-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .grid-item {
+            background-color: #111622;
+            border: 1px solid #1e2640;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.2s, border-color 0.2s;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .grid-item:hover {
+            transform: translateY(-3px);
+            border-color: #00d2ff;
+            background-color: #161f33;
+        }
+
+        .grid-item i {
+            font-size: 32px;
+            color: #00d2ff;
+            width: 45px;
+            text-align: center;
+        }
+
+        /* VIP белгисинин стили */
+        .vip-badge-tag {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: #fff;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            box-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+        }
+
+        /* КАТТАЛУУ ЖАНА КИРҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
+        .auth-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            padding: 20px;
+        }
+
+        .auth-modal-box {
+            background: #111622;
+            border: 1px solid #00d2ff;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            box-shadow: 0 0 25px rgba(0, 210, 255, 0.2);
+            text-align: center;
+        }
+
+        .auth-modal-box h3 {
+            color: #00d2ff;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .auth-modal-box p {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .auth-input-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .auth-input-group label {
+            display: block;
+            font-size: 13px;
+            margin-bottom: 5px;
+            color: #ccc;
+        }
+
+        .auth-input-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #1e2640;
+            background: #0b0e14;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .auth-input-group input:focus {
+            border-color: #00d2ff;
+        }
+
+        .auth-btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #00d2ff;
+            color: #0b0e14;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.3s;
+        }
+
+        .auth-btn-primary:hover {
+            background: #00a3cc;
+        }
+
+        .auth-switch-text {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #aaa;
+        }
+
+        .auth-switch-text a {
+            color: #00d2ff;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .auth-error-msg {
+            color: #ff5252;
+            font-size: 13px;
+            margin-top: 12px;
+            display: none;
+            background: rgba(255, 82, 82, 0.15);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+            text-align: left;
+            word-break: break-word;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .profile-card { flex-direction: column; align-items: flex-start; }
+            .header-actions { width: 100%; justify-content: space-between; }
+            .grid-container { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
 <body>
 
+    <!-- Жүктөлүү экраны -->
     <div id="loader">
+        <div class="spinner"></div>
         <span id="loader-text">Система текшерилүүдө...</span>
     </div>
 
-    <!-- АВТОРИЗАЦИЯ МОДАЛДЫК ТЕРЕЗЕСИ -->
-    <div id="auth-modal" style="display: none;">
-        <div class="auth-card">
-            <h2 id="auth-title">Жеке кабинетке кирүү</h2>
+    <!-- КАТТАЛУУ ЖАНА КИРҮҮ МОДАЛДЫК ТЕРЕЗЕСИ -->
+    <div class="auth-modal-overlay" id="auth-modal">
+        <div class="auth-modal-box">
+            <h3 id="auth-title">Жеке кабинетке кирүү</h3>
             <p id="auth-subtitle">Сайттын функцияларын колдонуу үчүн почтаңызды киргизиңиз</p>
-            
-            <div id="auth-error" style="display: none; color: red;"></div>
 
-            <label id="lbl-email" for="auth-email">Электрондук почта (E-mail)</label>
-            <input type="email" id="auth-email" placeholder="example@gmail.com">
+            <form id="auth-form" onsubmit="return false;">
+                <div class="auth-input-group">
+                    <label id="lbl-email">Электрондук почта (E-mail)</label>
+                    <input type="email" id="auth-email" placeholder="example@gmail.com" required autocomplete="email">
+                </div>
+                <div class="auth-input-group">
+                    <label id="lbl-password">Сыр сөз (Пароль)</label>
+                    <input type="password" id="auth-password" placeholder="******" required minlength="6" autocomplete="current-password">
+                </div>
 
-            <label id="lbl-password" for="auth-password">Сыр сөз (Пароль)</label>
-            <input type="password" id="auth-password" placeholder="******">
+                <button type="button" class="auth-btn-primary" id="auth-submit-btn">Кирүү</button>
+            </form>
 
-            <button id="auth-submit-btn">Кирүү</button>
+            <div class="auth-error-msg" id="auth-error"></div>
 
-            <div class="auth-switch-box">
-                <span id="auth-switch-prompt">Каттала элексизби?</span>
-                <button id="auth-switch-btn">Катталуу</button>
+            <div class="auth-switch-text">
+                <span id="auth-switch-prompt">Каттала элексизби?</span> 
+                <a id="auth-switch-btn">Катталуу</a>
             </div>
         </div>
     </div>
 
-    <!-- НЕГИЗГИ КОНТЕНТ -->
-    <div id="main-content" style="display: none;">
-        
-        <div class="top-bar">
-            <div class="lang-selector">
-                <button id="btn-lang-ky">KY</button>
-                <button id="btn-lang-ru">RU</button>
-                <button id="btn-lang-en">EN</button>
-            </div>
-            
+    <!-- НЕГИЗГИ КАБИНЕТ -->
+    <div class="container" id="main-content">
+        <div class="profile-card">
             <div class="user-info">
-                <span id="user-email-display"></span>
-                <span id="badge-game" class="badge"></span>
-                <span id="badge-lab" class="badge"></span>
-                <button id="btn-role"></button>
-                <button id="logout-btn">Чыгуу</button>
+                <h2 id="user-email-display">Колдонуучу: ...</h2>
+                <div>
+                    <span class="status-badge" id="badge-game"><i class="fas fa-horse"></i> Оюн Тесттери: Активдүү (2026-ж., 15-август чейин)</span>
+                </div>
+                <div>
+                    <span class="status-badge" id="badge-lab"><i class="fas fa-flask"></i> Лабораториялык иштер: Активдүү (2026-ж., 15-август чейин)</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="lang-selector">
+                    <button class="lang-btn active" id="btn-lang-ky">KG</button>
+                    <button class="lang-btn" id="btn-lang-ru">RU</button>
+                    <button class="lang-btn" id="btn-lang-en">EN</button>
+                </div>
+                <button class="btn-role" id="btn-role">Окуучу / Мугалим</button>
+                <button class="btn-logout" id="logout-btn">Чыгуу</button>
             </div>
         </div>
 
         <h3 class="section-title" id="section-title">Ыкчам өтмөктөр:</h3>
 
         <div class="grid-container">
-
             <!-- ОКУУЧУЛАР / СТУДЕНТТЕР БӨЛҮМҮ -->
             <a href="./sections/student-portal.html" class="grid-item">
                 <i class="fas fa-user-graduate"></i>
@@ -91,6 +416,15 @@
                 <div class="item-text">
                     <h3 id="item-kindergarten-admin-title">Бала бакчага админ</h3>
                     <p id="item-kindergarten-admin-desc">Китепкана жана ресурстарды башкаруу</p>
+                </div>
+            </a>
+
+            <!-- ЭЛЕКТРОНДУК КИТЕПТЕР (ЖАҢЫ БӨЛҮМ) -->
+            <a href="./sections/ebooks-admin.html" class="grid-item">
+                <i class="fas fa-book-reader"></i>
+                <div class="item-text">
+                    <h3 id="item-ebooks-admin-title">Электрондук китептер</h3>
+                    <p id="item-ebooks-admin-desc">Санриптик китептер жана материалдар</p>
                 </div>
             </a>
 
@@ -140,16 +474,6 @@
                     <p id="item-lab-works-desc">Виртуалдык тажрыйбалар жана симуляциялар</p>
                 </div>
             </a>
-
-            <!-- ЭЛЕКТРОНДУК КИТЕПТЕР (ЖАҢЫ БӨЛҮМ) -->
-            <a href="./sections/ebooks-admin.html" class="grid-item">
-                <i class="fas fa-book-reader"></i>
-                <div class="item-text">
-                    <h3 id="item-ebooks-title">Электрондук китептер</h3>
-                    <p id="item-ebooks-desc">Санариптик китептер жана ресурстар</p>
-                </div>
-            </a>
-
         </div>
     </div>
 
@@ -187,6 +511,8 @@
                 curatorsDesc: "Башкаруу жана отчеттор",
                 kindergartenAdminTitle: "Бала бакчага админ",
                 kindergartenAdminDesc: "Китепкана жана ресурстарды башкаруу",
+                ebooksAdminTitle: "Электрондук китептер",
+                ebooksAdminDesc: "Санариптик китептер жана материалдар",
                 kyrgyzTeacherTitle: "Кыргыз тили мугалими үчүн",
                 kyrgyzTeacherDesc: "Окуу куралдары жана ресурстар",
                 kyrgyzLitTeacherTitle: "Кыргыз адабияты мугалими үчүн",
@@ -197,8 +523,6 @@
                 physicsAstroDesc: "Тесттер, теория жана тапшырмалар",
                 labWorksTitle: "Лабораториялык иштер",
                 labWorksDesc: "Виртуалдык тажрыйбалар жана симуляциялар",
-                ebooksTitle: "Электрондук китептер",
-                ebooksDesc: "Санариптик китептер жана ресурстар",
                 errWrongPass: "Почта же сыр сөз ката!",
                 errEmailInUse: "Бул почта мурда катталган! 'Кирүү' баскычын басыңыз.",
                 errWeakPass: "Сыр сөз кеминде 6 белгиден турушу керек!",
@@ -230,6 +554,8 @@
                 curatorsDesc: "Управление и отчеты",
                 kindergartenAdminTitle: "Админ детского сада",
                 kindergartenAdminDesc: "Управление библиотекой и ресурсами",
+                ebooksAdminTitle: "Электронные книги",
+                ebooksAdminDesc: "Цифровые книги и материалы",
                 kyrgyzTeacherTitle: "Для учителя кыргызского языка",
                 kyrgyzTeacherDesc: "Учебные пособия и ресурсы",
                 kyrgyzLitTeacherTitle: "Для учителя кыргызской литературы",
@@ -240,8 +566,6 @@
                 physicsAstroDesc: "Тесты, теория и задания",
                 labWorksTitle: "Лабораторные работы",
                 labWorksDesc: "Виртуальные опыты и симуляции",
-                ebooksTitle: "Электронные книги",
-                ebooksDesc: "Цифровые книги и ресурсы",
                 errWrongPass: "Неверный email или пароль!",
                 errEmailInUse: "Этот email уже зарегистрирован! Нажмите 'Войти'.",
                 errWeakPass: "Пароль должен содержать минимум 6 символов!",
@@ -273,6 +597,8 @@
                 curatorsDesc: "Management & Reports",
                 kindergartenAdminTitle: "Kindergarten Admin",
                 kindergartenAdminDesc: "Manage library and resources",
+                ebooksAdminTitle: "E-Books",
+                ebooksAdminDesc: "Digital books and materials",
                 kyrgyzTeacherTitle: "For Kyrgyz Language Teacher",
                 kyrgyzTeacherDesc: "Educational materials & resources",
                 kyrgyzLitTeacherTitle: "For Kyrgyz Literature Teacher",
@@ -283,8 +609,6 @@
                 physicsAstroDesc: "Tests, theory & assignments",
                 labWorksTitle: "Lab Works",
                 labWorksDesc: "Virtual experiments & simulations",
-                ebooksTitle: "E-Books",
-                ebooksDesc: "Digital books and resources",
                 errWrongPass: "Incorrect email or password!",
                 errEmailInUse: "This email is already registered! Click 'Login'.",
                 errWeakPass: "Password must be at least 6 characters long!",
@@ -328,6 +652,9 @@
             document.getElementById('item-kindergarten-admin-title').innerText = t.kindergartenAdminTitle;
             document.getElementById('item-kindergarten-admin-desc').innerText = t.kindergartenAdminDesc;
 
+            document.getElementById('item-ebooks-admin-title').innerText = t.ebooksAdminTitle;
+            document.getElementById('item-ebooks-admin-desc').innerText = t.ebooksAdminDesc;
+
             document.getElementById('item-kyrgyz-teacher-title').innerText = t.kyrgyzTeacherTitle;
             document.getElementById('item-kyrgyz-teacher-desc').innerText = t.kyrgyzTeacherDesc;
 
@@ -342,9 +669,6 @@
 
             document.getElementById('item-lab-works-title').innerText = t.labWorksTitle;
             document.getElementById('item-lab-works-desc').innerText = t.labWorksDesc;
-
-            document.getElementById('item-ebooks-title').innerText = t.ebooksTitle;
-            document.getElementById('item-ebooks-desc').innerText = t.ebooksDesc;
 
             document.getElementById('badge-game').innerHTML = `<i class="fas fa-horse"></i> ${t.badgeGame}`;
             document.getElementById('badge-lab').innerHTML = `<i class="fas fa-flask"></i> ${t.badgeLab}`;
@@ -374,7 +698,7 @@
         document.getElementById('btn-lang-ru').addEventListener('click', () => setLanguage('ru'));
         document.getElementById('btn-lang-en').addEventListener('click', () => setLanguage('en'));
 
-        // Firebase Инициализациясы
+        // Firebase Иннициализациясы
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
