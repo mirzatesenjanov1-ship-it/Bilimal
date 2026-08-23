@@ -92,9 +92,7 @@
             font-size: 0.82rem;
             transition: all 0.3s ease;
         }
-        .lang-btn:hover {
-            color: #f8fafc;
-        }
+        .lang-btn:hover { color: #f8fafc; }
         .lang-btn.active {
             background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(112, 0, 255, 0.2));
             color: #00f0ff;
@@ -105,10 +103,10 @@
         /* CONTAINER */
         .container { max-width: 1200px; margin: 0 auto; padding: 0 5% 60px 5%; }
 
-        /* HERO SECTION UI/UX */
+        /* HERO SECTION */
         .hero-section {
             text-align: center;
-            padding: 60px 20px 40px 20px;
+            padding: 50px 20px 30px 20px;
             position: relative;
         }
         .hero-section::before {
@@ -234,7 +232,7 @@
             background: linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(112, 0, 255, 0.15));
             color: #00f0ff;
             border: 1px solid rgba(0, 240, 255, 0.3);
-            padding: 10px 20px;
+            padding: 12px 20px;
             border-radius: 10px;
             font-weight: 700;
             display: inline-flex;
@@ -251,6 +249,14 @@
             color: #fff;
             border-color: transparent;
             box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+        }
+
+        .no-books {
+            text-align: center;
+            grid-column: 1 / -1;
+            padding: 60px 20px;
+            color: #64748b;
+            font-size: 1.1rem;
         }
 
         /* MODAL WINDOW */
@@ -315,7 +321,7 @@
 
         @media (max-width: 640px) {
             .page-title { font-size: 2.1rem; }
-            .hero-section { padding: 40px 10px 20px 10px; }
+            .hero-section { padding: 30px 10px 15px 10px; }
             header { padding: 16px 4%; }
         }
     </style>
@@ -361,11 +367,11 @@
 
         <!-- КИТЕПТЕР ГРИДИ -->
         <div class="topics-grid" id="postsGrid">
-            <!-- Динамикалык китептер жана AdSense ушул жерге чыгат -->
+            <!-- Динамикалык ачык китептер ушул жерге админ панелден келип түшөт -->
         </div>
     </div>
 
-    <!-- МОДАЛДЫК ОКНО (Текст жана PDF көрүү үчүн) -->
+    <!-- МОДАЛДЫК ОКНО -->
     <div class="modal" id="contentModal">
         <div class="modal-header">
             <div class="modal-title" id="modalTitle">Материал</div>
@@ -375,69 +381,111 @@
     </div>
 
     <script>
-        // Негизги дефолттук PDF китептер
-        const defaultPosts = [
+        // Дефолттук камдык ачык китептер
+        const fallbackBooks = [
             {
-                id: 1,
+                id: 'fb1',
                 type: 'pdf',
-                category: 'Gemini Storybook • PDF Китеп',
+                category: 'Физика • PDF',
                 title: 'Түз сызыктуу бир калыптагы кыймыл',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
-                url: 'gemini-books/story1.pdf'
+                url: 'gemini-books/story1.pdf',
+                isPublic: true
             },
             {
-                id: 2,
+                id: 'fb2',
                 type: 'pdf',
-                category: 'Gemini Storybook • PDF Китеп',
+                category: 'Физика • PDF',
                 title: 'Физика илиминин максаты жана мааниси',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
-                url: 'gemini-books/story2.pdf'
+                url: 'gemini-books/story2.pdf',
+                isPublic: true
             },
             {
-                id: 3,
+                id: 'fb3',
                 type: 'pdf',
-                category: 'Gemini Storybook • PDF Китеп',
+                category: 'Физика • PDF',
                 title: 'Физикалык чоңдуктар',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
-                url: 'gemini-books/story3.pdf'
+                url: 'gemini-books/story3.pdf',
+                isPublic: true
             }
         ];
 
-        function getStoredPosts() {
-            const stored = localStorage.getItem('bilimal_posts');
-            if (!stored) return defaultPosts;
-            
-            try {
-                const parsed = JSON.parse(stored);
-                return parsed.length > 0 ? parsed : defaultPosts;
-            } catch (e) {
-                return defaultPosts;
+        // Админ жакта колдонулуучу бардык мүмкүн болгон LocalStorage ачкычтарынан ачык китептерди чогултуу
+        function getPublicBooks() {
+            let allBooks = [];
+
+            // 1-булак: bilimal_ebooks (негизги ачкыч)
+            const ebooksData = localStorage.getItem('bilimal_ebooks');
+            // 2-булак: bilimal_posts
+            const postsData = localStorage.getItem('bilimal_posts');
+            // 3-булак: ebooks
+            const rawEbooks = localStorage.getItem('ebooks');
+
+            if (ebooksData) {
+                try { allBooks = allBooks.concat(JSON.parse(ebooksData)); } catch(e){}
             }
+            if (postsData) {
+                try { allBooks = allBooks.concat(JSON.parse(postsData)); } catch(e){}
+            }
+            if (rawEbooks) {
+                try { allBooks = allBooks.concat(JSON.parse(rawEbooks)); } catch(e){}
+            }
+
+            // Эгер админ сактагычтардын биринде да маалымат жок болсо, дефолттук китептерди колдонуу
+            if (allBooks.length === 0) {
+                return fallbackBooks;
+            }
+
+            // ID боюнча кайталангандарды тазалоо жана VIP эмес ("ачык") китептерди сорттоо
+            const uniqueMap = new Map();
+            allBooks.forEach(book => {
+                if (book && book.id) {
+                    // Эгер isVIP же isPrivate белгиси ачык эле true болсо, аны калтырабыз,
+                    // эгер андай белги жок болсо же isPublic: true болсо, "ачык" китеп деп эсептейбиз.
+                    const isVip = book.isVIP || book.access === 'vip' || book.isPrivate === true;
+                    if (!isVip) {
+                        uniqueMap.set(book.id, book);
+                    }
+                }
+            });
+
+            const result = Array.from(uniqueMap.values());
+            return result.length > 0 ? result : fallbackBooks;
         }
+
+        let currentPublicBooks = [];
 
         function renderPosts() {
             const grid = document.getElementById('postsGrid');
-            const posts = getStoredPosts();
+            currentPublicBooks = getPublicBooks();
             grid.innerHTML = '';
 
-            posts.forEach((post, index) => {
+            if (currentPublicBooks.length === 0) {
+                grid.innerHTML = `<div class="no-books">Азырынча ачык китептер же макалалар кошула элек.</div>`;
+                return;
+            }
+
+            currentPublicBooks.forEach((post, index) => {
                 const card = document.createElement('div');
                 card.className = 'topic-card';
                 card.innerHTML = `
                     <div>
-                        <span class="topic-badge">${post.category}</span>
-                        <div class="topic-title">${post.title}</div>
-                        <div class="topic-desc">${post.desc || ''}</div>
+                        <span class="topic-badge">${post.category || 'Электрондук Китеп'}</span>
+                        <div class="topic-title">${post.title || 'Аталышы жок'}</div>
+                        <div class="topic-desc">${post.desc || post.description || 'Ачык окуу материалы.'}</div>
                     </div>
                     <div class="card-actions">
                         <button class="topic-btn" onclick="openPost(${index})">
-                            <span>Окууну баштоо</span>
+                            <span>📖 Окуу (Толук экран)</span>
                             <span>→</span>
                         </button>
                     </div>
                 `;
                 grid.appendChild(card);
 
+                // Ар 3 китептин ортосуна AdSense жарнамасын жайгаштыруу
                 if ((index + 1) % 3 === 0) {
                     const adCard = document.createElement('div');
                     adCard.className = 'ads-card';
@@ -458,10 +506,10 @@
         }
 
         function openPost(index) {
-            const posts = getStoredPosts();
-            const post = posts[index];
+            const post = currentPublicBooks[index];
+            if (!post) return;
 
-            document.getElementById('modalTitle').innerText = post.title;
+            document.getElementById('modalTitle').innerText = post.title || 'Материал';
             const container = document.getElementById('modalBody');
 
             const adHtml = `
@@ -475,15 +523,18 @@
                 </div>
             `;
 
-            if (post.type === 'pdf') {
-                container.innerHTML = `<object data="${post.url}" type="application/pdf" class="pdf-object">
-                    <embed src="${post.url}" type="application/pdf" />
+            // PDF же Тексттик макала түрүнө жараша ачуу
+            if (post.type === 'pdf' || (post.url && post.url.endsWith('.pdf'))) {
+                const pdfUrl = post.url || post.fileUrl;
+                container.innerHTML = `<object data="${pdfUrl}" type="application/pdf" class="pdf-object">
+                    <embed src="${pdfUrl}" type="application/pdf" />
                     <p style="color: #fff; padding: 20px; text-align: center;">
-                        PDF ачылбаса: <a href="${post.url}" target="_blank" style="color: #00f0ff;">Бул жерди басып ачыңыз</a>.
+                        PDF браузерден түз ачылбаса: <a href="${pdfUrl}" target="_blank" style="color: #00f0ff;">Бул жерден жүктөп алыңыз</a>.
                     </p>
                 </object>`;
             } else {
-                container.innerHTML = `<div class="article-content">${post.content}</div>` + adHtml;
+                const contentText = post.content || post.text || post.desc || 'Мазмуну бош.';
+                container.innerHTML = `<div class="article-content">${contentText}</div>` + adHtml;
             }
 
             document.getElementById('contentModal').style.display = 'flex';
@@ -502,6 +553,7 @@
             document.body.style.overflow = 'auto';
         }
 
+        // Тил котормолору
         const translations = {
             ky: {
                 navHome: "Башкы бет",
@@ -537,6 +589,13 @@
             document.getElementById('page-title').innerText = t.pageTitle;
             document.getElementById('page-subtitle').innerText = t.pageSubtitle;
         }
+
+        // Башка өтмөктөн/админкадан маалымат сакталганда автоматтык түрдө жаңыртуу
+        window.addEventListener('storage', (e) => {
+            if (['bilimal_ebooks', 'bilimal_posts', 'ebooks'].includes(e.key)) {
+                renderPosts();
+            }
+        });
 
         window.addEventListener('DOMContentLoaded', () => {
             const savedLang = localStorage.getItem('bilimal_lang') || 'ky';
