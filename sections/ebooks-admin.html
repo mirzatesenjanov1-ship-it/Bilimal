@@ -133,7 +133,7 @@
             font-size: 24px;
         }
 
-        /* Tariff Cards */
+        /* Interactive Tariff Cards */
         .tariffs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -143,11 +143,12 @@
 
         .tariff-card {
             background: #182030;
-            border: 1px solid #2c3e50;
+            border: 2px solid #2c3e50;
             border-radius: 12px;
             padding: 20px 15px;
-            transition: 0.3s;
+            transition: all 0.3s ease;
             position: relative;
+            cursor: pointer;
         }
 
         .tariff-card:hover {
@@ -155,9 +156,23 @@
             transform: translateY(-3px);
         }
 
-        .tariff-card.popular {
-            border-color: #00d2ff;
-            background: #122538;
+        .tariff-card.active {
+            border-color: #00d2ff !important;
+            background: #122a40 !important;
+            box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+        }
+
+        .tariff-card.active::after {
+            content: '✓ Тандалды';
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #00d2ff;
+            color: #0b0e14;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
         }
 
         .tariff-title {
@@ -173,8 +188,19 @@
             margin-bottom: 5px;
         }
 
-        .tariff-card.popular .tariff-price {
-            color: #f39c12;
+        .qr-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #182030;
+            border-radius: 12px;
+            border: 1px solid #2c3e50;
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .qr-img {
@@ -201,20 +227,24 @@
         .btn-whatsapp {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             background: #25d366;
             color: white;
             text-decoration: none;
-            padding: 12px 24px;
+            padding: 14px 24px;
             border-radius: 8px;
             font-weight: bold;
             margin-top: 15px;
             font-size: 15px;
             transition: 0.3s;
+            width: 100%;
+            max-width: 450px;
         }
 
         .btn-whatsapp:hover {
             background: #1ebd56;
+            transform: scale(1.02);
         }
 
         /* Admin Controls */
@@ -515,35 +545,42 @@
         <div id="paywall-container" style="display: none;">
             <div class="paywall-box">
                 <h2><i class="fas fa-lock"></i> VIP Электрондук Китептерге Мүмкүнчүлүк</h2>
-                <p>Баракадагы макалаларды жана китептерди толук окуу үчүн төмөнкү тарифтерден тандап, QR код аркылуу төлөм жүргүзүңүз.</p>
+                <p>Төмөнкү тарифтердин бирин тандаңыз, QR код чыгат. Төлөм аткаргандан кийин WhatsApp аркылуу чегиңизди жөнөтүңүз.</p>
                 
                 <!-- Тарифтер -->
                 <div class="tariffs-grid">
-                    <div class="tariff-card">
+                    <div class="tariff-card" data-plan="1_month" data-price="200" data-title="1 айлык уруксат (200 сом)">
                         <div class="tariff-title">1 айлык уруксат</div>
                         <div class="tariff-price">200 сом</div>
                     </div>
-                    <div class="tariff-card popular">
+                    <div class="tariff-card" data-plan="3_months" data-price="500" data-title="3 айлык уруксат (500 сом)">
                         <div class="tariff-title">3 айлык уруксат</div>
                         <div class="tariff-price">500 сом</div>
                     </div>
-                    <div class="tariff-card">
+                    <div class="tariff-card" data-plan="1_year" data-price="2000" data-title="1 жылдык уруксат (2000 сом)">
                         <div class="tariff-title">1 жылдык уруксат</div>
                         <div class="tariff-price">2000 сом</div>
                     </div>
                 </div>
 
-                <img src="../qrmbank.png" alt="MBANK QR Code" class="qr-img" onerror="this.src='https://via.placeholder.com/220?text=QR+Code+MBANK'">
+                <!-- QR код жана Төлөм Бөлүмү -->
+                <div id="qr-section" class="qr-section">
+                    <h3 id="selected-plan-title" style="color: #00d2ff; margin-bottom: 10px;"></h3>
+                    <p style="font-size: 14px; color: #ccc;">Төмөнкү QR кодду сканерлеп төлөм аткарыңыз:</p>
 
-                <div class="notice-badge">
-                    <i class="fas fa-info-circle"></i> Төлөм жүргүзүлгөндөн кийин 24 сааттын ичинде сизге уруксат берилет.
+                    <img src="../qrmbank.png" alt="MBANK QR Code" class="qr-img" onerror="this.src='https://via.placeholder.com/220?text=QR+Code+MBANK'">
+
+                    <div class="notice-badge">
+                        <i class="fas fa-info-circle"></i> Төлөм жүргүзүлгөндөн кийин 24 сааттын ичинде сизге уруксат берилет.
+                    </div>
+
+                    <div style="margin-top: 15px; display: flex; justify-content: center;">
+                        <a id="btn-whatsapp-send" href="#" target="_blank" class="btn-whatsapp">
+                            <i class="fab fa-whatsapp" style="font-size: 20px;"></i> Чекти WhatsApp-ка жөнөтүү (0556 400 477)
+                        </a>
+                    </div>
                 </div>
 
-                <div style="margin-top: 15px;">
-                    <a href="https://wa.me/996556400477?text=Саламатсызбы!%20Мен%20электрондук%20китептерге%20уруксат%20алуу%20үчүн%20төлөм%20кылдым." target="_blank" class="btn-whatsapp">
-                        <i class="fab fa-whatsapp"></i> Чекти WhatsApp-ка жөнөтүү (0556 400 477)
-                    </a>
-                </div>
             </div>
         </div>
 
@@ -732,7 +769,41 @@
                 adminPanel.style.display = 'none';
                 catalogSection.style.display = 'none';
                 paywallContainer.style.display = 'block';
+                setupTariffSelection();
             }
+        }
+
+        // ТАРИФТЕРДИ ТАНДОО ЖАНА АВТОМАТТЫК WHATSAPP ТЕКСТИН МЕНЕН СИСТЕМА
+        function setupTariffSelection() {
+            const tariffCards = document.querySelectorAll('.tariff-card');
+            const qrSection = document.getElementById('qr-section');
+            const planTitleEl = document.getElementById('selected-plan-title');
+            const whatsappBtn = document.getElementById('btn-whatsapp-send');
+
+            tariffCards.forEach(card => {
+                card.addEventListener('click', () => {
+                    tariffCards.forEach(c => c.classList.remove('active'));
+                    card.classList.add('active');
+
+                    const planTitle = card.getAttribute('data-title');
+                    const userEmail = currentUser ? currentUser.email : 'Көрсөтүлгөн эмес';
+
+                    planTitleEl.innerText = `Тандалган тариф: ${planTitle}`;
+                    qrSection.style.display = 'block';
+
+                    // WhatsApp текст
+                    const waText = `Саламатсызбы! Мен VIP Электрондук китептерге төлөм кылдым.\n\n` +
+                                  `Электрондук почтам: ${userEmail}\n` +
+                                  `Тандалган тариф: ${planTitle}\n\n` +
+                                  `Төлөгөн чегимди төмөндө тиркеп жөнөтөм:`;
+
+                    const encodedText = encodeURIComponent(waText);
+                    whatsappBtn.href = `https://wa.me/996556400477?text=${encodedText}`;
+
+                    // QR бөлүмүнө автоматтык түрдө жылдыруу
+                    qrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                });
+            });
         }
 
         // Админ Сырсөз текшерүү
