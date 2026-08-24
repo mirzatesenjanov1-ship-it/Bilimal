@@ -41,10 +41,12 @@
         .pwd-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .pwd-card { background: #151a28; padding: 25px; border-radius: 12px; border: 1px solid #1e2640; width: 320px; text-align: center; }
         .pwd-card input { width: 100%; padding: 10px; margin: 15px 0; background: #0b0e14; border: 1px solid #1e2640; color: #fff; border-radius: 6px; }
-        .reader-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0e14; display: none; flex-direction: column; z-index: 2000; }
-        .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
+
+        /* ПРОФЕССИОНАЛДУУ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ */
+        .reader-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0e14; display: none; flex-direction: column; z-index: 9999; }
+        .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
         .btn-close-reader { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .reader-body { flex: 1; }
+        .reader-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; background: #121620; }
         .reader-body iframe { width: 100%; height: 100%; border: none; }
         #loader { text-align: center; padding: 50px; font-size: 18px; color: #00d2ff; }
     </style>
@@ -80,17 +82,13 @@
                 </div>
             </div>
 
-            <!-- QR код жана Төлөм Бөлүмү -->
             <div id="qr-section" class="qr-section">
                 <h3 id="selected-plan-title" style="color: #00d2ff; margin-bottom: 10px;"></h3>
                 <p style="font-size: 14px; color: #ccc;">Төмөнкү QR кодду сканерлеп төлөм аткарыңыз:</p>
-
                 <img src="../qrmbank.png" alt="MBANK QR Code" class="qr-img" onerror="this.src='https://via.placeholder.com/220?text=QR+Code+MBANK'">
-
                 <div class="notice-badge">
                     <i class="fas fa-info-circle"></i> Төлөм жүргүзүлгөндөн кийин 24 сааттын ичинде сизге уруксат берилет.
                 </div>
-
                 <div style="margin-top: 15px; display: flex; justify-content: center;">
                     <a id="btn-whatsapp-send" href="#" target="_blank" class="btn-whatsapp">
                         <i class="fab fa-whatsapp" style="font-size: 20px;"></i> Чекти WhatsApp-ка жөнөтүү (0556 400 477)
@@ -99,7 +97,7 @@
             </div>
         </div>
 
-        <!-- АДМИН ПАНЕЛ (Макала/PDF жүктөө жана Уруксаттарды берүү) -->
+        <!-- АДМИН ПАНЕЛ -->
         <div id="admin-panel" class="admin-section" style="display: none;">
             <h2><i class="fas fa-tools"></i> Админ Панели: Китеп/Макала & Уруксат Бөлүмү</h2>
             
@@ -116,8 +114,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>PDF Файл (URL шилтеме же түздөн-түз файл жүктөө)</label>
-                    <input type="url" id="book-pdf-url" placeholder="https://example.com/book.pdf">
+                    <label>PDF Файл (Google Drive / Түз URL шилтеме)</label>
+                    <input type="url" id="book-pdf-url" placeholder="https://drive.google.com/file/d/... же түз pdf URL">
                     <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же PDF файл тандаңыз:</div>
                     <input type="file" id="book-pdf-file" accept="application/pdf">
                 </div>
@@ -168,9 +166,7 @@
         <!-- КИТЕПТЕР КАТАЛОГУ -->
         <div id="catalog-section" style="display: none;">
             <h2 style="font-size: 20px; margin-bottom: 20px; color: #00d2ff;"><i class="fas fa-books"></i> Китептер жана Макалалар</h2>
-            <div class="books-grid" id="books-grid-container">
-                <!-- Карталар ушул жерге жүктөлөт -->
-            </div>
+            <div class="books-grid" id="books-grid-container"></div>
         </div>
 
     </div>
@@ -187,18 +183,18 @@
         </div>
     </div>
 
-    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ -->
+    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ (FLIPBOOK / READER) -->
     <div class="reader-modal" id="pdf-reader-modal">
         <div class="reader-header">
-            <h3 id="reader-book-title">Китеп окуу</h3>
+            <h3 id="reader-book-title" style="color: #00d2ff;">Китеп окуу</h3>
             <button class="btn-close-reader" id="btn-close-reader"><i class="fas fa-times"></i> Жабуу</button>
         </div>
-        <div class="reader-body">
-            <iframe id="pdf-frame" src="about:blank"></iframe>
+        <div class="reader-body" id="reader-body-container">
+            <iframe id="pdf-frame" src="about:blank" allow="autoplay"></iframe>
         </div>
     </div>
 
-    <!-- FIREBASE INTEGRATION -->
+    <!-- FIREBASE & SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -254,11 +250,7 @@
                 const permSnap = await get(ref(db, `vip_users/${key}`));
                 if (permSnap.exists()) {
                     const data = permSnap.val();
-                    if (data.granted && data.expiresAt > Date.now()) {
-                        hasAccess = true;
-                    } else {
-                        hasAccess = false;
-                    }
+                    hasAccess = (data.granted && data.expiresAt > Date.now());
                 } else {
                     hasAccess = false;
                 }
@@ -310,9 +302,7 @@
                                    `Тандалган тариф: ${planTitle}\n\n` +
                                    `Төлөгөн чегимди төмөндө тиркеп жөнөтөм:`;
 
-                    const encodedText = encodeURIComponent(waText);
-                    whatsappBtn.href = `https://wa.me/996556400477?text=${encodedText}`;
-
+                    whatsappBtn.href = `https://wa.me/996556400477?text=${encodeURIComponent(waText)}`;
                     qrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 });
             });
@@ -406,9 +396,6 @@
                         }
                     });
                 });
-            }, (error) => {
-                console.error("Firebase Read Error:", error);
-                tableBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#e74c3c;">Ката: ${error.message}</td></tr>`;
             });
         }
 
@@ -553,19 +540,44 @@
             }
         }
 
+        // GOOGLE DRIVE СИСТЕМАМЫЗДЫ БӨГӨТТӨБӨГӨН ФОРМАТКА ӨЗГӨРТҮҮ
+        function getEmbeddablePdfUrl(url) {
+            if (!url) return '';
+            
+            // Эгер Google Drive URL болсо
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    const fileId = match[1];
+                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                }
+            }
+            
+            // Эгер кадимки PDF же Base64 болсо
+            if (url.startsWith('data:application/pdf') || url.endsWith('.pdf')) {
+                return url;
+            }
+
+            // Fallback катары Google Docs Viewer аркылуу ачуу
+            return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+        }
+
         const readerModal = document.getElementById('pdf-reader-modal');
         const pdfFrame = document.getElementById('pdf-frame');
         const readerTitle = document.getElementById('reader-book-title');
 
         function openReader(url, title) {
             readerTitle.innerText = title;
-            pdfFrame.src = url;
+            const embedUrl = getEmbeddablePdfUrl(url);
+            pdfFrame.src = embedUrl;
             readerModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Экранды бекитүү
         }
 
         document.getElementById('btn-close-reader').addEventListener('click', () => {
             readerModal.style.display = 'none';
             pdfFrame.src = 'about:blank';
+            document.body.style.overflow = 'auto';
         });
 
         function escapeHtml(str) {
