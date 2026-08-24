@@ -390,7 +390,8 @@
                 title: 'Түз сызыктуу бир калыптагы кыймыл',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
                 url: 'gemini-books/story1.pdf',
-                isPublic: true
+                isPublic: true,
+                access: 'public'
             },
             {
                 id: 'fb2',
@@ -399,7 +400,8 @@
                 title: 'Физика илиминин максаты жана мааниси',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
                 url: 'gemini-books/story2.pdf',
-                isPublic: true
+                isPublic: true,
+                access: 'public'
             },
             {
                 id: 'fb3',
@@ -408,19 +410,17 @@
                 title: 'Физикалык чоңдуктар',
                 desc: 'Сүрөттүү жана иллюстрациялуу PDF форматтагы окуу китеби.',
                 url: 'gemini-books/story3.pdf',
-                isPublic: true
+                isPublic: true,
+                access: 'public'
             }
         ];
 
-        // Админ жакта колдонулуучу бардык мүмкүн болгон LocalStorage ачкычтарынан ачык китептерди чогултуу
+        // ТАПШЫРМА: Бир гана "АЧЫК" (isPublic: true, access !== 'vip') китептерди чыгарган фильтрация
         function getPublicBooks() {
             let allBooks = [];
 
-            // 1-булак: bilimal_ebooks (негизги ачкыч)
             const ebooksData = localStorage.getItem('bilimal_ebooks');
-            // 2-булак: bilimal_posts
             const postsData = localStorage.getItem('bilimal_posts');
-            // 3-булак: ebooks
             const rawEbooks = localStorage.getItem('ebooks');
 
             if (ebooksData) {
@@ -433,19 +433,19 @@
                 try { allBooks = allBooks.concat(JSON.parse(rawEbooks)); } catch(e){}
             }
 
-            // Эгер админ сактагычтардын биринде да маалымат жок болсо, дефолттук китептерди колдонуу
             if (allBooks.length === 0) {
                 return fallbackBooks;
             }
 
-            // ID боюнча кайталангандарды тазалоо жана VIP эмес ("ачык") китептерди сорттоо
             const uniqueMap = new Map();
             allBooks.forEach(book => {
                 if (book && book.id) {
-                    // Эгер isVIP же isPrivate белгиси ачык эле true болсо, аны калтырабыз,
-                    // эгер андай белги жок болсо же isPublic: true болсо, "ачык" китеп деп эсептейбиз.
-                    const isVip = book.isVIP || book.access === 'vip' || book.isPrivate === true;
-                    if (!isVip) {
+                    // Текшерүү: Эгер китеп ВИП/жабык болсо (isVIP: true, access: 'vip', isPrivate: true же isPublic: false),
+                    // анда ал ачык эмес!
+                    const isExplicitlyVip = (book.isVIP === true || book.access === 'vip' || book.isPrivate === true || book.isPublic === false);
+                    
+                    // Бир гана катуу АЧЫК болгон китептерди кошобуз
+                    if (!isExplicitlyVip) {
                         uniqueMap.set(book.id, book);
                     }
                 }
@@ -524,7 +524,7 @@
             `;
 
             // PDF же Тексттик макала түрүнө жараша ачуу
-            if (post.type === 'pdf' || (post.url && post.url.endsWith('.pdf'))) {
+            if (post.type === 'pdf' || (post.url && post.url.toLowerCase().endsWith('.pdf'))) {
                 const pdfUrl = post.url || post.fileUrl;
                 container.innerHTML = `<object data="${pdfUrl}" type="application/pdf" class="pdf-object">
                     <embed src="${pdfUrl}" type="application/pdf" />
@@ -590,7 +590,7 @@
             document.getElementById('page-subtitle').innerText = t.pageSubtitle;
         }
 
-        // Башка өтмөктөн/админкадан маалымат сакталганда автоматтык түрдө жаңыртуу
+        // Башка өтмөктөн/админкадан маалымат өзгөргөндө автоматтык түрдө жаңыртуу
         window.addEventListener('storage', (e) => {
             if (['bilimal_ebooks', 'bilimal_posts', 'ebooks'].includes(e.key)) {
                 renderPosts();
