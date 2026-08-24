@@ -52,8 +52,7 @@
 
         .top-bar {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            justify-content: flex-end;
             margin-bottom: 20px;
         }
 
@@ -269,8 +268,6 @@
     <div class="container" id="adminMainContent" style="display: none;">
         
         <div class="top-bar">
-            <div></div>
-            <!-- Language Switcher -->
             <div>
                 <i class="fa-solid fa-globe" style="color: var(--primary);"></i>
                 <select id="langSelector" class="lang-select" onchange="changeLanguage(this.value)">
@@ -343,7 +340,6 @@
     </div>
 
     <script>
-        // 1. DICTIONARY FOR 3 LANGUAGES
         const translations = {
             ky: {
                 authTitle: "Админ кирүү",
@@ -457,13 +453,18 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        // AUTH & FIREBASE ANONYMOUS AUTHENTICATION
+        // NON-BLOCKING ANONYMOUS AUTHENTICATION
         function ensureAuth() {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 if (auth.currentUser) {
                     resolve(auth.currentUser);
                 } else {
-                    auth.signInAnonymously().then(res => resolve(res.user)).catch(reject);
+                    auth.signInAnonymously()
+                        .then(res => resolve(res.user))
+                        .catch(err => {
+                            console.warn("Firebase Anonymous Auth сөнүп турат же ката чыкты:", err.message);
+                            resolve(null);
+                        });
                 }
             });
         }
@@ -490,9 +491,8 @@
         });
 
         function initAdmin() {
-            ensureAuth().then(() => {
-                loadArticles();
-            }).catch(err => console.error("Auth error:", err));
+            loadArticles();
+            ensureAuth();
         }
 
         function updateFormulaPreview() {
@@ -504,7 +504,6 @@
             }
         }
 
-        // SAVE ARTICLE UNDER "library/astrophysics" TO MATCH FIREBASE RULES (.write: auth != null)
         function saveArticle() {
             const title = document.getElementById('articleTitle').value.trim();
             const category = document.getElementById('articleCategory').value;
@@ -538,48 +537,51 @@
                     document.getElementById('articleContent').value = '';
                     document.getElementById('formulaPreview').innerText = translations[currentLang].previewText;
                 }).catch(err => {
-                    alert("Ката: " + err.message);
+                    alert("Ката: Сактоо ишке ашпады. Firebase Console'до Authentication -> Anonymous сактоосун күйгүзүңүз. Түпкү ката: " + err.message);
                 });
             });
         }
 
+        // DIRECT DATABASE READ (AUTH-INDEPENDENT)
         function loadArticles() {
             const container = document.getElementById('articlesTable');
             const t = translations[currentLang];
             
-            ensureAuth().then(() => {
-                db.ref('library/astrophysics').on('value', snapshot => {
-                    container.innerHTML = '';
-                    if (!snapshot.exists()) {
-                        container.innerHTML = `<p style="color: var(--text-muted);">${t.noArticles}</p>`;
-                        return;
-                    }
+            db.ref('library/astrophysics').on('value', snapshot => {
+                container.innerHTML = '';
+                if (!snapshot.exists()) {
+                    container.innerHTML = `<p style="color: var(--text-muted);">${t.noArticles}</p>`;
+                    return;
+                }
 
-                    snapshot.forEach(child => {
-                        const id = child.key;
-                        const data = child.val();
+                snapshot.forEach(child => {
+                    const id = child.key;
+                    const data = child.val();
 
-                        const item = document.createElement('div');
-                        item.className = 'article-item';
-                        item.innerHTML = `
-                            <div>
-                                <strong>${data.title}</strong>
-                                <div style="font-size: 12px; color: var(--text-muted);">
-                                    ${data.category} | ${new Date(data.createdAt).toLocaleDateString()}
-                                </div>
+                    const item = document.createElement('div');
+                    item.className = 'article-item';
+                    item.innerHTML = `
+                        <div>
+                            <strong>${data.title}</strong>
+                            <div style="font-size: 12px; color: var(--text-muted);">
+                                ${data.category} | ${new Date(data.createdAt).toLocaleDateString()}
                             </div>
-                            <button class="btn-delete" onclick="deleteArticle('${id}')"><i class="fa-solid fa-trash"></i> ${t.deleteBtn}</button>
-                        `;
-                        container.appendChild(item);
-                    });
+                        </div>
+                        <button class="btn-delete" onclick="deleteArticle('${id}')"><i class="fa-solid fa-trash"></i> ${t.deleteBtn}</button>
+                    `;
+                    container.appendChild(item);
                 });
+            }, error => {
+                container.innerHTML = `<p style="color: var(--danger);">Ката: ${error.message}</p>`;
             });
         }
 
         function deleteArticle(id) {
             if (confirm("Өчүрүүнү каалайсызбы?")) {
                 ensureAuth().then(() => {
-                    db.ref('library/astrophysics/' + id).remove();
+                    db.ref('library/astrophysics/' + id).remove().catch(err => {
+                        alert("Өчүрүүдө ката чыкты: " + err.message);
+                    });
                 });
             }
         }
