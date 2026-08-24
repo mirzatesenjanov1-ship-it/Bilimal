@@ -189,19 +189,16 @@
             ky: {
                 title: "Физика жана Астрофизика",
                 desc: "Теориялык макалалар, формулалар жана интерактивдүү 3D симуляциялар жыйнагы",
-                loading: "Макалалар жүктөлүүдө...",
                 empty: "Азырынча эч кандай макала жарыялана элек."
             },
             ru: {
                 title: "Физика и Астрофизика",
                 desc: "Сборник теоретических статей, формул и интерактивных 3D-симуляций",
-                loading: "Загрузка статей...",
                 empty: "Статей пока нет."
             },
             en: {
                 title: "Physics & Astrophysics",
                 desc: "Collection of theoretical articles, formulas, and interactive 3D simulations",
-                loading: "Loading articles...",
                 empty: "No articles published yet."
             }
         };
@@ -235,17 +232,6 @@
             firebase.initializeApp(firebaseConfig);
         }
         const db = firebase.database();
-        const auth = firebase.auth();
-
-        function ensureAuth() {
-            return new Promise((resolve, reject) => {
-                if (auth.currentUser) {
-                    resolve(auth.currentUser);
-                } else {
-                    auth.signInAnonymously().then(res => resolve(res.user)).catch(reject);
-                }
-            });
-        }
 
         window.addEventListener('DOMContentLoaded', () => {
             changeLanguage(currentLang);
@@ -255,57 +241,55 @@
             const feed = document.getElementById('articlesFeed');
             const t = translations[currentLang];
 
-            ensureAuth().then(() => {
-                db.ref('library/astrophysics').on('value', snapshot => {
-                    feed.innerHTML = '';
-                    if (!snapshot.exists()) {
-                        feed.innerHTML = `<div class="empty-state">${t.empty}</div>`;
-                        return;
+            db.ref('library/astrophysics').on('value', snapshot => {
+                feed.innerHTML = '';
+                if (!snapshot.exists()) {
+                    feed.innerHTML = `<div class="empty-state">${t.empty}</div>`;
+                    return;
+                }
+
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    const card = document.createElement('div');
+                    card.className = 'article-card';
+
+                    let mediaHtml = '';
+                    if (data.imageUrl) {
+                        mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
                     }
 
-                    snapshot.forEach(child => {
-                        const data = child.val();
-                        const card = document.createElement('div');
-                        card.className = 'article-card';
-
-                        let mediaHtml = '';
-                        if (data.imageUrl) {
-                            mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
-                        }
-
-                        if (data.model3DUrl) {
-                            mediaHtml += `
-                                <div class="iframe-container">
-                                    <iframe src="${data.model3DUrl}" allowfullscreen></iframe>
-                                </div>
-                            `;
-                        }
-
-                        let formulaHtml = '';
-                        if (data.formula) {
-                            formulaHtml = `<div class="formula-box">${data.formula}</div>`;
-                        }
-
-                        card.innerHTML = `
-                            <h2 class="article-title">${data.title}</h2>
-                            <div class="article-meta">
-                                <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
-                                <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
+                    if (data.model3DUrl) {
+                        mediaHtml += `
+                            <div class="iframe-container">
+                                <iframe src="${data.model3DUrl}" allowfullscreen></iframe>
                             </div>
-                            ${mediaHtml}
-                            ${formulaHtml}
-                            <div class="article-body">${data.content}</div>
                         `;
-
-                        feed.appendChild(card);
-                    });
-
-                    if (window.MathJax) {
-                        MathJax.typesetPromise([feed]).catch(err => console.log(err));
                     }
+
+                    let formulaHtml = '';
+                    if (data.formula) {
+                        formulaHtml = `<div class="formula-box">${data.formula}</div>`;
+                    }
+
+                    card.innerHTML = `
+                        <h2 class="article-title">${data.title}</h2>
+                        <div class="article-meta">
+                            <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
+                            <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        ${mediaHtml}
+                        ${formulaHtml}
+                        <div class="article-body">${data.content}</div>
+                    `;
+
+                    feed.appendChild(card);
                 });
-            }).catch(err => {
-                feed.innerHTML = `<div class="empty-state">Ката чыкты: ${err.message}</div>`;
+
+                if (window.MathJax) {
+                    MathJax.typesetPromise([feed]).catch(err => console.log(err));
+                }
+            }, error => {
+                feed.innerHTML = `<div class="empty-state">Ката: ${error.message}</div>`;
             });
         }
     </script>
