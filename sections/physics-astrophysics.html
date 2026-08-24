@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Физика жана Астрофизика - Макалалар жана Симуляциялар</title>
+    <title>Физика жана Астрофизика</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -12,7 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <!-- MathJax rendering -->
+    <!-- MathJax formula rendering -->
     <script>
         window.MathJax = {
             tex: {
@@ -47,9 +47,26 @@
             margin: 0 auto;
         }
 
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .lang-select {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+            font-weight: bold;
+        }
+
         .header {
             text-align: center;
-            padding: 30px 0;
+            padding: 20px 0 30px 0;
             border-bottom: 1px solid var(--border);
             margin-bottom: 30px;
         }
@@ -105,7 +122,7 @@
         .iframe-container {
             position: relative;
             width: 100%;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            padding-top: 56.25%;
             margin-bottom: 15px;
             border-radius: 8px;
             overflow: hidden;
@@ -145,18 +162,64 @@
 
     <div class="container">
         
+        <div class="top-bar">
+            <div>
+                <i class="fa-solid fa-globe" style="color: var(--primary);"></i>
+                <select id="langSelector" class="lang-select" onchange="changeLanguage(this.value)">
+                    <option value="ky">Кыргызча</option>
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+        </div>
+
         <div class="header">
-            <h1><i class="fa-solid fa-user-astronaut"></i> Физика жана Астрофизика</h1>
-            <p>Теориялык макалалар, формулалар жана интерактивдүү 3D симуляциялар жыйнагы</p>
+            <h1 id="i18n_title"><i class="fa-solid fa-user-astronaut"></i> Физика жана Астрофизика</h1>
+            <p id="i18n_desc">Теориялык макалалар, формулалар жана интерактивдүү 3D симуляциялар жыйнагы</p>
         </div>
 
         <div id="articlesFeed" class="articles-feed">
-            <div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Макалалар жүктөлүүдө...</div>
+            <div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</div>
         </div>
 
     </div>
 
     <script>
+        const translations = {
+            ky: {
+                title: "Физика жана Астрофизика",
+                desc: "Теориялык макалалар, формулалар жана интерактивдүү 3D симуляциялар жыйнагы",
+                loading: "Макалалар жүктөлүүдө...",
+                empty: "Азырынча эч кандай макала жарыялана элек."
+            },
+            ru: {
+                title: "Физика и Астрофизика",
+                desc: "Сборник теоретических статей, формул и интерактивных 3D-симуляций",
+                loading: "Загрузка статей...",
+                empty: "Статей пока нет."
+            },
+            en: {
+                title: "Physics & Astrophysics",
+                desc: "Collection of theoretical articles, formulas, and interactive 3D simulations",
+                loading: "Loading articles...",
+                empty: "No articles published yet."
+            }
+        };
+
+        let currentLang = localStorage.getItem("app_lang") || "ky";
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem("app_lang", lang);
+            document.getElementById('langSelector').value = lang;
+
+            const t = translations[lang];
+            document.getElementById('i18n_title').innerHTML = `<i class="fa-solid fa-user-astronaut"></i> ${t.title}`;
+            document.getElementById('i18n_desc').innerText = t.desc;
+
+            loadPublicArticles();
+        }
+
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
@@ -175,70 +238,74 @@
         const auth = firebase.auth();
 
         function ensureAuth() {
-            return new Promise((resolve) => {
-                auth.onAuthStateChanged(user => {
-                    if (user) resolve(user);
-                    else auth.signInAnonymously().then(res => resolve(res.user));
-                });
+            return new Promise((resolve, reject) => {
+                if (auth.currentUser) {
+                    resolve(auth.currentUser);
+                } else {
+                    auth.signInAnonymously().then(res => resolve(res.user)).catch(reject);
+                }
             });
         }
 
         window.addEventListener('DOMContentLoaded', () => {
-            ensureAuth().then(() => {
-                loadPublicArticles();
-            });
+            changeLanguage(currentLang);
         });
 
         function loadPublicArticles() {
             const feed = document.getElementById('articlesFeed');
-            db.ref('articles/astrophysics').on('value', snapshot => {
-                feed.innerHTML = '';
-                if (!snapshot.exists()) {
-                    feed.innerHTML = '<div class="empty-state">Азырынча эч кандай макала жарыялана элек.</div>';
-                    return;
-                }
+            const t = translations[currentLang];
 
-                snapshot.forEach(child => {
-                    const data = child.val();
-                    const card = document.createElement('div');
-                    card.className = 'article-card';
-
-                    let mediaHtml = '';
-                    if (data.imageUrl) {
-                        mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
+            ensureAuth().then(() => {
+                db.ref('library/astrophysics').on('value', snapshot => {
+                    feed.innerHTML = '';
+                    if (!snapshot.exists()) {
+                        feed.innerHTML = `<div class="empty-state">${t.empty}</div>`;
+                        return;
                     }
 
-                    if (data.model3DUrl) {
-                        mediaHtml += `
-                            <div class="iframe-container">
-                                <iframe src="${data.model3DUrl}" allowfullscreen></iframe>
+                    snapshot.forEach(child => {
+                        const data = child.val();
+                        const card = document.createElement('div');
+                        card.className = 'article-card';
+
+                        let mediaHtml = '';
+                        if (data.imageUrl) {
+                            mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
+                        }
+
+                        if (data.model3DUrl) {
+                            mediaHtml += `
+                                <div class="iframe-container">
+                                    <iframe src="${data.model3DUrl}" allowfullscreen></iframe>
+                                </div>
+                            `;
+                        }
+
+                        let formulaHtml = '';
+                        if (data.formula) {
+                            formulaHtml = `<div class="formula-box">${data.formula}</div>`;
+                        }
+
+                        card.innerHTML = `
+                            <h2 class="article-title">${data.title}</h2>
+                            <div class="article-meta">
+                                <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
+                                <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
                             </div>
+                            ${mediaHtml}
+                            ${formulaHtml}
+                            <div class="article-body">${data.content}</div>
                         `;
+
+                        feed.appendChild(card);
+                    });
+
+                    if (window.MathJax) {
+                        MathJax.typesetPromise([feed]).catch(err => console.log(err));
                     }
-
-                    let formulaHtml = '';
-                    if (data.formula) {
-                        formulaHtml = `<div class="formula-box">${data.formula}</div>`;
-                    }
-
-                    card.innerHTML = `
-                        <h2 class="article-title">${data.title}</h2>
-                        <div class="article-meta">
-                            <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
-                            <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
-                        </div>
-                        ${mediaHtml}
-                        ${formulaHtml}
-                        <div class="article-body">${data.content}</div>
-                    `;
-
-                    feed.appendChild(card);
                 });
-
-                // Render LaTeX formulas dynamically via MathJax
-                if (window.MathJax) {
-                    MathJax.typesetPromise([feed]).catch(err => console.log(err));
-                }
+            }).catch(err => {
+                feed.innerHTML = `<div class="empty-state">Ката чыкты: ${err.message}</div>`;
             });
         }
     </script>
