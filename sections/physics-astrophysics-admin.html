@@ -3,26 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Физика жана астрофизика (Админ) - BilimAl.org</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <title>Физика жана Астрофизика (Админ)</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <!-- MathJax formula rendering -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0e14; color: #ffffff; padding: 20px; min-height: 100vh; }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 1px solid #1e2640; padding-bottom: 15px; }
-        .back-btn { background: #1e2640; color: #00d2ff; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; border: 1px solid #00d2ff; }
-        .back-btn:hover { background: #00d2ff; color: #0b0e14; }
-        .title { color: #00d2ff; font-size: 24px; display: flex; align-items: center; gap: 10px; }
-        .content-box { background: #111622; border: 1px solid #1e2640; border-radius: 12px; padding: 25px; }
+        :root {
+            --bg: #0b0f19;
+            --card-bg: #151c2c;
+            --border: #232d42;
+            --primary: #38bdf8;
+            --primary-hover: #0284c7;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-back {
+            background: #1e293b;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Auth Modal Overlay */
+        .auth-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(11, 15, 25, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .auth-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .auth-box button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        /* Form Controls */
+        .form-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 14px;
+            color: var(--primary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            box-sizing: border-box;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+        }
+
+        textarea.form-control {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-submit {
+            background: var(--primary);
+            color: #0b0f19;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Preview Area */
+        .preview-box {
+            background: var(--bg);
+            border: 1px dashed var(--border);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            min-height: 50px;
+        }
+
+        /* Published Articles Table */
+        .articles-list {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .article-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .article-item:last-child {
+            border-bottom: none;
+        }
+
+        .btn-delete {
+            background: var(--danger);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .form-row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1 class="title"><i class="fas fa-atom"></i> Физика жана астрофизика (Админ)</h1>
-        <a href="../dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Башкаруу панелине кайтуу</a>
+
+    <!-- AUTHENTICATION MODAL -->
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-box">
+            <i class="fa-solid fa-lock" style="font-size: 36px; color: var(--primary);"></i>
+            <h3 style="margin-top: 15px;">Админ кирүү</h3>
+            <p style="font-size: 13px; color: var(--text-muted);">Макала жарыялоо үчүн паролду киргизиңиз</p>
+            <input type="password" id="adminPasswordInput" placeholder="Пароль..." onkeypress="if(event.key==='Enter') checkAdminAuth()">
+            <button onclick="checkAdminAuth()">Кирүү</button>
+            <p id="authError" style="color: var(--danger); font-size: 12px; display: none; margin-top: 10px;">Сырсөз туура эмес!</p>
+        </div>
     </div>
-    <div class="content-box">
-        <h2>Теория, интерактивдүү материалдар жана тесттер</h2>
-        <p style="margin-top: 10px; color: #aaa;">Физика жана Астрофизика бөлүмү боюнча окуу материалдары, формулалар жыйнагы жана админ панели.</p>
+
+    <!-- MAIN ADMIN CONTENT -->
+    <div class="container" id="adminMainContent" style="display: none;">
+        
+        <div class="header">
+            <h1><i class="fa-solid fa-atom"></i> Физика жана астрофизика (Админ)</h1>
+            <a href="/sections/physics-astrophysics.html" class="btn-back">
+                <i class="fa-solid fa-arrow-left"></i> Сайтка өтүү
+            </a>
+        </div>
+
+        <!-- FORM CARD -->
+        <div class="form-card">
+            <h2 style="margin-top:0; color: var(--text); font-size: 18px;"><i class="fa-solid fa-plus-circle"></i> Жаңы Макала же Материал Кошуу</h2>
+            
+            <div class="form-group">
+                <label>Макаланын Темасы (Аталышы):</label>
+                <input type="text" id="articleTitle" class="form-control" placeholder="Мисалы: Кеплер мыйзамдары жана планеталардын кыймылы">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Категория:</label>
+                    <select id="articleCategory" class="form-control">
+                        <option value="astrophysics">Астрофизика</option>
+                        <option value="mechanics">Асман механикасы</option>
+                        <option value="cosmology">Космология</option>
+                        <option value="stars">Жылдыздар жана Спектрлер</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Сүрөт URL (Милдеттүү эмес):</label>
+                    <input type="url" id="articleImageUrl" class="form-control" placeholder="https://example.com/image.jpg">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>3D Модель же Симуляция Embed URL (3D Сүрөт / Sketchfab / Interactive Frame):</label>
+                <input type="url" id="article3DUrl" class="form-control" placeholder="https://sketchfab.com/models/.../embed же симуляция шилтемеси">
+            </div>
+
+            <div class="form-group">
+                <label>Формулалар (LaTeX форматында, мисалы: $F = G \frac{m_1 m_2}{r^2}$ же $T^2 \propto a^3$):</label>
+                <input type="text" id="articleFormula" class="form-control" placeholder="Мисалы: $E = mc^2$ же $$v = \sqrt{\frac{GM}{R}}$$" oninput="updateFormulaPreview()">
+                <div class="preview-box" id="formulaPreview">Формуланы алдын ала көрүү бул жерде чыгат...</div>
+            </div>
+
+            <div class="form-group">
+                <label>Макаланын Негизги Тексти:</label>
+                <textarea id="articleContent" class="form-control" placeholder="Макаланын мазмунун бул жерге жазыңыз..."></textarea>
+            </div>
+
+            <button class="btn-submit" onclick="saveArticle()">
+                <i class="fa-solid fa-paper-plane"></i> Макаланы Жарыялоо
+            </button>
+        </div>
+
+        <!-- LIST OF PUBLISHED ARTICLES -->
+        <div class="articles-list">
+            <h3 style="margin-top:0; color: var(--primary);"><i class="fa-solid fa-list-check"></i> Жарыяланган Макалалар</h3>
+            <div id="articlesTable">Жүктөлүүдө...</div>
+        </div>
+
     </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        // 1. AUTHENTICATION LOGIC
+        function checkAdminAuth() {
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === "mirzat14051999") {
+                sessionStorage.setItem("astro_admin_auth", "true");
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('adminMainContent').style.display = 'block';
+                initAdmin();
+            } else {
+                document.getElementById('authError').style.display = 'block';
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (sessionStorage.getItem("astro_admin_auth") === "true") {
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('adminMainContent').style.display = 'block';
+                initAdmin();
+            }
+        });
+
+        function ensureAuth() {
+            return new Promise((resolve) => {
+                auth.onAuthStateChanged(user => {
+                    if (user) resolve(user);
+                    else auth.signInAnonymously().then(res => resolve(res.user));
+                });
+            });
+        }
+
+        function initAdmin() {
+            ensureAuth().then(() => {
+                loadArticles();
+            });
+        }
+
+        // 2. FORMULA PREVIEW
+        function updateFormulaPreview() {
+            const val = document.getElementById('articleFormula').value;
+            const preview = document.getElementById('formulaPreview');
+            preview.innerHTML = val || "Формуланы алдын ала көрүү бул жерде чыгат...";
+            if (window.MathJax) {
+                MathJax.typesetPromise([preview]).catch((err) => console.log(err));
+            }
+        }
+
+        // 3. SAVE ARTICLE TO FIREBASE
+        function saveArticle() {
+            const title = document.getElementById('articleTitle').value.trim();
+            const category = document.getElementById('articleCategory').value;
+            const imageUrl = document.getElementById('articleImageUrl').value.trim();
+            const model3DUrl = document.getElementById('article3DUrl').value.trim();
+            const formula = document.getElementById('articleFormula').value.trim();
+            const content = document.getElementById('articleContent').value.trim();
+
+            if (!title || !content) {
+                alert("Сураныч, кеминде макаланын аталышын жана текстин киргизиңиз!");
+                return;
+            }
+
+            const articleData = {
+                title: title,
+                category: category,
+                imageUrl: imageUrl,
+                model3DUrl: model3DUrl,
+                formula: formula,
+                content: content,
+                createdAt: new Date().toISOString()
+            };
+
+            ensureAuth().then(() => {
+                db.ref('articles/astrophysics').push(articleData).then(() => {
+                    alert("Макала ийгиликтүү жарыяланды!");
+                    // Reset form
+                    document.getElementById('articleTitle').value = '';
+                    document.getElementById('articleImageUrl').value = '';
+                    document.getElementById('article3DUrl').value = '';
+                    document.getElementById('articleFormula').value = '';
+                    document.getElementById('articleContent').value = '';
+                    document.getElementById('formulaPreview').innerHTML = 'Формуланы алдын ала көрүү бул жерде чыгат...';
+                    loadArticles();
+                }).catch(err => {
+                    alert("Ката чыкты: " + err.message);
+                });
+            });
+        }
+
+        // 4. LOAD ARTICLES
+        function loadArticles() {
+            const container = document.getElementById('articlesTable');
+            ensureAuth().then(() => {
+                db.ref('articles/astrophysics').on('value', snapshot => {
+                    container.innerHTML = '';
+                    if (!snapshot.exists()) {
+                        container.innerHTML = '<p style="color: var(--text-muted);">Азырынча макалалар жок.</p>';
+                        return;
+                    }
+
+                    snapshot.forEach(child => {
+                        const id = child.key;
+                        const data = child.val();
+
+                        const item = document.createElement('div');
+                        item.className = 'article-item';
+                        item.innerHTML = `
+                            <div>
+                                <strong>${data.title}</strong>
+                                <div style="font-size: 12px; color: var(--text-muted);">
+                                    Категория: ${data.category} | датасы: ${new Date(data.createdAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <button class="btn-delete" onclick="deleteArticle('${id}')"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
+                        `;
+                        container.appendChild(item);
+                    });
+                });
+            });
+        }
+
+        function deleteArticle(id) {
+            if (confirm("Бул макаланы өчүрүүнү каалайсызбы?")) {
+                ensureAuth().then(() => {
+                    db.ref('articles/astrophysics/' + id).remove();
+                });
+            }
+        }
+    </script>
 </body>
 </html>
