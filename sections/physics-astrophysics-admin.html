@@ -34,6 +34,7 @@
             --text: #f8fafc;
             --text-muted: #94a3b8;
             --danger: #ef4444;
+            --warning: #f59e0b;
             --success: #10b981;
         }
 
@@ -179,7 +180,7 @@
         }
 
         textarea.form-control {
-            min-height: 120px;
+            min-height: 140px;
             resize: vertical;
             font-family: inherit;
         }
@@ -188,6 +189,11 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
         }
 
         .btn-submit {
@@ -206,6 +212,24 @@
 
         .btn-submit:hover {
             background: var(--primary-hover);
+        }
+
+        .btn-cancel {
+            background: #334155;
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-cancel:hover {
+            background: #475569;
         }
 
         .preview-box {
@@ -236,6 +260,24 @@
             border-bottom: none;
         }
 
+        .action-btns {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-edit {
+            background: var(--warning);
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
         .btn-delete {
             background: var(--danger);
             color: #fff;
@@ -243,10 +285,16 @@
             padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
 
         @media (max-width: 768px) {
             .form-row { grid-template-columns: 1fr; }
+            .article-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .action-btns { width: 100%; justify-content: flex-end; }
         }
     </style>
 </head>
@@ -257,7 +305,7 @@
         <div class="auth-box">
             <i class="fa-solid fa-lock" style="font-size: 36px; color: var(--primary);"></i>
             <h3 id="i18n_authTitle" style="margin-top: 15px;">Админ кирүү</h3>
-            <p id="i18n_authDesc" style="font-size: 13px; color: var(--text-muted);">Макала жарыялоо үчүн паролду киргизиңиз</p>
+            <p id="i18n_authDesc" style="font-size: 13px; color: var(--text-muted);">Макала жарыялоо же оңдоо үчүн паролду киргизиңиз</p>
             <input type="password" id="adminPasswordInput" placeholder="Пароль..." onkeypress="if(event.key==='Enter') checkAdminAuth()">
             <button id="i18n_authBtn" onclick="checkAdminAuth()">Кирүү</button>
             <p id="authError" style="color: var(--danger); font-size: 12px; display: none; margin-top: 10px;">Сырсөз туура эмес!</p>
@@ -326,9 +374,14 @@
                 <textarea id="articleContent" class="form-control" placeholder="..."></textarea>
             </div>
 
-            <button class="btn-submit" onclick="saveArticle()" id="i18n_btnSubmit">
-                <i class="fa-solid fa-paper-plane"></i> Макаланы Жарыялоо
-            </button>
+            <div class="btn-group">
+                <button class="btn-submit" onclick="saveArticle()" id="i18n_btnSubmit">
+                    <i class="fa-solid fa-paper-plane"></i> Макаланы Жарыялоо
+                </button>
+                <button class="btn-cancel" onclick="resetForm()" id="btnCancelEdit">
+                    <i class="fa-solid fa-xmark"></i> Жокко чыгаруу
+                </button>
+            </div>
         </div>
 
         <!-- LIST OF PUBLISHED ARTICLES -->
@@ -340,14 +393,17 @@
     </div>
 
     <script>
+        let currentEditingId = null; // null = жаңы түзүү, string = оңдоо
+
         const translations = {
             ky: {
                 authTitle: "Админ кирүү",
-                authDesc: "Макала жарыялоо үчүн паролду киргизиңиз",
+                authDesc: "Макала жарыялоо же оңдоо үчүн паролду киргизиңиз",
                 authBtn: "Кирүү",
                 pageTitle: "Физика жана астрофизика (Админ)",
                 btnBack: "Сайтка өтүү",
-                formTitle: "Жаңы Макала кошуу",
+                formTitleNew: "Жаңы Макала кошуу",
+                formTitleEdit: "Макаланы Оңдоо жана Чоңойтуу",
                 labelTitle: "Макаланын Темасы (Аталышы):",
                 labelCat: "Категория:",
                 opt1: "Астрофизика", opt2: "Асман механикасы", opt3: "Космология", opt4: "Жылдыздар жана Спектрлер",
@@ -355,20 +411,23 @@
                 label3D: "3D Модель же Симуляция Embed URL:",
                 labelFormula: "Формулалар (LaTeX форматында, мисалы: $F = G \\frac{m_1 m_2}{r^2}$):",
                 labelContent: "Макаланын Негизги Тексти:",
-                btnSubmit: "Макаланы Жарыялоо",
+                btnSubmitNew: "Макаланы Жарыялоо",
+                btnSubmitEdit: "Өзгөртүүлөрдү Сактоо",
                 listTitle: "Жарыяланган Макалалар",
                 previewText: "Формуланы алдын ала көрүү...",
                 loading: "Жүктөлүүдө...",
                 noArticles: "Азырынча макалалар жок.",
+                editBtn: "Оңдоо",
                 deleteBtn: "Өчүрүү"
             },
             ru: {
                 authTitle: "Вход для админа",
-                authDesc: "Введите пароль для публикации статей",
+                authDesc: "Введите пароль для публикации и редактирования статей",
                 authBtn: "Войти",
                 pageTitle: "Физика и астрофизика (Админ)",
                 btnBack: "На сайт",
-                formTitle: "Добавить новую статью",
+                formTitleNew: "Добавить новую статью",
+                formTitleEdit: "Редактировать статью",
                 labelTitle: "Тема статьи (Заголовок):",
                 labelCat: "Категория:",
                 opt1: "Астрофизика", opt2: "Небесная механика", opt3: "Космология", opt4: "Звезды и спектры",
@@ -376,20 +435,23 @@
                 label3D: "URL 3D-модели или симуляции Embed:",
                 labelFormula: "Формулы (в формате LaTeX, например: $F = G \\frac{m_1 m_2}{r^2}$):",
                 labelContent: "Основной текст статьи:",
-                btnSubmit: "Опубликовать статью",
+                btnSubmitNew: "Опубликовать статью",
+                btnSubmitEdit: "Сохранить изменения",
                 listTitle: "Опубликованные статьи",
                 previewText: "Предпросмотр формулы...",
                 loading: "Загрузка...",
                 noArticles: "Статей пока нет.",
+                editBtn: "Редактировать",
                 deleteBtn: "Удалить"
             },
             en: {
                 authTitle: "Admin Login",
-                authDesc: "Enter password to publish articles",
+                authDesc: "Enter password to publish and edit articles",
                 authBtn: "Login",
                 pageTitle: "Physics & Astrophysics (Admin)",
                 btnBack: "To Website",
-                formTitle: "Add New Article",
+                formTitleNew: "Add New Article",
+                formTitleEdit: "Edit Article",
                 labelTitle: "Article Title:",
                 labelCat: "Category:",
                 opt1: "Astrophysics", opt2: "Celestial Mechanics", opt3: "Cosmology", opt4: "Stars & Spectra",
@@ -397,11 +459,13 @@
                 label3D: "3D Model or Simulation Embed URL:",
                 labelFormula: "Formulas (LaTeX format, e.g. $F = G \\frac{m_1 m_2}{r^2}$):",
                 labelContent: "Main Content:",
-                btnSubmit: "Publish Article",
+                btnSubmitNew: "Publish Article",
+                btnSubmitEdit: "Save Changes",
                 listTitle: "Published Articles",
                 previewText: "Formula Preview...",
                 loading: "Loading...",
                 noArticles: "No articles yet.",
+                editBtn: "Edit",
                 deleteBtn: "Delete"
             }
         };
@@ -419,7 +483,11 @@
             document.getElementById('i18n_authBtn').innerText = t.authBtn;
             document.getElementById('i18n_pageTitle').innerHTML = `<i class="fa-solid fa-atom"></i> ${t.pageTitle}`;
             document.getElementById('i18n_btnBack').innerHTML = `<i class="fa-solid fa-arrow-left"></i> ${t.btnBack}`;
-            document.getElementById('i18n_formTitle').innerHTML = `<i class="fa-solid fa-plus-circle"></i> ${t.formTitle}`;
+            
+            document.getElementById('i18n_formTitle').innerHTML = currentEditingId 
+                ? `<i class="fa-solid fa-pen-to-square"></i> ${t.formTitleEdit}`
+                : `<i class="fa-solid fa-plus-circle"></i> ${t.formTitleNew}`;
+
             document.getElementById('i18n_labelTitle').innerText = t.labelTitle;
             document.getElementById('i18n_labelCat').innerText = t.labelCat;
             document.getElementById('opt1').innerText = t.opt1;
@@ -430,7 +498,11 @@
             document.getElementById('i18n_label3D').innerText = t.label3D;
             document.getElementById('i18n_labelFormula').innerText = t.labelFormula;
             document.getElementById('i18n_labelContent').innerText = t.labelContent;
-            document.getElementById('i18n_btnSubmit').innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t.btnSubmit}`;
+            
+            document.getElementById('i18n_btnSubmit').innerHTML = currentEditingId
+                ? `<i class="fa-solid fa-floppy-disk"></i> ${t.btnSubmitEdit}`
+                : `<i class="fa-solid fa-paper-plane"></i> ${t.btnSubmitNew}`;
+
             document.getElementById('i18n_listTitle').innerHTML = `<i class="fa-solid fa-list-check"></i> ${t.listTitle}`;
             
             loadArticles();
@@ -453,7 +525,6 @@
         const db = firebase.database();
         const auth = firebase.auth();
 
-        // NON-BLOCKING ANONYMOUS AUTHENTICATION
         function ensureAuth() {
             return new Promise((resolve) => {
                 if (auth.currentUser) {
@@ -504,6 +575,7 @@
             }
         }
 
+        // SAVE OR UPDATE ARTICLE
         function saveArticle() {
             const title = document.getElementById('articleTitle').value.trim();
             const category = document.getElementById('articleCategory').value;
@@ -524,25 +596,75 @@
                 model3DUrl: model3DUrl,
                 formula: formula,
                 content: content,
-                createdAt: new Date().toISOString()
+                updatedAt: new Date().toISOString()
             };
 
             ensureAuth().then(() => {
-                db.ref('library/astrophysics').push(articleData).then(() => {
-                    alert("Ийгиликтүү сакталды!");
-                    document.getElementById('articleTitle').value = '';
-                    document.getElementById('articleImageUrl').value = '';
-                    document.getElementById('article3DUrl').value = '';
-                    document.getElementById('articleFormula').value = '';
-                    document.getElementById('articleContent').value = '';
-                    document.getElementById('formulaPreview').innerText = translations[currentLang].previewText;
-                }).catch(err => {
-                    alert("Ката: Сактоо ишке ашпады. Firebase Console'до Authentication -> Anonymous сактоосун күйгүзүңүз. Түпкү ката: " + err.message);
-                });
+                if (currentEditingId) {
+                    // UPDATE EXISTING ARTICLE
+                    db.ref('library/astrophysics/' + currentEditingId).update(articleData).then(() => {
+                        alert("Макала ийгиликтүү жаңыланды!");
+                        resetForm();
+                    }).catch(err => {
+                        alert("Өзгөртүүнү сактоодо ката чыкты: " + err.message);
+                    });
+                } else {
+                    // CREATE NEW ARTICLE
+                    articleData.createdAt = new Date().toISOString();
+                    db.ref('library/astrophysics').push(articleData).then(() => {
+                        alert("Макала ийгиликтүү жарыяланды!");
+                        resetForm();
+                    }).catch(err => {
+                        alert("Сактоодо ката чыкты: " + err.message);
+                    });
+                }
             });
         }
 
-        // DIRECT DATABASE READ (AUTH-INDEPENDENT)
+        // EDIT ARTICLE: FILL FORM WITH DATA
+        function editArticle(id) {
+            db.ref('library/astrophysics/' + id).once('value').then(snapshot => {
+                if (!snapshot.exists()) return;
+                const data = snapshot.val();
+
+                currentEditingId = id;
+
+                document.getElementById('articleTitle').value = data.title || '';
+                document.getElementById('articleCategory').value = data.category || 'astrophysics';
+                document.getElementById('articleImageUrl').value = data.imageUrl || '';
+                document.getElementById('article3DUrl').value = data.model3DUrl || '';
+                document.getElementById('articleFormula').value = data.formula || '';
+                document.getElementById('articleContent').value = data.content || '';
+
+                updateFormulaPreview();
+
+                const t = translations[currentLang];
+                document.getElementById('i18n_formTitle').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> ${t.formTitleEdit}`;
+                document.getElementById('i18n_btnSubmit').innerHTML = `<i class="fa-solid fa-floppy-disk"></i> ${t.btnSubmitEdit}`;
+                document.getElementById('btnCancelEdit').style.display = 'inline-flex';
+
+                // Scroll smoothly to input form
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        }
+
+        // RESET FORM TO CREATION MODE
+        function resetForm() {
+            currentEditingId = null;
+            document.getElementById('articleTitle').value = '';
+            document.getElementById('articleImageUrl').value = '';
+            document.getElementById('article3DUrl').value = '';
+            document.getElementById('articleFormula').value = '';
+            document.getElementById('articleContent').value = '';
+            document.getElementById('formulaPreview').innerText = translations[currentLang].previewText;
+
+            const t = translations[currentLang];
+            document.getElementById('i18n_formTitle').innerHTML = `<i class="fa-solid fa-plus-circle"></i> ${t.formTitleNew}`;
+            document.getElementById('i18n_btnSubmit').innerHTML = `<i class="fa-solid fa-paper-plane"></i> ${t.btnSubmitNew}`;
+            document.getElementById('btnCancelEdit').style.display = 'none';
+        }
+
+        // LOAD ARTICLES LIST
         function loadArticles() {
             const container = document.getElementById('articlesTable');
             const t = translations[currentLang];
@@ -564,10 +686,13 @@
                         <div>
                             <strong>${data.title}</strong>
                             <div style="font-size: 12px; color: var(--text-muted);">
-                                ${data.category} | ${new Date(data.createdAt).toLocaleDateString()}
+                                ${data.category} | ${new Date(data.createdAt || data.updatedAt).toLocaleDateString()}
                             </div>
                         </div>
-                        <button class="btn-delete" onclick="deleteArticle('${id}')"><i class="fa-solid fa-trash"></i> ${t.deleteBtn}</button>
+                        <div class="action-btns">
+                            <button class="btn-edit" onclick="editArticle('${id}')"><i class="fa-solid fa-pen-to-square"></i> ${t.editBtn}</button>
+                            <button class="btn-delete" onclick="deleteArticle('${id}')"><i class="fa-solid fa-trash"></i> ${t.deleteBtn}</button>
+                        </div>
                     `;
                     container.appendChild(item);
                 });
@@ -576,10 +701,13 @@
             });
         }
 
+        // DELETE ARTICLE
         function deleteArticle(id) {
             if (confirm("Өчүрүүнү каалайсызбы?")) {
                 ensureAuth().then(() => {
-                    db.ref('library/astrophysics/' + id).remove().catch(err => {
+                    db.ref('library/astrophysics/' + id).remove().then(() => {
+                        if (currentEditingId === id) resetForm();
+                    }).catch(err => {
                         alert("Өчүрүүдө ката чыкты: " + err.message);
                     });
                 });
