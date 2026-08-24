@@ -3,12 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Физика жана Астрофизика Илим Изилдөө Бөлүмү — BilimAl</title>
+    <title>Физика жана Астрофизика - Макалалар жана Симуляциялар</title>
     
-    <!-- Yandex.RTB Загрузчик (РСЯ) -->
-    <script>window.yaContextCb=window.yaContextCb||[]</script>
-    <script src="https://yandex.ru/ads/system/context.js" async></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
+    <!-- MathJax rendering -->
     <script>
         window.MathJax = {
             tex: {
@@ -19,288 +23,224 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #020208; color: #fff; min-height: 100vh; padding: 30px 4%; }
-        
-        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; transition: 0.3s; }
-        .back-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.4); }
+        :root {
+            --bg: #0b0f19;
+            --card-bg: #151c2c;
+            --border: #232d42;
+            --primary: #38bdf8;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
 
-        h1 { text-align: center; color: #fff; margin-bottom: 30px; font-size: 2rem; text-shadow: 0 0 15px rgba(0,240,255,0.3); }
-        h1 span { color: #ff00ff; }
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+        }
 
-        .main-layout { display: flex; gap: 25px; align-items: flex-start; }
-        .content-area { flex: 3; display: flex; flex-direction: column; gap: 30px; }
-        .sidebar-ads { flex: 1; min-width: 300px; background: rgba(255, 255, 255, 0.02); border: 1px border rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 10px; text-align: center; min-height: 250px; overflow: hidden; }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
 
-        /* 📑 ИЛИМИЙ КАРТОЧКАЛАРЫ */
-        .science-card { background: rgba(15, 15, 35, 0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 25px; transition: 0.3s; cursor: pointer; position: relative; }
-        .science-card:hover { border-color: #00f0ff; box-shadow: 0 8px 30px rgba(0,240,255,0.2); transform: translateY(-2px); }
-        .science-card h2 { color: #ff00ff; font-size: 1.4rem; margin-bottom: 10px; border-left: 4px solid #ff00ff; padding-left: 12px; }
-        .science-card p { color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; margin-bottom: 15px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        
-        /* Кичинекей көрүнүштөгү 3D блогу */
-        .canvas-3d-holder { width: 100%; height: 200px; background: #04040c; border-radius: 12px; border: 1px solid #1e293b; position: relative; overflow: hidden; margin-bottom: 15px; }
-        .hint-3d { position: absolute; bottom: 12px; right: 12px; background: rgba(0,0,0,0.8); padding: 5px 12px; border-radius: 6px; font-size: 11px; color: #00f0ff; pointer-events: none; border: 1px solid rgba(0,240,255,0.2); z-index: 5; }
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
 
-        .formula-section { background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.15); padding: 12px; border-radius: 12px; text-align: center; font-size: 1.1rem; }
-        .open-more-btn { margin-top: 15px; display: inline-block; font-size: 0.85rem; color: #00f0ff; font-weight: bold; text-transform: uppercase; }
+        .header h1 {
+            color: var(--primary);
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
 
-        /* 🌌 ТОЛУК МААЛЫМАТ МОДАЛДЫК ТЕРЕЗЕСИ (POPUP) */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 8, 0.95); backdrop-filter: blur(12px); z-index: 100; align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity 0.3s ease; }
-        .modal-card { background: #09091e; border: 2px solid #00f0ff; box-shadow: 0 0 50px rgba(0, 240, 255, 0.3); max-width: 800px; width: 100%; border-radius: 20px; padding: 35px; position: relative; max-height: 90vh; overflow-y: auto; animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .close-modal { position: absolute; top: 20px; right: 25px; background: none; border: none; color: #64748b; font-size: 2rem; cursor: pointer; transition: 0.2s; }
-        .close-modal:hover { color: #ff00ff; transform: scale(1.1); }
-        
-        .modal-card h2 { color: #ff00ff; font-size: 1.8rem; margin-bottom: 15px; border-left: 5px solid #ff00ff; padding-left: 15px; text-shadow: 0 0 15px rgba(255, 0, 255, 0.2); }
-        .modal-card p { color: #94a3b8; font-size: 1.05rem; line-height: 1.6; margin-bottom: 25px; text-align: justify; }
-        .modal-formula-section { background: rgba(0, 240, 255, 0.05); border: 1px solid #00f0ff; padding: 20px; border-radius: 12px; text-align: center; margin-top: 25px; }
-        .modal-formula-explain { font-size: 0.9rem; color: #cbd5e1; margin-top: 15px; line-height: 1.5; text-align: left; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px; }
+        .header p {
+            color: var(--text-muted);
+            margin: 0;
+        }
 
-        @keyframes scaleUp { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .articles-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
 
-        .ads-banner-top { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 25px; min-height: 90px; overflow: hidden; }
+        .article-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
 
-        /* АДМИН ПАНЕЛЬ */
-        .admin-panel { background: rgba(20, 10, 35, 0.9); border: 2px solid #ff00ff; border-radius: 16px; padding: 25px; margin-top: 50px; }
-        .admin-panel h3 { color: #ff00ff; margin-bottom: 15px; }
-        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        .admin-input { width: 100%; background: #000; border: 1px solid rgba(255,255,255,0.2); padding: 12px; color: #fff; border-radius: 8px; }
-        .admin-textarea { grid-column: span 2; height: 100px; resize: vertical; }
-        .admin-btn { background: #ff00ff; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; }
-        .admin-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.5); }
+        .article-title {
+            color: var(--primary);
+            font-size: 22px;
+            margin: 0 0 10px 0;
+        }
+
+        .article-meta {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .article-img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .iframe-container iframe {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border: none;
+        }
+
+        .formula-box {
+            background: rgba(56, 189, 248, 0.05);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 16px;
+            overflow-x: auto;
+        }
+
+        .article-body {
+            line-height: 1.6;
+            font-size: 15px;
+            white-space: pre-line;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
 
-    <a href="../dashboard.html" class="back-btn">← Артка кайт</a>
-
-    <h1>Физика жана Астрофизика <span>Илим Изилдөө Бөлүмү</span> 🌌</h1>
-
-    <!-- РСЯ ӨЙДӨКҮ ЖАРНАМА БЛОГУ -->
-    <div class="ads-banner-top">
-        <!-- Yandex.RTB R-A-19536065-1 -->
-        <div id="yandex_rtb_R-A-19536065-1"></div>
-        <script>
-        window.yaContextCb.push(()=>{
-            Ya.Context.AdvManager.render({
-                "blockId": "R-A-19536065-1",
-                "renderTo": "yandex_rtb_R-A-19536065-1"
-            })
-        })
-        </script>
-    </div>
-
-    <div class="main-layout">
+    <div class="container">
         
-        <div class="content-area" id="dynamic-content">
-            
-            <div class="science-card" onclick="openDetails('photoelectric')">
-                <h2>Кванттык Хаос жана Жарыктын Фотоэффект Кубулушу</h2>
-                <p>Жарыктын толкундук жана корпускулалык касиеттери, Эйнштейндин фотоэффект боюнча улуу теңдемеси жана кванттык физиканын негиздери тууралуу кеңири түшүнүк. Жарык металлдын бетине түшкөндө андан электрондорду уруп чыгарат.</p>
-                
-                <div class="canvas-3d-holder" id="photoelectric-3d" onclick="event.stopPropagation()">
-                    <div class="hint-3d">⚡ Кванттык Лаборатория симуляциясы</div>
-                </div>
-
-                <div class="formula-section">
-                    \[ h\nu = A_{чыгуу} + E_{к(max)} \]
-                </div>
-                <div class="open-more-btn">Кенен маалымат алуу жана изилдөө →</div>
-            </div>
-
-            <div class="science-card" onclick="openDetails('blackhole')">
-                <h2>Жылдыздардын Эволюциясы жана Сингулярдуулук (Кара Тешиктер)</h2>
-                <p>Гравитациялык кысылуунун натыйжасында супер-массивдүү жылдыздардын жарылуусу жана мейкиндикте убакыттын ийилиши аркылуу кара тешиктердин пайда болуу теориясы.</p>
-                
-                <div class="canvas-3d-holder" id="blackhole-3d" onclick="event.stopPropagation()">
-                    <div class="hint-3d">🕹️ Айландырып көрүңүз</div>
-                </div>
-
-                <div class="formula-section">
-                    \[ R_s = \frac{2GM}{c^2} \]
-                </div>
-                <div class="open-more-btn">Кенен маалымат алуу жана изилдөө →</div>
-            </div>
-
+        <div class="header">
+            <h1><i class="fa-solid fa-user-astronaut"></i> Физика жана Астрофизика</h1>
+            <p>Теориялык макалалар, формулалар жана интерактивдүү 3D симуляциялар жыйнагы</p>
         </div>
 
-        <!-- РСЯ КАПТАЛДЫК ЖАРНАМА БЛОГУ -->
-        <div class="sidebar-ads">
-            <!-- Yandex.RTB R-A-19536065-1 -->
-            <div id="yandex_rtb_R-A-19536065-1_sidebar"></div>
-            <script>
-            window.yaContextCb.push(()=>{
-                Ya.Context.AdvManager.render({
-                    "blockId": "R-A-19536065-1",
-                    "renderTo": "yandex_rtb_R-A-19536065-1_sidebar"
-                })
-            })
-            </script>
+        <div id="articlesFeed" class="articles-feed">
+            <div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Макалалар жүктөлүүдө...</div>
         </div>
 
-    </div>
-
-    <div class="modal-overlay" id="detailsModal" onclick="closeDetails()">
-        <div class="modal-card" onclick="event.stopPropagation()">
-            <button class="close-modal" onclick="closeDetails()">&times;</button>
-            <div id="modal-content-area">
-                </div>
-        </div>
-    </div>
-
-    <div class="admin-panel">
-        <h3>⚙️ Мугалимдин башкаруу панели (Тема кошуу)</h3>
-        <div class="admin-grid">
-            <input type="text" id="new-title" class="admin-input" placeholder="Теманын аталышы">
-            <input type="text" id="new-formula" class="admin-input" placeholder="LaTeX Формуласы">
-            <textarea id="new-text" class="admin-input admin-textarea" placeholder="Тема боюнча кеңири илимий маалымат текстти ушул жерге жазылат..."></textarea>
-        </div>
-        <button class="admin-btn" onclick="addNewTopic()">✨ Жаңы Илимий Тема Кошуу</button>
     </div>
 
     <script>
-        // Ар бир теманын кенен илимий маалыматтар базасы
-        const topicsDatabase = {
-            photoelectric: {
-                title: "Кванттык Хаос жана Жарыктын Фотоэффект Кубулушу",
-                text: "Жарыктын толкундук гана эмес, корпускулалык (бөлүкчө) касиети да бар. Жарык металлдын бетине түшкөндө, анын курамындагы өзүнчө энергия пакеттери — фотондор металлдын атомдорундагы электрондор менен кагылышып, аларды сыртка уруп чыгарат. Бул кубулуш илимде Фотоэффект деп аталат. Альберт Эйнштейн бул кубулушту толук далилдеп, 1921-жылы Нобель сыйлыгын алган. Классикалык физика жарыктын мындай касиетин түшүндүрө алган эмес, бул кванттык физиканын доорун баштаган улуу кадам болгон.",
-                formula: "\\[ h\\nu = A_{чыгуу} + E_{к(max)} \\]",
-                explain: "<b>Мында:</b><br>• $h\\nu$ — фотондун жалпы энергиясы.<br>• $A_{чыгуу}$ — электронду металлдан ажыратууга кеткен чыгуу жумушу.<br>• $E_{к(max)}$ — учуп чыккан электрондун максималдуу кинетикалык энергиясы."
-            },
-            blackhole: {
-                title: "Жылдыздардын Эволюциясы жана Сингулярдуулук",
-                text: "Массасы күндөн ондогон эсе чоң болгон супер-массивдүү жылдыздар өзүнүн ядролук отунун жагып бүткөндөн кийин, ички гравитациялык күчтү кармай албай калышат. Жылдыз өзүнүн ичине карай өтө чоң ылдамдыкта кысыла баштайт (Гравитациялык коллапс). Натыйжада, мейкиндик менен убакытты ушунчалык деңгээлде ийген, жарык да качып кутула албаган чексиз тыгыздыктагы Кара тешиктер жана анын борборунда Сингулярдуулук пайда болот.",
-                formula: "\\[ R_s = \\frac{2GM}{c^2} \\]",
-                explain: "<b>Мында:</b><br>• $R_s$ — Шварцшильд радиусу (Кара тешиктин окуялар горизонту).<br>• $G$ — гравитациялык туруктуулук.<br>• $M$ — асман нерсесинин массасы.<br>• $c$ — жарыктын ылдамдыгы."
-            }
+        const firebaseConfig = {
+            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+            authDomain: "bilimal-org.firebaseapp.com",
+            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "bilimal-org",
+            storageBucket: "bilimal-org.firebasestorage.app",
+            messagingSenderId: "241750360816",
+            appId: "1:241750360816:web:a991434eb5afbc470d7835",
+            measurementId: "G-9GSQV60QV0"
         };
 
-        // КЕНЕН МААЛЫМАТ ТЕРЕЗЕСИН АЧУУ
-        function openDetails(topicKey) {
-            const modal = document.getElementById('detailsModal');
-            const contentArea = document.getElementById('modal-content-area');
-            const data = topicsDatabase[topicKey];
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        const auth = firebase.auth();
 
-            if (!data) return;
-
-            contentArea.innerHTML = `
-                <h2>${data.title}</h2>
-                <p>${data.text}</p>
-                <div class="modal-formula-section">
-                    <div style="font-size:0.85rem; color:#00f0ff; font-weight:bold; margin-bottom:10px; text-transform:uppercase;">📋 ТЕМАГА ТАНДЫК НЕГИЗГИ ТЕҢДЕМЕ:</div>
-                    <div style="font-size: 1.8rem; margin:15px 0;">${data.formula}</div>
-                    <div class="modal-formula-explain">${data.explain}</div>
-                </div>
-            `;
-
-            modal.style.display = 'flex';
-            setTimeout(() => modal.style.opacity = '1', 10);
-
-            if (window.MathJax) {
-                MathJax.typesetPromise([contentArea]);
-            }
+        function ensureAuth() {
+            return new Promise((resolve) => {
+                auth.onAuthStateChanged(user => {
+                    if (user) resolve(user);
+                    else auth.signInAnonymously().then(res => resolve(res.user));
+                });
+            });
         }
 
-        function closeDetails() {
-            const modal = document.getElementById('detailsModal');
-            modal.style.opacity = '0';
-            setTimeout(() => modal.style.display = 'none', 300);
-        }
+        window.addEventListener('DOMContentLoaded', () => {
+            ensureAuth().then(() => {
+                loadPublicArticles();
+            });
+        });
 
-        // АДМИН ПАНЕЛДЕН ЖАҢЫ ТЕМА КОШУУ
-        function addNewTopic() {
-            const title = document.getElementById('new-title').value.trim();
-            const formula = document.getElementById('new-formula').value.trim();
-            const text = document.getElementById('new-text').value.trim();
-
-            if (!title || !text) {
-                alert("Сураныч, Теманын атын жана тексттин толтуруңуз!");
-                return;
-            }
-
-            const key = 'custom_' + Date.now();
-            topicsDatabase[key] = {
-                title: title,
-                text: text,
-                formula: formula ? `\\[ ${formula} \\]` : '',
-                explain: "Мугалим тарабынан кошулган илимий түшүндүрмө класс."
-            };
-
-            const contentArea = document.getElementById('dynamic-content');
-            const card = document.createElement('div');
-            card.className = 'science-card';
-            card.onclick = () => openDetails(key);
-
-            card.innerHTML = `
-                <h2>${title}</h2>
-                <p>${text}</p>
-                ${formula ? `<div class="formula-section">\\[ ${formula} \\]</div>` : ''}
-                <div class="open-more-btn">Кенен маалымат алуу жана изилдөө →</div>
-            `;
-
-            contentArea.appendChild(card);
-
-            if (window.MathJax) {
-                MathJax.typesetPromise([card]);
-            }
-
-            document.getElementById('new-title').value = '';
-            document.getElementById('new-formula').value = '';
-            document.getElementById('new-text').value = '';
-
-            alert("🎉 Жаңы тема кошулду! Эми аны басып, ичине кире аласыз.");
-        }
-
-        // 🌌 THREE.JS 3D СИМУЛЯЦИЯЛАРЫ (КИЧИНЕКЕЙ КӨРҮНҮШ ҮЧҮН ФОН)
-        function initPhotoelectric() {
-            const holder = document.getElementById('photoelectric-3d');
-            if(!holder) return;
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, holder.clientWidth / 200, 0.1, 100);
-            camera.position.set(0, 3, 6); camera.lookAt(0,0,0);
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(holder.clientWidth, 200); holder.appendChild(renderer.domElement);
-
-            const plate = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 2), new THREE.MeshBasicMaterial({ color: 0x1e293b, wireframe: true }));
-            plate.position.y = -0.5; scene.add(plate);
-
-            const photons = [];
-            function animate() {
-                requestAnimationFrame(animate);
-                if(Math.random() < 0.15) {
-                    const p = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
-                    p.position.set((Math.random()-0.5)*3, 2, (Math.random()-0.5)*1.5);
-                    scene.add(p); photons.push(p);
+        function loadPublicArticles() {
+            const feed = document.getElementById('articlesFeed');
+            db.ref('articles/astrophysics').on('value', snapshot => {
+                feed.innerHTML = '';
+                if (!snapshot.exists()) {
+                    feed.innerHTML = '<div class="empty-state">Азырынча эч кандай макала жарыялана элек.</div>';
+                    return;
                 }
-                for(let i=photons.length-1; i>=0; i--) {
-                    photons[i].position.y -= 0.04;
-                    if(photons[i].position.y < -0.5) { scene.remove(photons[i]); photons.splice(i,1); }
+
+                snapshot.forEach(child => {
+                    const data = child.val();
+                    const card = document.createElement('div');
+                    card.className = 'article-card';
+
+                    let mediaHtml = '';
+                    if (data.imageUrl) {
+                        mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
+                    }
+
+                    if (data.model3DUrl) {
+                        mediaHtml += `
+                            <div class="iframe-container">
+                                <iframe src="${data.model3DUrl}" allowfullscreen></iframe>
+                            </div>
+                        `;
+                    }
+
+                    let formulaHtml = '';
+                    if (data.formula) {
+                        formulaHtml = `<div class="formula-box">${data.formula}</div>`;
+                    }
+
+                    card.innerHTML = `
+                        <h2 class="article-title">${data.title}</h2>
+                        <div class="article-meta">
+                            <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
+                            <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        ${mediaHtml}
+                        ${formulaHtml}
+                        <div class="article-body">${data.content}</div>
+                    `;
+
+                    feed.appendChild(card);
+                });
+
+                // Render LaTeX formulas dynamically via MathJax
+                if (window.MathJax) {
+                    MathJax.typesetPromise([feed]).catch(err => console.log(err));
                 }
-                renderer.render(scene, camera);
-            }
-            animate();
+            });
         }
-
-        function initBlackHole() {
-            const holder = document.getElementById('blackhole-3d');
-            if(!holder) return;
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(50, holder.clientWidth / 200, 0.1, 100);
-            camera.position.z = 4;
-            const renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(holder.clientWidth, 200); holder.appendChild(renderer.domElement);
-
-            const disk = new THREE.Mesh(new THREE.RingGeometry(0.6, 1.8, 32), new THREE.MeshBasicMaterial({ color: 0x7000ff, wireframe: true, side: THREE.DoubleSide }));
-            disk.rotation.x = Math.PI / 2.5; scene.add(disk);
-
-            function animate() { requestAnimationFrame(animate); disk.rotation.z += 0.008; renderer.render(scene, camera); }
-            animate();
-        }
-
-        window.onload = () => { initPhotoelectric(); initBlackHole(); };
     </script>
 </body>
 </html>
