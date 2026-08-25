@@ -33,8 +33,11 @@
         .bilimal-viewer-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; display: flex; justify-content: center; align-items: center; }
         .bilimal-viewer-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: auto; }
         .bilimal-viewer-loading { position: absolute; color: #00d2ff; font-size: 18px; text-align: center; background: rgba(11,14,20,0.85); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
-        .bilimal-viewer-error { display: none; position: absolute; color: #e74c3c; text-align: center; z-index: 11; background: #151a28; padding: 20px; border-radius: 8px; border: 1px solid #e74c3c; }
+        .bilimal-viewer-error { display: none; position: absolute; color: #e74c3c; text-align: center; z-index: 11; background: #151a28; padding: 25px; border-radius: 8px; border: 1px solid #e74c3c; max-width: 90%; }
         .bilimal-viewer-page-num { color: #aaa; font-size: 14px; min-width: 80px; text-align: center; }
+        
+        .my-page { background-color: #ffffff; overflow: hidden; border: 1px solid #ccc; }
+        .my-page canvas { width: 100%; height: 100%; display: block; }
     </style>
 </head>
 <body>
@@ -75,9 +78,8 @@
                 <div id="bv-loading-text">Китеп жүктөлүүдө...</div>
             </div>
             <div class="bilimal-viewer-error" id="bv-error">
-                <p>Бул китепти ачуу мүмкүн болгон жок. PDF файласынын жеткиликтүүлүгүн текшериңиз.</p>
-                <br>
-                <a id="bv-fallback-link" href="#" target="_blank" class="bilimal-viewer-btn" style="background:#00d2ff; color:#0b0e14; text-decoration:none;">PDF катары ачуу</a>
+                <p style="margin-bottom: 15px;">Бул китепти Flipbook режиминде иштетүү мүмкүн болгон жок (Google Drive чектөөсү же шилтеме туура эмес).</p>
+                <a id="bv-fallback-link" href="#" target="_blank" class="bilimal-viewer-btn" style="background:#00d2ff; color:#0b0e14; text-decoration:none; padding:10px 18px; font-weight:bold;">PDF катары ачуу</a>
             </div>
             <div class="bilimal-viewer-container" id="bv-container">
                 <div id="bv-flipbook"></div>
@@ -108,7 +110,6 @@
         const catalogSection = document.getElementById('catalog-section');
         const booksGridContainer = document.getElementById('books-grid-container');
 
-        // Configure PDF.js worker
         if (window.pdfjsLib) {
             window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
         }
@@ -161,25 +162,58 @@
 
         loadPublicBooks();
 
-        /* --- FLIPBOOK ENGINE ENGINE IMPLEMENTATION --- */
+        /* --- ADVANCED FLIPBOOK ENGINE ENGINE IMPLEMENTATION --- */
         let pageFlip = null;
         let pdfDoc = null;
         let currentZoom = 1;
-        let originalRawUrl = "";
 
-        function getPdfDirectUrl(url) {
-            if (!url) return '';
-            if (url.includes('drive.google.com')) {
-                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) {
-                    return `https://docs.google.com/uc?export=download&id=${match[1]}`;
+        function extractDriveId(url) {
+            if (!url) return null;
+            const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+            return match ? match[1] : null;
+        }
+
+        function getPdfDownloadUrls(url) {
+            const driveId = extractDriveId(url);
+            if (driveId) {
+                return [
+                    `https://lh3.googleusercontent.com/d/${driveId}`,
+                    `https://docs.google.com/uc?export=download&id=${driveId}`,
+                    `https://drive.google.com/uc?id=${driveId}&export=download`
+                ];
+            }
+            return [url];
+        }
+
+        async function fetchPdfDocument(url) {
+            const candidates = getPdfDownloadUrls(url);
+            let lastError = null;
+
+            for (const targetUrl of candidates) {
+                try {
+                    const loadingTask = pdfjsLib.getDocument({
+                        url: targetUrl,
+                        withCredentials: false
+                    });
+                    
+                    loadingTask.onProgress = function(progress) {
+                        if (progress.total > 0) {
+                            const percent = Math.round((progress.loaded / progress.total) * 100);
+                            document.getElementById('bv-loading-text').innerText = `Китеп жүктөлүүдө... ${percent}%`;
+                        }
+                    };
+
+                    const pdf = await loadingTask.promise;
+                    return pdf;
+                } catch (err) {
+                    console.warn(`Failed loading PDF from: ${targetUrl}`, err);
+                    lastError = err;
                 }
             }
-            return url;
+            throw lastError || new Error("PDF файлын жүктөө мүмкүн болгон жок.");
         }
 
         async function openFlipbookViewer(url, title) {
-            originalRawUrl = url;
             const modal = document.getElementById('bilimal-flipbook-modal');
             const loading = document.getElementById('bv-loading');
             const errorEl = document.getElementById('bv-error');
@@ -199,17 +233,7 @@
             fallbackLink.href = url;
 
             try {
-                const directUrl = getPdfDirectUrl(url);
-                const loadingTask = pdfjsLib.getDocument({ url: directUrl, withCredentials: false });
-                
-                loadingTask.onProgress = function(progress) {
-                    if (progress.total > 0) {
-                        const percent = Math.round((progress.loaded / progress.total) * 100);
-                        document.getElementById('bv-loading-text').innerText = `Китеп жүктөлүүдө... ${percent}%`;
-                    }
-                };
-
-                pdfDoc = await loadingTask.promise;
+                pdfDoc = await fetchPdfDocument(url);
                 const numPages = pdfDoc.numPages;
 
                 for (let i = 1; i <= numPages; i++) {
@@ -223,11 +247,11 @@
 
                 const isMobile = window.innerWidth <= 768;
                 pageFlip = new St.PageFlip(container, {
-                    width: isMobile ? window.innerWidth : 550,
-                    height: isMobile ? window.innerHeight - 80 : 730,
+                    width: isMobile ? window.innerWidth : 500,
+                    height: isMobile ? window.innerHeight - 100 : 700,
                     size: isMobile ? "fixed" : "stretch",
                     minWidth: 300,
-                    maxWidth: 1000,
+                    maxWidth: 900,
                     minHeight: 400,
                     maxHeight: 1200,
                     maxShadowOpacity: 0.5,
@@ -281,7 +305,6 @@
             container.style.transformOrigin = `center center`;
         }
 
-        // Controls binding
         document.getElementById('bv-btn-close').addEventListener('click', closeViewer);
         document.getElementById('bv-btn-next').addEventListener('click', () => pageFlip && pageFlip.flipNext());
         document.getElementById('bv-btn-prev').addEventListener('click', () => pageFlip && pageFlip.flipPrev());
@@ -321,7 +344,6 @@
             pdfDoc = null;
         }
 
-        // Keyboard listeners
         window.addEventListener('keydown', (e) => {
             const modal = document.getElementById('bilimal-flipbook-modal');
             if (modal.style.display === 'flex') {
