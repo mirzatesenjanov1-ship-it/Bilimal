@@ -42,7 +42,6 @@
         .pwd-card { background: #151a28; padding: 25px; border-radius: 12px; border: 1px solid #1e2640; width: 320px; text-align: center; }
         .pwd-card input { width: 100%; padding: 10px; margin: 15px 0; background: #0b0e14; border: 1px solid #1e2640; color: #fff; border-radius: 6px; }
 
-        /* ПРОФЕССИОНАЛДУУ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ */
         .reader-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0e14; display: none; flex-direction: column; z-index: 9999; }
         .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
         .btn-close-reader { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -116,7 +115,7 @@
                 <div class="form-group">
                     <label>PDF Файл (Google Drive / Түз URL шилтеме)</label>
                     <input type="url" id="book-pdf-url" placeholder="https://drive.google.com/file/d/... же түз pdf URL">
-                    <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же PDF файл тандаңыз (максимум 5MB):</div>
+                    <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же PDF файл тандаңыз:</div>
                     <input type="file" id="book-pdf-file" accept="application/pdf">
                 </div>
 
@@ -408,7 +407,7 @@
                 return;
             }
             if (file.size > 5 * 1024 * 1024) {
-                alert("Файл 5MB ашпоосу керек! Чоң файлдарды Google Drive же башка хостингге жүктөп, URL шилтемесин коюңуз.");
+                alert("Base64 катары сактоо үчүн файл 5MB ашпоосу тийиш. Сүрөттөмөгө Google Drive шилтемесин колдонууну сунуштайбыз.");
                 this.value = '';
                 return;
             }
@@ -482,17 +481,18 @@
                 const books = snapshot.val();
                 Object.keys(books).forEach(id => {
                     const item = books[id];
+                    const isBookPublic = item.isPublic === true || item.isPublic === "true" || item.isPublic === "public";
 
-                    if (!isAdminLoggedIn && !item.isPublic) return;
+                    if (!isAdminLoggedIn && !isBookPublic) return;
 
                     const card = document.createElement('div');
                     card.className = 'book-card';
                     card.innerHTML = `
-                        ${isAdminLoggedIn ? `<span class="status-tag ${item.isPublic ? 'status-public' : 'status-private'}">${item.isPublic ? 'Ачык' : 'Жабык'}</span>` : ''}
+                        ${isAdminLoggedIn ? `<span class="status-tag ${isBookPublic ? 'status-public' : 'status-private'}">${isBookPublic ? 'Ачык' : 'Жабык'}</span>` : ''}
                         <h3>${escapeHtml(item.title)}</h3>
-                        <p style="margin-top:8px; font-size:14px; color:#ccc;">${escapeHtml(item.desc)}</p>
+                        <p style="margin-top:8px; font-size:14px; color:#ccc; white-space:pre-line;">${escapeHtml(item.desc)}</p>
                         <div class="card-actions">
-                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${escapeHtml(item.pdfUrl)}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
+                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${escapeAttribute(item.pdfUrl)}" data-title="${escapeAttribute(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
                             ${isAdminLoggedIn ? `
                                 <button class="btn-edit-card" data-id="${id}"><i class="fas fa-edit"></i></button>
                                 <button class="btn-delete-card" data-id="${id}"><i class="fas fa-trash"></i></button>
@@ -502,7 +502,7 @@
                     booksGridContainer.appendChild(card);
                 });
 
-                document.querySelectorAll('.btn-read').forEach(b => {
+                document.querySelectorAll('#books-grid-container .btn-read').forEach(b => {
                     b.addEventListener('click', (e) => {
                         const target = e.currentTarget;
                         openReader(target.getAttribute('data-pdf'), target.getAttribute('data-title'));
@@ -510,7 +510,7 @@
                 });
 
                 if (isAdminLoggedIn) {
-                    document.querySelectorAll('.books-grid .btn-edit-card').forEach(b => {
+                    document.querySelectorAll('.btn-edit-card').forEach(b => {
                         b.addEventListener('click', (e) => {
                             const id = e.currentTarget.getAttribute('data-id');
                             editBook(id, books[id]);
@@ -548,8 +548,7 @@
             if (url.includes('drive.google.com')) {
                 const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
                 if (match && match[1]) {
-                    const fileId = match[1];
-                    return `https://drive.google.com/file/d/${fileId}/preview`;
+                    return `https://drive.google.com/file/d/${match[1]}/preview`;
                 }
             }
             
@@ -566,8 +565,7 @@
 
         function openReader(url, title) {
             readerTitle.innerText = title;
-            const embedUrl = getEmbeddablePdfUrl(url);
-            pdfFrame.src = embedUrl;
+            pdfFrame.src = getEmbeddablePdfUrl(url);
             readerModal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
         }
@@ -580,6 +578,10 @@
 
         function escapeHtml(str) {
             return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+        }
+
+        function escapeAttribute(str) {
+            return str ? str.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
         }
     </script>
 </body>
