@@ -8,7 +8,7 @@
     
     <!-- PDF.js жана PageFlip Китепканалары -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/page-flip@0.7.8/dist/js/page-flip.browser.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/page-flip@0.6.0/dist/js/page-flip.browser.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -47,19 +47,22 @@
         .pwd-card { background: #151a28; padding: 25px; border-radius: 12px; border: 1px solid #1e2640; width: 320px; text-align: center; }
         .pwd-card input { width: 100%; padding: 10px; margin: 15px 0; background: #0b0e14; border: 1px solid #1e2640; color: #fff; border-radius: 6px; }
 
+        /* ПРОФЕССИОНАЛДУУ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ (FLIPBOOK) */
         .reader-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0e14; display: none; flex-direction: column; z-index: 9999; }
         .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
         .btn-close-reader { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .reader-controls { display: flex; gap: 10px; align-items: center; color: #00d2ff; font-weight: bold; }
+        .btn-nav { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-nav:hover { background: #00d2ff; color: #0b0e14; }
+
         .reader-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; background: #121620; display: flex; justify-content: center; align-items: center; }
-        
-        #flipbook-wrapper { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-        #flipbook-container { width: 90vw; height: 85vh; }
-        .page-node { background-color: #fff; display: flex; justify-content: center; align-items: center; }
-        .page-node canvas { width: 100%; height: 100%; object-fit: contain; }
-        
-        #pdf-frame-fallback { width: 100%; height: 100%; border: none; display: none; }
+        .reader-body iframe { width: 100%; height: 100%; border: none; }
         #loader { text-align: center; padding: 50px; font-size: 18px; color: #00d2ff; }
-        #reader-status-loader { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #00d2ff; font-size: 18px; text-align: center; z-index: 10; }
+
+        #flipbook-container { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; overflow: auto; padding: 20px; }
+        .page { background-color: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
+        .page canvas { width: 100%; height: 100%; }
+        #reader-status-loader { position: absolute; color: #00d2ff; font-size: 18px; display: none; align-items: center; gap: 10px; z-index: 10; }
     </style>
 </head>
 <body>
@@ -194,21 +197,27 @@
         </div>
     </div>
 
-    <!-- FLIPBOOK ЖАНА FALLBACK КИТЕП ОКУУ МОДАЛЫ -->
+    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ (FLIPBOOK / READER) -->
     <div class="reader-modal" id="pdf-reader-modal">
         <div class="reader-header">
             <h3 id="reader-book-title" style="color: #00d2ff;">Китеп окуу</h3>
+            <div class="reader-controls" id="flipbook-controls" style="display: none;">
+                <button class="btn-nav" id="btn-prev-page"><i class="fas fa-chevron-left"></i></button>
+                <span id="page-num-info">0 / 0</span>
+                <button class="btn-nav" id="btn-next-page"><i class="fas fa-chevron-right"></i></button>
+            </div>
             <button class="btn-close-reader" id="btn-close-reader"><i class="fas fa-times"></i> Жабуу</button>
         </div>
-        <div class="reader-body">
-            <div id="reader-status-loader"><i class="fas fa-spinner fa-spin fa-2x"></i><br><br>PDF даярдалууда...</div>
-            <div id="flipbook-wrapper">
-                <div id="flipbook-container"></div>
+        <div class="reader-body" id="reader-body-container">
+            <div id="reader-status-loader"><i class="fas fa-spinner fa-spin"></i> Барактар даярдалууда...</div>
+            <iframe id="pdf-frame" src="about:blank" allow="autoplay" style="display: none;"></iframe>
+            <div id="flipbook-container">
+                <div id="flipbook"></div>
             </div>
-            <iframe id="pdf-frame-fallback" src="about:blank" allow="autoplay"></iframe>
         </div>
     </div>
 
+    <!-- FIREBASE & SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -507,7 +516,7 @@
                         <h3>${escapeHtml(item.title)}</h3>
                         <p style="margin-top:8px; font-size:14px; color:#ccc;">${escapeHtml(item.desc)}</p>
                         <div class="card-actions">
-                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
+                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (3D Flipbook)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
                             ${isAdminLoggedIn ? `
                                 <button class="btn-edit-card" data-id="${id}"><i class="fas fa-edit"></i></button>
                                 <button class="btn-delete-card" data-id="${id}"><i class="fas fa-trash"></i></button>
@@ -558,166 +567,145 @@
         }
 
         const readerModal = document.getElementById('pdf-reader-modal');
-        const pdfFrameFallback = document.getElementById('pdf-frame-fallback');
-        const flipbookWrapper = document.getElementById('flipbook-wrapper');
+        const pdfFrame = document.getElementById('pdf-frame');
         const flipbookContainer = document.getElementById('flipbook-container');
+        const flipbookEl = document.getElementById('flipbook');
         const readerTitle = document.getElementById('reader-book-title');
+        const flipbookControls = document.getElementById('flipbook-controls');
         const readerStatusLoader = document.getElementById('reader-status-loader');
-
-        function extractDriveId(url) {
-            if (!url) return null;
-            const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-            return match ? match[1] : null;
-        }
+        const pageNumInfo = document.getElementById('page-num-info');
 
         async function openReader(url, title) {
             readerTitle.innerText = title;
             readerModal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
-            readerStatusLoader.style.display = 'block';
-            
-            flipbookWrapper.style.display = 'none';
-            pdfFrameFallback.style.display = 'none';
-            pdfFrameFallback.src = 'about:blank';
-            
+
             destroyFlipbook();
 
-            try {
-                let arrayBuffer = await fetchPdfBinary(url);
-                if (arrayBuffer) {
-                    await renderFlipbook(arrayBuffer);
-                } else {
-                    throw new Error("Бүтүн бинардык файл алынган жок.");
-                }
-            } catch (err) {
-                console.warn("Flipbook иштетилген жок, Iframe Fallback колдонулууда:", err);
-                fallbackToIframe(url);
-            } finally {
-                readerStatusLoader.style.display = 'none';
-            }
-        }
+            const isGoogleDrive = url.includes('drive.google.com');
 
-        async function fetchPdfBinary(url) {
-            if (url.startsWith('data:application/pdf')) {
-                const base64Str = url.split(',')[1];
-                const binaryStr = atob(base64Str);
-                const len = binaryStr.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                    bytes[i] = binaryStr.charCodeAt(i);
-                }
-                return bytes.buffer;
-            }
-
-            const driveId = extractDriveId(url);
-            let fetchUrls = [];
-
-            if (driveId) {
-                const directDriveUrl = `https://drive.google.com/uc?export=download&id=${driveId}`;
-                fetchUrls = [
-                    `https://corsproxy.io/?${encodeURIComponent(directDriveUrl)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(directDriveUrl)}`
-                ];
+            if (isGoogleDrive) {
+                showIframeMode(getEmbeddablePdfUrl(url));
             } else {
-                fetchUrls = [
-                    url,
-                    `https://corsproxy.io/?${encodeURIComponent(url)}`
-                ];
-            }
-
-            for (let targetUrl of fetchUrls) {
+                showFlipbookMode();
+                readerStatusLoader.style.display = 'flex';
                 try {
-                    const response = await fetch(targetUrl);
-                    if (response.ok) {
-                        const contentType = response.headers.get("content-type");
-                        if (contentType && contentType.includes("text/html")) {
-                            continue;
-                        }
-                        const buffer = await response.arrayBuffer();
-                        if (buffer.byteLength > 1000) return buffer;
-                    }
-                } catch (e) {
-                    console.error("Fetch ишке ашкан жок:", targetUrl, e);
+                    await renderPdfFlipbook(url);
+                } catch (err) {
+                    console.warn("Flipbook render error, fallback to iframe:", err);
+                    showIframeMode(getEmbeddablePdfUrl(url));
+                } finally {
+                    readerStatusLoader.style.display = 'none';
                 }
             }
-            return null;
         }
 
-        async function renderFlipbook(arrayBuffer) {
-            flipbookContainer.innerHTML = '';
-            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-            const pdfDoc = await loadingTask.promise;
-            
-            const numPages = pdfDoc.numPages;
-            if (numPages === 0) throw new Error("Барактар табылган жок");
+        function showIframeMode(embedUrl) {
+            flipbookContainer.style.display = 'none';
+            flipbookControls.style.display = 'none';
+            readerStatusLoader.style.display = 'none';
+            pdfFrame.style.display = 'block';
+            pdfFrame.src = embedUrl;
+        }
 
-            const pageNodes = [];
+        function showFlipbookMode() {
+            pdfFrame.style.display = 'none';
+            pdfFrame.src = 'about:blank';
+            flipbookContainer.style.display = 'flex';
+            flipbookControls.style.display = 'flex';
+        }
+
+        async function renderPdfFlipbook(url) {
+            const loadingTask = pdfjsLib.getDocument(url);
+            const pdfDoc = await loadingTask.promise;
+            const numPages = pdfDoc.numPages;
+
+            flipbookEl.innerHTML = '';
+
+            const cardWidth = Math.min(window.innerWidth * 0.42, 450);
+            const cardHeight = cardWidth * 1.4;
 
             for (let i = 1; i <= numPages; i++) {
                 const page = await pdfDoc.getPage(i);
                 const viewport = page.getViewport({ scale: 1.5 });
-                
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'page-node';
-                
+
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
+
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page';
                 pageDiv.appendChild(canvas);
-                flipbookContainer.appendChild(pageDiv);
-                pageNodes.push(pageDiv);
+                flipbookEl.appendChild(pageDiv);
             }
 
-            flipbookWrapper.style.display = 'flex';
-
-            const firstCanvas = pageNodes[0].querySelector('canvas');
-            const pWidth = firstCanvas ? firstCanvas.width : 600;
-            const pHeight = firstCanvas ? firstCanvas.height : 800;
-
-            pageFlipInstance = new St.PageFlip(flipbookContainer, {
-                width: pWidth / 2,
-                height: pHeight / 2,
-                size: "stretch",
+            pageFlipInstance = new PageFlip(flipbookEl, {
+                width: cardWidth,
+                height: cardHeight,
+                size: "fixed",
                 minWidth: 300,
-                maxWidth: 1000,
+                maxWidth: 600,
                 minHeight: 400,
-                maxHeight: 1400,
+                maxHeight: 800,
                 maxShadowOpacity: 0.5,
                 showCover: true,
                 mobileScrollSupport: false
             });
 
-            pageFlipInstance.loadFromHTML(flipbookContainer.querySelectorAll('.page-node'));
+            pageFlipInstance.loadFromHTML(document.querySelectorAll('#flipbook .page'));
+            
+            updatePageNumInfo();
+
+            pageFlipInstance.on('flip', (e) => {
+                updatePageNumInfo();
+            });
         }
 
-        function fallbackToIframe(url) {
-            flipbookWrapper.style.display = 'none';
-            pdfFrameFallback.style.display = 'block';
-            
-            const driveId = extractDriveId(url);
-            if (driveId) {
-                pdfFrameFallback.src = `https://drive.google.com/file/d/${driveId}/preview`;
-            } else if (url.startsWith('data:application/pdf') || url.endsWith('.pdf')) {
-                pdfFrameFallback.src = url;
-            } else {
-                pdfFrameFallback.src = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
-            }
+        function updatePageNumInfo() {
+            if (!pageFlipInstance) return;
+            const current = pageFlipInstance.getCurrentPageIndex() + 1;
+            const total = pageFlipInstance.getPageCount();
+            pageNumInfo.innerText = `${current} / ${total}`;
         }
+
+        document.getElementById('btn-prev-page').addEventListener('click', () => {
+            if (pageFlipInstance) pageFlipInstance.flipPrev();
+        });
+
+        document.getElementById('btn-next-page').addEventListener('click', () => {
+            if (pageFlipInstance) pageFlipInstance.flipNext();
+        });
 
         function destroyFlipbook() {
             if (pageFlipInstance) {
-                try { pageFlipInstance.destroy(); } catch(e){}
+                try {
+                    pageFlipInstance.destroy();
+                } catch (e) {}
                 pageFlipInstance = null;
             }
-            flipbookContainer.innerHTML = '';
+            flipbookEl.innerHTML = '';
+        }
+
+        function getEmbeddablePdfUrl(url) {
+            if (!url) return '';
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    return `https://drive.google.com/file/d/${match[1]}/preview`;
+                }
+            }
+            if (url.startsWith('data:application/pdf') || url.endsWith('.pdf')) {
+                return url;
+            }
+            return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
         }
 
         document.getElementById('btn-close-reader').addEventListener('click', () => {
             readerModal.style.display = 'none';
-            pdfFrameFallback.src = 'about:blank';
+            pdfFrame.src = 'about:blank';
             destroyFlipbook();
             document.body.style.overflow = 'auto';
         });
