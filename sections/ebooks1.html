@@ -3,51 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ачык Электрондук Китепкана</title>
+    <title>Ачык Электрондук Китепкана - Bilimal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PDF.js & PageFlip Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/page-flip@2.0.7/dist/js/page-flip.browser.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #0b0e14; color: #fff; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
-        .header-title { font-size: 24px; color: #00d2ff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .books-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 20px; }
-        .book-card { background: #151a28; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
-        .book-card h3 { color: #fff; font-size: 18px; margin-bottom: 8px; }
-        .book-card p { color: #ccc; font-size: 14px; line-height: 1.4; }
-        .btn-read { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; width: 100%; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; transition: 0.3s; }
+        .book-card { background: #151a28; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; position: relative; display: flex; flex-direction: column; justify-content: space-between; }
+        .btn-read { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; width: 100%; padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; }
         .btn-read:hover { background: #00d2ff; color: #0b0e14; }
         #loader { text-align: center; padding: 50px; font-size: 18px; color: #00d2ff; }
-        
-        .reader-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0e14; display: none; flex-direction: column; z-index: 9999; }
-        .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
-        .btn-close-reader { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .reader-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; background: #121620; }
-        .reader-body iframe { width: 100%; height: 100%; border: none; }
-        .empty-msg { color: #aaa; text-align: center; grid-column: 1 / -1; padding: 40px; background: #151a28; border-radius: 12px; border: 1px solid #1e2640; }
+
+        /* BILIMAL FLIPBOOK VIEWER NAMESPACED STYLES */
+        .bilimal-viewer-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(11, 14, 20, 0.98); display: none; flex-direction: column; z-index: 99999; }
+        .bilimal-viewer-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; background: #151a28; border-bottom: 1px solid #1e2640; flex-wrap: wrap; gap: 10px; }
+        .bilimal-viewer-title { color: #00d2ff; font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+        .bilimal-viewer-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .bilimal-viewer-btn { background: #1e2640; color: #fff; border: 1px solid #2a365c; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 5px; }
+        .bilimal-viewer-btn:hover { background: #00d2ff; color: #0b0e14; }
+        .bilimal-viewer-btn-danger { background: #e74c3c; color: #fff; border: none; }
+        .bilimal-viewer-btn-danger:hover { background: #c0392b; color: #fff; }
+        .bilimal-viewer-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; display: flex; justify-content: center; align-items: center; }
+        .bilimal-viewer-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; overflow: auto; }
+        .bilimal-viewer-loading { position: absolute; color: #00d2ff; font-size: 18px; text-align: center; background: rgba(11,14,20,0.85); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        .bilimal-viewer-error { display: none; position: absolute; color: #e74c3c; text-align: center; z-index: 11; background: #151a28; padding: 20px; border-radius: 8px; border: 1px solid #e74c3c; }
+        .bilimal-viewer-page-num { color: #aaa; font-size: 14px; min-width: 80px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h2 class="header-title"><i class="fas fa-book-open"></i> Ачык Электрондук Китептер жана Макалалар</h2>
+        <div class="header-actions">
+            <h2><i class="fas fa-book"></i> Ачык Электрондук Китепкана</h2>
+        </div>
 
         <div id="loader"><i class="fas fa-spinner fa-spin"></i> Китептер жүктөлүүдө...</div>
 
-        <div class="books-grid" id="public-books-container"></div>
-    </div>
-
-    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ -->
-    <div class="reader-modal" id="pdf-reader-modal">
-        <div class="reader-header">
-            <h3 id="reader-book-title" style="color:#00d2ff;">Китеп окуу</h3>
-            <button class="btn-close-reader" id="btn-close-reader"><i class="fas fa-times"></i> Жабуу</button>
-        </div>
-        <div class="reader-body">
-            <iframe id="pdf-frame" src="about:blank" allow="autoplay"></iframe>
+        <div id="catalog-section" style="display: none;">
+            <div class="books-grid" id="books-grid-container"></div>
         </div>
     </div>
 
-    <!-- FIREBASE INTEGRATION -->
+    <!-- FLIPBOOK VIEWER MODAL -->
+    <div class="bilimal-viewer-modal" id="bilimal-flipbook-modal">
+        <div class="bilimal-viewer-toolbar">
+            <div class="bilimal-viewer-title" id="bv-title">Китеп окуу</div>
+            <div class="bilimal-viewer-controls">
+                <button class="bilimal-viewer-btn" id="bv-btn-first" title="Биринчи бет"><i class="fas fa-angle-double-left"></i></button>
+                <button class="bilimal-viewer-btn" id="bv-btn-prev"><i class="fas fa-chevron-left"></i> Мурунку</button>
+                <span class="bilimal-viewer-page-num" id="bv-page-info">0 / 0</span>
+                <button class="bilimal-viewer-btn" id="bv-btn-next">Кийинки <i class="fas fa-chevron-right"></i></button>
+                <button class="bilimal-viewer-btn" id="bv-btn-last" title="Акыркы бет"><i class="fas fa-angle-double-right"></i></button>
+                <span style="border-left: 1px solid #2a365c; height: 20px; margin: 0 5px;"></span>
+                <button class="bilimal-viewer-btn" id="bv-btn-zoom-in" title="Чоңойтуу"><i class="fas fa-search-plus"></i></button>
+                <button class="bilimal-viewer-btn" id="bv-btn-zoom-out" title="Кичирейтүү"><i class="fas fa-search-minus"></i></button>
+                <button class="bilimal-viewer-btn" id="bv-btn-zoom-reset" title="Түпнуска"><i class="fas fa-undo"></i></button>
+                <button class="bilimal-viewer-btn" id="bv-btn-fullscreen" title="Толук экран"><i class="fas fa-expand"></i></button>
+                <button class="bilimal-viewer-btn bilimal-viewer-btn-danger" id="bv-btn-close"><i class="fas fa-times"></i> Жабуу</button>
+            </div>
+        </div>
+        <div class="bilimal-viewer-body">
+            <div class="bilimal-viewer-loading" id="bv-loading">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 10px;"></i>
+                <div id="bv-loading-text">Китеп жүктөлүүдө...</div>
+            </div>
+            <div class="bilimal-viewer-error" id="bv-error">
+                <p>Бул китепти ачуу мүмкүн болгон жок. PDF файласынын жеткиликтүүлүгүн текшериңиз.</p>
+                <br>
+                <a id="bv-fallback-link" href="#" target="_blank" class="bilimal-viewer-btn" style="background:#00d2ff; color:#0b0e14; text-decoration:none;">PDF катары ачуу</a>
+            </div>
+            <div class="bilimal-viewer-container" id="bv-container">
+                <div id="bv-flipbook"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & SCRIPT -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -66,16 +104,23 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
 
-        const publicBooksContainer = document.getElementById('public-books-container');
         const loader = document.getElementById('loader');
+        const catalogSection = document.getElementById('catalog-section');
+        const booksGridContainer = document.getElementById('books-grid-container');
+
+        // Configure PDF.js worker
+        if (window.pdfjsLib) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        }
 
         function loadPublicBooks() {
             onValue(ref(db, 'library'), (snapshot) => {
                 loader.style.display = 'none';
-                publicBooksContainer.innerHTML = '';
+                catalogSection.style.display = 'block';
+                booksGridContainer.innerHTML = '';
 
                 if (!snapshot.exists()) {
-                    publicBooksContainer.innerHTML = '<div class="empty-msg">Азырынча ачык китептер же макалалар кошула элек.</div>';
+                    booksGridContainer.innerHTML = '<p style="color:#aaa;">Ачык китептер табылган жок.</p>';
                     return;
                 }
 
@@ -84,77 +129,209 @@
 
                 Object.keys(books).forEach(id => {
                     const item = books[id];
-                    const isBookPublic = item.isPublic === true || item.isPublic === "true" || item.isPublic === "public";
-
-                    if (isBookPublic) {
+                    if (item.isPublic) {
                         count++;
                         const card = document.createElement('div');
                         card.className = 'book-card';
                         card.innerHTML = `
                             <h3>${escapeHtml(item.title)}</h3>
-                            <p>${escapeHtml(item.desc)}</p>
-                            <div>
-                                ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa; display:block; margin-top:10px;">(Макала мазмуну жогоруда)</span>'}
-                            </div>
+                            <p style="margin-top:8px; font-size:14px; color:#ccc;">${escapeHtml(item.desc)}</p>
+                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (Flipbook)</button>` : '<span style="font-size:12px; color:#aaa; margin-top:15px; display:block;">(Макала)</span>'}
                         `;
-                        publicBooksContainer.appendChild(card);
+                        booksGridContainer.appendChild(card);
                     }
                 });
 
                 if (count === 0) {
-                    publicBooksContainer.innerHTML = '<div class="empty-msg">Азырынча ачык китептер кошула элек.</div>';
+                    booksGridContainer.innerHTML = '<p style="color:#aaa;">Азырынча ачык китептер жок.</p>';
                 }
 
                 document.querySelectorAll('.btn-read').forEach(b => {
                     b.addEventListener('click', (e) => {
                         const target = e.currentTarget;
-                        openReader(target.getAttribute('data-pdf'), target.getAttribute('data-title'));
+                        openFlipbookViewer(target.getAttribute('data-pdf'), target.getAttribute('data-title'));
                     });
                 });
             });
         }
-
-        function getEmbeddablePdfUrl(url) {
-            if (!url) return '';
-            
-            if (url.includes('drive.google.com')) {
-                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (match && match[1]) {
-                    const fileId = match[1];
-                    return `https://drive.google.com/file/d/${fileId}/preview`;
-                }
-            }
-            
-            if (url.startsWith('data:application/pdf') || url.endsWith('.pdf')) {
-                return url;
-            }
-
-            return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
-        }
-
-        const readerModal = document.getElementById('pdf-reader-modal');
-        const pdfFrame = document.getElementById('pdf-frame');
-        const readerTitle = document.getElementById('reader-book-title');
-
-        function openReader(url, title) {
-            readerTitle.innerText = title;
-            const embedUrl = getEmbeddablePdfUrl(url);
-            pdfFrame.src = embedUrl;
-            readerModal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        }
-
-        document.getElementById('btn-close-reader').addEventListener('click', () => {
-            readerModal.style.display = 'none';
-            pdfFrame.src = 'about:blank';
-            document.body.style.overflow = 'auto';
-        });
 
         function escapeHtml(str) {
             return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
         }
 
         loadPublicBooks();
+
+        /* --- FLIPBOOK ENGINE ENGINE IMPLEMENTATION --- */
+        let pageFlip = null;
+        let pdfDoc = null;
+        let currentZoom = 1;
+        let originalRawUrl = "";
+
+        function getPdfDirectUrl(url) {
+            if (!url) return '';
+            if (url.includes('drive.google.com')) {
+                const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    return `https://docs.google.com/uc?export=download&id=${match[1]}`;
+                }
+            }
+            return url;
+        }
+
+        async function openFlipbookViewer(url, title) {
+            originalRawUrl = url;
+            const modal = document.getElementById('bilimal-flipbook-modal');
+            const loading = document.getElementById('bv-loading');
+            const errorEl = document.getElementById('bv-error');
+            const container = document.getElementById('bv-flipbook');
+            const titleEl = document.getElementById('bv-title');
+            const fallbackLink = document.getElementById('bv-fallback-link');
+
+            titleEl.innerText = title || "Китеп окуу";
+            modal.style.display = 'flex';
+            loading.style.display = 'flex';
+            errorEl.style.display = 'none';
+            document.body.style.overflow = 'hidden';
+            container.innerHTML = '';
+            currentZoom = 1;
+            applyZoom();
+
+            fallbackLink.href = url;
+
+            try {
+                const directUrl = getPdfDirectUrl(url);
+                const loadingTask = pdfjsLib.getDocument({ url: directUrl, withCredentials: false });
+                
+                loadingTask.onProgress = function(progress) {
+                    if (progress.total > 0) {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        document.getElementById('bv-loading-text').innerText = `Китеп жүктөлүүдө... ${percent}%`;
+                    }
+                };
+
+                pdfDoc = await loadingTask.promise;
+                const numPages = pdfDoc.numPages;
+
+                for (let i = 1; i <= numPages; i++) {
+                    const pageDiv = document.createElement('div');
+                    pageDiv.className = 'my-page';
+                    pageDiv.setAttribute('data-density', 'soft');
+                    const canvas = document.createElement('canvas');
+                    pageDiv.appendChild(canvas);
+                    container.appendChild(pageDiv);
+                }
+
+                const isMobile = window.innerWidth <= 768;
+                pageFlip = new St.PageFlip(container, {
+                    width: isMobile ? window.innerWidth : 550,
+                    height: isMobile ? window.innerHeight - 80 : 730,
+                    size: isMobile ? "fixed" : "stretch",
+                    minWidth: 300,
+                    maxWidth: 1000,
+                    minHeight: 400,
+                    maxHeight: 1200,
+                    maxShadowOpacity: 0.5,
+                    showCover: true,
+                    mobileScrollSupport: true
+                });
+
+                pageFlip.loadFromHTML(document.querySelectorAll('.my-page'));
+
+                pageFlip.on('flip', (e) => {
+                    updatePageInfo(e.data + 1, numPages);
+                    renderVisiblePages(e.data + 1, numPages);
+                });
+
+                updatePageInfo(1, numPages);
+                await renderVisiblePages(1, numPages);
+                loading.style.display = 'none';
+
+            } catch (err) {
+                console.error("Flipbook error:", err);
+                loading.style.display = 'none';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        async function renderVisiblePages(currentPage, totalPages) {
+            const pagesToRender = [currentPage - 1, currentPage, currentPage + 1, currentPage + 2].filter(p => p >= 1 && p <= totalPages);
+            for (let pageNum of pagesToRender) {
+                const pageDivs = document.querySelectorAll('.my-page');
+                const targetDiv = pageDivs[pageNum - 1];
+                if (targetDiv && !targetDiv.classList.contains('rendered')) {
+                    targetDiv.classList.add('rendered');
+                    const canvas = targetDiv.querySelector('canvas');
+                    const page = await pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 1.5 });
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    await page.render({ canvasContext: context, viewport: viewport }).promise;
+                }
+            }
+        }
+
+        function updatePageInfo(current, total) {
+            document.getElementById('bv-page-info').innerText = `${current} / ${total}`;
+        }
+
+        function applyZoom() {
+            const container = document.getElementById('bv-container');
+            container.style.transform = `scale(${currentZoom})`;
+            container.style.transformOrigin = `center center`;
+        }
+
+        // Controls binding
+        document.getElementById('bv-btn-close').addEventListener('click', closeViewer);
+        document.getElementById('bv-btn-next').addEventListener('click', () => pageFlip && pageFlip.flipNext());
+        document.getElementById('bv-btn-prev').addEventListener('click', () => pageFlip && pageFlip.flipPrev());
+        document.getElementById('bv-btn-first').addEventListener('click', () => pageFlip && pageFlip.flip(0));
+        document.getElementById('bv-btn-last').addEventListener('click', () => pageFlip && pdfDoc && pageFlip.flip(pdfDoc.numPages - 1));
+
+        document.getElementById('bv-btn-zoom-in').addEventListener('click', () => {
+            if (currentZoom < 2) { currentZoom += 0.15; applyZoom(); }
+        });
+        document.getElementById('bv-btn-zoom-out').addEventListener('click', () => {
+            if (currentZoom > 0.6) { currentZoom -= 0.15; applyZoom(); }
+        });
+        document.getElementById('bv-btn-zoom-reset').addEventListener('click', () => {
+            currentZoom = 1; applyZoom();
+        });
+
+        document.getElementById('bv-btn-fullscreen').addEventListener('click', () => {
+            const modal = document.getElementById('bilimal-flipbook-modal');
+            if (!document.fullscreenElement) {
+                modal.requestFullscreen().catch(err => console.log(err));
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        function closeViewer() {
+            const modal = document.getElementById('bilimal-flipbook-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            if (pageFlip) {
+                try { pageFlip.destroy(); } catch(e){}
+                pageFlip = null;
+            }
+            pdfDoc = null;
+        }
+
+        // Keyboard listeners
+        window.addEventListener('keydown', (e) => {
+            const modal = document.getElementById('bilimal-flipbook-modal');
+            if (modal.style.display === 'flex') {
+                if (e.key === 'ArrowRight') pageFlip && pageFlip.flipNext();
+                if (e.key === 'ArrowLeft') pageFlip && pageFlip.flipPrev();
+                if (e.key === 'Home') pageFlip && pageFlip.flip(0);
+                if (e.key === 'End') pageFlip && pdfDoc && pageFlip.flip(pdfDoc.numPages - 1);
+                if (e.key === 'Escape') closeViewer();
+            }
+        });
     </script>
 </body>
 </html>
