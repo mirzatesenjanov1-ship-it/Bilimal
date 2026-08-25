@@ -5,23 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ & VIP Электрондук Китептер</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- PDF.js жана PageFlip Китепканалары -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/page-flip@0.6.0/dist/js/page-flip.browser.js"></script>
-
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #0b0e14; color: #fff; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
         .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .btn-admin-login { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-admin-login { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
         .btn-admin-login:hover { background: #00d2ff; color: #0b0e14; }
         .tariff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
         .tariff-card { background: #151a28; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; transition: 0.3s; }
         .tariff-card:hover, .tariff-card.active { border-color: #00d2ff; box-shadow: 0 0 15px rgba(0,210,255,0.2); }
         .qr-section { background: #151a28; border: 1px solid #1e2640; border-radius: 12px; padding: 20px; text-align: center; margin-top: 25px; display: none; }
-        .qr-img { width: 220px; height: 220px; border-radius: 8px; margin: 15px 0; }
+        .qr-img { width: 220px; height: 220px; border-radius: 8px; margin: 15px 0; object-fit: contain; background: #fff; }
         .notice-badge { background: rgba(0,210,255,0.1); color: #00d2ff; padding: 10px; border-radius: 6px; font-size: 13px; margin-top: 10px; }
         .btn-whatsapp { display: inline-flex; align-items: center; gap: 8px; background: #25d366; color: #fff; padding: 12px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; }
         .admin-section { background: #151a28; border: 1px solid #1e2640; border-radius: 12px; padding: 25px; margin-bottom: 30px; }
@@ -47,22 +42,13 @@
         .pwd-card { background: #151a28; padding: 25px; border-radius: 12px; border: 1px solid #1e2640; width: 320px; text-align: center; }
         .pwd-card input { width: 100%; padding: 10px; margin: 15px 0; background: #0b0e14; border: 1px solid #1e2640; color: #fff; border-radius: 6px; }
 
-        /* ПРОФЕССИОНАЛДУУ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ (FLIPBOOK) */
+        /* ПРОФЕССИОНАЛДУУ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ */
         .reader-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0b0e14; display: none; flex-direction: column; z-index: 9999; }
         .reader-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #151a28; border-bottom: 1px solid #1e2640; }
         .btn-close-reader { background: #e74c3c; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .reader-controls { display: flex; gap: 10px; align-items: center; color: #00d2ff; font-weight: bold; }
-        .btn-nav { background: #1e2640; color: #00d2ff; border: 1px solid #00d2ff; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-        .btn-nav:hover { background: #00d2ff; color: #0b0e14; }
-
-        .reader-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; background: #121620; display: flex; justify-content: center; align-items: center; }
+        .reader-body { flex: 1; position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; background: #121620; }
         .reader-body iframe { width: 100%; height: 100%; border: none; }
         #loader { text-align: center; padding: 50px; font-size: 18px; color: #00d2ff; }
-
-        #flipbook-container { display: none; width: 100%; height: 100%; justify-content: center; align-items: center; overflow: auto; padding: 20px; }
-        .page { background-color: #fff; box-shadow: 0 0 20px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; }
-        .page canvas { width: 100%; height: 100%; }
-        #reader-status-loader { position: absolute; color: #00d2ff; font-size: 18px; display: none; align-items: center; gap: 10px; z-index: 10; }
     </style>
 </head>
 <body>
@@ -75,7 +61,7 @@
 
         <div id="loader"><i class="fas fa-spinner fa-spin"></i> Маалыматтар жүктөлүүдө...</div>
 
-        <!-- PAYWALL THUMBNAIL -->
+        <!-- PAYWALL THUMBNAIL (Эгер VIP уруксат жок болсо) -->
         <div id="paywall-container" style="display: none;">
             <h3 style="text-align: center; color: #aaa; margin-bottom: 15px;">Премиум мазмунга кирүү үчүн тарифти тандаңыз</h3>
             <div class="tariff-grid">
@@ -130,7 +116,7 @@
                 <div class="form-group">
                     <label>PDF Файл (Google Drive / Түз URL шилтеме)</label>
                     <input type="url" id="book-pdf-url" placeholder="https://drive.google.com/file/d/... же түз pdf URL">
-                    <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же PDF файл тандаңыз:</div>
+                    <div style="margin-top: 5px; font-size: 12px; color: #aaa;">же чакан PDF файл тандаңыз (макс. 5MB):</div>
                     <input type="file" id="book-pdf-file" accept="application/pdf">
                 </div>
 
@@ -197,23 +183,14 @@
         </div>
     </div>
 
-    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ (FLIPBOOK / READER) -->
+    <!-- ТОЛУК ЭКРАНДАРДАГЫ КИТЕП ОКУУ МУЛЬТИ-МОДАЛЫ -->
     <div class="reader-modal" id="pdf-reader-modal">
         <div class="reader-header">
             <h3 id="reader-book-title" style="color: #00d2ff;">Китеп окуу</h3>
-            <div class="reader-controls" id="flipbook-controls" style="display: none;">
-                <button class="btn-nav" id="btn-prev-page"><i class="fas fa-chevron-left"></i></button>
-                <span id="page-num-info">0 / 0</span>
-                <button class="btn-nav" id="btn-next-page"><i class="fas fa-chevron-right"></i></button>
-            </div>
             <button class="btn-close-reader" id="btn-close-reader"><i class="fas fa-times"></i> Жабуу</button>
         </div>
         <div class="reader-body" id="reader-body-container">
-            <div id="reader-status-loader"><i class="fas fa-spinner fa-spin"></i> Барактар даярдалууда...</div>
-            <iframe id="pdf-frame" src="about:blank" allow="autoplay" style="display: none;"></iframe>
-            <div id="flipbook-container">
-                <div id="flipbook"></div>
-            </div>
+            <iframe id="pdf-frame" src="about:blank" allow="autoplay"></iframe>
         </div>
     </div>
 
@@ -222,8 +199,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getDatabase, ref, set, get, push, remove, update, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -245,7 +220,6 @@
         let isAdminLoggedIn = false;
         let hasAccess = false;
         let uploadedBase64Pdf = "";
-        let pageFlipInstance = null;
 
         const loader = document.getElementById('loader');
         const paywallContainer = document.getElementById('paywall-container');
@@ -258,19 +232,22 @@
         }
 
         onAuthStateChanged(auth, async (user) => {
-            if (!user) {
+            if (!user && !isAdminLoggedIn) {
+                // Эгер колдонуучу катталбаган болсо жана админ эмес болсо dashboard-го жөнөтүү
                 window.location.href = "../dashboard.html";
                 return;
             }
 
             currentUser = user;
-            await checkUserVIPStatus();
+            if (currentUser) {
+                await checkUserVIPStatus();
+            }
             loader.style.display = 'none';
-
             renderView();
         });
 
         async function checkUserVIPStatus() {
+            if (!currentUser || !currentUser.email) return;
             try {
                 const key = encodeEmail(currentUser.email);
                 const permSnap = await get(ref(db, `vip_users/${key}`));
@@ -352,6 +329,7 @@
                 isAdminLoggedIn = true;
                 document.getElementById('admin-pwd-modal').style.display = 'none';
                 document.getElementById('admin-pass-input').value = '';
+                loader.style.display = 'none';
                 alert("Админ катары ийгиликтүү кирдиңиз!");
                 renderView();
             } else {
@@ -406,15 +384,15 @@
                     const isExpired = Date.now() > item.expiresAt;
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td>${item.email}</td>
-                        <td>${item.plan || '30 күн'}</td>
+                        <td>${escapeHtml(item.email)}</td>
+                        <td>${escapeHtml(item.plan || '30 күн')}</td>
                         <td><span style="color:${isExpired ? '#e74c3c' : '#2ecc71'}">${new Date(item.expiresAt).toLocaleDateString()} ${isExpired ? '(Мөөнөтү бүттү)' : ''}</span></td>
-                        <td><button class="btn-delete-card" data-key="${key}"><i class="fas fa-trash"></i></button></td>
+                        <td><button class="btn-delete-card btn-delete-perm" data-key="${key}"><i class="fas fa-trash"></i></button></td>
                     `;
                     tableBody.appendChild(tr);
                 });
 
-                document.querySelectorAll('.permissions-table .btn-delete-card').forEach(b => {
+                document.querySelectorAll('.btn-delete-perm').forEach(b => {
                     b.addEventListener('click', async (e) => {
                         const k = e.currentTarget.getAttribute('data-key');
                         if (confirm("Уруксатты алып салууну каалайсызбы?")) {
@@ -430,10 +408,12 @@
             if (!file) return;
             if (file.type !== "application/pdf") {
                 alert("PDF форматындагы файл гана кабыл алынат!");
+                this.value = '';
                 return;
             }
-            if (file.size > 15 * 1024 * 1024) {
-                alert("Файл 15MB ашпоосу керек!");
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Базанын туруктуулугу үчүн PDF файл 5MB ашпоосу керек!");
+                this.value = '';
                 return;
             }
             const reader = new FileReader();
@@ -516,10 +496,10 @@
                         <h3>${escapeHtml(item.title)}</h3>
                         <p style="margin-top:8px; font-size:14px; color:#ccc;">${escapeHtml(item.desc)}</p>
                         <div class="card-actions">
-                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${item.pdfUrl}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (3D Flipbook)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
+                            ${item.pdfUrl ? `<button class="btn-read" data-pdf="${escapeHtml(item.pdfUrl)}" data-title="${escapeHtml(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
                             ${isAdminLoggedIn ? `
                                 <button class="btn-edit-card" data-id="${id}"><i class="fas fa-edit"></i></button>
-                                <button class="btn-delete-card" data-id="${id}"><i class="fas fa-trash"></i></button>
+                                <button class="btn-delete-card btn-delete-book" data-id="${id}"><i class="fas fa-trash"></i></button>
                             ` : ''}
                         </div>
                     `;
@@ -540,7 +520,7 @@
                             editBook(id, books[id]);
                         });
                     });
-                    document.querySelectorAll('.btn-delete-card').forEach(b => {
+                    document.querySelectorAll('.btn-delete-book').forEach(b => {
                         b.addEventListener('click', (e) => {
                             const id = e.currentTarget.getAttribute('data-id');
                             deleteBook(id);
@@ -566,147 +546,39 @@
             }
         }
 
-        const readerModal = document.getElementById('pdf-reader-modal');
-        const pdfFrame = document.getElementById('pdf-frame');
-        const flipbookContainer = document.getElementById('flipbook-container');
-        const flipbookEl = document.getElementById('flipbook');
-        const readerTitle = document.getElementById('reader-book-title');
-        const flipbookControls = document.getElementById('flipbook-controls');
-        const readerStatusLoader = document.getElementById('reader-status-loader');
-        const pageNumInfo = document.getElementById('page-num-info');
-
-        async function openReader(url, title) {
-            readerTitle.innerText = title;
-            readerModal.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-
-            destroyFlipbook();
-
-            const isGoogleDrive = url.includes('drive.google.com');
-
-            if (isGoogleDrive) {
-                showIframeMode(getEmbeddablePdfUrl(url));
-            } else {
-                showFlipbookMode();
-                readerStatusLoader.style.display = 'flex';
-                try {
-                    await renderPdfFlipbook(url);
-                } catch (err) {
-                    console.warn("Flipbook render error, fallback to iframe:", err);
-                    showIframeMode(getEmbeddablePdfUrl(url));
-                } finally {
-                    readerStatusLoader.style.display = 'none';
-                }
-            }
-        }
-
-        function showIframeMode(embedUrl) {
-            flipbookContainer.style.display = 'none';
-            flipbookControls.style.display = 'none';
-            readerStatusLoader.style.display = 'none';
-            pdfFrame.style.display = 'block';
-            pdfFrame.src = embedUrl;
-        }
-
-        function showFlipbookMode() {
-            pdfFrame.style.display = 'none';
-            pdfFrame.src = 'about:blank';
-            flipbookContainer.style.display = 'flex';
-            flipbookControls.style.display = 'flex';
-        }
-
-        async function renderPdfFlipbook(url) {
-            const loadingTask = pdfjsLib.getDocument(url);
-            const pdfDoc = await loadingTask.promise;
-            const numPages = pdfDoc.numPages;
-
-            flipbookEl.innerHTML = '';
-
-            const cardWidth = Math.min(window.innerWidth * 0.42, 450);
-            const cardHeight = cardWidth * 1.4;
-
-            for (let i = 1; i <= numPages; i++) {
-                const page = await pdfDoc.getPage(i);
-                const viewport = page.getViewport({ scale: 1.5 });
-
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-                const pageDiv = document.createElement('div');
-                pageDiv.className = 'page';
-                pageDiv.appendChild(canvas);
-                flipbookEl.appendChild(pageDiv);
-            }
-
-            pageFlipInstance = new PageFlip(flipbookEl, {
-                width: cardWidth,
-                height: cardHeight,
-                size: "fixed",
-                minWidth: 300,
-                maxWidth: 600,
-                minHeight: 400,
-                maxHeight: 800,
-                maxShadowOpacity: 0.5,
-                showCover: true,
-                mobileScrollSupport: false
-            });
-
-            pageFlipInstance.loadFromHTML(document.querySelectorAll('#flipbook .page'));
-            
-            updatePageNumInfo();
-
-            pageFlipInstance.on('flip', (e) => {
-                updatePageNumInfo();
-            });
-        }
-
-        function updatePageNumInfo() {
-            if (!pageFlipInstance) return;
-            const current = pageFlipInstance.getCurrentPageIndex() + 1;
-            const total = pageFlipInstance.getPageCount();
-            pageNumInfo.innerText = `${current} / ${total}`;
-        }
-
-        document.getElementById('btn-prev-page').addEventListener('click', () => {
-            if (pageFlipInstance) pageFlipInstance.flipPrev();
-        });
-
-        document.getElementById('btn-next-page').addEventListener('click', () => {
-            if (pageFlipInstance) pageFlipInstance.flipNext();
-        });
-
-        function destroyFlipbook() {
-            if (pageFlipInstance) {
-                try {
-                    pageFlipInstance.destroy();
-                } catch (e) {}
-                pageFlipInstance = null;
-            }
-            flipbookEl.innerHTML = '';
-        }
-
         function getEmbeddablePdfUrl(url) {
             if (!url) return '';
+            
             if (url.includes('drive.google.com')) {
                 const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
                 if (match && match[1]) {
-                    return `https://drive.google.com/file/d/${match[1]}/preview`;
+                    const fileId = match[1];
+                    return `https://drive.google.com/file/d/${fileId}/preview`;
                 }
             }
+            
             if (url.startsWith('data:application/pdf') || url.endsWith('.pdf')) {
                 return url;
             }
+
             return `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+        }
+
+        const readerModal = document.getElementById('pdf-reader-modal');
+        const pdfFrame = document.getElementById('pdf-frame');
+        const readerTitle = document.getElementById('reader-book-title');
+
+        function openReader(url, title) {
+            readerTitle.innerText = title;
+            const embedUrl = getEmbeddablePdfUrl(url);
+            pdfFrame.src = embedUrl;
+            readerModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
 
         document.getElementById('btn-close-reader').addEventListener('click', () => {
             readerModal.style.display = 'none';
             pdfFrame.src = 'about:blank';
-            destroyFlipbook();
             document.body.style.overflow = 'auto';
         });
 
