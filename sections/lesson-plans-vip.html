@@ -13,24 +13,14 @@
       color: #f8fafc; 
       font-family: system-ui, -apple-system, sans-serif; 
       user-select: none;
-    }
-    .watermark-bg { position: relative; overflow: hidden; }
-    .watermark-bg::before {
-      content: attr(data-watermark);
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 1.8rem;
-      color: rgba(255, 255, 255, 0.04);
-      pointer-events: none;
-      white-space: nowrap;
-      z-index: 10;
-      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
     }
     .modal-backdrop { background-color: rgba(0, 0, 0, 0.75); }
   </style>
 </head>
-<body class="min-h-screen pb-12">
+<body class="min-h-screen pb-12" oncontextmenu="return false;">
 
   <!-- TOP BAR -->
   <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
@@ -174,7 +164,7 @@
         </button>
       </div>
 
-      <!-- 1. CREATE / EDIT LESSON PLAN FORM (ЖӨНӨКӨЙЛӨТҮЛГӨН) -->
+      <!-- 1. CREATE / EDIT LESSON PLAN FORM -->
       <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
         <h3 id="admin-form-title" class="text-xl font-bold text-white mb-4">
           <i class="fa-solid fa-plus-circle text-amber-500"></i> Жаңы сабак планын кошуу
@@ -322,6 +312,38 @@
 
   <script>
     // ==========================================
+    // 🛡️ ANTI-CHEAT & F12 DISABLE GUARD LOGIC
+    // ==========================================
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    document.addEventListener('keydown', function(e) {
+      // F12 key
+      if (e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S
+      if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+        e.preventDefault();
+        return false;
+      }
+      if (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83)) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // DevTools Detection Loop Guard
+    setInterval(function() {
+      const startTime = performance.now();
+      debugger;
+      const endTime = performance.now();
+      if (endTime - startTime > 100) {
+        console.warn("DevTools detected!");
+      }
+    }, 1000);
+
+    // ==========================================
     // 🔥 FIREBASE INITIALIZATION
     // ==========================================
     const firebaseConfig = {
@@ -431,7 +453,7 @@
               role: 'teacher',
               vip: false,
               createdAt: Date.now()
-            });
+            }).catch(err => console.error(err));
           }).catch(err => alert(err.message));
         } else {
           alert(error.message);
@@ -467,7 +489,7 @@
     function setupCabinetView() {
       document.getElementById('cabinet-email').textContent = currentUser.email;
       const adminContainer = document.getElementById('admin-panel-link-container');
-      if (currentUserProfile.role === 'admin') {
+      if (currentUserProfile && currentUserProfile.role === 'admin') {
         adminContainer.innerHTML = `
           <button onclick="openAdminPanel()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
             ⚙️ Админ Панель
@@ -582,8 +604,15 @@
       if (pass === 'admin123' || pass === 'bilimal2026') {
         closeAdminPasswordModal();
         if (currentUser) {
-          await db.ref(`users/${currentUser.uid}/role`).set('admin');
-          await db.ref(`users/${currentUser.uid}/vip`).set(true);
+          try {
+            await db.ref(`users/${currentUser.uid}`).update({
+              role: 'admin',
+              vip: true
+            });
+          } catch(err) {
+            console.warn("User update fallback:", err);
+          }
+          if (!currentUserProfile) currentUserProfile = {};
           currentUserProfile.role = 'admin';
           currentUserProfile.vip = true;
           openAdminPanel();
@@ -601,7 +630,7 @@
       loadAdminPaymentsTable();
     }
 
-    // 1. САБАК ПЛАНЫН САКТОО (ТЕМА ЖАНА ССЫЛКА ГАНА)
+    // 1. САБАК ПЛАНЫН САКТОО
     document.getElementById('form-add-plan').addEventListener('submit', async (e) => {
       e.preventDefault();
       const editingId = document.getElementById('plan-editing-id').value;
@@ -624,7 +653,7 @@
         resetPlanForm();
         loadAdminPlansTable();
       } catch (err) {
-        alert("Ката болду: " + err.message);
+        alert("Ката болду: " + err.message + "\n\nСураныч, Firebase Console -> Realtime Database -> Rules бөлүмүнөн уруксаттарды (.write: true же auth != null) ачыңыз!");
       }
     });
 
@@ -697,7 +726,7 @@
       }
     }
 
-    // 3. ТӨЛӨМДӨРДҮ ЖАНА УРУКСАТТАРДЫ БАШКАРУУ (УРУКСАТ БЕРҮҮ / ЖОККО ЧЫГАРУУ / ӨЧҮРҮҮ)
+    // 3. ТӨЛӨМДӨРДҮ ЖАНА УРУКСАТТАРДЫ БАШКАРУУ
     async function loadAdminPaymentsTable() {
       const tbody = document.getElementById('admin-payments-table-body');
       tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Жүктөлүүдө...</td></tr>`;
@@ -755,13 +784,9 @@
     async function approvePayment(appId, uid, tariff) {
       try {
         if (uid && uid !== 'undefined') {
-          await db.ref(`users/${uid}`).update({
-            vip: true
-          });
+          await db.ref(`users/${uid}`).update({ vip: true });
         }
-        await db.ref(`applications/${appId}`).update({
-          status: 'approved'
-        });
+        await db.ref(`applications/${appId}`).update({ status: 'approved' });
         alert("Колдонуучуга VIP уруксаты берилди!");
         loadAdminPaymentsTable();
       } catch (e) {
@@ -774,13 +799,9 @@
       if (confirm("Бул колдонуучунун VIP уруксатын кайра алууну каалайсызбы?")) {
         try {
           if (uid && uid !== 'undefined') {
-            await db.ref(`users/${uid}`).update({
-              vip: false
-            });
+            await db.ref(`users/${uid}`).update({ vip: false });
           }
-          await db.ref(`applications/${appId}`).update({
-            status: 'pending'
-          });
+          await db.ref(`applications/${appId}`).update({ status: 'pending' });
           alert("VIP уруксаты кайтадалды.");
           loadAdminPaymentsTable();
         } catch (e) {
