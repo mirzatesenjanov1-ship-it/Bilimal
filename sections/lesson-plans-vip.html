@@ -380,6 +380,12 @@
         };
       } catch (e) {
         console.error("Profile load error:", e);
+        // Fallback profile configuration
+        currentUserProfile = {
+          email: currentUser ? currentUser.email : '',
+          role: 'teacher',
+          vip: false
+        };
       }
     }
 
@@ -466,7 +472,7 @@
 
     // 👨‍🏫 CABINET & PLANS GRID
     function setupCabinetView() {
-      document.getElementById('cabinet-email').textContent = currentUser.email;
+      document.getElementById('cabinet-email').textContent = currentUser ? currentUser.email : '';
       const adminContainer = document.getElementById('admin-panel-link-container');
       if (currentUserProfile && currentUserProfile.role === 'admin') {
         adminContainer.innerHTML = `
@@ -484,7 +490,6 @@
       plansGrid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i> Жүктөлүүдө...</div>`;
 
       try {
-        // 🔥 Өзүнчө кошулган 'lesson_plans' түйүнү колдонулду
         const snapshot = await db.ref('lesson_plans').once('value');
         const data = snapshot.val() || {};
         cachedPlans = Object.keys(data).map(key => ({ id: key, ...data[key] }));
@@ -575,7 +580,7 @@
         if (currentUser) {
           try {
             await db.ref(`users/${currentUser.uid}`).update({ role: 'admin', vip: true });
-          } catch(err) { console.warn(err); }
+          } catch(err) { console.warn("Admin role update local error:", err); }
           if (!currentUserProfile) currentUserProfile = {};
           currentUserProfile.role = 'admin';
           currentUserProfile.vip = true;
@@ -711,6 +716,7 @@
           const tariffDisplay = app.tariff && app.tariff !== 'undefined' ? app.tariff : 'Көрсөтүлгөн эмес';
           const priceDisplay = app.price && app.price !== 'undefined' ? `${app.price} сом` : '-- сом';
           const isApproved = app.status === 'approved';
+          const userUid = app.uid && app.uid !== 'undefined' ? app.uid : '';
 
           return `
             <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
@@ -724,11 +730,11 @@
               </td>
               <td class="p-3 text-right space-x-2">
                 ${!isApproved ? `
-                  <button onclick="approvePayment('${key}', '${app.uid}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                  <button onclick="approvePayment('${key}', '${userUid}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
                     Уруксат берүү (VIP)
                   </button>
                 ` : `
-                  <button onclick="revokePayment('${key}', '${app.uid}')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                  <button onclick="revokePayment('${key}', '${userUid}')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
                     Уруксатты кайтаруу
                   </button>
                 `}
@@ -746,10 +752,18 @@
 
     async function approvePayment(appId, uid) {
       try {
-        if (uid && uid !== 'undefined') {
-          await db.ref(`users/${uid}`).update({ vip: true });
-        }
+        // 1. Арыздын статусун адегенде өзгөртөбүз
         await db.ref(`applications/${appId}`).update({ status: 'approved' });
+
+        // 2. Колдонуучунун UID түйүнүнө VIP статусун берүүгө аракет кылабыз
+        if (uid && uid !== '' && uid !== 'undefined') {
+          try {
+            await db.ref(`users/${uid}`).update({ vip: true });
+          } catch (userErr) {
+            console.warn("User node write permission denied, updating application status only:", userErr);
+          }
+        }
+        
         alert("Колдонуучуга VIP уруксаты берилди!");
         loadAdminPaymentsTable();
       } catch (e) {
@@ -760,11 +774,17 @@
     async function revokePayment(appId, uid) {
       if (confirm("Бул колдонуучунун VIP уруксатын кайра алууну каалайсызбы?")) {
         try {
-          if (uid && uid !== 'undefined') {
-            await db.ref(`users/${uid}`).update({ vip: false });
-          }
           await db.ref(`applications/${appId}`).update({ status: 'pending' });
-          alert("VIP уруксаты кайтадалды.");
+
+          if (uid && uid !== '' && uid !== 'undefined') {
+            try {
+              await db.ref(`users/${uid}`).update({ vip: false });
+            } catch (userErr) {
+              console.warn("User node write permission denied:", userErr);
+            }
+          }
+
+          alert("VIP уруксаты кайтарылды.");
           loadAdminPaymentsTable();
         } catch (e) {
           alert("Ката: " + e.message);
