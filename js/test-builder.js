@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('editBadge').style.display = 'inline-block';
                 await loadExistingTest(editTestId);
             } else {
-                addQuestion('single'); // Жаңы тест түзүүдө 1 дефолт суроо кошуу
+                addQuestion('single');
             }
         } else {
             alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('builderForm').addEventListener('submit', handleFormSubmit);
 });
 
-// MathJax аркылуу формулаларды кайра тартуу (рендерлөө)
+// MathJax рендерлөө
 function triggerMathJaxRender(targetElement = null) {
     if (window.MathJax && window.MathJax.typesetPromise) {
         const elements = targetElement ? [targetElement] : undefined;
@@ -37,13 +37,39 @@ function triggerMathJaxRender(targetElement = null) {
     }
 }
 
-// Талаага киргизилген маалыматты Live Preview катары туура рендерлөө
+// PDF/Word'дон көчүрүлгөндө бузулган математикалык символдорду тууралоочу алгоритм
+function cleanAndFixMathSymbols(text) {
+    if (!text) return '';
+
+    return text
+        // 1. PDF'теги сынык/бузулган квадраттарды жана шрифттерди туура грек тамгаларына алмаштыруу
+        .replace(/[\uDB40\uDC00-\uDB40\uDC7F]/g, '') // Көрүнбөгөн зыян тамгаларды тазалоо
+        .replace(/o\s*[\u25A0-\u25FF\u2500-\u257F\uFFFD\u25A1\u25A0]/g, 'ρ₀') // o жана кутуча кошулуп калса -> ρ₀
+        .replace(/[\u25A0\u25A1\u25FE\u25FD\uFFFD]/g, 'ρ') // Жөнөкөй квадраттарды ро (ρ) тамгасына алмаштыруу
+        
+        // 2. Индекс жана Даражаларды тазалоо
+        .replace(/a3\(/g, 'a³(')
+        .replace(/a2\(/g, 'a²(')
+        .replace(/p_o/g, 'ρ₀')
+        .replace(/p_0/g, 'ρ₀')
+        .replace(/po/g, 'ρ₀')
+        .replace(/(\b)p(\b)/g, '$1ρ$2') // Жалгыз p тамгасы болсо -> ρ
+        
+        // 3. Стандарттык математикалык Unicode белгилерин нормалдаштыруу
+        .normalize('NFC');
+}
+
+// Талаага киргизилген же көчүрүлгөн маалыматты Live Preview катары рендерлөө
 function setupLiveFormulaPreview(inputElem, previewElem) {
     if (!inputElem || !previewElem) return;
 
     const updatePreview = () => {
-        let text = inputElem.value;
-        // Эгерде киргизилген текстте формула белгиси ($) жок болсо, бирок LaTeX символдор бар болсо ($) менен ороп кошуу
+        // Тазалоо функциясын иштетүү
+        let text = cleanAndFixMathSymbols(inputElem.value);
+        if (inputElem.value !== text) {
+            inputElem.value = text; // Инпуттун ичин да туура калыбына келтирет
+        }
+
         if (text && (text.includes('\\') || text.includes('^') || text.includes('_')) && !text.includes('$')) {
             previewElem.innerHTML = `$${text}$`;
         } else {
@@ -53,11 +79,15 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
     };
 
     inputElem.addEventListener('input', updatePreview);
+    
+    // КӨЧҮРҮП КЕЛГЕНДЕ (PASTE EVENT) БУЗУЛГАН КВАДРАТТАРДЫ ЗАМАТТА ОҢДОО
     inputElem.addEventListener('paste', (e) => {
-        // Көчүрүп келгенде форматированиени бузбай plain text катары кабыл алуу
         e.preventDefault();
-        const pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
+        let pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
         
+        // Алдын ала тазалоо
+        pastedText = cleanAndFixMathSymbols(pastedText);
+
         const start = inputElem.selectionStart;
         const end = inputElem.selectionEnd;
         const currentText = inputElem.value;
@@ -68,7 +98,6 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
         updatePreview();
     });
 
-    // Алгачкы мааниси бар болсо рендерлөө
     if (inputElem.value) {
         updatePreview();
     }
@@ -100,24 +129,25 @@ function addQuestion(type = 'single', data = null) {
 
         <div class="pisa-area" style="display: ${type === 'pisa' ? 'block' : 'none'};">
             <div class="pisa-context">
-                <label>PISA Контекст / Текст (Формула: $E=mc^2$ же \\frac{a}{b}):</label>
-                <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти же окуяны жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+                <label>PISA Контекст / Текст:</label>
+                <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
                 <div class="formula-preview pisa-preview"></div>
             </div>
         </div>
 
         <div class="form-group" style="margin-bottom:10px;">
             <div class="symbol-toolbar">
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'ρ')">ρ</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'ρ₀')">ρ₀</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'a³')">a³</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'a²')">a²</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '$E=mc^2$')">Formula</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'x²')">x²</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'x₁')">x₁</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '\\frac{a}{b}')">Fraction</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'α')">α</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'β')">β</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'Ω')">Ω</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'λ')">λ</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '℃')">℃</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '√')">√</button>
             </div>
             <textarea class="q-text" rows="2" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
             <div class="formula-preview q-preview"></div>
@@ -133,7 +163,6 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Live Preview байланыштыруу (Суроо жана PISA үчүн)
     const qTextElem = qBox.querySelector('.q-text');
     const qPreviewElem = qBox.querySelector('.q-preview');
     setupLiveFormulaPreview(qTextElem, qPreviewElem);
@@ -157,7 +186,6 @@ window.changeQuestionType = function(qId, newType) {
     renderOptions(qId, newType, null);
 };
 
-// Символду курсор турган жерге так коюу функциясы
 window.insertSymbol = function(qId, symbol) {
     const qBox = document.getElementById(qId);
     const textarea = qBox.querySelector('.q-text');
@@ -170,7 +198,6 @@ window.insertSymbol = function(qId, symbol) {
     textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
     textarea.focus();
 
-    // Event чакырып превьюну жаңыртуу
     textarea.dispatchEvent(new Event('input'));
 };
 
@@ -241,7 +268,7 @@ function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false)
     itemWrapper.innerHTML = `
         <div class="opt-item">
             <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
-            <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз (формула: $F=m\\cdot a$)" value="${text}">
+            <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз" value="${text}">
             <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.opt-item-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="formula-preview opt-preview"></div>
@@ -258,8 +285,8 @@ function addMatchPair(container, leftVal = '', rightVal = '') {
     pairWrapper.className = 'match-pair-wrapper';
     pairWrapper.innerHTML = `
         <div class="match-pair">
-            <input type="text" class="match-left" placeholder="Сол тарабы (мис: $F$)" value="${leftVal}" required>
-            <input type="text" class="match-right" placeholder="Оң тарабы (мис: Күч)" value="${rightVal}" required>
+            <input type="text" class="match-left" placeholder="Сол тарабы" value="${leftVal}" required>
+            <input type="text" class="match-right" placeholder="Оң тарабы" value="${rightVal}" required>
             <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.match-pair-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -325,9 +352,9 @@ async function handleFormSubmit(e) {
 
     qBoxes.forEach(qBox => {
         const type = qBox.querySelector('.q-type-select').value;
-        const text = qBox.querySelector('.q-text').value.trim();
+        const text = cleanAndFixMathSymbols(qBox.querySelector('.q-text').value.trim());
         const imageUrl = qBox.querySelector('.q-img').value.trim();
-        const pisaContext = qBox.querySelector('.q-pisa-context') ? qBox.querySelector('.q-pisa-context').value.trim() : '';
+        const pisaContext = qBox.querySelector('.q-pisa-context') ? cleanAndFixMathSymbols(qBox.querySelector('.q-pisa-context').value.trim()) : '';
 
         const qObj = {
             type: type,
@@ -342,8 +369,8 @@ async function handleFormSubmit(e) {
         if (type === 'matching') {
             const pairs = [];
             qBox.querySelectorAll('.match-pair-wrapper').forEach(p => {
-                const left = p.querySelector('.match-left').value.trim();
-                const right = p.querySelector('.match-right').value.trim();
+                const left = cleanAndFixMathSymbols(p.querySelector('.match-left').value.trim());
+                const right = cleanAndFixMathSymbols(p.querySelector('.match-right').value.trim());
                 if (left && right) {
                     pairs.push({ left, right });
                 }
@@ -353,7 +380,7 @@ async function handleFormSubmit(e) {
             const options = [];
             qBox.querySelectorAll('.opt-item-wrapper').forEach(optWrapper => {
                 const isCorrect = optWrapper.querySelector('input[type="radio"], input[type="checkbox"]').checked;
-                const optText = optWrapper.querySelector('.opt-text').value.trim();
+                const optText = cleanAndFixMathSymbols(optWrapper.querySelector('.opt-text').value.trim());
                 if (optText) {
                     options.push({ text: optText, isCorrect: isCorrect });
                 }
