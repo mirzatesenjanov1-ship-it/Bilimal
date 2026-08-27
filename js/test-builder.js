@@ -1,20 +1,23 @@
-import { db, auth } from '../firebase/firebase-config.js';
+// Bilimal/js/test-builder.js файлынан Bilimal/js/firebase/firebase-config.js файлын туура туташтыруу
+import { db, auth } from './firebase/firebase-config.js';
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { ref, get, child, set, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let currentUser = null;
 let editTestId = null;
 let questionCounter = 0;
-let lastFocusedInput = null; // Глобалдык фокустагы талааны эстеп калуучу өзгөрмө
+
+// Баракчадагы акыркы активдүү фокустагы текстовый инпутту эстеп калуучу өзгөрмө
+let activeInputTarget = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Бүткүл DOM боюнча активдүү фокусталган Input/Textarea элементин издеп сактоо
+    // Каалаган текст кутучасы фокуска келгенде шилтемени сактап калуу
     document.addEventListener('focusin', (e) => {
         if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text'))) {
-            lastFocusedInput = e.target;
+            activeInputTarget = e.target;
         }
     });
 
@@ -30,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
-            window.location.href = '/login.html';
+            window.location.href = '../login.html';
         }
     });
 
@@ -45,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// MathJax рендерлөө функциясы
 function triggerMathJaxRender(targetElement = null) {
     if (window.MathJax && window.MathJax.typesetPromise) {
         const elements = targetElement ? [targetElement] : undefined;
@@ -54,64 +56,77 @@ function triggerMathJaxRender(targetElement = null) {
 }
 
 /**
- * PDF жана Word документтерден көчүрүлгөндө бузулган Unicode жана шрифтик квадраттарды (☐)
- * профессионалдуу физикалык туура символдорго айландыруучу алгоритм (Deep Math Sanitizer)
+ * PDF жана Word файлдарынан көчүрүлгөндө бузулган Unicode жана атайын шрифтик кутучаларды (☐)
+ * физикалык жана математикалык символикага нормалдаштыруучу Deep Sanitizer Engine.
  */
 function cleanAndFixMathSymbols(text) {
     if (!text) return '';
 
     return text
-        // 1. Белгисиз же контролдук Unicode аймактарын тазалоо
+        // 1. Белгисиз PUA аймактарын жана контролдук Unicode ариптерин тазалоо
         .replace(/[\uDB40\uDC00-\uDB40\uDC7F]/g, '') 
         .replace(/[\uE000-\uF8FF]/g, '')
-        .replace(/\u00A0/g, ' ') // Non-breaking space -> нормалдуу пробел
+        .replace(/\u00A0/g, ' ')
 
-        // 2. Сүрөттөгү сыяктуу бузулган квадраттарды жана "o" тамгасы катышкан ρ₀ белгилерин оңдоо
-        // Мисалы: "o ☐", "o square", "o □", "o ⯀" -> ρ₀
+        // 2. Word/PDF'тен бузулуп түшкөн ро (ρ) жана индекс 0 (ρ₀) кутучаларын нормалдаштыруу
         .replace(/o\s*[\u25A0-\u25FF\u2500-\u257F\uFFFD\u25A1\u25A0]/g, 'ρ₀')
         .replace(/o\s*[\u25A0-\u25FF\uFFFD]{1,2}/g, 'ρ₀')
         
-        // Квадраттардын же бузук символдордун ордуна "ρ" коюу
+        // Жөнөкөй кутуча же бузулган глиф -> ρ
         .replace(/[\u25A0\u25A1\u25FE\u25FD\uFFFD\u25AF]/g, 'ρ')
         
-        // 3. Физикадагы туура эмес жазылып калган өзгөрмөлөрдү стандартизациялоо
+        // 3. Латынча p_0, po, p0 учурларын физикалык ро (ρ₀) символуна тууралоо
+        .replace(/p_o/gi, 'ρ₀')
+        .replace(/p_0/gi, 'ρ₀')
+        .replace(/po/gi, 'ρ₀')
+        .replace(/p₀/gi, 'ρ₀')
+        
+        // 4. Даражаларды нормалдаштыруу (a3 -> a³, a2 -> a²)
         .replace(/a3\(/g, 'a³(')
         .replace(/a2\(/g, 'a²(')
         .replace(/a3/g, 'a³')
         .replace(/a2/g, 'a²')
-        .replace(/p_o/g, 'ρ₀')
-        .replace(/p_0/g, 'ρ₀')
-        .replace(/po/g, 'ρ₀')
-        .replace(/p₀/g, 'ρ₀')
-        .replace(/(\b)p(\b)/g, '$1ρ$2') // Жалгыз "p" тамгасы -> ρ
 
-        // 4. Unicode Форматын тазалоо
+        // 5. Жалгыз 'p' тамгасын физикалык өзгөрмө катары ρ менен оңдоо
+        .replace(/(\b)p(\b)/g, '$1ρ$2')
+
+        // 6. Стандарттык Unicode NFC Каноникалык нормализациясы
         .normalize('NFC');
 }
 
 /**
- * Инпутту Live Preview менен байланыштыруучу жана paste окуясын иштетүүчү функция
+ * Көчүрүлгөндө (Paste) же Текст киргизилгенде заматта тазалап, Превьюну көрсөтүүчү адаптер
  */
 function setupLiveFormulaPreview(inputElem, previewElem) {
     if (!inputElem || !previewElem) return;
 
     const updatePreview = () => {
-        let text = cleanAndFixMathSymbols(inputElem.value);
-        if (inputElem.value !== text) {
-            inputElem.value = text;
+        const rawText = inputElem.value;
+        const cleanedText = cleanAndFixMathSymbols(rawText);
+
+        if (rawText !== cleanedText) {
+            const start = inputElem.selectionStart;
+            const end = inputElem.selectionEnd;
+            inputElem.value = cleanedText;
+            try { inputElem.setSelectionRange(start, end); } catch (e) {}
         }
 
-        if (text && (text.includes('\\') || text.includes('^') || text.includes('_')) && !text.includes('$')) {
-            previewElem.innerHTML = `$${text}$`;
+        if (cleanedText) {
+            if ((cleanedText.includes('\\') || cleanedText.includes('^') || cleanedText.includes('_')) && !cleanedText.includes('$')) {
+                previewElem.innerHTML = `$${cleanedText}$`;
+            } else {
+                previewElem.innerHTML = cleanedText;
+            }
         } else {
-            previewElem.innerHTML = text;
+            previewElem.innerHTML = '<span style="color:#64748b; font-size:12px;">Алдын ала көрүү (Preview)...</span>';
         }
+        
         triggerMathJaxRender(previewElem);
     };
 
     inputElem.addEventListener('input', updatePreview);
     
-    // Paste окуясын басып калуу жана заматта тазалоо
+    // Paste (көчүрүп чаптоо) окуясын тосуу
     inputElem.addEventListener('paste', (e) => {
         e.preventDefault();
         let pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
@@ -123,7 +138,9 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
         const currentText = inputElem.value;
         
         inputElem.value = currentText.substring(0, start) + pastedText + currentText.substring(end);
-        inputElem.selectionStart = inputElem.selectionEnd = start + pastedText.length;
+        
+        const newCursorPos = start + pastedText.length;
+        try { inputElem.setSelectionRange(newCursorPos, newCursorPos); } catch (e) {}
         
         updatePreview();
     });
@@ -134,12 +151,11 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
 }
 
 /**
- * Глобалдык символду акыркы фокусталган же тандалган Инпутка кошуу
+ * Глобалдык Тообардан тандалган символду дал учурда фокуста турган Инпутка киргизүү
  */
 window.insertSymbolToActive = function(symbol) {
-    let targetInput = lastFocusedInput;
+    let targetInput = activeInputTarget;
 
-    // Эгер эч бир инпут фокустала элек болсо, эң биринчи суроонун тексти тандалат
     if (!targetInput || !document.body.contains(targetInput)) {
         targetInput = document.querySelector('.q-text');
     }
@@ -148,13 +164,14 @@ window.insertSymbolToActive = function(symbol) {
 
     const start = targetInput.selectionStart || 0;
     const end = targetInput.selectionEnd || 0;
-    const text = targetInput.value;
+    const currentText = targetInput.value;
 
-    targetInput.value = text.substring(0, start) + symbol + text.substring(end);
-    targetInput.selectionStart = targetInput.selectionEnd = start + symbol.length;
+    targetInput.value = currentText.substring(0, start) + symbol + currentText.substring(end);
+    
+    const newPos = start + symbol.length;
     targetInput.focus();
+    try { targetInput.setSelectionRange(newPos, newPos); } catch (e) {}
 
-    // Event чакыруу аркылуу Preview'ду заматта жаңыртуу
     targetInput.dispatchEvent(new Event('input', { bubbles: true }));
 };
 
@@ -170,7 +187,7 @@ function addQuestion(type = 'single', data = null) {
 
     qBox.innerHTML = `
         <div class="q-header">
-            <strong style="color:#38bdf8;">Суроо #${questionCounter}</strong>
+            <strong style="color:#38bdf8; font-size:16px;">Суроо #${questionCounter}</strong>
             <div style="display:flex; gap:10px; align-items:center;">
                 <select class="q-type-select">
                     <option value="single" ${type === 'single' ? 'selected' : ''}>Бир туура варианттуу</option>
@@ -178,43 +195,44 @@ function addQuestion(type = 'single', data = null) {
                     <option value="pisa" ${type === 'pisa' ? 'selected' : ''}>PISA (Контексттүү)</option>
                     <option value="matching" ${type === 'matching' ? 'selected' : ''}>Шайкештик (Matching)</option>
                 </select>
-                <button type="button" class="btn btn-danger btn-sm remove-q-btn"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn btn-danger btn-sm remove-q-btn"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
             </div>
         </div>
 
         <div class="pisa-area" style="display: ${type === 'pisa' ? 'block' : 'none'};">
-            <div class="pisa-context" style="margin-bottom:12px;">
-                <label style="color:#cbd5e1; font-weight:600;">PISA Контекст / Текст:</label>
+            <div class="pisa-context" style="margin-bottom:14px;">
+                <label style="color:#cbd5e1; font-weight:600; display:block; margin-bottom:4px;">PISA Контекст / Текст:</label>
                 <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
                 <div class="formula-preview pisa-preview"></div>
             </div>
         </div>
 
-        <div class="form-group" style="margin-bottom:10px;">
-            <label style="color:#cbd5e1; font-weight:600; display:block; margin-bottom:4px;">Суроонун тексти жана Формула баскычтары:</label>
+        <div class="form-group" style="margin-bottom:14px;">
+            <label style="color:#cbd5e1; font-weight:600; display:block; margin-bottom:6px;">Суроонун тексти жана Формула панели:</label>
             
-            <!-- Бардык баскычтар глобалдуу insertSymbolToActive функциясы менен иштейт -->
             <div class="symbol-toolbar">
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('ρ')">ρ</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('ρ₀')">ρ₀</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('a³')">a³</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('a²')">a²</button>
-                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('$F = a^3(\\rho - \\rho_0)gh$')">Formula</button>
-                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('\\frac{a}{b}')">Fraction</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('F = a³(ρ - ρ₀)gh')">Формула</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('\\frac{a}{b}')">Бөлчөк (Fraction)</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('α')">α</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('β')">β</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('Ω')">Ω</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('λ')">λ</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('℃')">℃</button>
                 <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('√')">√</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('π')">π</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('θ')">θ</button>
             </div>
             
             <textarea class="q-text" rows="3" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
             <div class="formula-preview q-preview"></div>
         </div>
 
-        <div class="form-group" style="margin-bottom:12px;">
-            <label style="color:#94a3b8; font-size:13px;">Сүрөт шилтемеси (URL / Сүрөт болсо):</label>
+        <div class="form-group" style="margin-bottom:14px;">
+            <label style="color:#94a3b8; font-size:13px; display:block; margin-bottom:4px;">Сүрөт шилтемеси (URL / Сүрөт болсо):</label>
             <input type="url" class="q-img" placeholder="https://example.com/image.png" value="${data && data.imageUrl ? data.imageUrl : ''}">
         </div>
 
@@ -223,7 +241,6 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Event listener'лерди динамикалык түрдө туташтыруу
     const typeSelect = qBox.querySelector('.q-type-select');
     typeSelect.addEventListener('change', (e) => {
         const newType = e.target.value;
@@ -257,7 +274,7 @@ function renderOptions(qId, type, existingOptions = null) {
 
     if (type === 'matching') {
         const container = document.createElement('div');
-        container.innerHTML = `<label style="color:#a5b4fc; margin-bottom:5px; display:block;">Дал келтирүү жуптары:</label>`;
+        container.innerHTML = `<label style="color:#a5b4fc; margin-bottom:8px; display:block; font-weight:600;">Дал келтирүү жуптары:</label>`;
 
         const list = document.createElement('div');
         list.className = 'match-list';
@@ -341,7 +358,7 @@ function addMatchPair(container, leftVal = '', rightVal = '') {
             <input type="text" class="match-right" placeholder="Оң тарабы" value="${rightVal}" required>
             <button type="button" class="btn btn-danger btn-sm remove-pair-btn"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:5px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:6px;">
             <div class="formula-preview left-preview"></div>
             <div class="formula-preview right-preview"></div>
         </div>
@@ -409,7 +426,8 @@ async function handleFormSubmit(e) {
         const type = qBox.querySelector('.q-type-select').value;
         const text = cleanAndFixMathSymbols(qBox.querySelector('.q-text').value.trim());
         const imageUrl = qBox.querySelector('.q-img').value.trim();
-        const pisaContext = qBox.querySelector('.q-pisa-context') ? cleanAndFixMathSymbols(qBox.querySelector('.q-pisa-context').value.trim()) : '';
+        const pisaContextElem = qBox.querySelector('.q-pisa-context');
+        const pisaContext = pisaContextElem ? cleanAndFixMathSymbols(pisaContextElem.value.trim()) : '';
 
         const qObj = {
             type: type,
@@ -449,7 +467,7 @@ async function handleFormSubmit(e) {
     if (questionsArr.length === 0) {
         alert("Кем дегенде 1 суроо кошуңуз!");
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Сактоо жана Жарыялоо 🚀';
         return;
     }
 
@@ -475,11 +493,11 @@ async function handleFormSubmit(e) {
             await set(newTestRef, testPayload);
             alert("Жаңы тест ийгиликтүү түзүлдү жана жарыяланды!");
         }
-        window.location.href = 'tests.html';
+        window.location.href = '../sections/tests.html';
     } catch (err) {
         console.error("Сактоо катасы:", err);
         alert("Сактоодо ката чыкты: " + err.message);
         submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Сактоо жана Жарыялоо 🚀';
     }
 }
