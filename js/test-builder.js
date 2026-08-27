@@ -5,16 +5,25 @@ import { ref, get, child, set, update } from "https://www.gstatic.com/firebasejs
 let currentUser = null;
 let editTestId = null;
 let questionCounter = 0;
+let lastFocusedInput = null; // Глобалдык фокустагы талааны эстеп калуучу өзгөрмө
 
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Бүткүл DOM боюнча активдүү фокусталган Input/Textarea элементин издеп сактоо
+    document.addEventListener('focusin', (e) => {
+        if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type === 'text'))) {
+            lastFocusedInput = e.target;
+        }
+    });
+
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             currentUser = user;
             if (editTestId) {
-                document.getElementById('editBadge').style.display = 'inline-block';
+                const badge = document.getElementById('editBadge');
+                if (badge) badge.style.display = 'inline-block';
                 await loadExistingTest(editTestId);
             } else {
                 addQuestion('single');
@@ -25,11 +34,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('addQuestionBtn').addEventListener('click', () => addQuestion('single'));
-    document.getElementById('builderForm').addEventListener('submit', handleFormSubmit);
+    const addQBtn = document.getElementById('addQuestionBtn');
+    if (addQBtn) {
+        addQBtn.addEventListener('click', () => addQuestion('single'));
+    }
+
+    const builderForm = document.getElementById('builderForm');
+    if (builderForm) {
+        builderForm.addEventListener('submit', handleFormSubmit);
+    }
 });
 
-// MathJax рендерлөө
+// MathJax рендерлөө функциясы
 function triggerMathJaxRender(targetElement = null) {
     if (window.MathJax && window.MathJax.typesetPromise) {
         const elements = targetElement ? [targetElement] : undefined;
@@ -37,37 +53,52 @@ function triggerMathJaxRender(targetElement = null) {
     }
 }
 
-// PDF/Word'дон көчүрүлгөндө бузулган математикалык символдорду тууралоочу алгоритм
+/**
+ * PDF жана Word документтерден көчүрүлгөндө бузулган Unicode жана шрифтик квадраттарды (☐)
+ * профессионалдуу физикалык туура символдорго айландыруучу алгоритм (Deep Math Sanitizer)
+ */
 function cleanAndFixMathSymbols(text) {
     if (!text) return '';
 
     return text
-        // 1. PDF'теги сынык/бузулган квадраттарды жана шрифттерди туура грек тамгаларына алмаштыруу
-        .replace(/[\uDB40\uDC00-\uDB40\uDC7F]/g, '') // Көрүнбөгөн зыян тамгаларды тазалоо
-        .replace(/o\s*[\u25A0-\u25FF\u2500-\u257F\uFFFD\u25A1\u25A0]/g, 'ρ₀') // o жана кутуча кошулуп калса -> ρ₀
-        .replace(/[\u25A0\u25A1\u25FE\u25FD\uFFFD]/g, 'ρ') // Жөнөкөй квадраттарды ро (ρ) тамгасына алмаштыруу
+        // 1. Белгисиз же контролдук Unicode аймактарын тазалоо
+        .replace(/[\uDB40\uDC00-\uDB40\uDC7F]/g, '') 
+        .replace(/[\uE000-\uF8FF]/g, '')
+        .replace(/\u00A0/g, ' ') // Non-breaking space -> нормалдуу пробел
+
+        // 2. Сүрөттөгү сыяктуу бузулган квадраттарды жана "o" тамгасы катышкан ρ₀ белгилерин оңдоо
+        // Мисалы: "o ☐", "o square", "o □", "o ⯀" -> ρ₀
+        .replace(/o\s*[\u25A0-\u25FF\u2500-\u257F\uFFFD\u25A1\u25A0]/g, 'ρ₀')
+        .replace(/o\s*[\u25A0-\u25FF\uFFFD]{1,2}/g, 'ρ₀')
         
-        // 2. Индекс жана Даражаларды тазалоо
+        // Квадраттардын же бузук символдордун ордуна "ρ" коюу
+        .replace(/[\u25A0\u25A1\u25FE\u25FD\uFFFD\u25AF]/g, 'ρ')
+        
+        // 3. Физикадагы туура эмес жазылып калган өзгөрмөлөрдү стандартизациялоо
         .replace(/a3\(/g, 'a³(')
         .replace(/a2\(/g, 'a²(')
+        .replace(/a3/g, 'a³')
+        .replace(/a2/g, 'a²')
         .replace(/p_o/g, 'ρ₀')
         .replace(/p_0/g, 'ρ₀')
         .replace(/po/g, 'ρ₀')
-        .replace(/(\b)p(\b)/g, '$1ρ$2') // Жалгыз p тамгасы болсо -> ρ
-        
-        // 3. Стандарттык математикалык Unicode белгилерин нормалдаштыруу
+        .replace(/p₀/g, 'ρ₀')
+        .replace(/(\b)p(\b)/g, '$1ρ$2') // Жалгыз "p" тамгасы -> ρ
+
+        // 4. Unicode Форматын тазалоо
         .normalize('NFC');
 }
 
-// Талаага киргизилген же көчүрүлгөн маалыматты Live Preview катары рендерлөө
+/**
+ * Инпутту Live Preview менен байланыштыруучу жана paste окуясын иштетүүчү функция
+ */
 function setupLiveFormulaPreview(inputElem, previewElem) {
     if (!inputElem || !previewElem) return;
 
     const updatePreview = () => {
-        // Тазалоо функциясын иштетүү
         let text = cleanAndFixMathSymbols(inputElem.value);
         if (inputElem.value !== text) {
-            inputElem.value = text; // Инпуттун ичин да туура калыбына келтирет
+            inputElem.value = text;
         }
 
         if (text && (text.includes('\\') || text.includes('^') || text.includes('_')) && !text.includes('$')) {
@@ -80,16 +111,15 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
 
     inputElem.addEventListener('input', updatePreview);
     
-    // КӨЧҮРҮП КЕЛГЕНДЕ (PASTE EVENT) БУЗУЛГАН КВАДРАТТАРДЫ ЗАМАТТА ОҢДОО
+    // Paste окуясын басып калуу жана заматта тазалоо
     inputElem.addEventListener('paste', (e) => {
         e.preventDefault();
         let pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
         
-        // Алдын ала тазалоо
         pastedText = cleanAndFixMathSymbols(pastedText);
 
-        const start = inputElem.selectionStart;
-        const end = inputElem.selectionEnd;
+        const start = inputElem.selectionStart || 0;
+        const end = inputElem.selectionEnd || 0;
         const currentText = inputElem.value;
         
         inputElem.value = currentText.substring(0, start) + pastedText + currentText.substring(end);
@@ -103,6 +133,31 @@ function setupLiveFormulaPreview(inputElem, previewElem) {
     }
 }
 
+/**
+ * Глобалдык символду акыркы фокусталган же тандалган Инпутка кошуу
+ */
+window.insertSymbolToActive = function(symbol) {
+    let targetInput = lastFocusedInput;
+
+    // Эгер эч бир инпут фокустала элек болсо, эң биринчи суроонун тексти тандалат
+    if (!targetInput || !document.body.contains(targetInput)) {
+        targetInput = document.querySelector('.q-text');
+    }
+
+    if (!targetInput) return;
+
+    const start = targetInput.selectionStart || 0;
+    const end = targetInput.selectionEnd || 0;
+    const text = targetInput.value;
+
+    targetInput.value = text.substring(0, start) + symbol + text.substring(end);
+    targetInput.selectionStart = targetInput.selectionEnd = start + symbol.length;
+    targetInput.focus();
+
+    // Event чакыруу аркылуу Preview'ду заматта жаңыртуу
+    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
 function addQuestion(type = 'single', data = null) {
     questionCounter++;
     const qId = `q_${questionCounter}`;
@@ -115,46 +170,51 @@ function addQuestion(type = 'single', data = null) {
 
     qBox.innerHTML = `
         <div class="q-header">
-            <strong style="color:#00f0ff;">Суроо #${questionCounter}</strong>
+            <strong style="color:#38bdf8;">Суроо #${questionCounter}</strong>
             <div style="display:flex; gap:10px; align-items:center;">
-                <select class="q-type-select" onchange="changeQuestionType('${qId}', this.value)">
+                <select class="q-type-select">
                     <option value="single" ${type === 'single' ? 'selected' : ''}>Бир туура варианттуу</option>
                     <option value="multiple" ${type === 'multiple' ? 'selected' : ''}>Көп туура варианттуу</option>
                     <option value="pisa" ${type === 'pisa' ? 'selected' : ''}>PISA (Контексттүү)</option>
                     <option value="matching" ${type === 'matching' ? 'selected' : ''}>Шайкештик (Matching)</option>
                 </select>
-                <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion('${qId}')"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="btn btn-danger btn-sm remove-q-btn"><i class="fa-solid fa-trash"></i></button>
             </div>
         </div>
 
         <div class="pisa-area" style="display: ${type === 'pisa' ? 'block' : 'none'};">
-            <div class="pisa-context">
-                <label>PISA Контекст / Текст:</label>
+            <div class="pisa-context" style="margin-bottom:12px;">
+                <label style="color:#cbd5e1; font-weight:600;">PISA Контекст / Текст:</label>
                 <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти жазыңыз...">${data && data.context ? data.context : ''}</textarea>
                 <div class="formula-preview pisa-preview"></div>
             </div>
         </div>
 
         <div class="form-group" style="margin-bottom:10px;">
+            <label style="color:#cbd5e1; font-weight:600; display:block; margin-bottom:4px;">Суроонун тексти жана Формула баскычтары:</label>
+            
+            <!-- Бардык баскычтар глобалдуу insertSymbolToActive функциясы менен иштейт -->
             <div class="symbol-toolbar">
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'ρ')">ρ</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'ρ₀')">ρ₀</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'a³')">a³</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'a²')">a²</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '$E=mc^2$')">Formula</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '\\frac{a}{b}')">Fraction</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'α')">α</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'β')">β</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'Ω')">Ω</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'λ')">λ</button>
-                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '℃')">℃</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('ρ')">ρ</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('ρ₀')">ρ₀</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('a³')">a³</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('a²')">a²</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('$F = a^3(\\rho - \\rho_0)gh$')">Formula</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('\\frac{a}{b}')">Fraction</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('α')">α</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('β')">β</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('Ω')">Ω</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('λ')">λ</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('℃')">℃</button>
+                <button type="button" class="symbol-btn" onclick="window.insertSymbolToActive('√')">√</button>
             </div>
-            <textarea class="q-text" rows="2" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
+            
+            <textarea class="q-text" rows="3" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
             <div class="formula-preview q-preview"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
-            <label>Сүрөт шилтемеси (URL / Сүрөт болсо):</label>
+            <label style="color:#94a3b8; font-size:13px;">Сүрөт шилтемеси (URL / Сүрөт болсо):</label>
             <input type="url" class="q-img" placeholder="https://example.com/image.png" value="${data && data.imageUrl ? data.imageUrl : ''}">
         </div>
 
@@ -162,6 +222,20 @@ function addQuestion(type = 'single', data = null) {
     `;
 
     container.appendChild(qBox);
+
+    // Event listener'лерди динамикалык түрдө туташтыруу
+    const typeSelect = qBox.querySelector('.q-type-select');
+    typeSelect.addEventListener('change', (e) => {
+        const newType = e.target.value;
+        const pisaArea = qBox.querySelector('.pisa-area');
+        pisaArea.style.display = newType === 'pisa' ? 'block' : 'none';
+        renderOptions(qId, newType, null);
+    });
+
+    const removeBtn = qBox.querySelector('.remove-q-btn');
+    removeBtn.addEventListener('click', () => {
+        qBox.remove();
+    });
 
     const qTextElem = qBox.querySelector('.q-text');
     const qPreviewElem = qBox.querySelector('.q-preview');
@@ -174,35 +248,10 @@ function addQuestion(type = 'single', data = null) {
     renderOptions(qId, type, data ? data.options : null);
 }
 
-window.removeQuestion = function(qId) {
-    const el = document.getElementById(qId);
-    if (el) el.remove();
-};
-
-window.changeQuestionType = function(qId, newType) {
-    const qBox = document.getElementById(qId);
-    const pisaArea = qBox.querySelector('.pisa-area');
-    pisaArea.style.display = newType === 'pisa' ? 'block' : 'none';
-    renderOptions(qId, newType, null);
-};
-
-window.insertSymbol = function(qId, symbol) {
-    const qBox = document.getElementById(qId);
-    const textarea = qBox.querySelector('.q-text');
-    
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const text = textarea.value;
-
-    textarea.value = text.substring(0, start) + symbol + text.substring(end);
-    textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
-    textarea.focus();
-
-    textarea.dispatchEvent(new Event('input'));
-};
-
 function renderOptions(qId, type, existingOptions = null) {
     const qBox = document.getElementById(qId);
+    if (!qBox) return;
+
     const optionsBody = qBox.querySelector('.options-body');
     optionsBody.innerHTML = '';
 
@@ -269,11 +318,14 @@ function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false)
         <div class="opt-item">
             <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
             <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз" value="${text}">
-            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.opt-item-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn btn-danger btn-sm remove-opt-btn"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="formula-preview opt-preview"></div>
     `;
     container.appendChild(itemWrapper);
+
+    const removeBtn = itemWrapper.querySelector('.remove-opt-btn');
+    removeBtn.addEventListener('click', () => itemWrapper.remove());
 
     const inputElem = itemWrapper.querySelector('.opt-text');
     const previewElem = itemWrapper.querySelector('.opt-preview');
@@ -287,14 +339,17 @@ function addMatchPair(container, leftVal = '', rightVal = '') {
         <div class="match-pair">
             <input type="text" class="match-left" placeholder="Сол тарабы" value="${leftVal}" required>
             <input type="text" class="match-right" placeholder="Оң тарабы" value="${rightVal}" required>
-            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.match-pair-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
+            <button type="button" class="btn btn-danger btn-sm remove-pair-btn"><i class="fa-solid fa-xmark"></i></button>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:5px;">
             <div class="formula-preview left-preview"></div>
             <div class="formula-preview right-preview"></div>
         </div>
     `;
     container.appendChild(pairWrapper);
+
+    const removeBtn = pairWrapper.querySelector('.remove-pair-btn');
+    removeBtn.addEventListener('click', () => pairWrapper.remove());
 
     const leftInput = pairWrapper.querySelector('.match-left');
     const leftPreview = pairWrapper.querySelector('.left-preview');
