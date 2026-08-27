@@ -268,6 +268,12 @@
       });
     }
 
+    // Email даректи Firebase Key катары колдонуу үчүн тазалоо функциясы
+    function encodeEmail(email) {
+      if (!email) return '';
+      return email.replace(/\./g, ',').toLowerCase();
+    }
+
     // Төлөм арыздарын Realtime Database аркылуу жүктөө
     function loadAdminPaymentsTable() {
       const tbody = document.getElementById('applicationsTableBody');
@@ -291,10 +297,11 @@
             : `<span class="status-badge status-pending">⏳ Күтүүдө</span>`;
 
           const targetUid = app.uid || app.userId || '';
+          const targetEmail = app.email || '';
 
           const actionBtn = isApproved
-            ? `<button class="btn btn-revoke" onclick="revokePayment('${appId}', '${targetUid}')">Уруксатты кайтаруу</button>`
-            : `<button class="btn btn-approve" onclick="approvePayment('${appId}', '${targetUid}')">Уруксат берүү (VIP)</button>`;
+            ? `<button class="btn btn-revoke" onclick="revokePayment('${appId}', '${targetUid}', '${targetEmail}')">Уруксатты кайтаруу</button>`
+            : `<button class="btn btn-approve" onclick="approvePayment('${appId}', '${targetUid}', '${targetEmail}')">Уруксат берүү (VIP)</button>`;
 
           tr.innerHTML = `
             <td>${app.email || 'Көрсөтүлгөн эмес'}</td>
@@ -314,80 +321,73 @@
       });
     }
 
-    // VIP уруксатын берүү (Fixes PERMISSION_DENIED)
-    async function approvePayment(appId, targetUid) {
+    // VIP уруксатын берүү ("vip_users" жана "applications" түйүндөрүн колдонот)
+    async function approvePayment(appId, targetUid, targetEmail) {
       if (!currentUser) {
         alert("Авторизациядан өтүңүз!");
         return;
       }
 
       try {
-        let userFound = false;
+        const now = new Date().toISOString();
+        const vipData = {
+          active: true,
+          grantedAt: now,
+          grantedBy: currentUser.email,
+          email: targetEmail
+        };
 
-        // 1-кадам: Түз UID бар болсо ошол боюнча VIP берүү
+        // 1. "vip_users" түйүнүнө UID аркылуу сактоо
         if (targetUid && targetUid !== 'undefined' && targetUid !== 'null' && targetUid !== '') {
-          await db.ref(`users/${targetUid}`).update({ vip: true });
-          userFound = true;
+          await db.ref(`vip_users/${targetUid}`).set(vipData);
         }
 
-        // 2-кадам: UID жок болсо, email аркылуу колдонуучуну табуу
-        if (!userFound) {
-          const appSnap = await db.ref(`applications/${appId}`).once('value');
-          const appData = appSnap.val();
-
-          if (appData && appData.email) {
-            const userSnap = await db.ref('users').orderByChild('email').equalTo(appData.email).once('value');
-            const usersObj = userSnap.val();
-
-            if (usersObj) {
-              const foundUid = Object.keys(usersObj)[0];
-              await db.ref(`users/${foundUid}`).update({ vip: true });
-              userFound = true;
-            }
+        // 2. Email аркылуу да "vip_users/by_email" түйүнүнө сактоо
+        if (targetEmail) {
+          const encodedEmail = encodeEmail(targetEmail);
+          if (encodedEmail) {
+            await db.ref(`vip_users/by_email/${encodedEmail}`).set(vipData);
           }
         }
 
-        // 3-кадам: Арыздын статусун өзгөртүү
-        await db.ref(`applications/${appId}`).update({ status: 'approved' });
+        // 3. "applications" түйүнүндө арыздын статусун өзгөртүү
+        await db.ref(`applications/${appId}`).update({ 
+          status: 'approved',
+          approvedAt: now,
+          approvedBy: currentUser.email
+        });
+
         alert("Колдонуучуга VIP уруксаты ийгиликтүү берилди!");
       } catch (e) {
         console.error("Approve Payment Error:", e);
-        alert("Ката: " + e.message);
+        alert("Ката пайда болду: " + e.message);
       }
     }
 
     // VIP уруксатын кайтаруу
-    async function revokePayment(appId, targetUid) {
+    async function revokePayment(appId, targetUid, targetEmail) {
       if (!confirm("Бул колдонуучунун VIP уруксатын кайра алууну каалайсызбы?")) return;
 
       try {
-        let userFound = false;
-
+        // 1. "vip_users" түйүнүнөн UID боюнча өчүрүү
         if (targetUid && targetUid !== 'undefined' && targetUid !== 'null' && targetUid !== '') {
-          await db.ref(`users/${targetUid}`).update({ vip: false });
-          userFound = true;
+          await db.ref(`vip_users/${targetUid}`).remove();
         }
 
-        if (!userFound) {
-          const appSnap = await db.ref(`applications/${appId}`).once('value');
-          const appData = appSnap.val();
-
-          if (appData && appData.email) {
-            const userSnap = await db.ref('users').orderByChild('email').equalTo(appData.email).once('value');
-            const usersObj = userSnap.val();
-
-            if (usersObj) {
-              const foundUid = Object.keys(usersObj)[0];
-              await db.ref(`users/${foundUid}`).update({ vip: false });
-            }
+        // 2. "vip_users" түйүнүнөн Email боюнча өчүрүү
+        if (targetEmail) {
+          const encodedEmail = encodeEmail(targetEmail);
+          if (encodedEmail) {
+            await db.ref(`vip_users/by_email/${encodedEmail}`).remove();
           }
         }
 
+        // 3. "applications" түйүнүнүн статусун "pending" калыбына келтирүү
         await db.ref(`applications/${appId}`).update({ status: 'pending' });
         alert("VIP уруксаты жокко чыгарылды.");
       } catch (e) {
         console.error("Revoke Payment Error:", e);
-        alert("Ката: " + e.message);
+        alert("Ката пайда болду: " + e.message);
       }
     }
 
