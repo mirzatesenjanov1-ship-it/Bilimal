@@ -1,415 +1,455 @@
 <!DOCTYPE html>
-<html lang="ky">
+<html lang="ky" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VIP Сабак пландары - Bilimal.org</title>
-  <!-- Tailwind CSS & FontAwesome -->
+  <title>Bilimal.org — Мугалимдер үчүн онлайн платформа</title>
+  
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts (Inter) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fffbe1',
+              100: '#fff3b8',
+              400: '#fbbf24',
+              500: '#f59e0b',
+              600: '#d97706',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
-    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-    .watermark-bg { position: relative; overflow: hidden; }
-    .watermark-bg::before {
+    /* Суу белгисинин (Watermark) стили */
+    [data-watermark]::before {
       content: attr(data-watermark);
       position: absolute;
-      top: 50%; left: 50%;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 1.8rem;
-      color: rgba(255, 255, 255, 0.04);
+      font-size: 2rem;
+      font-weight: 800;
+      color: rgba(245, 158, 11, 0.07);
       pointer-events: none;
       white-space: nowrap;
       z-index: 10;
       user-select: none;
     }
-    .modal-backdrop { background-color: rgba(0, 0, 0, 0.75); }
-  </style>
-</head>
-<body class="min-h-screen pb-12">
 
-  <!-- TOP BAR -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2">
-        <i class="fa-solid fa-graduation-cap"></i> Bilimal.org
-      </a>
+    /* Сайттан текстти тандоону жана көчүрүүнү чектөө */
+    body {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+  </style>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- HEADER / NAVBAR -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="checkVipAndRoute()">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-amber-500/20">
+          B
+        </div>
+        <div>
+          <span class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+            Bilimal.org <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded font-mono">VIP</span>
+          </span>
+          <p class="text-[11px] text-slate-400">Мугалимдердин санарип базасы</p>
+        </div>
+      </div>
+
       <div id="auth-status-container" class="flex items-center gap-3">
-        <!-- Auth status buttons injected via JS -->
+        <!-- JS аркылуу толтурулат -->
       </div>
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto px-4 mt-6">
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-    <!-- LOADING STATE -->
-    <div id="loading-spinner" class="text-center py-20">
-      <i class="fa-solid fa-circle-notch fa-spin text-4xl text-amber-500"></i>
-      <p class="mt-3 text-slate-400">Система жүктөлүүдө...</p>
-    </div>
+    <!-- VIEW 1: AUTHENTICATION (LOGIN / REGISTER) -->
+    <section id="view-auth" class="hidden max-w-md mx-auto py-12">
+      <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-extrabold text-white">Платформага кирүү</h2>
+          <p class="text-sm text-slate-400 mt-1">Катталыңыз же аккаунтуңузга кириңиз</p>
+        </div>
 
-    <!-- VIEW 1: AUTHENTICATION FORM -->
-    <section id="view-auth" class="hidden max-w-md mx-auto bg-slate-800/60 p-6 rounded-2xl border border-slate-700 mt-10">
-      <h2 class="text-2xl font-bold text-center mb-6 text-white">Сайтка кирүү</h2>
-      <button id="btn-google-auth" class="w-full py-3 bg-white text-slate-900 font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-slate-100 transition mb-4">
-        <i class="fa-brands fa-google text-red-500"></i> Google аркылуу кирүү
+        <form id="form-auth" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Email дарек</label>
+            <input type="email" id="auth-email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition text-white" placeholder="устат@gmail.com">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Сыр сөз (Пароль)</label>
+            <input type="password" id="auth-password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 transition text-white" placeholder="••••••••">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <button type="button" id="btn-login" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl text-sm transition">
+              Кирүү
+            </button>
+            <button type="button" id="btn-register" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold py-3 rounded-xl text-sm transition">
+              Катталуу
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- VIEW 2: PAYWALL (SUBSCRIPTION REQUIRED) -->
+    <section id="view-paywall" class="hidden max-w-4xl mx-auto py-8">
+      <div class="text-center mb-10">
+        <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-3 py-1 rounded-full font-semibold uppercase tracking-wider">VIP Мүмкүнчүлүк</span>
+        <h1 class="text-3xl md:text-4xl font-black text-white mt-3">Толук базага кирүү үчүн жазылыңыз</h1>
+        <p class="text-slate-400 mt-2 max-w-xl mx-auto text-sm">Бардык сабак пландарын, көрсөтмөлөрдү жана даяр файлдарды чектөөсүз көрүп, көчүрүү мүмкүнчүлүгүн алыңыз.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6">
+        <!-- 1 Айлык тариф -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700 transition">
+          <div>
+            <h3 class="text-lg font-bold text-white">1 Айлык VIP</h3>
+            <p class="text-xs text-slate-400 mt-1">Кыска мөөнөттүү колдонууга</p>
+            <div class="my-6">
+              <span class="text-3xl font-black text-white">200</span>
+              <span class="text-slate-400 text-sm">сом / ай</span>
+            </div>
+            <ul class="space-y-3 text-xs text-slate-300 mb-6">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Бардык сабак пландары</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> PDF файлдарды жүктөө</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 1 ай чектөөсүз кароо</li>
+            </ul>
+          </div>
+          <button onclick="openPaymentModal('1 Айлык VIP', 200)" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm transition">
+            Тандоо
+          </button>
+        </div>
+
+        <!-- 6 Айлык тариф (Популярдуу) -->
+        <div class="bg-slate-900 border-2 border-amber-500/50 rounded-3xl p-6 flex flex-col justify-between relative shadow-xl shadow-amber-500/5">
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-[10px] font-black uppercase px-3 py-0.5 rounded-full">Эң пайдалуу</span>
+          <div>
+            <h3 class="text-lg font-bold text-white">6 Айлык VIP</h3>
+            <p class="text-xs text-slate-400 mt-1">1 жарым жылдык окуу үчүн</p>
+            <div class="my-6">
+              <span class="text-3xl font-black text-amber-400">900</span>
+              <span class="text-slate-400 text-sm">сом / 6 ай</span>
+            </div>
+            <ul class="space-y-3 text-xs text-slate-300 mb-6">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Бардык сабак пландары</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> PDF файлдарды жүктөө</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 6 ай толук кирүү</li>
+            </ul>
+          </div>
+          <button onclick="openPaymentModal('6 Айлык VIP', 900)" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl text-sm transition">
+            Тандоо
+          </button>
+        </div>
+
+        <!-- 1 Жылдык тариф -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between hover:border-slate-700 transition">
+          <div>
+            <h3 class="text-lg font-bold text-white">1 Жылдык VIP</h3>
+            <p class="text-xs text-slate-400 mt-1">Толук 1 жылга бөгөтсүз</p>
+            <div class="my-6">
+              <span class="text-3xl font-black text-white">1500</span>
+              <span class="text-slate-400 text-sm">сом / жыл</span>
+            </div>
+            <ul class="space-y-3 text-xs text-slate-300 mb-6">
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> Бардык базага чексиз кирүү</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> PDF жана башка ресурстар</li>
+              <li class="flex items-center gap-2"><i class="fa-solid fa-check text-amber-400"></i> 365 күн VIP статус</li>
+            </ul>
+          </div>
+          <button onclick="openPaymentModal('1 Жылдык VIP', 1500)" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-semibold py-2.5 rounded-xl text-sm transition">
+            Тандоо
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: DASHBOARD (LESSON PLANS GRID) -->
+    <section id="view-dashboard" class="hidden space-y-6">
+      <!-- Колдонуучунун кабинети тууралуу кыска маалымат -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 md:p-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span id="cabinet-vip-badge" class="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg">⭐ VIP АКТИВДҮҮ</span>
+          <p id="cabinet-email" class="text-sm font-semibold text-white mt-2">user@gmail.com</p>
+        </div>
+        <div class="flex items-center gap-6 text-xs text-slate-400">
+          <div>
+            <span>Башталды:</span>
+            <p id="cabinet-start-date" class="text-slate-200 font-medium">-</p>
+          </div>
+          <div>
+            <span>Аяктайт:</span>
+            <p id="cabinet-expire-date" class="text-slate-200 font-medium">-</p>
+          </div>
+          <div>
+            <span>Калган күн:</span>
+            <p id="cabinet-days-left" class="text-amber-400 font-bold">-</p>
+          </div>
+          <div id="admin-panel-link-container"></div>
+        </div>
+      </div>
+
+      <!-- Издөө жана чыпкалоо -->
+      <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+        <h2 class="text-xl font-bold text-white">Сабак пландарынын базасы</h2>
+        <div class="w-full md:w-80">
+          <input type="text" id="input-search-plans" placeholder="Предмет же тема боюнча издөө..." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition">
+        </div>
+      </div>
+
+      <!-- Пландар чыгуучу сетка -->
+      <div id="plans-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- JS аркылуу карталар кошулат -->
+      </div>
+    </section>
+
+    <!-- VIEW 4: PLAN DETAIL VIEW -->
+    <section id="view-plan-detail" class="hidden max-w-3xl mx-auto space-y-4">
+      <button onclick="backToDashboard()" class="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-3 py-2 rounded-xl transition flex items-center gap-2">
+        <i class="fa-solid fa-arrow-left"></i> Артка кайтуу
       </button>
-      <div class="relative flex py-3 items-center">
-        <div class="flex-grow border-t border-slate-700"></div>
-        <span class="flex-shrink mx-4 text-slate-400 text-sm">же Email менен</span>
-        <div class="flex-grow border-t border-slate-700"></div>
-      </div>
-      <form id="form-auth-email" class="space-y-4">
-        <div>
-          <label class="block text-sm text-slate-300 mb-1">Email</label>
-          <input type="email" id="auth-email" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-        </div>
-        <div>
-          <label class="block text-sm text-slate-300 mb-1">Пароль</label>
-          <input type="password" id="auth-password" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-        </div>
-        <button type="submit" id="btn-email-login" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
-          Кирүү / Катталуу
-        </button>
-      </form>
-    </section>
 
-    <!-- VIEW 2: PAYWALL / VIP PURCHASE -->
-    <section id="view-paywall" class="hidden max-w-4xl mx-auto text-center py-8">
-      <div class="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-8 rounded-3xl border border-amber-500/30 mb-10">
-        <span class="bg-amber-500/20 text-amber-400 px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide uppercase border border-amber-500/30">
-          🔐 VIP мүмкүнчүлүк
-        </span>
-        <h1 class="text-4xl font-extrabold text-white mt-4 mb-2">VIP Сабак пландары</h1>
-        <p class="text-slate-300 text-lg">Даяр сабак пландары (5–11-класс, кыргызча, толук көчүрүүгө болот)</p>
-      </div>
+      <div id="detail-card" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden">
+        <div class="border-b border-slate-800 pb-4 mb-6">
+          <span id="detail-meta" class="text-xs font-semibold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-md">Предмет • Класс</span>
+          <h1 id="detail-title" class="text-2xl font-bold text-white mt-3">Сабактын аты</h1>
+          <p id="detail-author" class="text-xs text-slate-400 mt-1"></p>
+        </div>
 
-      <h3 class="text-xl font-bold mb-6 text-white">Тарифти тандаңыз:</h3>
-      <div class="grid md:grid-cols-3 gap-6 mb-10">
-        <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between hover:border-amber-500/50 transition">
-          <div>
-            <h4 class="text-lg font-bold text-slate-200">1 айлык мүмкүндүк</h4>
-            <div class="text-3xl font-black text-white my-4">200 <span class="text-base font-normal text-slate-400">сом</span></div>
-            <p class="text-sm text-slate-400">Каалаган убакта узартуу мүмкүнчүлүгү</p>
-          </div>
-          <button onclick="openPaymentModal('1 ай', 200)" class="mt-6 w-full bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-white font-bold py-2.5 rounded-xl transition">
-            Тандоо
+        <div id="detail-content-body" class="space-y-4 text-slate-200">
+          <!-- Толук мазмуну JS аркылуу чыгат -->
+        </div>
+
+        <div class="mt-8 pt-4 border-t border-slate-800 flex justify-end">
+          <button id="btn-copy-all" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center gap-2">
+            <i class="fa-solid fa-copy"></i> Текстти көчүрүү
           </button>
-        </div>
-
-        <div class="bg-slate-800/80 border-2 border-amber-500 p-6 rounded-2xl flex flex-col justify-between relative shadow-lg shadow-amber-500/10">
-          <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 font-bold text-xs px-3 py-1 rounded-full uppercase">Сунушталат</span>
-          <div>
-            <h4 class="text-lg font-bold text-amber-400">6 айлык мүмкүндүк</h4>
-            <div class="text-3xl font-black text-white my-4">900 <span class="text-base font-normal text-slate-400">сом</span></div>
-            <p class="text-sm text-slate-400">Жарты жылдык сабак пландар базасы</p>
-          </div>
-          <button onclick="openPaymentModal('6 ай', 900)" class="mt-6 w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl transition">
-            Тандоо
-          </button>
-        </div>
-
-        <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between hover:border-amber-500/50 transition">
-          <div>
-            <h4 class="text-lg font-bold text-slate-200">1 жылдык мүмкүндүк</h4>
-            <div class="text-3xl font-black text-white my-4">1500 <span class="text-base font-normal text-slate-400">сом</span></div>
-            <p class="text-sm text-slate-400">Толук окуу жылына эң пайдалуу тариф</p>
-          </div>
-          <button onclick="openPaymentModal('1 жыл', 1500)" class="mt-6 w-full bg-slate-700 hover:bg-amber-500 hover:text-slate-950 text-white font-bold py-2.5 rounded-xl transition">
-            Тандоо
-          </button>
-        </div>
-      </div>
-
-      <div class="pt-6 border-t border-slate-800">
-        <button onclick="openAdminPasswordModal()" class="text-xs text-slate-500 hover:text-amber-500 underline transition">
-          🔑 Администратордук кирүү (Пароль менен)
-        </button>
-      </div>
-    </section>
-
-    <!-- VIEW 3: MAIN VIP CONTENT HUB & SEARCH -->
-    <section id="view-dashboard" class="hidden">
-      <!-- USER CABINET BANNER -->
-      <div id="user-cabinet-card" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl mb-8 flex flex-wrap justify-between items-center gap-4">
-        <div>
-          <div class="flex items-center gap-2">
-            <h2 class="text-xl font-bold text-white">👨‍🏫 Менин кабинетим</h2>
-            <span id="cabinet-vip-badge" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full text-xs font-semibold">
-              🔐 VIP АКТИВДҮҮ
-            </span>
-          </div>
-          <p id="cabinet-email" class="text-sm text-slate-400 mt-1">user@example.com</p>
-        </div>
-        <div class="flex gap-6 text-sm text-slate-300">
-          <div>
-            <div class="text-slate-400 text-xs">Башталган күнү:</div>
-            <div id="cabinet-start-date" class="font-semibold text-white">--.--.----</div>
-          </div>
-          <div>
-            <div class="text-slate-400 text-xs">Бүтө турган күнү:</div>
-            <div id="cabinet-expire-date" class="font-semibold text-amber-400">--.--.----</div>
-          </div>
-          <div>
-            <div class="text-slate-400 text-xs">Калган убакыт:</div>
-            <div id="cabinet-days-left" class="font-semibold text-emerald-400">0 күн</div>
-          </div>
-        </div>
-        <div id="admin-panel-link-container"></div>
-      </div>
-
-      <!-- SEARCH BAR -->
-      <div class="mb-8">
-        <div class="relative">
-          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input type="text" id="input-search-plans" placeholder="Сабак планын издөө (Физика, Ньютондун экинчи мыйзамы, 9-класс...)" 
-                 class="w-full bg-slate-800 border border-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-white focus:outline-none focus:border-amber-500">
-        </div>
-      </div>
-
-      <!-- LESSON PLANS GRID -->
-      <div id="plans-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Dynamic content -->
-      </div>
-    </section>
-
-    <!-- VIEW 4: LESSON PLAN DETAIL VIEWER -->
-    <section id="view-plan-detail" class="hidden max-w-4xl mx-auto">
-      <button onclick="backToDashboard()" class="mb-4 text-amber-500 hover:text-amber-400 flex items-center gap-2 font-semibold">
-        <i class="fa-solid fa-arrow-left"></i> Тизмеге кайтуу
-      </button>
-
-      <div id="detail-card" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 md:p-8 watermark-bg" data-watermark="">
-        <div class="flex flex-wrap justify-between items-start gap-4 border-b border-slate-700 pb-6 mb-6">
-          <div>
-            <span id="detail-meta" class="bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full text-xs font-semibold">
-              Предмет • Класс
-            </span>
-            <h1 id="detail-title" class="text-2xl md:text-3xl font-extrabold text-white mt-3"></h1>
-            <p id="detail-author" class="text-sm text-slate-400 mt-1"></p>
-          </div>
-          <button id="btn-copy-all" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl transition flex items-center gap-2">
-            <i class="fa-solid fa-copy"></i> 📋 Баарын көчүрүү
-          </button>
-        </div>
-
-        <div id="detail-content-body" class="prose prose-invert max-w-none text-slate-200 space-y-6">
-          <!-- Dynamic details -->
         </div>
       </div>
     </section>
 
     <!-- VIEW 5: ADMIN PANEL -->
-    <section id="view-admin-panel" class="hidden space-y-10">
-      <div class="flex justify-between items-center border-b border-slate-700 pb-4">
-        <h2 class="text-2xl font-bold text-amber-500"><i class="fa-solid fa-shield-halved"></i> Админ Панель</h2>
-        <button onclick="backToDashboard()" class="bg-slate-700 text-white px-4 py-2 rounded-xl text-sm">Башкыга кайтуу</button>
+    <section id="view-admin-panel" class="hidden space-y-8">
+      <div class="flex justify-between items-center">
+        <h2 class="text-2xl font-extrabold text-white flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-amber-500"></i> Администратор Панели
+        </h2>
+        <button onclick="backToDashboard()" class="text-xs bg-slate-900 border border-slate-800 hover:bg-slate-800 px-3 py-2 rounded-xl text-slate-300">
+          Кабинетке кайтуу
+        </button>
       </div>
 
-      <!-- CREATE / EDIT LESSON PLAN FORM -->
-      <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
-        <h3 id="admin-form-title" class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-plus-circle text-amber-500"></i> Жаңы сабак планын кошуу</h3>
+      <!-- Пландарды кошуу / оңдоо формасы -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+        <h3 id="admin-form-title" class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-plus-circle text-amber-500"></i> Жаңы сабак планын кошуу
+        </h3>
+
         <form id="form-add-plan" class="space-y-4">
-          <input type="hidden" id="plan-editing-id" value="">
+          <input type="hidden" id="plan-editing-id">
 
           <div class="grid md:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Сабактын аталышы *</label>
-              <input type="text" id="plan-title" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+              <label class="block text-xs text-slate-400 mb-1">Темасы (Title)</label>
+              <input type="text" id="plan-title" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
             </div>
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Предмет *</label>
-              <input type="text" id="plan-subject" placeholder="Физика" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+              <label class="block text-xs text-slate-400 mb-1">Предмет</label>
+              <input type="text" id="plan-subject" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
             </div>
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Класс *</label>
-              <input type="text" id="plan-grade" placeholder="9-класс" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
-            </div>
-          </div>
-
-          <div class="grid md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Сабактын максаты</label>
-              <textarea id="plan-goals" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
-            </div>
-            <div>
-              <label class="block text-sm text-slate-300 mb-1">Күтүлүүчү натыйжалар</label>
-              <textarea id="plan-outcomes" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+              <label class="block text-xs text-slate-400 mb-1">Класс</label>
+              <input type="text" id="plan-grade" required class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
             </div>
           </div>
 
           <div class="grid md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Мугалимдин иш-аракети</label>
-              <textarea id="plan-teacher-act" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+              <label class="block text-xs text-slate-400 mb-1">Сабактын максаты</label>
+              <textarea id="plan-goals" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none"></textarea>
             </div>
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Окуучунун иш-аракети</label>
-              <textarea id="plan-student-act" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+              <label class="block text-xs text-slate-400 mb-1">Күтүлүүчү натыйжалар</label>
+              <textarea id="plan-outcomes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none"></textarea>
             </div>
           </div>
 
-          <div class="grid md:grid-cols-3 gap-4 items-center">
+          <div class="grid md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Баалоо жана Үй тапшырмасы</label>
-              <textarea id="plan-assessment" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+              <label class="block text-xs text-slate-400 mb-1">Мугалимдин иш-аракети</label>
+              <textarea id="plan-teacher-act" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none"></textarea>
             </div>
             <div>
-              <label class="block text-sm text-slate-300 mb-1">PDF / Шилтеме URL</label>
-              <input type="url" id="plan-pdf" placeholder="https://..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white">
+              <label class="block text-xs text-slate-400 mb-1">Окуучунун иш-аракети</label>
+              <textarea id="plan-student-act" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none"></textarea>
+            </div>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Баалоо / Үй тапшырма</label>
+              <input type="text" id="plan-assessment" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
             </div>
             <div>
-              <label class="block text-sm text-slate-300 mb-1">Жарыялоо Статусу *</label>
-              <select id="plan-is-public" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-semibold">
-                <option value="false">🔒 Жабык (Бир гана VIP колдонуучуларга)</option>
-                <option value="true">🌐 Ачык (lesson-plans.html 'де да көрүнөт)</option>
+              <label class="block text-xs text-slate-400 mb-1">PDF Файлдын шилтемеси (URL)</label>
+              <input type="url" id="plan-pdf" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">Ачык / Жабык жумуш</label>
+              <select id="plan-is-public" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-white focus:border-amber-500 outline-none">
+                <option value="false">🔒 Жабык (Бир гана VIP)</option>
+                <option value="true">🌐 Ачык (Баарына)</option>
               </select>
             </div>
           </div>
 
-          <div class="flex gap-3">
-            <button type="submit" id="btn-save-plan" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition">
+          <div class="flex gap-3 pt-2">
+            <button type="submit" id="btn-save-plan" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
               💾 САКТОО (library түйүнүнө)
             </button>
-            <button type="button" id="btn-cancel-edit" onclick="resetPlanForm()" class="hidden bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2.5 rounded-xl transition">
-              Баш тартуу
+            <button type="button" id="btn-cancel-edit" onclick="resetPlanForm()" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium px-4 py-2.5 rounded-xl text-sm transition">
+              Болдурбоо
             </button>
           </div>
         </form>
       </div>
 
-      <!-- MANAGE EXISTING LESSON PLANS -->
-      <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
-        <h3 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-list-check text-amber-500"></i> Бардык сабак пландары жана оңдоо</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-700 text-slate-400 text-sm">
-                <th class="p-3">Аталышы</th>
-                <th class="p-3">Предмет / Класс</th>
-                <th class="p-3">Статус</th>
-                <th class="p-3 text-right">Оңдоо</th>
-              </tr>
-            </thead>
-            <tbody id="admin-plans-table-body">
-              <!-- Dynamically injected -->
-            </tbody>
-          </table>
-        </div>
+      <!-- Базадагы пландардын тизмеси (Редакциялоо үчүн) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 overflow-x-auto">
+        <h3 class="text-lg font-bold text-white mb-4">Базадагы сабак пландары</h3>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-xs text-slate-400">
+              <th class="p-3">Темасы</th>
+              <th class="p-3">Предмет / Класс</th>
+              <th class="p-3">Статус</th>
+              <th class="p-3 text-right">Аракеттер</th>
+            </tr>
+          </thead>
+          <tbody id="admin-plans-table-body">
+            <!-- JS аркылуу толтурулат -->
+          </tbody>
+        </table>
       </div>
 
-      <!-- PAYMENTS MANAGEMENT -->
-      <div class="bg-slate-800/80 border border-slate-700 p-6 rounded-2xl">
-        <h3 class="text-xl font-bold text-white mb-4"><i class="fa-solid fa-receipt text-amber-500"></i> Төлөм арыздары (applications түйүнүнөн)</h3>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-700 text-slate-400 text-sm">
-                <th class="p-3">Email</th>
-                <th class="p-3">Тариф</th>
-                <th class="p-3">Сумма</th>
-                <th class="p-3">Статус</th>
-                <th class="p-3 text-right">Аракеттер</th>
-              </tr>
-            </thead>
-            <tbody id="admin-payments-table-body">
-              <!-- Applications injected -->
-            </tbody>
-          </table>
-        </div>
+      <!-- Төлөм кайрылууларынын тизмеси -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 overflow-x-auto">
+        <h3 class="text-lg font-bold text-white mb-4">VIP Жазылуу өтүнмөлөрү (Applications)</h3>
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-xs text-slate-400">
+              <th class="p-3">Email</th>
+              <th class="p-3">Тариф</th>
+              <th class="p-3">Сумма</th>
+              <th class="p-3">Статус</th>
+              <th class="p-3 text-right">Ырастоо</th>
+            </tr>
+          </thead>
+          <tbody id="admin-payments-table-body">
+            <!-- JS аркылуу толтурулат -->
+          </tbody>
+        </table>
       </div>
     </section>
 
   </main>
 
-  <!-- ADMIN PASSWORD MODAL -->
-  <div id="modal-admin-auth" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative">
-      <button onclick="closeAdminPasswordModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-        <i class="fa-solid fa-xmark text-xl"></i>
-      </button>
-
-      <div class="text-center mb-6">
-        <div class="w-12 h-12 bg-amber-500/20 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-          <i class="fa-solid fa-key"></i>
+  <!-- MODAL 1: ADMIN PASSWORD ENTER -->
+  <div id="modal-admin-auth" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-sm w-full space-y-4">
+      <h3 class="text-lg font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-lock text-amber-500"></i> Админ паролун киргизиңиз
+      </h3>
+      <form id="form-admin-password" class="space-y-3">
+        <input type="password" id="input-admin-pass" required placeholder="Сыр сөздү жазыңыз" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white focus:border-amber-500 outline-none">
+        <p id="admin-pass-error" class="text-xs text-red-400 hidden">Туура эмес пароль!</p>
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="closeAdminPasswordModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-300">
+            Жабуу
+          </button>
+          <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-xs font-bold rounded-xl text-slate-950">
+            Кирүү
+          </button>
         </div>
-        <h3 class="text-xl font-bold text-white">Админ панелге кирүү</h3>
-        <p class="text-xs text-slate-400 mt-1">Администратордук паролду киргизиңиз</p>
-      </div>
-
-      <form id="form-admin-password" class="space-y-4">
-        <div>
-          <label class="block text-sm text-slate-300 mb-1">Сыр сөз (Пароль)</label>
-          <input type="password" id="input-admin-pass" required placeholder="••••••••"
-                 class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-500">
-        </div>
-        <div id="admin-pass-error" class="hidden text-red-400 text-xs font-semibold">
-          ❌ Сыр сөз туура эмес!
-        </div>
-        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-xl transition">
-          Кирүү жана Админ статусун алуу
-        </button>
       </form>
     </div>
   </div>
 
-  <!-- PAYMENT MODAL -->
-  <div id="modal-payment" class="fixed inset-0 modal-backdrop hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 relative">
-      <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
-        <i class="fa-solid fa-xmark text-xl"></i>
-      </button>
-
-      <h3 class="text-xl font-bold text-white mb-4">Төлөм жасоо</h3>
-      
-      <div class="bg-white p-4 rounded-xl text-center mb-4 flex flex-col items-center">
-        <img src="/qrmbank.png" alt="MBank QR Code" class="w-48 h-48 object-contain">
-        <p class="text-slate-900 text-sm font-semibold mt-2">📱 QR кодду банк тиркемеңиз менен сканерлеңиз</p>
+  <!-- MODAL 2: PAYMENT INSTRUCTIONS -->
+  <div id="modal-payment" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl max-w-md w-full space-y-5">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h3 class="text-lg font-bold text-white">Төлөм жасоо көрсөтмөсү</h3>
+        <button onclick="closePaymentModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
 
-      <div class="space-y-2 mb-4 text-sm">
-        <div class="flex justify-between border-b border-slate-700 pb-1">
-          <span class="text-slate-400">Тариф:</span>
-          <span id="modal-plan-name" class="font-semibold text-white">--</span>
-        </div>
-        <div class="flex justify-between border-b border-slate-700 pb-1">
-          <span class="text-slate-400">Сумма:</span>
-          <span id="modal-plan-price" class="font-bold text-amber-400">-- сом</span>
-        </div>
+      <div>
+        <p class="text-xs text-slate-400">Тандалган тариф:</p>
+        <p id="modal-plan-name" class="text-sm font-bold text-amber-400"></p>
+        <p id="modal-plan-price" class="text-2xl font-black text-white mt-1"></p>
       </div>
 
-      <div class="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl mb-4 flex items-start gap-2.5 text-amber-300 text-xs leading-relaxed">
-        <i class="fa-solid fa-clock text-amber-400 text-base mt-0.5"></i>
-        <div>
-          Төлөм жүргүзүлгөндөн баштап <strong>24 сааттын ичинде</strong> сизге уруксат берилет.
-        </div>
+      <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2 text-xs">
+        <p class="text-slate-300 font-semibold">Төлөм реквизиттери (MBANK / O!Bank):</p>
+        <p class="font-mono text-amber-400 text-base font-bold tracking-wider">0556 40 04 77</p>
+        <p class="text-slate-400">Алуучу: Мирзат М.</p>
       </div>
 
-      <p class="text-xs text-slate-400 mb-4">
-        📝 Төлөмдөн кийин төмөнкү баскычты басып, чек сүрөтүн WhatsApp аркылуу жөнөтүңүз.
+      <p class="text-xs text-slate-400 leading-relaxed">
+        Төлөм жүргүзгөндөн кийин чек сүрөтүн WhatsApp аркылуу жөнөтүңүз. Модератор текшерип, 5-10 мүнөттө VIP статусуңузду активдештирип берет.
       </p>
 
-      <button id="btn-send-whatsapp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-3">
-        <img src="/qrvotsap.png" alt="WhatsApp" class="w-6 h-6 object-contain">
-        <span>🟢 Чекти WhatsApp аркылуу жөнөтүү</span>
+      <button id="btn-send-whatsapp" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-2">
+        <i class="fa-brands fa-whatsapp text-lg"></i> Чеги менен WhatsApp'ка жазуу
       </button>
     </div>
   </div>
 
-  <!-- FIREBASE SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
+    <p>© 2026 Bilimal.org — Мугалимдер үчүн санарип платформа. Бардык укуктар корголгон.</p>
+  </footer>
 
+  <!-- MAIN SCRIPT -->
   <script>
+    // 1. FIREBASE CONFIGURATION
     const firebaseConfig = {
-      apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+      apiKey: "AIzaSyD-YOUR_ACTUAL_API_KEY",
       authDomain: "bilimal-org.firebaseapp.com",
-      databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+      databaseURL: "https://bilimal-org-default-rtdb.firebaseio.com",
       projectId: "bilimal-org",
-      storageBucket: "bilimal-org.firebasestorage.app",
-      messagingSenderId: "241750360816",
-      appId: "1:241750360816:web:a991434eb5afbc470d7835",
-      measurementId: "G-9GSQV60QV0"
+      storageBucket: "bilimal-org.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
     };
 
     if (!firebase.apps.length) {
@@ -419,64 +459,59 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
+    // Global States
     let currentUser = null;
     let currentUserProfile = null;
-    let selectedTariff = { name: '', price: 0 };
     let cachedPlans = [];
+    let selectedTariff = { name: '', price: 0 };
 
+    // AUTH STATE OBSERVER
     auth.onAuthStateChanged(async (user) => {
-      document.getElementById('loading-spinner').classList.add('hidden');
+      currentUser = user;
       if (user) {
-        currentUser = user;
-        await loadUserProfile(user.uid);
-        renderAuthStatusHeader(true);
-        checkVipAndRoute();
+        try {
+          const snap = await db.ref(`users/${user.uid}`).once('value');
+          currentUserProfile = snap.val() || {};
+          renderAuthStatusHeader(true);
+          checkVipAndRoute();
+        } catch (e) {
+          console.error("Профиль жүктөөдө ката:", e);
+        }
       } else {
-        currentUser = null;
         currentUserProfile = null;
         renderAuthStatusHeader(false);
         showView('view-auth');
       }
     });
 
-    async function loadUserProfile(uid) {
+    // LOGIN / REGISTER
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      const email = document.getElementById('auth-email').value;
+      const pass = document.getElementById('auth-password').value;
+      if (!email || !pass) return alert("Маалыматтарды толук киргизиңиз!");
       try {
-        const snapshot = await db.ref(`users/${uid}`).once('value');
-        currentUserProfile = snapshot.val() || {
-          email: currentUser.email,
-          role: 'teacher',
-          vip: false
-        };
+        await auth.signInWithEmailAndPassword(email, pass);
       } catch (e) {
-        console.error("Error loading profile:", e);
+        alert("Кирүүдө каталык: " + e.message);
       }
-    }
-
-    document.getElementById('btn-google-auth').addEventListener('click', () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(err => alert("Каталык: " + err.message));
     });
 
-    document.getElementById('form-auth-email').addEventListener('submit', (e) => {
-      e.preventDefault();
+    document.getElementById('btn-register').addEventListener('click', async () => {
       const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-
-      auth.signInWithEmailAndPassword(email, password).catch((error) => {
-        if (error.code === 'auth/user-not-found') {
-          auth.createUserWithEmailAndPassword(email, password).then((cred) => {
-            db.ref(`users/${cred.user.uid}`).set({
-              email: cred.user.email,
-              role: 'teacher',
-              vip: false,
-              createdAt: Date.now()
-            });
-            alert("Каттоо ийгиликтүү!");
-          }).catch(err => alert(err.message));
-        } else {
-          alert(error.message);
-        }
-      });
+      const pass = document.getElementById('auth-password').value;
+      if (!email || !pass) return alert("Маалыматтарды толук киргизиңиз!");
+      try {
+        const res = await auth.createUserWithEmailAndPassword(email, pass);
+        await db.ref(`users/${res.user.uid}`).set({
+          email: email,
+          role: 'user',
+          vip: false,
+          createdAt: Date.now()
+        });
+        alert("Катталуу ийгиликтүү өттү!");
+      } catch (e) {
+        alert("Катталууда каталык: " + e.message);
+      }
     });
 
     function logout() {
@@ -643,7 +678,7 @@
       window.open(url, '_blank');
     });
 
-    // LOAD ALL PLANS FOR VIP (Shows ALL plans regardless of isPublic)
+    // LOAD ALL PLANS FOR VIP
     async function loadLessonPlans() {
       try {
         const snap = await db.ref('library').once('value');
@@ -777,7 +812,7 @@ ${plan.assessment || ''}
       showView('view-dashboard');
     }
 
-    // 7. ADMIN PANEL LOGIC (CREATE & EDIT)
+    // ADMIN PANEL LOGIC (CREATE & EDIT)
     function openAdminPanel() {
       showView('view-admin-panel');
       renderAdminPlansTable();
@@ -860,11 +895,9 @@ ${plan.assessment || ''}
       };
 
       if (editingId) {
-        // UPDATE existing plan
         await db.ref(`library/${editingId}`).update(planData);
         alert("✅ Сабак планы ийгиликтүү жаңыланды!");
       } else {
-        // CREATE new plan
         planData.createdAt = Date.now();
         await db.ref('library').push(planData);
         alert("✅ Жаңы сабак планы кошулду!");
@@ -933,6 +966,60 @@ ${plan.assessment || ''}
     async function rejectPayment(appId) {
       await db.ref(`applications/${appId}`).update({ status: 'rejected' });
     }
+  </script>
+
+  <!-- SECURITY & ANTI-DEVTOOLS / ANTI-COPY SCRIPT -->
+  <script>
+    // 1. Чычкандын оң баскычын (Context Menu) бөгөттөө
+    document.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    }, false);
+
+    // 2. Клавиатурадагы F12 жана кайнак баскычтарды бөгөттөө
+    document.addEventListener('keydown', function (e) {
+      // F12 баскычы
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+Shift+I (DevTools)
+      if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+Shift+J (Console)
+      if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+Shift+C (Inspect Element)
+      if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+U (Page Source көрүү)
+      if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+S (Сайтты сактоо)
+      if (e.ctrlKey && (e.key === 'S' || e.key === 's' || e.keyCode === 83)) {
+        e.preventDefault();
+        return false;
+      }
+    }, false);
+
+    // 3. DevTools консолу ачылса токтотуучу Debugger Loop
+    setInterval(function () {
+      const startTime = performance.now();
+      (function () {
+        debugger;
+      })();
+      const endTime = performance.now();
+      if (endTime - startTime > 100) {
+        document.body.innerHTML = '<div style="color:red; background:black; height:100vh; display:flex; justify-content:center; align-items:center; font-size:24px; font-family:sans-serif; text-align:center;">Коопсуздук эрежелери бөгөттөлдү! Иштеп чыгуучу куралдарына уруксат берилбейт.</div>';
+      }
+    }, 1000);
   </script>
 </body>
 </html>
