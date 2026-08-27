@@ -317,12 +317,10 @@
     document.addEventListener('contextmenu', e => e.preventDefault());
 
     document.addEventListener('keydown', function(e) {
-      // F12 key
-      if (e.keyCode === 123) {
+      if (e.keyCode === 123) { // F12
         e.preventDefault();
         return false;
       }
-      // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S
       if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
         e.preventDefault();
         return false;
@@ -333,7 +331,6 @@
       }
     });
 
-    // DevTools Detection Loop Guard
     setInterval(function() {
       const startTime = performance.now();
       debugger;
@@ -505,7 +502,8 @@
       plansGrid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i> Жүктөлүүдө...</div>`;
 
       try {
-        const snapshot = await db.ref('lesson_plans').once('value');
+        // 🔥 Сиздин Firebase Rules'дагы 'library' түйүнү колдонулду
+        const snapshot = await db.ref('library').once('value');
         const data = snapshot.val() || {};
         cachedPlans = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         renderPlansGrid(cachedPlans);
@@ -525,10 +523,10 @@
         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 hover:border-amber-500/50 transition flex flex-col justify-between">
           <div>
             <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">
-              <i class="fa-solid fa-file-lines text-amber-500"></i> ${p.title}
+              <i class="fa-solid fa-file-lines text-amber-500"></i> ${p.title || p.name || 'Сабак планы'}
             </h3>
           </div>
-          <a href="${p.pdfUrl}" target="_blank" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl transition text-center block">
+          <a href="${p.pdfUrl || p.url || '#'}" target="_blank" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-2.5 rounded-xl transition text-center block">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> Документти ачуу
           </a>
         </div>
@@ -537,7 +535,7 @@
 
     document.getElementById('input-search-plans').addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
-      const filtered = cachedPlans.filter(p => p.title && p.title.toLowerCase().includes(term));
+      const filtered = cachedPlans.filter(p => (p.title || p.name || '').toLowerCase().includes(term));
       renderPlansGrid(filtered);
     });
 
@@ -578,7 +576,8 @@
         });
 
         const text = encodeURIComponent(`Саламатсызбы! Мен VIP сабак пландарына төлөм кылдым.\nEmail: ${currentUser.email}\nТариф: ${selectedTariff.name} (${selectedTariff.price} сом)`);
-        window.open(`https://wa.me/996500000000?text=${text}`, '_blank');
+        // 📲 WhatsApp Номер 996556400477 болуп оңдолду
+        window.open(`https://wa.me/996556400477?text=${text}`, '_blank');
         closePaymentModal();
       } catch (e) {
         alert("Арыз жөнөтүүдө каталык: " + e.message);
@@ -593,6 +592,7 @@
     }
 
     function closeAdminPasswordModal() {
+      document.getElementById('modal-admin-auth').classList.hidden = true;
       document.getElementById('modal-admin-auth').classList.add('hidden');
       document.getElementById('admin-pass-error').classList.add('hidden');
     }
@@ -643,17 +643,17 @@
 
       try {
         if (editingId) {
-          await db.ref(`lesson_plans/${editingId}`).update(planData);
+          await db.ref(`library/${editingId}`).update(planData);
           alert("Сабак планы жаңыланды!");
         } else {
           planData.createdAt = Date.now();
-          await db.ref('lesson_plans').push(planData);
+          await db.ref('library').push(planData);
           alert("Жаңы сабак планы ийгиликтүү кошулду!");
         }
         resetPlanForm();
         loadAdminPlansTable();
       } catch (err) {
-        alert("Ката болду: " + err.message + "\n\nСураныч, Firebase Console -> Realtime Database -> Rules бөлүмүнөн уруксаттарды (.write: true же auth != null) ачыңыз!");
+        alert("Ката болду: " + err.message);
       }
     });
 
@@ -670,7 +670,7 @@
       tbody.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-slate-400">Жүктөлүүдө...</td></tr>`;
 
       try {
-        const snapshot = await db.ref('lesson_plans').once('value');
+        const snapshot = await db.ref('library').once('value');
         const data = snapshot.val() || {};
         const keys = Object.keys(data);
 
@@ -683,10 +683,10 @@
           const item = data[key];
           return `
             <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
-              <td class="p-3 font-semibold text-white">${item.title || 'Темасы жок'}</td>
+              <td class="p-3 font-semibold text-white">${item.title || item.name || 'Темасы жок'}</td>
               <td class="p-3 text-slate-300">
-                <a href="${item.pdfUrl}" target="_blank" class="text-amber-400 hover:underline text-sm truncate max-w-xs block">
-                  ${item.pdfUrl}
+                <a href="${item.pdfUrl || item.url || '#'}" target="_blank" class="text-amber-400 hover:underline text-sm truncate max-w-xs block">
+                  ${item.pdfUrl || item.url || 'Шилтеме'}
                 </a>
               </td>
               <td class="p-3 text-right space-x-2">
@@ -703,13 +703,13 @@
 
     async function editPlan(id) {
       try {
-        const snapshot = await db.ref(`lesson_plans/${id}`).once('value');
+        const snapshot = await db.ref(`library/${id}`).once('value');
         const item = snapshot.val();
         if (!item) return;
 
         document.getElementById('plan-editing-id').value = id;
-        document.getElementById('plan-title').value = item.title || '';
-        document.getElementById('plan-pdf').value = item.pdfUrl || '';
+        document.getElementById('plan-title').value = item.title || item.name || '';
+        document.getElementById('plan-pdf').value = item.pdfUrl || item.url || '';
 
         document.getElementById('admin-form-title').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-500"></i> Сабак планын оңдоо`;
         document.getElementById('btn-cancel-edit').classList.remove('hidden');
@@ -721,7 +721,7 @@
 
     async function deletePlan(id) {
       if (confirm("Бул сабак планын өчүрүүнү каалайсызбы?")) {
-        await db.ref(`lesson_plans/${id}`).remove();
+        await db.ref(`library/${id}`).remove();
         loadAdminPlansTable();
       }
     }
@@ -760,7 +760,7 @@
               </td>
               <td class="p-3 text-right space-x-2">
                 ${!isApproved ? `
-                  <button onclick="approvePayment('${key}', '${app.uid}', '${tariffDisplay}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                  <button onclick="approvePayment('${key}', '${app.uid}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
                     Уруксат берүү (VIP)
                   </button>
                 ` : `
@@ -780,8 +780,7 @@
       }
     }
 
-    // УРУКСАТ БЕРҮҮ (VIP ACTIVE)
-    async function approvePayment(appId, uid, tariff) {
+    async function approvePayment(appId, uid) {
       try {
         if (uid && uid !== 'undefined') {
           await db.ref(`users/${uid}`).update({ vip: true });
@@ -794,7 +793,6 @@
       }
     }
 
-    // УРУКСАТТЫ ЖОККО ЧЫГАРУУ (VIP REMOVE)
     async function revokePayment(appId, uid) {
       if (confirm("Бул колдонуучунун VIP уруксатын кайра алууну каалайсызбы?")) {
         try {
@@ -810,7 +808,6 @@
       }
     }
 
-    // АРЫЗДЫ БАЗАДАН ӨЧҮРҮҮ
     async function deleteApplication(appId) {
       if (confirm("Бул арызды тизмеден өчүрүүнү каалайсызбы?")) {
         try {
