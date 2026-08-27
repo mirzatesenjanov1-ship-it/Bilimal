@@ -29,6 +29,51 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('builderForm').addEventListener('submit', handleFormSubmit);
 });
 
+// MathJax аркылуу формулаларды кайра тартуу (рендерлөө)
+function triggerMathJaxRender(targetElement = null) {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        const elements = targetElement ? [targetElement] : undefined;
+        window.MathJax.typesetPromise(elements).catch(err => console.error("MathJax Render Error:", err));
+    }
+}
+
+// Талаага киргизилген маалыматты Live Preview катары туура рендерлөө
+function setupLiveFormulaPreview(inputElem, previewElem) {
+    if (!inputElem || !previewElem) return;
+
+    const updatePreview = () => {
+        let text = inputElem.value;
+        // Эгерде киргизилген текстте формула белгиси ($) жок болсо, бирок LaTeX символдор бар болсо ($) менен ороп кошуу
+        if (text && (text.includes('\\') || text.includes('^') || text.includes('_')) && !text.includes('$')) {
+            previewElem.innerHTML = `$${text}$`;
+        } else {
+            previewElem.innerHTML = text;
+        }
+        triggerMathJaxRender(previewElem);
+    };
+
+    inputElem.addEventListener('input', updatePreview);
+    inputElem.addEventListener('paste', (e) => {
+        // Көчүрүп келгенде форматированиени бузбай plain text катары кабыл алуу
+        e.preventDefault();
+        const pastedText = (e.clipboardData || window.clipboardData).getData('text/plain');
+        
+        const start = inputElem.selectionStart;
+        const end = inputElem.selectionEnd;
+        const currentText = inputElem.value;
+        
+        inputElem.value = currentText.substring(0, start) + pastedText + currentText.substring(end);
+        inputElem.selectionStart = inputElem.selectionEnd = start + pastedText.length;
+        
+        updatePreview();
+    });
+
+    // Алгачкы мааниси бар болсо рендерлөө
+    if (inputElem.value) {
+        updatePreview();
+    }
+}
+
 function addQuestion(type = 'single', data = null) {
     questionCounter++;
     const qId = `q_${questionCounter}`;
@@ -55,21 +100,27 @@ function addQuestion(type = 'single', data = null) {
 
         <div class="pisa-area" style="display: ${type === 'pisa' ? 'block' : 'none'};">
             <div class="pisa-context">
-                <label>PISA Контекст / Текст:</label>
+                <label>PISA Контекст / Текст (Формула: $E=mc^2$ же \\frac{a}{b}):</label>
                 <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти же окуяны жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+                <div class="formula-preview pisa-preview"></div>
             </div>
         </div>
 
         <div class="form-group" style="margin-bottom:10px;">
             <div class="symbol-toolbar">
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '$E=mc^2$')">Formula</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'x²')">x²</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'x₁')">x₁</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '\\frac{a}{b}')">Fraction</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'α')">α</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'β')">β</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'Ω')">Ω</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', 'λ')">λ</button>
                 <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '℃')">℃</button>
+                <button type="button" class="symbol-btn" onclick="insertSymbol('${qId}', '√')">√</button>
             </div>
             <textarea class="q-text" rows="2" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
+            <div class="formula-preview q-preview"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
@@ -81,6 +132,16 @@ function addQuestion(type = 'single', data = null) {
     `;
 
     container.appendChild(qBox);
+
+    // Live Preview байланыштыруу (Суроо жана PISA үчүн)
+    const qTextElem = qBox.querySelector('.q-text');
+    const qPreviewElem = qBox.querySelector('.q-preview');
+    setupLiveFormulaPreview(qTextElem, qPreviewElem);
+
+    const pisaContextElem = qBox.querySelector('.q-pisa-context');
+    const pisaPreviewElem = qBox.querySelector('.pisa-preview');
+    setupLiveFormulaPreview(pisaContextElem, pisaPreviewElem);
+
     renderOptions(qId, type, data ? data.options : null);
 }
 
@@ -96,11 +157,21 @@ window.changeQuestionType = function(qId, newType) {
     renderOptions(qId, newType, null);
 };
 
+// Символду курсор турган жерге так коюу функциясы
 window.insertSymbol = function(qId, symbol) {
     const qBox = document.getElementById(qId);
     const textarea = qBox.querySelector('.q-text');
-    textarea.value += symbol;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    textarea.value = text.substring(0, start) + symbol + text.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + symbol.length;
     textarea.focus();
+
+    // Event чакырып превьюну жаңыртуу
+    textarea.dispatchEvent(new Event('input'));
 };
 
 function renderOptions(qId, type, existingOptions = null) {
@@ -111,7 +182,7 @@ function renderOptions(qId, type, existingOptions = null) {
     if (type === 'matching') {
         const container = document.createElement('div');
         container.innerHTML = `<label style="color:#a5b4fc; margin-bottom:5px; display:block;">Дал келтирүү жуптары:</label>`;
-        
+
         const list = document.createElement('div');
         list.className = 'match-list';
         container.appendChild(list);
@@ -163,27 +234,48 @@ function renderOptions(qId, type, existingOptions = null) {
 }
 
 function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false) {
-    const item = document.createElement('div');
-    item.className = 'opt-item';
+    const itemWrapper = document.createElement('div');
+    itemWrapper.className = 'opt-item-wrapper';
     const inputType = isMultiple ? 'checkbox' : 'radio';
 
-    item.innerHTML = `
-        <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
-        <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз..." value="${text}">
-        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+    itemWrapper.innerHTML = `
+        <div class="opt-item">
+            <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
+            <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз (формула: $F=m\\cdot a$)" value="${text}">
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.opt-item-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="formula-preview opt-preview"></div>
     `;
-    container.appendChild(item);
+    container.appendChild(itemWrapper);
+
+    const inputElem = itemWrapper.querySelector('.opt-text');
+    const previewElem = itemWrapper.querySelector('.opt-preview');
+    setupLiveFormulaPreview(inputElem, previewElem);
 }
 
 function addMatchPair(container, leftVal = '', rightVal = '') {
-    const pair = document.createElement('div');
-    pair.className = 'match-pair';
-    pair.innerHTML = `
-        <input type="text" class="match-left" placeholder="Сол тарабы (мис: $F$)" value="${leftVal}" required>
-        <input type="text" class="match-right" placeholder="Оң тарабы (мис: Күч)" value="${rightVal}" required>
-        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
+    const pairWrapper = document.createElement('div');
+    pairWrapper.className = 'match-pair-wrapper';
+    pairWrapper.innerHTML = `
+        <div class="match-pair">
+            <input type="text" class="match-left" placeholder="Сол тарабы (мис: $F$)" value="${leftVal}" required>
+            <input type="text" class="match-right" placeholder="Оң тарабы (мис: Күч)" value="${rightVal}" required>
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.match-pair-wrapper').remove()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+            <div class="formula-preview left-preview"></div>
+            <div class="formula-preview right-preview"></div>
+        </div>
     `;
-    container.appendChild(pair);
+    container.appendChild(pairWrapper);
+
+    const leftInput = pairWrapper.querySelector('.match-left');
+    const leftPreview = pairWrapper.querySelector('.left-preview');
+    setupLiveFormulaPreview(leftInput, leftPreview);
+
+    const rightInput = pairWrapper.querySelector('.match-right');
+    const rightPreview = pairWrapper.querySelector('.right-preview');
+    setupLiveFormulaPreview(rightInput, rightPreview);
 }
 
 async function loadExistingTest(id) {
@@ -207,6 +299,7 @@ async function loadExistingTest(id) {
                     addQuestion(q.type || 'single', q);
                 });
             }
+            triggerMathJaxRender();
         } else {
             alert("Оңдоо үчүн тест табылган жок!");
         }
@@ -248,7 +341,7 @@ async function handleFormSubmit(e) {
 
         if (type === 'matching') {
             const pairs = [];
-            qBox.querySelectorAll('.match-pair').forEach(p => {
+            qBox.querySelectorAll('.match-pair-wrapper').forEach(p => {
                 const left = p.querySelector('.match-left').value.trim();
                 const right = p.querySelector('.match-right').value.trim();
                 if (left && right) {
@@ -258,9 +351,9 @@ async function handleFormSubmit(e) {
             qObj.options = pairs;
         } else {
             const options = [];
-            qBox.querySelectorAll('.opt-item').forEach(optItem => {
-                const isCorrect = optItem.querySelector('input[type="radio"], input[type="checkbox"]').checked;
-                const optText = optItem.querySelector('.opt-text').value.trim();
+            qBox.querySelectorAll('.opt-item-wrapper').forEach(optWrapper => {
+                const isCorrect = optWrapper.querySelector('input[type="radio"], input[type="checkbox"]').checked;
+                const optText = optWrapper.querySelector('.opt-text').value.trim();
                 if (optText) {
                     options.push({ text: optText, isCorrect: isCorrect });
                 }
@@ -284,7 +377,7 @@ async function handleFormSubmit(e) {
         grade: document.getElementById('testGrade').value.trim(),
         topic: document.getElementById('testTopic').value.trim(),
         duration: parseInt(document.getElementById('testDuration').value) || 15,
-        ownerUid: currentUser.uid, // Firebase Security Rules үчүн зарыл
+        ownerUid: currentUser.uid,
         updatedAt: new Date().toISOString(),
         questions: questionsArr
     };
