@@ -85,6 +85,8 @@
       cursor: pointer;
       font-weight: 600;
       transition: background-color 0.2s, transform 0.1s;
+      text-decoration: none;
+      display: inline-block;
     }
 
     .btn:active {
@@ -251,6 +253,15 @@
       padding: 2rem;
       color: var(--text-muted);
     }
+
+    .auth-warning {
+      background-color: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--accent-red);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -260,13 +271,19 @@
       🎓 Bilimal.org
     </a>
     <div class="user-panel" id="userPanel">
-      <span class="user-email" id="userEmailDisplay">Жүктөлүүдө...</span>
+      <span class="user-email" id="userEmailDisplay">Авторизация текшерилүүдө...</span>
       <span id="vipBadge" style="display: none;" class="badge-vip">⭐ VIP</span>
-      <button class="btn btn-logout" onclick="handleLogout()">Чыгуу</button>
+      <button class="btn btn-logout" id="authBtn" onclick="handleAuthAction()">Чыгуу</button>
     </div>
   </header>
 
   <main>
+    <div id="authWarningBlock" class="auth-warning" style="display: none;">
+      ⚠️ Сиз аккаунтка кире элексиз. Маалыматтарды көрүү жана башкаруу үчүн тизимге кириңиз.
+      <br><br>
+      <a href="/login.html" class="btn btn-primary">Кирүү барагына өтүү</a>
+    </div>
+
     <!-- 1. VIP Төлөм Арыздарын Башкаруу (Админ Бөлүгү) -->
     <section class="admin-section">
       <h2 class="section-title">🎫 VIP Төлөм арыздары жана Уруксаттар</h2>
@@ -284,7 +301,7 @@
           </thead>
           <tbody id="applicationsTableBody">
             <tr>
-              <td colspan="5" class="loading-spinner">Арыздар жүктөлүүдө...</td>
+              <td colspan="5" class="loading-spinner">Жүктөлүүдө...</td>
             </tr>
           </tbody>
         </table>
@@ -301,7 +318,7 @@
   </main>
 
   <script>
-    // Firebase Конфигурациясы
+    // Firebase Конфигурациясы (Чыныгы ачкычтарыңызды ушул жерге коюңуз)
     const firebaseConfig = {
       apiKey: "AIzaSyB_YOUR_API_KEY_HERE",
       authDomain: "bilimal-org.firebaseapp.com",
@@ -322,24 +339,41 @@
     let currentUser = null;
     let isUserVip = false;
 
-    // Authentication Observer
+    // Сессияны браузерде туруктуу сактоо
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+    // Authentication Observer (Автоматтык чексиз багыттоо токтотулду)
     auth.onAuthStateChanged((user) => {
       if (user) {
         currentUser = user;
         document.getElementById('userEmailDisplay').textContent = user.email;
+        document.getElementById('authBtn').textContent = 'Чыгуу';
+        document.getElementById('authWarningBlock').style.display = 'none';
+        
         checkVipStatus(user.uid, user.email);
         loadAdminPaymentsTable();
         loadLessonPlans();
       } else {
-        // Базадагы .read: "auth != null" эрежесине байланыштуу кирбегендерди багыттоо
-        window.location.href = "/login.html";
+        currentUser = null;
+        document.getElementById('userEmailDisplay').textContent = "Кирген жоксуз";
+        document.getElementById('authBtn').textContent = 'Кирүү';
+        document.getElementById('authWarningBlock').style.display = 'block';
+        
+        document.getElementById('applicationsTableBody').innerHTML = 
+          '<tr><td colspan="5" style="text-align:center; color: var(--text-muted);">Маалыматтарды көрүү үчүн аккаунтка кириңиз.</td></tr>';
+        document.getElementById('plansContainer').innerHTML = 
+          '<p style="color: var(--text-muted); grid-column: 1 / -1; text-align: center;">Сабак пландарын көрүү үчүн авторизациядан өтүңүз.</p>';
       }
     });
 
-    function handleLogout() {
-      auth.signOut().then(() => {
+    function handleAuthAction() {
+      if (currentUser) {
+        auth.signOut().then(() => {
+          window.location.href = "/login.html";
+        });
+      } else {
         window.location.href = "/login.html";
-      });
+      }
     }
 
     function encodeEmail(email) {
@@ -347,7 +381,7 @@
       return email.replace(/\./g, ',').toLowerCase();
     }
 
-    // Колдонуучунун VIP статусун текшерүү (vip_users түйүнүнөн)
+    // Колдонуучунун VIP статусун текшерүү
     function checkVipStatus(uid, email) {
       db.ref(`vip_users/${uid}`).on('value', (snapshot) => {
         const vipData = snapshot.val();
@@ -355,7 +389,6 @@
           isUserVip = true;
           document.getElementById('vipBadge').style.display = 'inline-block';
         } else {
-          // Email боюнча да кошумча текшерүү
           const encoded = encodeEmail(email);
           if (encoded) {
             db.ref(`vip_users/by_email/${encoded}`).once('value', (eSnap) => {
@@ -374,8 +407,9 @@
       });
     }
 
-    // Төлөм арыздарын жүктөө (applications түйүнүнөн: .read: auth != null)
+    // Төлөм арыздарын жүктөө
     function loadAdminPaymentsTable() {
+      if (!currentUser) return;
       const tbody = document.getElementById('applicationsTableBody');
       
       db.ref('applications').on('value', (snapshot) => {
@@ -421,7 +455,7 @@
       });
     }
 
-    // VIP уруксатын берүү (vip_users: write: true, applications: write: true эрежелерине туураланган)
+    // VIP уруксатын берүү
     async function approvePayment(appId, targetUid, targetEmail) {
       if (!currentUser) {
         alert("Авторизациядан өтүңүз!");
@@ -437,12 +471,10 @@
           email: targetEmail
         };
 
-        // 1. "vip_users" түйүнүнө UID аркылуу жазуу
         if (targetUid && targetUid !== 'undefined' && targetUid !== 'null' && targetUid !== '') {
           await db.ref(`vip_users/${targetUid}`).set(vipData);
         }
 
-        // 2. Email аркылуу да "vip_users/by_email" түйүнүнө сактоо
         if (targetEmail) {
           const encodedEmail = encodeEmail(targetEmail);
           if (encodedEmail) {
@@ -450,7 +482,6 @@
           }
         }
 
-        // 3. "applications" түйүнүнүн статусун жаңыртуу
         await db.ref(`applications/${appId}`).update({ 
           status: 'approved',
           approvedAt: now,
@@ -488,7 +519,7 @@
       }
     }
 
-    // Арызды базадан өчүрүү (applications: write: true)
+    // Арызды өчүрүү
     async function deleteApplication(appId) {
       if (!confirm("Арызды өчүрүүнү ырастайсызбы?")) return;
 
@@ -501,8 +532,9 @@
       }
     }
 
-    // Сабак пландарын жүктөө (lesson_plans: read: auth != null)
+    // Сабак пландарын жүктөө
     function loadLessonPlans() {
+      if (!currentUser) return;
       const container = document.getElementById('plansContainer');
 
       db.ref('lesson_plans').on('value', (snapshot) => {
@@ -523,7 +555,7 @@
           card.className = `plan-card ${!canAccess ? 'locked-card' : ''}`;
 
           const actionButton = canAccess
-            ? `<a href="${plan.fileUrl || '#'}" target="_blank" class="btn btn-primary" style="text-align: center; text-decoration: none;">📄 Жүктөп алуу</a>`
+            ? `<a href="${plan.fileUrl || '#'}" target="_blank" class="btn btn-primary" style="text-align: center;">📄 Жүктөп алуу</a>`
             : `<button class="btn btn-revoke" disabled style="opacity: 0.7; cursor: not-allowed;">🔒 VIP гана</button>`;
 
           card.innerHTML = `
