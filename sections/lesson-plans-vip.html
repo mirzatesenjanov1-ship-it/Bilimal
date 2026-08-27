@@ -278,7 +278,7 @@
 
           <div class="flex gap-3">
             <button type="submit" id="btn-save-plan" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition">
-              💾 САКТОО (library түйүнүнө)
+              💾 САКТОО (lesson_plans түйүнүнө)
             </button>
             <button type="button" id="btn-cancel-edit" onclick="resetPlanForm()" class="hidden bg-slate-700 hover:bg-slate-600 text-white font-semibold px-4 py-2.5 rounded-xl transition">
               Баш тартуу
@@ -610,13 +610,31 @@
       }
     }
 
+    // Сабак пландарын атайын 'lesson_plans' түйүнүнөн жана 'library' ичиндеги типтери сабак планы болгон объектилерди гана сүзүп алуу
     async function loadLessonPlans() {
       const plansGrid = document.getElementById('plans-grid');
       plansGrid.innerHTML = `<div class="col-span-full text-center py-10 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i> Пландар жүктөлүүдө...</div>`;
 
       try {
-        const snapshot = await db.ref('library').once('value');
-        const data = snapshot.val() || {};
+        // Алгач 'lesson_plans' түйүнүнөн алабыз
+        const snapshot = await db.ref('lesson_plans').once('value');
+        let data = snapshot.val() || {};
+        
+        // Эгерде база 'library' түйүнүндө да сакталган болсо, бир гана сабак пландарына тиешелүү атрибуттары бар маалыматты гана чыпкалайбыз
+        if (Object.keys(data).length === 0) {
+          const libSnapshot = await db.ref('library').once('value');
+          const libData = libSnapshot.val() || {};
+          
+          data = {};
+          Object.keys(libData).forEach(key => {
+            const item = libData[key];
+            // Китептерди киргизбестен, сабак планынын атрибуттары бар же type === 'lesson_plan' болгон маалыматтарды алабыз
+            if (item.type === 'lesson_plan' || item.goals || item.teacherAct || item.studentAct) {
+              data[key] = item;
+            }
+          });
+        }
+
         cachedPlans = Object.keys(data).map(key => ({ id: key, ...data[key] }));
         renderPlansGrid(cachedPlans);
       } catch (e) {
@@ -818,18 +836,19 @@
         assessment: document.getElementById('plan-assessment').value.trim(),
         pdfUrl: document.getElementById('plan-pdf').value.trim(),
         isPublic: document.getElementById('plan-is-public').value === 'true',
+        type: 'lesson_plan',
         updatedAt: Date.now()
       };
 
       try {
         if (editingId) {
-          await db.ref(`library/${editingId}`).update(planData);
+          await db.ref(`lesson_plans/${editingId}`).update(planData);
           alert("План ийгиликтүү жаңыланды!");
         } else {
           planData.createdAt = Date.now();
           planData.author = "Администратор";
-          await db.ref('library').push(planData);
-          alert("Жаңы план кошулду!");
+          await db.ref('lesson_plans').push(planData);
+          alert("Жаңы сабак планы кошулду!");
         }
         resetPlanForm();
         loadAdminPlansTable();
@@ -850,12 +869,28 @@
       tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Жүктөлүүдө...</td></tr>`;
 
       try {
-        const snapshot = await db.ref('library').once('value');
-        const data = snapshot.val() || {};
+        // Алгач 'lesson_plans' атайын сабак пландары сакталган түйүндөн алабыз
+        let snapshot = await db.ref('lesson_plans').once('value');
+        let data = snapshot.val() || {};
+
+        // Эгер 'lesson_plans' ичи бош болсо гана 'library' ичинен сабак пландарын гана сүзүп алабыз
+        if (Object.keys(data).length === 0) {
+          const libSnapshot = await db.ref('library').once('value');
+          const libData = libSnapshot.val() || {};
+
+          data = {};
+          Object.keys(libData).forEach(key => {
+            const item = libData[key];
+            if (item.type === 'lesson_plan' || item.goals || item.teacherAct || item.studentAct) {
+              data[key] = item;
+            }
+          });
+        }
+
         const keys = Object.keys(data);
 
         if (keys.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Пландар жок.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-slate-400">Сабак пландары табылган жок.</td></tr>`;
           return;
         }
 
@@ -864,7 +899,7 @@
           return `
             <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
               <td class="p-3 font-semibold text-white">${item.title}</td>
-              <td class="p-3 text-slate-300">${item.subject || ''} (${item.grade || ''})</td>
+              <td class="p-3 text-slate-300">${item.subject || 'Көрсөтүлгөн эмес'} (${item.grade || 'Көрсөтүлгөн эмес'})</td>
               <td class="p-3">
                 <span class="${item.isPublic ? 'text-emerald-400' : 'text-amber-400'} text-xs font-semibold">
                   ${item.isPublic ? '🌐 Ачык' : '🔒 VIP гана'}
@@ -884,8 +919,14 @@
 
     async function editPlan(id) {
       try {
-        const snapshot = await db.ref(`library/${id}`).once('value');
-        const item = snapshot.val();
+        let snapshot = await db.ref(`lesson_plans/${id}`).once('value');
+        let item = snapshot.val();
+
+        if (!item) {
+          snapshot = await db.ref(`library/${id}`).once('value');
+          item = snapshot.val();
+        }
+
         if (!item) return;
 
         document.getElementById('plan-editing-id').value = id;
@@ -909,7 +950,8 @@
     }
 
     async function deletePlan(id) {
-      if (confirm("Чын эле бул планды өчүрүүнү каалайсызбы?")) {
+      if (confirm("Чын эле бул сабак планын өчүрүүнү каалайсызбы?")) {
+        await db.ref(`lesson_plans/${id}`).remove();
         await db.ref(`library/${id}`).remove();
         loadAdminPlansTable();
       }
