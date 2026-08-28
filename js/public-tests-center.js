@@ -109,9 +109,9 @@ async function fetchPublicTests() {
         const data = snapshot.val();
         allTests = [];
 
-        // Индекс талап кылбаш үчүн: JS аркылуу published === true болгондорду гана алуу
+        // Жашырылган (hidden === true) жана жарыяланбаган (published === false) тесттерди чыгарбоо
         Object.entries(data).forEach(([id, test]) => {
-            if (test.published !== false) {
+            if (test.published !== false && !test.hidden) {
                 allTests.push({ id, ...test });
             }
         });
@@ -163,7 +163,7 @@ function renderTests() {
         const card = document.createElement('div');
         card.className = 'test-card';
 
-        const qCount = test.questions ? Object.keys(test.questions).length : 0;
+        const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
 
         // Предмет аталышын которуу
         let rawSubject = test.subject || '';
