@@ -18,7 +18,7 @@
         .test-card:hover { border-color: rgba(0, 240, 255, 0.4); box-shadow: 0 0 20px rgba(0, 240, 255, 0.15); }
         .test-card h3 { color:#00f0ff; margin-bottom:10px; font-size:1.2rem; }
         .test-card p { color:#94a3b8; font-size:0.9rem; margin-bottom:6px; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; margin-bottom: 12px; }
+        .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; }
         .badge-pub { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
         .badge-unpub { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid #ef4444; }
         .card-actions { display:flex; gap:8px; margin-top:15px; flex-wrap:wrap; }
@@ -31,7 +31,12 @@
         table { width:100%; border-collapse:collapse; margin-top:15px; }
         th, td { border:1px solid rgba(255,255,255,0.1); padding:10px; text-align:left; font-size:0.9rem; }
         th { background:rgba(0,240,255,0.1); color:#00f0ff; }
+
+        /* ЧЕКБОКС ЖАНА ТЕКШЕРИЛГЕН ОКУУЧУНУН СТИЛИ */
         .check-col { text-align: center; width: 45px; }
+        .result-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: #00f0ff; }
+        .checked-student-name { text-decoration: line-through; opacity: 0.5; color: #94a3b8 !important; }
+        .checked-row-bg { background: rgba(255, 255, 255, 0.02); }
     </style>
 </head>
 <body>
@@ -65,12 +70,13 @@
                         <th>Датасы</th>
                     </tr>
                 </thead>
-                <tbody id="resultsTableBody"></tbody>
+                <tbody id="resultsTableBody">
+                </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Firebase Script -->
+    <!-- ТҮЗДӨН-ТҮЗ ИШТӨӨЧҮ ЖАҢЫЛАНГАН МУГАЛИМ СКРИПТИ -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
@@ -93,12 +99,9 @@
         const testContainer = document.getElementById('testContainer');
 
         onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                window.location.href = '/dashboard.html';
-                return;
-            }
+            const userEmail = user ? user.email : null;
+            const userUid = user ? user.uid : null;
 
-            const teacherEmail = user.email;
             const testsRef = ref(db, 'tests');
 
             onValue(testsRef, (snapshot) => {
@@ -110,19 +113,26 @@
                     return;
                 }
 
-                let myTestsCount = 0;
+                let count = 0;
 
                 Object.keys(data).forEach(testId => {
                     const test = data[testId];
 
-                    // МУГАЛИМДИН ӨЗҮНҮН ТЕСТТЕРИН ГАНА ЧЫГАРУУ
-                    if (test.authorEmail === teacherEmail || test.createdBy === teacherEmail || test.authorUid === user.uid) {
-                        myTestsCount++;
+                    // КОРГОО/ФИЛЬТР:
+                    // 1) Түзүүчү тиешелүү болсо ЭЕ
+                    // 2) Же эгер автор талаасы жок болсо (эски тесттер болсо) мугалимдин панелинде БАРДЫК тесттер ачылат.
+                    const isMine = !test.authorEmail || test.authorEmail === userEmail || test.createdBy === userEmail || test.authorUid === userUid;
 
+                    if (isMine) {
+                        count++;
                         const isPublished = test.isPublished !== false && test.status !== 'hidden';
+
                         const badgeHTML = isPublished 
                             ? `<span class="badge badge-pub">• Жарыяланды</span>` 
                             : `<span class="badge badge-unpub">• Жашырылган</span>`;
+
+                        const toggleIcon = isPublished ? 'fa-eye-slash' : 'fa-eye';
+                        const toggleText = isPublished ? 'Жашыруу' : 'Көрсөтүү';
 
                         const card = document.createElement('div');
                         card.className = 'test-card';
@@ -134,8 +144,7 @@
                             <p><strong>Суроолор саны:</strong> ${test.questions ? Object.keys(test.questions).length : 0}</p>
                             <div class="card-actions">
                                 <button class="btn-action toggle-btn" data-id="${testId}" data-status="${isPublished}">
-                                    <i class="fa-solid ${isPublished ? 'fa-eye-slash' : 'fa-eye'}"></i> 
-                                    ${isPublished ? 'Жашыруу' : 'Көрсөтүү'}
+                                    <i class="fa-solid ${toggleIcon}"></i> ${toggleText}
                                 </button>
                                 <a href="test-builder.html?edit=${testId}" class="btn-action"><i class="fa-solid fa-pen"></i> Оңдоо</a>
                                 <button class="btn-action btn-delete delete-btn" data-id="${testId}"><i class="fa-solid fa-trash"></i></button>
@@ -145,16 +154,16 @@
                     }
                 });
 
-                if (myTestsCount === 0) {
+                if (count === 0) {
                     testContainer.innerHTML = '<p style="color:#94a3b8">Сиз азырынча тест түзө элексиз.</p>';
                 }
 
-                // Жашыруу / Көрсөтүү баскычы
+                // Абалын өзгөртүү (Жашыруу / Көрсөтүү)
                 document.querySelectorAll('.toggle-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         const id = e.currentTarget.getAttribute('data-id');
                         const currentStatus = e.currentTarget.getAttribute('data-status') === 'true';
-                        
+
                         await update(ref(db, `tests/${id}`), {
                             isPublished: !currentStatus,
                             status: !currentStatus ? 'published' : 'hidden'
@@ -166,7 +175,7 @@
                 document.querySelectorAll('.delete-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         const id = e.currentTarget.getAttribute('data-id');
-                        if (confirm('Тестти өчүрүүнү каалайсызбы?')) {
+                        if (confirm('Тестти чындап эле өчүрүүнү каалайсызбы?')) {
                             await remove(ref(db, `tests/${id}`));
                         }
                     });
@@ -174,9 +183,39 @@
             });
         });
 
-        // Модаль жабуу
+        // Модалка жабуу
         document.getElementById('closeModal').addEventListener('click', () => {
             document.getElementById('resultsModal').style.display = 'none';
+        });
+    </script>
+
+    <!-- DevTools / F12 бөгөттөөчү скрипт (Мурдагыдай калтырылды) -->
+    <script>
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+                e.preventDefault();
+                return false;
+            }
         });
     </script>
 </body>
