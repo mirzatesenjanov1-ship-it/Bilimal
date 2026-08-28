@@ -78,6 +78,9 @@
         
         .btn-start-test { display: block; text-align: center; background: linear-gradient(45deg, #00f0ff, #0077ff); color: #fff; text-decoration: none; padding: 10px; border-radius: 8px; font-weight: 700; transition: 0.3s; }
         .btn-start-test:hover { box-shadow: 0 0 15px rgba(0,240,255,0.5); }
+
+        /* Жарнама блогу */
+        .ad-card { grid-column: 1 / -1; background: rgba(2,2,8,0.5); border: 1px dashed rgba(0,240,255,0.2); border-radius: 14px; padding: 15px; text-align: center; }
     </style>
 </head>
 <body>
@@ -133,7 +136,7 @@
         <p style="color:#94a3b8; text-align:center; grid-column: 1/-1;" id="loadingText"><i class="fa-solid fa-spinner fa-spin"></i> Тесттер жүктөлүүдө...</p>
     </div>
 
-    <!-- TRANSLATIONS & FIREBASE LOGIC -->
+    <!-- 🌐 TRANSLATIONS & LOCALIZATION SYSTEM -->
     <script>
         const centerTranslations = {
             ky: {
@@ -149,10 +152,7 @@
                 subCs: "💻 Информатика",
                 gradeAll: "Бардык класстар",
                 gradeSuffix: "-класс",
-                loading: "Тесттер жүктөлүүдө...",
-                empty: "Эч кандай тест табылган жок.",
-                startBtn: "Баштоо",
-                min: "мүн"
+                loading: "Тесттер жүктөлүүдө..."
             },
             ru: {
                 headerTitle: "🎓 Центр Тестирования BiliMal",
@@ -167,10 +167,7 @@
                 subCs: "💻 Информатика",
                 gradeAll: "Все классы",
                 gradeSuffix: " класс",
-                loading: "Загрузка тестов...",
-                empty: "Тесты не найдены.",
-                startBtn: "Начать",
-                min: "мин"
+                loading: "Загрузка тестов..."
             },
             en: {
                 headerTitle: "🎓 BiliMal Testing Center",
@@ -185,10 +182,7 @@
                 subCs: "💻 Computer Science",
                 gradeAll: "All Grades",
                 gradeSuffix: " Grade",
-                loading: "Loading tests...",
-                empty: "No tests found.",
-                startBtn: "Start",
-                min: "min"
+                loading: "Loading tests..."
             }
         };
 
@@ -199,12 +193,14 @@
             currentLang = lang;
             localStorage.setItem('site_lang', lang);
 
+            // Active баскычты белгилөө
             document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`lang-${lang}`);
             if (activeBtn) activeBtn.classList.add('active');
 
             const t = centerTranslations[lang];
 
+            // Тексттерди алмаштыруу
             document.getElementById('headerTitle').innerText = t.headerTitle;
             document.getElementById('headerSub').innerText = t.headerSub;
             document.getElementById('searchInput').placeholder = t.searchPlaceholder;
@@ -230,6 +226,7 @@
                 loadingEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${t.loading}`;
             }
 
+            // Динамикалык рендерленген карточкаларды жаңылоо үчүн CustomEvent жиберүү
             window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: lang } }));
         }
 
@@ -238,129 +235,6 @@
         });
     </script>
 
-    <!-- Firebase 9 SDK / Public Logic -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-            authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "bilimal-org",
-            storageBucket: "bilimal-org.firebasestorage.app",
-            messagingSenderId: "241750360816",
-            appId: "1:241750360816:web:a991434eb5afbc470d7835"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let allTests = [];
-        let selectedSubject = 'all';
-        let selectedGrade = 'all';
-        let searchQuery = '';
-
-        const testsGrid = document.getElementById('testsGrid');
-        const searchInput = document.getElementById('searchInput');
-
-        // Firebase'ден тесттерди жүктөө
-        const testsRef = ref(db, 'tests');
-        onValue(testsRef, (snapshot) => {
-            const data = snapshot.val();
-            allTests = [];
-
-            if (data) {
-                Object.keys(data).forEach(id => {
-                    const test = data[id];
-                    
-                    // 🔒 ЖАШЫРЫЛГАН ТЕСТТЕРДИ ТАПТАКЫР КӨРСӨТПӨӨ
-                    if (test.isPublished === false || test.status === 'hidden') {
-                        return;
-                    }
-                    
-                    allTests.push({ id, ...test });
-                });
-            }
-            renderTests();
-        });
-
-        // Карточкаларды рендерлөө
-        function renderTests() {
-            const t = centerTranslations[currentLang] || centerTranslations.ky;
-            testsGrid.innerHTML = '';
-
-            const filtered = allTests.filter(test => {
-                const matchSubject = selectedSubject === 'all' || test.subject === selectedSubject;
-                const matchGrade = selectedGrade === 'all' || String(test.grade) === String(selectedGrade);
-                
-                const titleMatch = (test.title || '').toLowerCase().includes(searchQuery);
-                const topicMatch = (test.topic || '').toLowerCase().includes(searchQuery);
-                const subjectMatch = (test.subject || '').toLowerCase().includes(searchQuery);
-                
-                return matchSubject && matchGrade && (titleMatch || topicMatch || subjectMatch);
-            });
-
-            if (filtered.length === 0) {
-                testsGrid.innerHTML = `<p style="color:#94a3b8; text-align:center; grid-column:1/-1;">${t.empty}</p>`;
-                return;
-            }
-
-            filtered.forEach(test => {
-                const card = document.createElement('div');
-                card.className = 'test-card';
-                
-                const questionCount = test.questions ? Object.keys(test.questions).length : 0;
-                const timerVal = test.timer || test.timeLimit || 45;
-                const gradeLabel = currentLang === 'en' ? `Grade ${test.grade}` : `${test.grade}${t.gradeSuffix}`;
-
-                card.innerHTML = `
-                    <div>
-                        <span class="card-tag">${test.subject || '—'} • ${gradeLabel}</span>
-                        <h3 class="card-title">${test.title || 'Аты жок тест'}</h3>
-                        <p class="card-topic">${test.topic || ''}</p>
-                    </div>
-                    <div>
-                        <div class="card-meta">
-                            <span><i class="fa-solid fa-list-check"></i> ${questionCount} суроо</span>
-                            <span><i class="fa-solid fa-clock"></i> ${timerVal} ${t.min}</span>
-                        </div>
-                        <a href="/sections/take-test.html?id=${test.id}" class="btn-start-test">
-                            <i class="fa-solid fa-play"></i> ${t.startBtn}
-                        </a>
-                    </div>
-                `;
-                testsGrid.appendChild(card);
-            });
-        }
-
-        // Издөө жана фильтр иш-аракеттери
-        searchInput.addEventListener('input', (e) => {
-            searchQuery = e.target.value.toLowerCase().trim();
-            renderTests();
-        });
-
-        document.querySelectorAll('#subjectFilters .filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('#subjectFilters .filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                selectedSubject = e.target.getAttribute('data-subject');
-                renderTests();
-            });
-        });
-
-        document.querySelectorAll('#gradeFilters .filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('#gradeFilters .filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                selectedGrade = e.target.getAttribute('data-grade');
-                renderTests();
-            });
-        });
-
-        window.addEventListener('languageChanged', () => {
-            renderTests();
-        });
-    </script>
+    <script type="module" src="/js/public-tests-center.js"></script>
 </body>
 </html>
