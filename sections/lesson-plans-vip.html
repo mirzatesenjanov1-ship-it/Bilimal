@@ -359,7 +359,7 @@
       document.getElementById('loading-spinner').classList.add('hidden');
       if (user) {
         currentUser = user;
-        await loadUserProfile(user.uid);
+        await loadUserProfile(user);
         renderAuthStatusHeader(true);
         checkVipAndRoute();
       } else {
@@ -370,19 +370,46 @@
       }
     });
 
-    async function loadUserProfile(uid) {
+    // 🔧 ОҢДОЛГОН: Колдонуучунун маалыматын тартуу жана уруксатын тешерүү
+    async function loadUserProfile(user) {
       try {
-        const snapshot = await db.ref(`users/${uid}`).once('value');
-        currentUserProfile = snapshot.val() || {
-          email: currentUser.email,
-          role: 'teacher',
-          vip: false
-        };
+        // 1. Алгач UID боюнча текшеребиз
+        const snapshot = await db.ref(`users/${user.uid}`).once('value');
+        let profile = snapshot.val();
+
+        // 2. Эгер UIDде профиль же VIP табылбаса, Email аркылуу арыздарды текшеребиз
+        let hasApprovedApp = false;
+        if (user.email) {
+          const appSnap = await db.ref('applications').orderByChild('email').equalTo(user.email).once('value');
+          const apps = appSnap.val();
+          if (apps) {
+            Object.values(apps).forEach(app => {
+              if (app.status === 'approved') hasApprovedApp = true;
+            });
+          }
+        }
+
+        if (profile) {
+          // Эгер арызы бекитилген болсо, VIPти автоматтык түрдө жаңыртып коёбуз
+          if (hasApprovedApp && !profile.vip) {
+            profile.vip = true;
+            await db.ref(`users/${user.uid}`).update({ vip: true });
+          }
+          currentUserProfile = profile;
+        } else {
+          // Жаңы колдонуучу катталганда базага жазабыз
+          currentUserProfile = {
+            email: user.email || '',
+            role: 'teacher',
+            vip: hasApprovedApp,
+            createdAt: Date.now()
+          };
+          await db.ref(`users/${user.uid}`).set(currentUserProfile);
+        }
       } catch (e) {
         console.error("Profile load error:", e);
-        // Fallback profile configuration
         currentUserProfile = {
-          email: currentUser ? currentUser.email : '',
+          email: user ? user.email : '',
           role: 'teacher',
           vip: false
         };
@@ -695,7 +722,7 @@
       }
     }
 
-    // 3. ТӨЛӨМДӨР ЖАНА УРУКСАТТАР
+    // 3. ТӨЛӨМДӨР ЖАНА УРУКСАТТАР (Оңдолгон)
     async function loadAdminPaymentsTable() {
       const tbody = document.getElementById('admin-payments-table-body');
       tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Жүктөлүүдө...</td></tr>`;
@@ -716,7 +743,7 @@
           const tariffDisplay = app.tariff && app.tariff !== 'undefined' ? app.tariff : 'Көрсөтүлгөн эмес';
           const priceDisplay = app.price && app.price !== 'undefined' ? `${app.price} сом` : '-- сом';
           const isApproved = app.status === 'approved';
-          const userUid = app.uid && app.uid !== 'undefined' ? app.uid : '';
+          const userUid = app.uid || '';
 
           return `
             <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
@@ -730,11 +757,11 @@
               </td>
               <td class="p-3 text-right space-x-2">
                 ${!isApproved ? `
-                  <button onclick="approvePayment('${key}', '${userUid}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                  <button onclick="approvePayment('${key}', '${userUid}', '${emailDisplay}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
                     Уруксат берүү (VIP)
                   </button>
                 ` : `
-                  <button onclick="revokePayment('${key}', '${userUid}')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
+                  <button onclick="revokePayment('${key}', '${userUid}', '${emailDisplay}')" class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-lg text-xs font-bold transition">
                     Уруксатты кайтаруу
                   </button>
                 `}
@@ -750,20 +777,28 @@
       }
     }
 
-    async function approvePayment(appId, uid) {
+    // 🔧 ОҢДОЛГОН: VIP уруксат берүү (UID же Email аркылуу дароо жаңыртуу)
+    async function approvePayment(appId, uid, email) {
       try {
-        // 1. Арыздын статусун адегенде өзгөртөбүз
+        // 1. Арыздын статусун бекитүү
         await db.ref(`applications/${appId}`).update({ status: 'approved' });
 
-        // 2. Колдонуучунун UID түйүнүнө VIP статусун берүүгө аракет кылабыз
+        // 2. UID болсо `users/${uid}` жаңыртуу
         if (uid && uid !== '' && uid !== 'undefined') {
-          try {
-            await db.ref(`users/${uid}`).update({ vip: true });
-          } catch (userErr) {
-            console.warn("User node write permission denied, updating application status only:", userErr);
+          await db.ref(`users/${uid}`).update({ vip: true });
+        }
+
+        // 3. Email аркылуу `users` базасынан издөө жана жаңыртуу (UID дал келбей калган учурлар үчүн)
+        if (email && email !== 'Көрсөтүлгөн эмес') {
+          const userSnap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+          const users = userSnap.val();
+          if (users) {
+            Object.keys(users).forEach(async (uKey) => {
+              await db.ref(`users/${uKey}`).update({ vip: true });
+            });
           }
         }
-        
+
         alert("Колдонуучуга VIP уруксаты берилди!");
         loadAdminPaymentsTable();
       } catch (e) {
@@ -771,16 +806,23 @@
       }
     }
 
-    async function revokePayment(appId, uid) {
+    // 🔧 ОҢДОЛГОН: VIP уруксатты кайтаруу
+    async function revokePayment(appId, uid, email) {
       if (confirm("Бул колдонуучунун VIP уруксатын кайра алууну каалайсызбы?")) {
         try {
           await db.ref(`applications/${appId}`).update({ status: 'pending' });
 
           if (uid && uid !== '' && uid !== 'undefined') {
-            try {
-              await db.ref(`users/${uid}`).update({ vip: false });
-            } catch (userErr) {
-              console.warn("User node write permission denied:", userErr);
+            await db.ref(`users/${uid}`).update({ vip: false });
+          }
+
+          if (email && email !== 'Көрсөтүлгөн эмес') {
+            const userSnap = await db.ref('users').orderByChild('email').equalTo(email).once('value');
+            const users = userSnap.val();
+            if (users) {
+              Object.keys(users).forEach(async (uKey) => {
+                await db.ref(`users/${uKey}`).update({ vip: false });
+              });
             }
           }
 
