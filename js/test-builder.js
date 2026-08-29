@@ -9,44 +9,33 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// ТАЗА ЖАНА ТҮШҮНҮКТҮҮ ФОРМУЛА ШАБЛОНДОРУ
+// WORD СЫЯКТУУ ВИЗУАЛДЫК КОМАНДАЛАР ЖАНА ШАБЛОНДОР
 const TEMPLATES = [
-    // Бөлчөк (Word сыяктуу)
-    { label: '<span class="box-icon"></span>/<span class="box-icon"></span>', code: '$\\frac{?}{?}$', cursorOffset: 7 },
-    
-    // Даража жана индекс
-    { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup>', code: '$?^{?}$', cursorOffset: 4 },
-    { label: '<span class="box-icon"></span><sub><span class="box-icon"></span></sub>', code: '$?_{?}$', cursorOffset: 4 },
-    
-    // Тамырлар
-    { label: '√<span class="box-icon"></span>', code: '$\\sqrt{?}$', cursorOffset: 7 },
-    { label: '<sup>n</sup>√<span class="box-icon"></span>', code: '$\\sqrt[n]{?}$', cursorOffset: 9 },
-
-    // Жөнөкөй Интеграл жана Сумма
-    { label: '∫', code: '$\\int_{?}^{?}$', cursorOffset: 7 },
-    { label: '∑', code: '$\\sum_{?}^{?}$', cursorOffset: 7 },
-
-    // Тригонометрия
-    { label: 'sin', code: '$\\sin(?)$', cursorOffset: 6 },
-    { label: 'cos', code: '$\\cos(?)$', cursorOffset: 6 },
-    { label: 'tan', code: '$\\tan(?)$', cursorOffset: 6 },
-    { label: 'cot', code: '$\\cot(?)$', cursorOffset: 6 },
-
-    // Грек ариптери жана Символдор
-    { label: 'α', code: '$\\alpha$', cursorOffset: 8 },
-    { label: 'β', code: '$\\beta$', cursorOffset: 7 },
-    { label: 'Ω', code: '$\\Omega$', cursorOffset: 8 },
-    { label: 'λ', code: '$\\lambda$', cursorOffset: 9 },
-    { label: '℃', code: '$^\\circ C$', cursorOffset: 9 },
-    { label: 'v⃗', code: '$\\vec{v}$', cursorOffset: 8 },
-    { label: 'Δ', code: '$\\Delta$', cursorOffset: 8 },
-    { label: '∞', code: '$\\infty$', cursorOffset: 8 },
-    { label: '≈', code: '$\\approx$', cursorOffset: 9 },
-    { label: '±', code: '$\\pm$', cursorOffset: 5 }
+    { label: '$$\\frac{\\square}{\\square}$$', cmd: '\\frac{#?}{#?}' },
+    { label: '$$\\square^{\\square}$$', cmd: '#?^{#?}' },
+    { label: '$$\\square_{\\square}$$', cmd: '#?_{#?}' },
+    { label: '$$\\sqrt{\\square}$$', cmd: '\\sqrt{#?}' },
+    { label: '$$\\sqrt[n]{\\square}$$', cmd: '\\sqrt[#?]{#?}' },
+    { label: '$$\\int$$', cmd: '\\int_{#?}^{#?}' },
+    { label: '$$\\sum$$', cmd: '\\sum_{#?}^{#?}' },
+    { label: 'sin', cmd: '\\sin(#?)' },
+    { label: 'cos', cmd: '\\cos(#?)' },
+    { label: 'tan', cmd: '\\tan(#?)' },
+    { label: 'cot', cmd: '\\cot(#?)' },
+    { label: 'α', cmd: '\\alpha' },
+    { label: 'β', cmd: '\\beta' },
+    { label: 'Ω', cmd: '\\Omega' },
+    { label: 'λ', cmd: '\\lambda' },
+    { label: '℃', cmd: '^\\circ C' },
+    { label: 'v⃗', cmd: '\\vec{v}' },
+    { label: 'Δ', cmd: '\\Delta' },
+    { label: '∞', cmd: '\\infty' },
+    { label: '≈', cmd: '\\approx' },
+    { label: '±', cmd: '\\pm' }
 ];
 
-// ГОРИЗОНТАЛДЫК СЫДЫРЫЛМА ПАНЕЛДИ ТҮЗҮҮ
-function createScrollableToolbar(targetInput) {
+// ГОРИЗОНТАЛДЫК БАСКЫЧТАР ПАНЕЛИН ТҮЗҮҮ
+function createScrollableToolbar(mathFieldTarget) {
     const toolbar = document.createElement('div');
     toolbar.className = 'symbol-toolbar-scroll';
 
@@ -55,11 +44,11 @@ function createScrollableToolbar(targetInput) {
         btn.type = 'button';
         btn.className = 'tpl-btn';
         btn.innerHTML = tpl.label;
-        btn.title = 'Шаблонду киргизүү';
         
         btn.onmousedown = (e) => {
-            e.preventDefault(); // Фокус жоголбош үчүн
-            insertTemplateAtCursor(targetInput, tpl.code, tpl.cursorOffset);
+            e.preventDefault();
+            // MathLive форматында кутучалуу шаблон киргизүү жана фокустоо
+            mathFieldTarget.insert(tpl.cmd, { focus: true, feedback: true });
         };
         toolbar.appendChild(btn);
     });
@@ -67,28 +56,21 @@ function createScrollableToolbar(targetInput) {
     return toolbar;
 }
 
-// КУРСОР ТОКТОГОН ЖЕРГЕ ШАБЛОН КИРГИЗҮҮ ЖАНА КУРСОРДУ ЗУУЛАТЫП ЫҢГАЙЛУУ ЖАЙГАШТЫРУУ
-function insertTemplateAtCursor(input, code, cursorOffset) {
-    const start = input.selectionStart || input.value.length;
-    const end = input.selectionEnd || input.value.length;
-    const val = input.value;
+function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
+    const wrapper = document.createElement('div');
+    wrapper.style.marginBottom = '10px';
 
-    input.value = val.substring(0, start) + code + val.substring(end);
-    
-    input.focus();
-    const newCursorPos = start + (cursorOffset || code.length);
-    input.setSelectionRange(newCursorPos, newCursorPos);
+    const mathField = document.createElement('math-field');
+    mathField.setValue(defaultValue || '');
+    mathField.placeholder = placeholderText;
 
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-}
+    const toolbar = createScrollableToolbar(mathField);
 
-// ТАЛААЛАРГА (INPUT/TEXTAREA) ПАНЕЛДИ ТИРКӨӨ
-function attachToolbarToInput(input) {
-    if (!input || input.dataset.hasToolbar) return;
-    input.dataset.hasToolbar = "true";
+    wrapper.appendChild(toolbar);
+    wrapper.appendChild(mathField);
+    parentContainer.appendChild(wrapper);
 
-    const toolbar = createScrollableToolbar(input);
-    input.parentNode.insertBefore(toolbar, input);
+    return mathField;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -138,12 +120,13 @@ function addQuestion(type = 'single', data = null) {
         <div class="pisa-area" style="display: ${type === 'pisa' ? 'block' : 'none'};">
             <div class="pisa-context">
                 <label>PISA Контекст / Текст:</label>
-                <textarea class="q-pisa-context" rows="3" placeholder="Метрикалык контекстти же окуяны жазыңыз...">${data && data.context ? data.context : ''}</textarea>
+                <div class="pisa-editor-holder"></div>
             </div>
         </div>
 
         <div class="form-group" style="margin-bottom:10px;">
-            <textarea class="q-text" rows="2" required placeholder="Суроонун текстин жазыңыз...">${data ? data.text : ''}</textarea>
+            <label>Суроонун тексти / Формуласы:</label>
+            <div class="q-text-holder"></div>
         </div>
 
         <div class="form-group" style="margin-bottom:12px;">
@@ -156,10 +139,13 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Куралдар панелин суроого жана PISA контекстине кошуу
-    attachToolbarToInput(qBox.querySelector('.q-text'));
-    const pisaTextarea = qBox.querySelector('.q-pisa-context');
-    if (pisaTextarea) attachToolbarToInput(pisaTextarea);
+    // Суроого Math Editor байлоо
+    const qTextHolder = qBox.querySelector('.q-text-holder');
+    qBox.qMathField = attachMathEditor(qTextHolder, "Суроону же формуланы жазыңыз...", data ? data.text : '');
+
+    // PISA текстине Math Editor байлоо
+    const pisaHolder = qBox.querySelector('.pisa-editor-holder');
+    qBox.pisaMathField = attachMathEditor(pisaHolder, "PISA контексти же окуясын жазыңыз...", data && data.context ? data.context : '');
 
     renderOptions(qId, type, data ? data.options : null);
 }
@@ -242,28 +228,27 @@ function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false)
 
     item.innerHTML = `
         <input type="${inputType}" name="correct_${qId}" ${isCorrect ? 'checked' : ''}>
-        <input type="text" class="opt-text" required placeholder="Варианттын текстин жазыңыз..." value="${text}">
+        <div class="opt-math-holder" style="flex:1;"></div>
         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(item);
 
-    // Вариант киргизүү талаасына да куралдар панелин байлоо
-    attachToolbarToInput(item.querySelector('.opt-text'));
+    const holder = item.querySelector('.opt-math-holder');
+    item.optMathField = attachMathEditor(holder, "Варианттын текстин жазыңыз...", text);
 }
 
 function addMatchPair(container, leftVal = '', rightVal = '') {
     const pair = document.createElement('div');
     pair.className = 'match-pair';
     pair.innerHTML = `
-        <input type="text" class="match-left" placeholder="Сол тарабы (мис: $F$)" value="${leftVal}" required>
-        <input type="text" class="match-right" placeholder="Оң тарабы (мис: Күч)" value="${rightVal}" required>
+        <div class="match-left-holder"></div>
+        <div class="match-right-holder"></div>
         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>
     `;
     container.appendChild(pair);
 
-    // Дал келтирүү талааларына да панелди байлоо
-    attachToolbarToInput(pair.querySelector('.match-left'));
-    attachToolbarToInput(pair.querySelector('.match-right'));
+    pair.leftMathField = attachMathEditor(pair.querySelector('.match-left-holder'), "Сол тарабы", leftVal);
+    pair.rightMathField = attachMathEditor(pair.querySelector('.match-right-holder'), "Оң тарабы", rightVal);
 }
 
 async function loadExistingTest(id) {
@@ -312,9 +297,9 @@ async function handleFormSubmit(e) {
 
     qBoxes.forEach(qBox => {
         const type = qBox.querySelector('.q-type-select').value;
-        const text = qBox.querySelector('.q-text').value.trim();
+        const text = qBox.qMathField ? qBox.qMathField.getValue('latex') : '';
         const imageUrl = qBox.querySelector('.q-img').value.trim();
-        const pisaContext = qBox.querySelector('.q-pisa-context') ? qBox.querySelector('.q-pisa-context').value.trim() : '';
+        const pisaContext = qBox.pisaMathField ? qBox.pisaMathField.getValue('latex') : '';
 
         const qObj = {
             type: type,
@@ -329,8 +314,8 @@ async function handleFormSubmit(e) {
         if (type === 'matching') {
             const pairs = [];
             qBox.querySelectorAll('.match-pair').forEach(p => {
-                const left = p.querySelector('.match-left').value.trim();
-                const right = p.querySelector('.match-right').value.trim();
+                const left = p.leftMathField ? p.leftMathField.getValue('latex') : '';
+                const right = p.rightMathField ? p.rightMathField.getValue('latex') : '';
                 if (left && right) {
                     pairs.push({ left, right });
                 }
@@ -340,7 +325,7 @@ async function handleFormSubmit(e) {
             const options = [];
             qBox.querySelectorAll('.opt-item').forEach(optItem => {
                 const isCorrect = optItem.querySelector('input[type="radio"], input[type="checkbox"]').checked;
-                const optText = optItem.querySelector('.opt-text').value.trim();
+                const optText = optItem.optMathField ? optItem.optMathField.getValue('latex') : '';
                 if (optText) {
                     options.push({ text: optText, isCorrect: isCorrect });
                 }
