@@ -4,6 +4,7 @@
 
     let warningCount = 0;
     const MAX_WARNINGS = 3;
+    let hideTimer = null;
 
     // 1. Киргизүү талаасы экенин текшерүү (Input талааларында жазууга уруксат берүү үчүн)
     function isInputElement(element) {
@@ -82,29 +83,35 @@
     }, false);
 
     // 6. Башка өтмөккө же терезеге өтүүдө эскертүү жана жазалоо логикасы
-    function handleFocusLoss() {
+    function triggerWarning() {
         const runningScreen = document.getElementById('runningScreen');
-        // Тест активдүү жүрүп жаткан бөлөк калкып чыкканда гана иштейт
         if (runningScreen && runningScreen.style.display !== 'none') {
             warningCount++;
             if (warningCount < MAX_WARNINGS) {
-                alert(`ЭС КӨРТҮҮ (${warningCount}/${MAX_WARNINGS}): Тест учурунда башка терезеге же өтмөккө өтүүгө болбойт!`);
+                alert(`ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS}): Тест учурунда башка терезеге же өтмөккө өтүүгө болбойт!`);
             } else {
                 alert("Сиз эрежелерди бир нече ирет бузгандыгыңыз үчүн тест автоматтык түрдө аякталат!");
                 const nextBtn = document.getElementById('nextBtn');
                 if (nextBtn) {
-                    // Тестти токтотуу же кийинки кадамга өткөрүү чакырыгы
                     nextBtn.click();
                 }
             }
         }
     }
 
-    // Вкладка же терезе активсиз болгондо (blur жана visibilitychange)
-    window.addEventListener('blur', handleFocusLoss);
+    // Экран толугу менен катыганда / өчкөндө же бөлөк тиркемеге узак убакытка өткөндө гана иштетүү
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
-            handleFocusLoss();
+            // Эгерде экран 5 секунддан ашык убакыт өчүп же бөлөк жакка өтүп кетсе гана иштейт
+            hideTimer = setTimeout(() => {
+                triggerWarning();
+            }, 5000);
+        } else {
+            // Экран 5 секундга жетпей кайра күйсө таймерди токтотуу
+            if (hideTimer) {
+                clearTimeout(hideTimer);
+                hideTimer = null;
+            }
         }
     });
 
