@@ -387,27 +387,36 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги \text{} тегдерин автоматтык түрдө тазалоо жана MathJax Рендеринг -->
+    <!-- Тексттеги формула белгилерин $ ... $ ичине киргизүү жана MathJax аркылуу Рендеринг кылуу -->
     <script>
         let isMathJaxRendering = false;
 
-        // \text{...} тегдерин тазалап, кадимки текстке айландыруучу функция
-        function cleanTextFormat(container) {
+        // Формула сыяктуу текстти автоматтык түрдө $ ... $ менен курчап, MathJax'ка сунуштоо
+        function formatMathExpressions(container) {
             if (!container) return;
-            
+
             const processNode = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
-                    let val = node.nodeValue;
-                    if (val && val.includes('\\text{')) {
-                        // Эгер $ доллар белгилери жок жалгыз \text{текст} болсо, таза текст кылуу
-                        val = val.replace(/\\text\{([^}]+)\}/g, '$1');
-                        node.nodeValue = val;
+                    let text = node.nodeValue;
+                    if (!text) return;
+
+                    // Артыкбаш \text{} тегдерин тазалоо
+                    text = text.replace(/\\text\{([^}]+)\}/g, '$1');
+
+                    // Эгерде текстте ^, _, \frac, \cdot ж.б. формула белгилери болуп, бирок $ жок болсо
+                    if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
+                        // Математикалык сөз айкаштарын $ белгиси ичине алуу
+                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]*)/g, function(match) {
+                            return '$' + match.trim() + '$';
+                        });
                     }
+
+                    node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
                     Array.from(node.childNodes).forEach(processNode);
                 }
             };
-            
+
             processNode(container);
         }
 
@@ -418,8 +427,8 @@
 
             isMathJaxRendering = true;
             
-            // Алгач \text{} тегдерин тазалайбыз
-            cleanTextFormat(target);
+            // Алгач формула синтаксисин тууралайбыз
+            formatMathExpressions(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
                 window.MathJax.typesetPromise([target])
