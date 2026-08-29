@@ -9,78 +9,75 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// 1. МАТЕМАТИКАЛЫК КЛАВИАТУРАГА БӨЛЧӨК, ИНДЕКС Ж.Б. БАСКЫЧТАРДЫ КОШУУ
-window.mathVirtualKeyboard.customVirtualKeyboardLayers = {
-    'custom-physics-layer': {
-        styles: '',
-        rows: [
-            [
-                { latex: '\\frac{#?}{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\frac{\\square}{\\square}$$</span>' },
-                { latex: '#?_{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square_{\\square}$$</span>' },
-                { latex: '#?^{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square^{\\square}$$</span>' },
-                { latex: '#?_{#?}^{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square_{\\square}^{\\square}$$</span>' },
-                { latex: '\\sqrt{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\sqrt{\\square}$$</span>' },
-                { latex: '\\sqrt[#?]{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\sqrt[n]{\\square}$$</span>' },
-                { latex: '\\left(#?\\right)', class: 'tex', label: '<span style="font-size:1.1rem;">$$(\\square)$$</span>' },
-                { latex: '\\vec{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\vec{\\square}$$</span>' }
-            ],
-            [
-                { class: 'keycap', label: '7', insert: '7' },
-                { class: 'keycap', label: '8', insert: '8' },
-                { class: 'keycap', label: '9', insert: '9' },
-                { latex: '\\div', label: '÷' },
-                { latex: '\\times', label: '×' },
-                { latex: '+', label: '+' },
-                { latex: '-', label: '-' },
-                { latex: '=', label: '=' }
-            ],
-            [
-                { class: 'keycap', label: '4', insert: '4' },
-                { class: 'keycap', label: '5', insert: '5' },
-                { class: 'keycap', label: '6', insert: '6' },
-                { latex: '\\alpha', label: 'α' },
-                { latex: '\\beta', label: 'β' },
-                { latex: '\\gamma', label: 'γ' },
-                { latex: '\\Delta', label: 'Δ' },
-                { latex: '\\Omega', label: 'Ω' }
-            ],
-            [
-                { class: 'keycap', label: '1', insert: '1' },
-                { class: 'keycap', label: '2', insert: '2' },
-                { class: 'keycap', label: '3', insert: '3' },
-                { class: 'keycap', label: '0', insert: '0' },
-                { class: 'keycap', label: '.', insert: '.' },
-                { latex: '\\pi', label: 'π' },
-                { latex: '\\infty', label: '∞' },
-                { latex: '^\\circ C', label: '℃' }
-            ],
-            [
-                { class: 'action', command: ['performWithFeedback', 'deleteBackward'], label: '<i class="fa-solid fa-backspace"></i>' },
-                { class: 'action', command: ['performWithFeedback', 'moveToPreviousChar'], label: '❮' },
-                { class: 'action', command: ['performWithFeedback', 'moveToNextChar'], label: '❯' },
-                { class: 'action font-glyph bottom right', command: ['toggleVirtualKeyboard'], label: '✕ Жабуу' }
+// 1. MATHLIVE КЛАВИАТУРАСЫН ТУУРА ОРНОТУУ (КАТАСЫЗ LAYOUT)
+if (window.mathVirtualKeyboard) {
+    window.mathVirtualKeyboard.layouts = [
+        {
+            label: 'Формулалар',
+            tooltip: 'Физика жана математика куралдары',
+            layers: [
+                {
+                    rows: [
+                        [
+                            { insert: '\\frac{#?}{#?}', label: '$$\\frac{\\square}{\\square}$$' },
+                            { insert: '#?_{#?}', label: '$$\\square_{\\square}$$' },
+                            { insert: '#?^{#?}', label: '$$\\square^{\\square}$$' },
+                            { insert: '#?_{#?}^{#?}', label: '$$\\square_{\\square}^{\\square}$$' },
+                            { insert: '\\sqrt{#?}', label: '$$\\sqrt{\\square}$$' },
+                            { insert: '\\sqrt[#?]{#?}', label: '$$\\sqrt[n]{\\square}$$' },
+                            { insert: '\\left(#?\\right)', label: '$$(\\square)$$' },
+                            { insert: '\\vec{#?}', label: '$$\\vec{\\square}$$' }
+                        ],
+                        [
+                            { insert: '7', label: '7' },
+                            { insert: '8', label: '8' },
+                            { insert: '9', label: '9' },
+                            { insert: '\\div', label: '÷' },
+                            { insert: '\\times', label: '×' },
+                            { insert: '+', label: '+' },
+                            { insert: '-', label: '-' },
+                            { insert: '=', label: '=' }
+                        ],
+                        [
+                            { insert: '4', label: '4' },
+                            { insert: '5', label: '5' },
+                            { insert: '6', label: '6' },
+                            { insert: '\\alpha', label: 'α' },
+                            { insert: '\\beta', label: 'β' },
+                            { insert: '\\gamma', label: 'γ' },
+                            { insert: '\\Delta', label: 'Δ' },
+                            { insert: '\\Omega', label: 'Ω' }
+                        ],
+                        [
+                            { insert: '1', label: '1' },
+                            { insert: '2', label: '2' },
+                            { insert: '3', label: '3' },
+                            { insert: '0', label: '0' },
+                            { insert: '.', label: '.' },
+                            { insert: '\\pi', label: 'π' },
+                            { insert: '\\infty', label: '∞' },
+                            { insert: '^\\circ C', label: '℃' }
+                        ],
+                        [
+                            { command: ['performWithFeedback', 'deleteBackward'], label: '<i class="fa-solid fa-backspace"></i>' },
+                            { command: ['performWithFeedback', 'moveToPreviousChar'], label: '❮' },
+                            { command: ['performWithFeedback', 'moveToNextChar'], label: '❯' },
+                            { command: ['toggleVirtualKeyboard'], label: '✕ Жабуу' }
+                        ]
+                    ]
+                }
             ]
-        ]
-    }
-};
-
-window.mathVirtualKeyboard.layouts = [
-    {
-        label: 'Формулалар',
-        tooltip: 'Физика жана математика куралдары',
-        layer: 'custom-physics-layer'
-    },
-    'numeric',
-    'symbols',
-    'alphabetic'
-];
+        },
+        'numeric',
+        'symbols',
+        'alphabetic'
+    ];
+}
 
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
     const mathField = document.createElement('math-field');
     mathField.setValue(defaultValue || '');
     mathField.placeholder = placeholderText;
-    
-    // Клавиатура параметрлери
     mathField.mathVirtualKeyboardPolicy = "auto";
     
     parentContainer.appendChild(mathField);
@@ -92,7 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (user) {
             currentUser = user;
             if (editTestId) {
-                document.getElementById('editBadge').style.display = 'inline-block';
+                const badge = document.getElementById('editBadge');
+                if (badge) badge.style.display = 'inline-block';
                 await loadExistingTest(editTestId);
             } else {
                 addQuestion('single');
@@ -103,8 +101,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('addQuestionBtn').addEventListener('click', () => addQuestion('single'));
-    document.getElementById('builderForm').addEventListener('submit', handleFormSubmit);
+    const addBtn = document.getElementById('addQuestionBtn');
+    if (addBtn) addBtn.addEventListener('click', () => addQuestion('single'));
+    
+    const form = document.getElementById('builderForm');
+    if (form) form.addEventListener('submit', handleFormSubmit);
 });
 
 function addQuestion(type = 'single', data = null) {
