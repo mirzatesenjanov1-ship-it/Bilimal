@@ -9,67 +9,20 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// WORD СЫЯКТУУ ВИЗУАЛДЫК КОМАНДАЛАР ЖАНА ШАБЛОНДОР
-const TEMPLATES = [
-    { label: '$$\\frac{\\square}{\\square}$$', cmd: '\\frac{#?}{#?}' },
-    { label: '$$\\square^{\\square}$$', cmd: '#?^{#?}' },
-    { label: '$$\\square_{\\square}$$', cmd: '#?_{#?}' },
-    { label: '$$\\sqrt{\\square}$$', cmd: '\\sqrt{#?}' },
-    { label: '$$\\sqrt[n]{\\square}$$', cmd: '\\sqrt[#?]{#?}' },
-    { label: '$$\\int$$', cmd: '\\int_{#?}^{#?}' },
-    { label: '$$\\sum$$', cmd: '\\sum_{#?}^{#?}' },
-    { label: 'sin', cmd: '\\sin(#?)' },
-    { label: 'cos', cmd: '\\cos(#?)' },
-    { label: 'tan', cmd: '\\tan(#?)' },
-    { label: 'cot', cmd: '\\cot(#?)' },
-    { label: 'α', cmd: '\\alpha' },
-    { label: 'β', cmd: '\\beta' },
-    { label: 'Ω', cmd: '\\Omega' },
-    { label: 'λ', cmd: '\\lambda' },
-    { label: '℃', cmd: '^\\circ C' },
-    { label: 'v⃗', cmd: '\\vec{v}' },
-    { label: 'Δ', cmd: '\\Delta' },
-    { label: '∞', cmd: '\\infty' },
-    { label: '≈', cmd: '\\approx' },
-    { label: '±', cmd: '\\pm' }
-];
-
-// ГОРИЗОНТАЛДЫК БАСКЫЧТАР ПАНЕЛИН ТҮЗҮҮ
-function createScrollableToolbar(mathFieldTarget) {
-    const toolbar = document.createElement('div');
-    toolbar.className = 'symbol-toolbar-scroll';
-
-    TEMPLATES.forEach(tpl => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'tpl-btn';
-        btn.innerHTML = tpl.label;
-        
-        btn.onmousedown = (e) => {
-            e.preventDefault();
-            // MathLive форматында кутучалуу шаблон киргизүү жана фокустоо
-            mathFieldTarget.insert(tpl.cmd, { focus: true, feedback: true });
-        };
-        toolbar.appendChild(btn);
-    });
-
-    return toolbar;
+// Глобалдык MathLive конфигурациясы: виртуалдык клавиатураны авто-ачуу жана инструменттерди толук иштетүү
+if (window.MathfieldElement) {
+    MathfieldElement.virtualKeyboardToggleGlyph = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg>`;
 }
 
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
-    const wrapper = document.createElement('div');
-    wrapper.style.marginBottom = '10px';
-
     const mathField = document.createElement('math-field');
     mathField.setValue(defaultValue || '');
     mathField.placeholder = placeholderText;
-
-    const toolbar = createScrollableToolbar(mathField);
-
-    wrapper.appendChild(toolbar);
-    wrapper.appendChild(mathField);
-    parentContainer.appendChild(wrapper);
-
+    
+    // Клавиатураны ачуу/жабуу жана инструменттерди даярдоо орнотуусу
+    mathField.mathVirtualKeyboardPolicy = "auto";
+    
+    parentContainer.appendChild(mathField);
     return mathField;
 }
 
@@ -139,11 +92,10 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Суроого Math Editor байлоо
+    // Интерактивдүү талааларды байлоо
     const qTextHolder = qBox.querySelector('.q-text-holder');
     qBox.qMathField = attachMathEditor(qTextHolder, "Суроону же формуланы жазыңыз...", data ? data.text : '');
 
-    // PISA текстине Math Editor байлоо
     const pisaHolder = qBox.querySelector('.pisa-editor-holder');
     qBox.pisaMathField = attachMathEditor(pisaHolder, "PISA контексти же окуясын жазыңыз...", data && data.context ? data.context : '');
 
