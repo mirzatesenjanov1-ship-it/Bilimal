@@ -1,111 +1,67 @@
-// Anti-Cheat Коргоо Механизми (BiliMal Test System)
 (function () {
     'use strict';
 
-    let warningCount = 0;
-    const MAX_WARNINGS = 3;
-    let hideTimer = null;
-
-    function isInputElement(element) {
-        if (!element) return false;
-        const tagName = element.tagName ? element.tagName.toLowerCase() : '';
-        return tagName === 'input' || tagName === 'textarea' || element.isContentEditable;
-    }
-
-    // Контексттик менюну бөгөттөө
+    // 1. Контексттик менюну (оң баскыч) бөгөттөө (AI Extension / Google Lens / Copy колдонууга жол бербейт)
     document.addEventListener('contextmenu', function (e) {
-        if (!isInputElement(e.target)) {
-            e.preventDefault();
-        }
-    }, false);
+        e.preventDefault();
+        alert('Эскертүү: Контексттик менюну жана AI куралдарын колдонууга тыюу салынган!');
+    });
 
-    // Текстти тандоо жана сүйрөөнү бөгөттөө
-    document.addEventListener('selectstart', function (e) {
-        if (!isInputElement(e.target)) {
-            e.preventDefault();
-        }
-    }, false);
-
-    document.addEventListener('dragstart', function (e) {
-        if (!isInputElement(e.target)) {
-            e.preventDefault();
-        }
-    }, false);
-
-    // Көчүрүү жана кесип алууну бөгөттөө
-    document.addEventListener('copy', function (e) {
-        if (!isInputElement(e.target)) {
-            e.preventDefault();
-        }
-    }, false);
-
-    document.addEventListener('cut', function (e) {
-        if (!isInputElement(e.target)) {
-            e.preventDefault();
-        }
-    }, false);
-
-    // Баскычтарды (DevTools, F12, Ctrl+C ж.б.) бөгөттөө
+    // 2. Клавиатуралык баскычтарды бөгөттөө (Ctrl+C, Ctrl+A, Ctrl+U, F12, PrintScreen)
     document.addEventListener('keydown', function (e) {
-        const isInput = isInputElement(e.target);
-        const isCmdOrCtrl = e.ctrlKey || e.metaKey;
-        const keyCode = e.keyCode || e.which;
-        const key = e.key ? e.key.toLowerCase() : '';
-
-        if (keyCode === 123 || key === 'f12') {
+        // Ctrl/Cmd + C (Көчүрүү)
+        // Ctrl/Cmd + A (Баарын белгилөө)
+        // Ctrl/Cmd + U (Кодду көрүү)
+        // Ctrl/Cmd + Shift + I / J / C (DevTools)
+        // Ctrl/Cmd + P (Басып чыгаруу же PDF)
+        if (
+            (e.ctrlKey || e.metaKey) && 
+            ['c', 'a', 'u', 'p', 'i', 'j', 'c'].includes(e.key.toLowerCase())
+        ) {
             e.preventDefault();
             e.stopPropagation();
+            alert('Эскертүү: Бул комбинацияны же AI куралдарын колдонууга тыюу салынган!');
             return false;
         }
 
-        if (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
+        // F12 баскычы (DevTools)
+        if (e.key === 'F12') {
             e.preventDefault();
-            e.stopPropagation();
+            alert('Эскертүү: Иштеп чыгуучу куралдарын ачууга болбойт!');
             return false;
         }
 
-        if (isCmdOrCtrl && (key === 'u' || key === 's' || key === 'p')) {
+        // PrintScreen (Экранды сүрөткө тартуу)
+        if (e.key === 'PrintScreen') {
             e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-
-        if (!isInput && isCmdOrCtrl && (key === 'c' || key === 'x' || key === 'a')) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
-        }
-    }, false);
-
-    // Башка өтмөккө өтүү эскертүүсү
-    function triggerWarning() {
-        const runningScreen = document.getElementById('runningScreen');
-        if (runningScreen && runningScreen.style.display !== 'none') {
-            warningCount++;
-            if (warningCount < MAX_WARNINGS) {
-                alert(`ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS}): Тест учурунда башка терезеге же өтмөккө өтүүгө болбойт!`);
-            } else {
-                alert("Сиз эрежелерди бир нече ирет бузгандыгыңыз үчүн тест автоматтык түрдө аякталат!");
-                const nextBtn = document.getElementById('nextBtn');
-                if (nextBtn) {
-                    nextBtn.click();
-                }
-            }
-        }
-    }
-
-    // Вкладка толугу менен жашырылганда 10 секунд күтүп анан эскертүү берүү
-    document.addEventListener('visibilitychange', function () {
-        if (document.hidden) {
-            hideTimer = setTimeout(() => {
-                triggerWarning();
-            }, 10000); // 10 секунддук коргоо
-        } else {
-            if (hideTimer) {
-                clearTimeout(hideTimer);
-                hideTimer = null;
-            }
+            navigator.clipboard.writeText(''); // Клипбордду тазалоо
+            alert('Экранды сүрөткө тартууга тыюу салынган!');
         }
     });
 
+    // 3. Текстти бөлүп алууну жана каалагандай көчүрүүнү бөгөттөө
+    document.addEventListener('selectstart', function (e) {
+        // Эгерде киргизүү талаалары (input, textarea) болбосо, белгилөөгө уруксат берилбейт
+        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+        }
+    });
+
+    // 4. Drag & Drop (Текстти суйроп барып AI чатка таштоо) коргоосу
+    document.addEventListener('dragstart', function (e) {
+        e.preventDefault();
+    });
+
+    // 5. Иштеп чыгуучу терезеси (DevTools) ачылганын аныктоо
+    const detectDevTools = () => {
+        const threshold = 160;
+        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+        if (widthThreshold || heightThreshold) {
+            console.warn('DevTools байкалды!');
+        }
+    };
+
+    window.addEventListener('resize', detectDevTools);
 })();
