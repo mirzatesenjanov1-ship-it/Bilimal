@@ -185,18 +185,20 @@ async function viewResults(testId, title) {
     const tableBody = document.getElementById('resultsTableBody');
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
-    tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
 
     try {
         const dbRef = ref(db);
         let foundResultsObj = null;
+        let parentNode = 'test_results';
 
         // test_results/TEST_ID аркылуу издөө
         try {
             const snap = await get(child(dbRef, `test_results/${testId}`));
             if (snap.exists()) {
                 foundResultsObj = snap.val();
+                parentNode = 'test_results';
             }
         } catch (e1) {
             console.warn("test_results ичинен окулган жок:", e1.message);
@@ -208,6 +210,7 @@ async function viewResults(testId, title) {
                 const snap = await get(child(dbRef, `results/${testId}`));
                 if (snap.exists()) {
                     foundResultsObj = snap.val();
+                    parentNode = 'results';
                 }
             } catch (e2) {
                 console.warn("results ичинен окулган жок:", e2.message);
@@ -249,6 +252,11 @@ async function viewResults(testId, title) {
                     <td><strong>${r.percent || 0}%</strong></td>
                     <td>${cheatedBadge}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
+                    <td class="check-col">
+                        <button class="btn-row-delete" title="Өчүрүү" style="background:transparent; border:none; color:#ff0055; cursor:pointer; font-size:1rem;">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
                 `;
 
                 // Чекбокс клик окуясы
@@ -268,14 +276,33 @@ async function viewResults(testId, title) {
                     }
                 });
 
+                // Өчүрүү баскычынын клик окуясы
+                const delBtn = tr.querySelector('.btn-row-delete');
+                delBtn.addEventListener('click', async () => {
+                    const studentName = r.studentName || 'Бул окуучунун';
+                    if (confirm(`Чын эле ${studentName} жыйынтыгын өчүргүңүз келеби?`)) {
+                        try {
+                            await remove(ref(db, `${parentNode}/${testId}/${key}`));
+                            localStorage.removeItem(storageKey);
+                            tr.remove();
+
+                            if (tableBody.children.length === 0) {
+                                tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
+                            }
+                        } catch (delErr) {
+                            alert("Өчүрүүдө ката чыкты: " + delErr.message);
+                        }
+                    }
+                });
+
                 tableBody.appendChild(tr);
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
         console.error("Жыйынтыктарды жүктөөдө ката:", err);
-        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
     }
 }
 
