@@ -6,21 +6,20 @@
     const MAX_WARNINGS = 3;
     let hideTimer = null;
 
-    // 1. Киргизүү талаасы экенин текшерүү (Input талааларында жазууга уруксат берүү үчүн)
     function isInputElement(element) {
         if (!element) return false;
         const tagName = element.tagName ? element.tagName.toLowerCase() : '';
         return tagName === 'input' || tagName === 'textarea' || element.isContentEditable;
     }
 
-    // 2. Контексттик менюну бөгөттөө (Оң баскыч)
+    // Контексттик менюну бөгөттөө
     document.addEventListener('contextmenu', function (e) {
         if (!isInputElement(e.target)) {
             e.preventDefault();
         }
     }, false);
 
-    // 3. Текстти тандоону (Highlight) жана Сүйрөөнү (Drag-and-Drop) бөгөттөө
+    // Текстти тандоо жана сүйрөөнү бөгөттөө
     document.addEventListener('selectstart', function (e) {
         if (!isInputElement(e.target)) {
             e.preventDefault();
@@ -33,7 +32,7 @@
         }
     }, false);
 
-    // 4. Текстти көчүрүү жана кесип алууну бөгөттөө (Copy & Cut)
+    // Көчүрүү жана кесип алууну бөгөттөө
     document.addEventListener('copy', function (e) {
         if (!isInputElement(e.target)) {
             e.preventDefault();
@@ -46,35 +45,31 @@
         }
     }, false);
 
-    // 5. Дебюггер, DevTools жана Көчүрүү баскычтарын бөгөттөө (Windows & macOS)
+    // Баскычтарды (DevTools, F12, Ctrl+C ж.б.) бөгөттөө
     document.addEventListener('keydown', function (e) {
         const isInput = isInputElement(e.target);
         const isCmdOrCtrl = e.ctrlKey || e.metaKey;
         const keyCode = e.keyCode || e.which;
         const key = e.key ? e.key.toLowerCase() : '';
 
-        // F12 баскычы
         if (keyCode === 123 || key === 'f12') {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
 
-        // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (DevTools)
         if (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
 
-        // Ctrl/Cmd + U (Исходный код), S (Сактоо), P (Басып чыгаруу)
         if (isCmdOrCtrl && (key === 'u' || key === 's' || key === 'p')) {
             e.preventDefault();
             e.stopPropagation();
             return false;
         }
 
-        // Input эмес элементтерде Ctrl/Cmd + C (Көчүрүү), X (Кесүү), A (Баарын тандоо)
         if (!isInput && isCmdOrCtrl && (key === 'c' || key === 'x' || key === 'a')) {
             e.preventDefault();
             e.stopPropagation();
@@ -82,7 +77,7 @@
         }
     }, false);
 
-    // 6. Башка өтмөккө же терезеге өтүүдө эскертүү жана жазалоо логикасы
+    // Башка өтмөккө өтүү эскертүүсү
     function triggerWarning() {
         const runningScreen = document.getElementById('runningScreen');
         if (runningScreen && runningScreen.style.display !== 'none') {
@@ -99,15 +94,13 @@
         }
     }
 
-    // Экран толугу менен катыганда / өчкөндө же бөлөк тиркемеге узак убакытка өткөндө гана иштетүү
+    // Вкладка толугу менен жашырылганда 10 секунд күтүп анан эскертүү берүү
     document.addEventListener('visibilitychange', function () {
         if (document.hidden) {
-            // Эгерде экран 5 секунддан ашык убакыт өчүп же бөлөк жакка өтүп кетсе гана иштейт
             hideTimer = setTimeout(() => {
                 triggerWarning();
-            }, 5000);
+            }, 10000); // 10 секунддук коргоо
         } else {
-            // Экран 5 секундга жетпей кайра күйсө таймерди токтотуу
             if (hideTimer) {
                 clearTimeout(hideTimer);
                 hideTimer = null;
