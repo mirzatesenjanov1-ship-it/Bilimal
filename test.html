@@ -17,10 +17,18 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- MathJax -->
+    <!-- MathJax Конфигурациясы -->
     <script>
-        MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            },
             svg: { fontCache: 'global' }
         };
     </script>
@@ -322,18 +330,45 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Формулаларды (MathJax) автоматикалык түрдө кайра иштетүү скрипти -->
+    <!-- Автоматтык түрдө сыртта калган LaTeX фрагменттерин MathJax форматка өткөрүү -->
     <script>
-        const renderMath = () => {
+        function wrapAndRenderMath() {
+            const target = document.getElementById('runningScreen');
+            if (!target) return;
+
+            // Сыртта ачык калган \text{...}, \frac{...} ж.б. формулаларды MathJax тааный турган $ ... $ белгилерине ороо
+            const walkAndWrap = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    let text = node.nodeValue;
+                    if (text && (text.includes('\\text{') || text.includes('\\frac{') || text.includes('\\sqrt{'))) {
+                        if (!text.includes('$')) {
+                            // Формула сөздөрүн $...$ менен оройт
+                            text = text.replace(/(\\text\{[^}]+\}|\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\})/g, '$$ $1 $$');
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = text;
+                            while (tempDiv.firstChild) {
+                                node.parentNode.insertBefore(tempDiv.firstChild, node);
+                            }
+                            node.parentNode.removeChild(node);
+                        }
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+                    Array.from(node.childNodes).forEach(walkAndWrap);
+                }
+            };
+
+            walkAndWrap(target);
+
+            // MathJax'ты кайра иштетүү
             if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise();
+                window.MathJax.typesetPromise([target]).catch((err) => console.error(err));
             }
-        };
+        }
 
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             const observer = new MutationObserver(() => {
-                renderMath();
+                setTimeout(wrapAndRenderMath, 50);
             });
             observer.observe(targetNode, { childList: true, subtree: true });
         }
