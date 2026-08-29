@@ -9,7 +9,7 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// 1. MATHLIVE КЛАВИАТУРАСЫН ТУУРА ОРНОТУУ (КАТАСЫЗ LAYOUT)
+// 1. MATHLIVE КЛАВИАТУРАСЫН ТУУРА ЖАНА КООЗ ИКОНКАЛАР МЕНЕН ОРНОТУУ
 if (window.mathVirtualKeyboard) {
     window.mathVirtualKeyboard.layouts = [
         {
@@ -19,14 +19,14 @@ if (window.mathVirtualKeyboard) {
                 {
                     rows: [
                         [
-                            { insert: '\\frac{#?}{#?}', label: '$$\\frac{\\square}{\\square}$$' },
-                            { insert: '#?_{#?}', label: '$$\\square_{\\square}$$' },
-                            { insert: '#?^{#?}', label: '$$\\square^{\\square}$$' },
-                            { insert: '#?_{#?}^{#?}', label: '$$\\square_{\\square}^{\\square}$$' },
-                            { insert: '\\sqrt{#?}', label: '$$\\sqrt{\\square}$$' },
-                            { insert: '\\sqrt[#?]{#?}', label: '$$\\sqrt[n]{\\square}$$' },
-                            { insert: '\\left(#?\\right)', label: '$$(\\square)$$' },
-                            { insert: '\\vec{#?}', label: '$$\\vec{\\square}$$' }
+                            { insert: '\\frac{#?}{#?}', label: 'a/b', tooltip: 'Бөлчөк' },
+                            { insert: '#?_{#?}', label: 'xₙ', tooltip: 'Төмөнкү индекс' },
+                            { insert: '#?^{#?}', label: 'xⁿ', tooltip: 'Даража (Жогорку индекс)' },
+                            { insert: '#?_{#?}^{#?}', label: 'xₙⁿ', tooltip: 'Эки тараптуу индекс' },
+                            { insert: '\\sqrt{#?}', label: '√x', tooltip: 'Квадраттык тамыр' },
+                            { insert: '\\sqrt[#?]{#?}', label: 'ⁿ√x', tooltip: 'n-даражалуу тамыр' },
+                            { insert: '\\left(#?\\right)', label: '(x)', tooltip: 'Кашаалар' },
+                            { insert: '\\vec{#?}', label: 'x⃗', tooltip: 'Вектор' }
                         ],
                         [
                             { insert: '7', label: '7' },
@@ -62,7 +62,7 @@ if (window.mathVirtualKeyboard) {
                             { command: ['performWithFeedback', 'deleteBackward'], label: '<i class="fa-solid fa-backspace"></i>' },
                             { command: ['performWithFeedback', 'moveToPreviousChar'], label: '❮' },
                             { command: ['performWithFeedback', 'moveToNextChar'], label: '❯' },
-                            { command: ['toggleVirtualKeyboard'], label: '✕ Жабуу' }
+                            { command: ['toggleVirtualKeyboard'], label: '✖ Жабуу' }
                         ]
                     ]
                 }
