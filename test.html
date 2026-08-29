@@ -149,7 +149,6 @@
         .timer-badge { background:rgba(255,0,85,0.2); color:#ff0055; border:1px solid #ff0055; padding:6px 14px; border-radius:20px; font-weight:800; float:right; font-size: 0.95rem; }
         .ads-slot { margin:15px 0; text-align:center; min-height:90px; }
 
-        /* Тексттерди жана суроолорду контейнердин ичине толугу менен сыйдыруу */
         #qText {
             white-space: normal !important;
             word-break: break-word !important;
@@ -161,7 +160,6 @@
             margin: 15px 0;
         }
 
-        /* MathJax формулаларынын сыртка чыгып кетишин бөгөттөө */
         mjx-container, mjx-math, .MathJax {
             white-space: normal !important;
             word-break: break-word !important;
@@ -170,7 +168,6 @@
             display: inline-block !important;
         }
 
-        /* Мобилдик адаптация */
         @media (max-width: 600px) {
             body { padding: 8px; }
             .test-box { padding: 16px 12px; border-radius: 12px; }
@@ -184,7 +181,6 @@
     </style>
 </head>
 <body>
-    <!-- Top Adsterra Banner Container -->
     <div class="adsterra-banner-container">
         <script>
             atOptions = {
@@ -199,7 +195,6 @@
     </div>
 
     <div class="test-box">
-        <!-- 1-БӨЛҮК: START SCREEN -->
         <div id="startScreen">
             <div class="top-header">
                 <a href="tests-center.html" class="back-nav" id="btnBack">
@@ -236,7 +231,6 @@
             <button class="btn-start" id="startBtn">ТЕСТТИ БАШТОО 🚀</button>
         </div>
 
-        <!-- 2-БӨЛҮК: TEST RUNNING -->
         <div id="runningScreen" style="display:none">
             <span class="timer-badge" id="timer"><i class="fa-solid fa-clock"></i> 00:00</span>
             <p style="color:#00f0ff; font-weight:700" id="progress">Суроо 1/10</p>
@@ -393,42 +387,32 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Формулаларды иштетүү скрипти -->
+    <!-- Коопсуз MathJax Рендеринг (Stack Overflow катасы оңдолду) -->
     <script>
-        function wrapAndRenderMath() {
+        let isMathJaxRendering = false;
+
+        function renderMath() {
+            if (isMathJaxRendering) return;
             const target = document.getElementById('runningScreen');
             if (!target) return;
 
-            const walkAndWrap = (node) => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    let text = node.nodeValue;
-                    if (text && (text.includes('\\text{') || text.includes('\\frac{') || text.includes('\\sqrt{'))) {
-                        if (!text.includes('$')) {
-                            text = text.replace(/(\\text\{[^}]+\}|\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\})/g, '$$ $1 $$');
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = text;
-                            while (tempDiv.firstChild) {
-                                node.parentNode.insertBefore(tempDiv.firstChild, node);
-                            }
-                            node.parentNode.removeChild(node);
-                        }
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
-                    Array.from(node.childNodes).forEach(walkAndWrap);
-                }
-            };
-
-            walkAndWrap(target);
-
+            isMathJaxRendering = true;
             if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise([target]).catch((err) => console.error(err));
+                window.MathJax.typesetPromise([target])
+                    .catch((err) => console.error(err))
+                    .finally(() => { isMathJaxRendering = false; });
+            } else {
+                isMathJaxRendering = false;
             }
         }
 
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
+            let renderTimeout;
             const observer = new MutationObserver(() => {
-                setTimeout(wrapAndRenderMath, 50);
+                if (isMathJaxRendering) return;
+                clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(renderMath, 200);
             });
             observer.observe(targetNode, { childList: true, subtree: true });
         }
