@@ -9,17 +9,78 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// Глобалдык MathLive конфигурациясы: виртуалдык клавиатураны авто-ачуу жана инструменттерди толук иштетүү
-if (window.MathfieldElement) {
-    MathfieldElement.virtualKeyboardToggleGlyph = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 16h8"/></svg>`;
-}
+// 1. МАТЕМАТИКАЛЫК КЛАВИАТУРАГА БӨЛЧӨК, ИНДЕКС Ж.Б. БАСКЫЧТАРДЫ КОШУУ
+window.mathVirtualKeyboard.customVirtualKeyboardLayers = {
+    'custom-physics-layer': {
+        styles: '',
+        rows: [
+            [
+                { latex: '\\frac{#?}{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\frac{\\square}{\\square}$$</span>' },
+                { latex: '#?_{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square_{\\square}$$</span>' },
+                { latex: '#?^{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square^{\\square}$$</span>' },
+                { latex: '#?_{#?}^{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\square_{\\square}^{\\square}$$</span>' },
+                { latex: '\\sqrt{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\sqrt{\\square}$$</span>' },
+                { latex: '\\sqrt[#?]{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\sqrt[n]{\\square}$$</span>' },
+                { latex: '\\left(#?\\right)', class: 'tex', label: '<span style="font-size:1.1rem;">$$(\\square)$$</span>' },
+                { latex: '\\vec{#?}', class: 'tex', label: '<span style="font-size:1.1rem;">$$\\vec{\\square}$$</span>' }
+            ],
+            [
+                { class: 'keycap', label: '7', insert: '7' },
+                { class: 'keycap', label: '8', insert: '8' },
+                { class: 'keycap', label: '9', insert: '9' },
+                { latex: '\\div', label: '÷' },
+                { latex: '\\times', label: '×' },
+                { latex: '+', label: '+' },
+                { latex: '-', label: '-' },
+                { latex: '=', label: '=' }
+            ],
+            [
+                { class: 'keycap', label: '4', insert: '4' },
+                { class: 'keycap', label: '5', insert: '5' },
+                { class: 'keycap', label: '6', insert: '6' },
+                { latex: '\\alpha', label: 'α' },
+                { latex: '\\beta', label: 'β' },
+                { latex: '\\gamma', label: 'γ' },
+                { latex: '\\Delta', label: 'Δ' },
+                { latex: '\\Omega', label: 'Ω' }
+            ],
+            [
+                { class: 'keycap', label: '1', insert: '1' },
+                { class: 'keycap', label: '2', insert: '2' },
+                { class: 'keycap', label: '3', insert: '3' },
+                { class: 'keycap', label: '0', insert: '0' },
+                { class: 'keycap', label: '.', insert: '.' },
+                { latex: '\\pi', label: 'π' },
+                { latex: '\\infty', label: '∞' },
+                { latex: '^\\circ C', label: '℃' }
+            ],
+            [
+                { class: 'action', command: ['performWithFeedback', 'deleteBackward'], label: '<i class="fa-solid fa-backspace"></i>' },
+                { class: 'action', command: ['performWithFeedback', 'moveToPreviousChar'], label: '❮' },
+                { class: 'action', command: ['performWithFeedback', 'moveToNextChar'], label: '❯' },
+                { class: 'action font-glyph bottom right', command: ['toggleVirtualKeyboard'], label: '✕ Жабуу' }
+            ]
+        ]
+    }
+};
+
+window.mathVirtualKeyboard.layouts = [
+    {
+        label: 'Формулалар',
+        tooltip: 'Физика жана математика куралдары',
+        layer: 'custom-physics-layer'
+    },
+    'numeric',
+    'symbols',
+    'alphabetic'
+];
 
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
     const mathField = document.createElement('math-field');
     mathField.setValue(defaultValue || '');
     mathField.placeholder = placeholderText;
     
-    // Клавиатураны ачуу/жабуу жана инструменттерди даярдоо орнотуусу
+    // Клавиатура параметрлери
     mathField.mathVirtualKeyboardPolicy = "auto";
     
     parentContainer.appendChild(mathField);
@@ -92,7 +153,6 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Интерактивдүү талааларды байлоо
     const qTextHolder = qBox.querySelector('.q-text-holder');
     qBox.qMathField = attachMathEditor(qTextHolder, "Суроону же формуланы жазыңыз...", data ? data.text : '');
 
