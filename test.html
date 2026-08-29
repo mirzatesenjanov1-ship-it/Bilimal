@@ -387,9 +387,29 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Коопсуз MathJax Рендеринг (Stack Overflow катасы оңдолду) -->
+    <!-- Тексттеги \text{} тегдерин автоматтык түрдө тазалоо жана MathJax Рендеринг -->
     <script>
         let isMathJaxRendering = false;
+
+        // \text{...} тегдерин тазалап, кадимки текстке айландыруучу функция
+        function cleanTextFormat(container) {
+            if (!container) return;
+            
+            const processNode = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    let val = node.nodeValue;
+                    if (val && val.includes('\\text{')) {
+                        // Эгер $ доллар белгилери жок жалгыз \text{текст} болсо, таза текст кылуу
+                        val = val.replace(/\\text\{([^}]+)\}/g, '$1');
+                        node.nodeValue = val;
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+                    Array.from(node.childNodes).forEach(processNode);
+                }
+            };
+            
+            processNode(container);
+        }
 
         function renderMath() {
             if (isMathJaxRendering) return;
@@ -397,6 +417,10 @@
             if (!target) return;
 
             isMathJaxRendering = true;
+            
+            // Алгач \text{} тегдерин тазалайбыз
+            cleanTextFormat(target);
+
             if (window.MathJax && window.MathJax.typesetPromise) {
                 window.MathJax.typesetPromise([target])
                     .catch((err) => console.error(err))
@@ -412,7 +436,7 @@
             const observer = new MutationObserver(() => {
                 if (isMathJaxRendering) return;
                 clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(renderMath, 200);
+                renderTimeout = setTimeout(renderMath, 150);
             });
             observer.observe(targetNode, { childList: true, subtree: true });
         }
