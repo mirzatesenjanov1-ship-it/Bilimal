@@ -6,12 +6,19 @@
     <title>Тест Конструктору — BiliMal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- MathJax 3 Конфигурациясы -->
+    <!-- MathJax 3 Engine -->
     <script>
         window.MathJax = {
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        if (window.renderAllMathInputs) window.renderAllMathInputs();
+                    });
+                }
             },
             svg: { fontCache: 'global' }
         };
@@ -54,41 +61,47 @@
         .symbol-btn.pro-btn { background: linear-gradient(45deg, #7928ca, #ff0080); color: #fff; border: none; font-weight: bold; }
         .symbol-btn.pro-btn:hover { box-shadow: 0 0 12px rgba(255,0,128,0.6); }
 
-        /* Formula Editor Responsive Modal - Оңдолгон кабатталуулар */
+        /* Word-Like Live Formula Box container */
+        .math-input-wrapper { position: relative; width: 100%; margin-bottom: 10px; }
+        .math-preview-render { min-height: 48px; padding: 10px 14px; background: #02040a; border: 1px solid rgba(0,240,255,0.4); border-radius: 6px; color: #fff; cursor: text; transition: 0.2s; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 1.05rem; }
+        .math-preview-render:hover { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.15); }
+        .math-raw-textarea { width: 100%; min-height: 50px; display: none; background: #020208; border: 1px solid #00f0ff; color: #00f0ff; font-family: 'Consolas', monospace; padding: 10px; border-radius: 6px; resize: vertical; }
+
+        /* Formula Editor Responsive Modal (Strict Heights) */
         .fe-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 12px; }
-        .fe-modal { background: #0b0f19; border: 1px solid #00f0ff; border-radius: 12px; width: 100%; max-width: 850px; height: 94vh; max-height: 780px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); color: #fff; }
+        .fe-modal { background: #0b0f19; border: 1px solid #00f0ff; border-radius: 12px; width: 100%; max-width: 850px; height: 90vh; max-height: 700px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); color: #fff; }
         
-        .fe-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #030712; border-bottom: 1px solid rgba(0, 240, 255, 0.2); flex-shrink: 0; }
+        .fe-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #030712; border-bottom: 1px solid rgba(0, 240, 255, 0.2); flex-shrink: 0; }
         .fe-header h3 { color: #00f0ff; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
         .fe-close-btn { background: transparent; border: none; color: #a5b4fc; font-size: 1.4rem; cursor: pointer; padding: 0 5px; }
         .fe-close-btn:hover { color: #ff0055; }
         
-        .fe-body { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; flex: 1; }
+        .fe-body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
         
         .fe-search-box { width: 100%; flex-shrink: 0; }
-        .fe-search-box input { width: 100%; padding: 10px 14px; font-size: 0.9rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 6px; color: #fff; }
+        .fe-search-box input { width: 100%; padding: 8px 12px; font-size: 0.88rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 6px; color: #fff; }
         
-        .fe-nav-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex-shrink: 0; -webkit-overflow-scrolling: touch; }
-        .fe-tab-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a5b4fc; padding: 6px 14px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; whitespace: nowrap; transition: 0.2s; flex-shrink: 0; }
+        .fe-nav-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex-shrink: 0; -webkit-overflow-scrolling: touch; }
+        .fe-tab-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a5b4fc; padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; whitespace: nowrap; transition: 0.2s; flex-shrink: 0; }
         .fe-tab-btn.active, .fe-tab-btn:hover { background: rgba(0, 240, 255, 0.15); border-color: #00f0ff; color: #00f0ff; }
         
-        .fe-palette-grid { display: flex; flex-wrap: wrap; gap: 8px; min-height: 100px; max-height: 150px; overflow-y: auto; background: rgba(0, 0, 0, 0.4); padding: 10px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); align-content: flex-start; flex-shrink: 0; }
-        .fe-item-btn { background: #131b2e; border: 1px solid rgba(0, 240, 255, 0.25); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.88rem; cursor: pointer; transition: 0.2s; text-align: center; }
-        .fe-item-btn:hover { background: #00f0ff; color: #000; font-weight: bold; transform: translateY(-1px); }
+        .fe-palette-grid { display: flex; flex-wrap: wrap; gap: 6px; height: 110px; overflow-y: auto; background: rgba(0, 0, 0, 0.4); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); align-content: flex-start; flex-shrink: 0; }
+        .fe-item-btn { background: #131b2e; border: 1px solid rgba(0, 240, 255, 0.25); color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; text-align: center; }
+        .fe-item-btn:hover { background: #00f0ff; color: #000; font-weight: bold; }
         
-        .fe-editor-area { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
-        .fe-toolbar-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .fe-editor-area { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+        .fe-toolbar-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
         .fe-action-btns { display: flex; gap: 6px; }
-        .fe-mode-selector { display: flex; gap: 12px; align-items: center; font-size: 0.82rem; color: #a5b4fc; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
-        .fe-mode-selector label { font-size: 0.82rem; cursor: pointer; color: #fff; display: flex; align-items: center; gap: 4px; }
+        .fe-mode-selector { display: flex; gap: 10px; align-items: center; font-size: 0.8rem; color: #a5b4fc; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 6px; }
+        .fe-mode-selector label { cursor: pointer; color: #fff; display: flex; align-items: center; gap: 4px; }
         
-        .fe-textarea { width: 100%; font-family: 'Consolas', 'Courier New', monospace; font-size: 1rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.4); color: #00f0ff; border-radius: 6px; padding: 10px; resize: vertical; min-height: 60px; max-height: 100px; }
+        .fe-textarea { width: 100%; font-family: 'Consolas', monospace; font-size: 0.95rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.4); color: #00f0ff; border-radius: 6px; padding: 8px; resize: none; height: 50px; }
         
-        .fe-preview-box { background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 12px; min-height: 75px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; flex-shrink: 0; }
-        .fe-preview-title { position: absolute; top: 4px; left: 8px; font-size: 0.68rem; color: #7dd3fc; text-transform: uppercase; letter-spacing: 0.5px; }
-        .fe-preview-content { font-size: 1.15rem; color: #fff; max-width: 100%; overflow-x: auto; padding-top: 10px; text-align: center; }
+        .fe-preview-box { background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 8px; min-height: 65px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; flex-shrink: 0; }
+        .fe-preview-title { position: absolute; top: 4px; left: 8px; font-size: 0.65rem; color: #7dd3fc; text-transform: uppercase; letter-spacing: 0.5px; }
+        .fe-preview-content { font-size: 1.1rem; color: #fff; max-width: 100%; overflow-x: auto; padding-top: 8px; text-align: center; }
         
-        .fe-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #030712; border-top: 1px solid rgba(0, 240, 255, 0.2); flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
+        .fe-footer { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; background: #030712; border-top: 1px solid rgba(0, 240, 255, 0.2); flex-wrap: wrap; gap: 10px; flex-shrink: 0; }
         .fe-recent-box { display: flex; gap: 6px; align-items: center; font-size: 0.78rem; color: #a5b4fc; overflow-x: auto; max-width: 60%; -webkit-overflow-scrolling: touch; }
         .fe-recent-tag { background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 4px; cursor: pointer; white-space: nowrap; font-family: monospace; }
         .fe-recent-tag:hover { background: #00f0ff; color: #000; }
@@ -96,9 +109,8 @@
         @media (max-width: 600px) {
             .form-grid { grid-template-columns: 1fr; }
             .fe-modal { height: 98vh; border-radius: 8px; }
-            .fe-header h3 { font-size: 0.92rem; }
             .fe-toolbar-actions { flex-direction: column; align-items: flex-start; }
-            .fe-mode-selector { width: 100%; justify-content: flex-start; }
+            .fe-mode-selector { width: 100%; }
             .fe-recent-box { max-width: 100%; }
             .fe-footer { flex-direction: column-reverse; align-items: stretch; }
             .fe-footer > div { justify-content: flex-end; }
@@ -155,13 +167,13 @@
     <div id="formulaEditorModal" class="fe-modal-overlay">
         <div class="fe-modal">
             <div class="fe-header">
-                <h3><i class="fa-solid fa-calculator"></i> Formula Editor (Equation Builder)</h3>
+                <h3><i class="fa-solid fa-calculator"></i> Formula Editor (Word Style)</h3>
                 <button type="button" class="fe-close-btn" onclick="closeFormulaEditor()"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="fe-body">
                 <div class="fe-search-box">
-                    <input type="text" id="feSearchInput" placeholder="Формула же символ издеңиз (мис: fraction, integral, Newton)..." oninput="filterFormulaPalette()">
+                    <input type="text" id="feSearchInput" placeholder="Формула же символ издеңиз..." oninput="filterFormulaPalette()">
                 </div>
 
                 <div class="fe-nav-tabs" id="feTabs">
@@ -189,7 +201,7 @@
                         </div>
                     </div>
 
-                    <textarea id="feLatexInput" class="fe-textarea" placeholder="LaTeX кодун жазыңыз же баскычтарды басыңыз..." oninput="onFeInput()"></textarea>
+                    <textarea id="feLatexInput" class="fe-textarea" placeholder="LaTeX кодун жазыңыз..." oninput="onFeInput()"></textarea>
                 </div>
 
                 <div class="fe-preview-box">
@@ -214,7 +226,7 @@
     <!-- Main Logic Script Module -->
     <script type="module" src="../js/test-builder.js"></script>
 
-    <!-- Formula Editor Core Engine -->
+    <!-- Formula Engine with Word-like Input Converter -->
     <script>
         window.feTargetInput = null;
         let feHistory = [];
@@ -244,8 +256,7 @@
                 { label: 'cos β', latex: '\\cos \\beta', desc: 'косинус trig' },
                 { label: 'tan θ', latex: '\\tan \\theta', desc: 'тангенс trig' },
                 { label: 'log₂ x', latex: '\\log_{2}(x)', desc: 'логарифм log' },
-                { label: 'ln x', latex: '\\ln(x)', desc: 'натуральный логарифм' },
-                { label: 'Matrix 2x2', latex: '\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}', desc: 'матрица matrix' }
+                { label: 'ln x', latex: '\\ln(x)', desc: 'натуральный логарифм' }
             ],
             greek: [
                 { label: 'α', latex: '\\alpha' }, { label: 'β', latex: '\\beta' }, { label: 'γ', latex: '\\gamma' },
@@ -253,7 +264,7 @@
                 { label: 'λ', latex: '\\lambda' }, { label: 'μ', latex: '\\mu' }, { label: 'π', latex: '\\pi' },
                 { label: 'ρ', latex: '\\rho' }, { label: 'σ', latex: '\\sigma' }, { label: 'φ', latex: '\\phi' },
                 { label: 'ψ', latex: '\\psi' }, { label: 'ω', latex: '\\omega' }, { label: 'Δ', latex: '\\Delta' },
-                { label: 'Ω', latex: '\\Omega' }, { label: 'Σ', latex: '\\Sigma' }, { label: 'Φ', latex: '\\Phi' }
+                { label: 'Ω', latex: '\\Omega' }, { label: 'Σ', latex: '\\Sigma' }
             ],
             symbols: [
                 { label: '∞', latex: '\\infty' }, { label: '≈', latex: '\\approx' }, { label: '≠', latex: '\\neq' },
@@ -268,8 +279,6 @@
                 { label: 'J (Жоуль)', latex: '\\text{J}' }, { label: 'W (Ватт)', latex: '\\text{W}' },
                 { label: 'Pa (Паскаль)', latex: '\\text{Pa}' }, { label: 'Hz (Герц)', latex: '\\text{Hz}' },
                 { label: 'Ω (Ом)', latex: '\\Omega' }, { label: '3×10⁸', latex: '3 \\times 10^{8}' },
-                { label: 'c (жарык ылдамдыгы)', latex: 'c = 3 \\times 10^{8} \\text{ m/s}' },
-                { label: 'G (гравитациялык)', latex: 'G = 6.67 \\times 10^{-11}' },
                 { label: 'g (эркин түшүү)', latex: 'g = 9.8 \\text{ m/s}^2' }
             ],
             templates: [
@@ -278,16 +287,67 @@
                 { label: 's = v₀t + at²/2', latex: 's = v_{0}t + \\frac{at^{2}}{2}', desc: 'аралык kinematics' },
                 { label: 'F = ma', latex: 'F = ma', desc: 'Ньютон мыйзамы dynamics' },
                 { label: 'F = G m₁m₂/r²', latex: 'F = G \\frac{m_1 m_2}{r^2}', desc: 'гравитация dynamics' },
-                { label: 'p = mv', latex: 'p = mv', desc: 'импульс momentum' },
                 { label: 'Ek = mv²/2', latex: 'E_k = \\frac{m v^2}{2}', desc: 'кинетикалык энергия energy' },
-                { label: 'Ep = mgh', latex: 'E_p = mgh', desc: 'потенциалдык энергия energy' },
                 { label: 'Q = cmΔT', latex: 'Q = cm\\Delta T', desc: 'жылуулук thermodynamics' },
                 { label: 'I = U/R', latex: 'I = \\frac{U}{R}', desc: 'Ом мыйзамы electric' },
-                { label: 'P = UI', latex: 'P = UI', desc: 'кубаттуулук electric' },
-                { label: 'v = λf', latex: 'v = \\lambda f', desc: 'толкун wave' },
                 { label: 'E = mc²', latex: 'E = mc^2', desc: 'Эйнштейн relativity' }
             ]
         };
+
+        // Word style WYSIWYG textareas converter
+        window.renderAllMathInputs = function() {
+            document.querySelectorAll('.q-text').forEach(textarea => {
+                let wrapper = textarea.parentElement.querySelector('.math-input-wrapper');
+                if(!wrapper) {
+                    wrapper = document.createElement('div');
+                    wrapper.className = 'math-input-wrapper';
+                    
+                    const renderDiv = document.createElement('div');
+                    renderDiv.className = 'math-preview-render';
+                    renderDiv.title = 'Чикылдатып оңдоңуз (Word сыяктуу)';
+                    
+                    textarea.parentNode.insertBefore(wrapper, textarea);
+                    wrapper.appendChild(textarea);
+                    wrapper.appendChild(renderDiv);
+
+                    textarea.classList.add('math-raw-textarea');
+
+                    renderDiv.addEventListener('click', () => {
+                        renderDiv.style.display = 'none';
+                        textarea.style.display = 'block';
+                        textarea.focus();
+                    });
+
+                    textarea.addEventListener('blur', () => {
+                        updateRenderDiv(textarea, renderDiv);
+                    });
+
+                    textarea.addEventListener('input', () => {
+                        if (window.MathJax && window.MathJax.typesetPromise) {
+                            updateRenderDiv(textarea, renderDiv);
+                        }
+                    });
+                }
+                const renderDiv = wrapper.querySelector('.math-preview-render');
+                updateRenderDiv(textarea, renderDiv);
+            });
+        };
+
+        function updateRenderDiv(textarea, renderDiv) {
+            const val = textarea.value.trim();
+            if(!val) {
+                renderDiv.innerHTML = '<span style="color:#64748b; font-size:0.9rem;">Суроонун текстин жазыңыз же формула кошуңуз...</span>';
+            } else {
+                renderDiv.textContent = val;
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([renderDiv]).catch(err => console.log(err));
+                }
+            }
+            if(document.activeElement !== textarea) {
+                textarea.style.display = 'none';
+                renderDiv.style.display = 'flex';
+            }
+        }
 
         window.openFormulaEditor = function(targetEl) {
             window.feTargetInput = targetEl;
@@ -441,13 +501,10 @@
                 const start = el.selectionStart || el.value.length;
                 const end = el.selectionEnd || el.value.length;
                 el.value = el.value.substring(0, start) + formatted + el.value.substring(end);
-                el.focus();
-                el.dispatchEvent(new Event('input', { bubbles: true }));
                 
-                // Рендердөө
-                if (window.MathJax && window.MathJax.typesetPromise) {
-                    window.MathJax.typesetPromise([el.parentElement]);
-                }
+                // Trigger event and update preview
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('blur', { bubbles: true }));
             }
 
             saveRecentFormula(latex);
@@ -490,6 +547,7 @@
                         toolbar.appendChild(feBtn);
                     }
                 });
+                if(window.renderAllMathInputs) window.renderAllMathInputs();
             });
 
             observer.observe(document.body, { childList: true, subtree: true });
