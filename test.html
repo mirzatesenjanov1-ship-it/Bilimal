@@ -55,7 +55,6 @@
             -moz-user-select: none;
             -ms-user-select: none;
             user-select: none;
-            overflow-x: hidden; /* Экрандан оңго-солго калкып чыгууну алдын алуу */
         }
         .adsterra-banner-container {
             width: 100%;
@@ -65,7 +64,6 @@
             justify-content: center;
             align-items: center;
             min-height: 90px;
-            overflow: hidden;
         }
         .test-box { 
             background:rgba(15,23,42,0.9); 
@@ -76,7 +74,7 @@
             max-width:700px; 
             box-shadow:0 0 30px rgba(0,0,0,0.8); 
             backdrop-filter: blur(10px); 
-            overflow: hidden; /* Тексттин сыртка чыгышын бөгөттөө */
+            box-sizing: border-box;
         }
         
         .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
@@ -121,8 +119,8 @@
             align-items: center; 
             gap: 12px;
             word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-word;
+            overflow-wrap: anywhere;
+            word-break: normal;
         }
         .q-option:hover { border-color:#00f0ff; background:rgba(0,240,255,0.1); }
         .q-option input[type="radio"], .q-option input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #00f0ff; }
@@ -135,7 +133,7 @@
             margin-bottom: 15px; 
             line-height: 1.6;
             word-wrap: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
         }
         .test-image { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(0,240,255,0.3); }
 
@@ -145,24 +143,26 @@
         .timer-badge { background:rgba(255,0,85,0.2); color:#ff0055; border:1px solid #ff0055; padding:6px 14px; border-radius:20px; font-weight:800; float:right; font-size: 0.95rem; }
         .ads-slot { margin:15px 0; text-align:center; min-height:90px; }
 
-        /* Тексттер жана MathJax формулалары сыртка чыгып кетпөөсү үчүн ташуу эрежелери */
+        /* Тексттердин кесилбей калышы үчүн */
         #qText {
             word-wrap: break-word;
-            overflow-wrap: break-word;
-            word-break: break-word;
+            overflow-wrap: anywhere;
+            word-break: normal;
             line-height: 1.5;
             font-size: 1.15rem;
+            max-width: 100%;
         }
 
+        /* MathJax элементтерин контейнердин ичине тууралоо */
         mjx-container {
             max-width: 100% !important;
-            overflow-x: auto !important;
-            overflow-y: hidden !important;
-            vertical-align: middle !important;
+            display: inline-block !important;
             white-space: normal !important;
+            word-wrap: break-word !important;
+            overflow-wrap: anywhere !important;
         }
 
-        /* Мобилдик адаптация (Телефондор үчүн ыңгайлаштыруу) */
+        /* Мобилдик версия адаптациясы */
         @media (max-width: 600px) {
             body { padding: 8px; }
             .test-box { padding: 16px 12px; border-radius: 12px; }
@@ -385,13 +385,12 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Автоматтык түрдө сыртта калган LaTeX фрагменттерин MathJax форматка өткөрүү -->
+    <!-- Формулаларды кайра иштетүүчү скрипт -->
     <script>
         function wrapAndRenderMath() {
             const target = document.getElementById('runningScreen');
             if (!target) return;
 
-            // Сыртта ачык калган \text{...}, \frac{...} ж.б. формулаларды MathJax тааный турган $ ... $ белгилерине ороо
             const walkAndWrap = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
@@ -413,7 +412,6 @@
 
             walkAndWrap(target);
 
-            // MathJax'ты кайра иштетүү
             if (window.MathJax && window.MathJax.typesetPromise) {
                 window.MathJax.typesetPromise([target]).catch((err) => console.error(err));
             }
