@@ -3,10 +3,12 @@
     'use strict';
 
     let isTestActive = false;
-    let violationCount = 0; // Бузуулардын эсеби
-    const MAX_VIOLATIONS = 5; // Уруксат берилген максималдуу бузуу саны (кааласаңыз өзгөртсөңүз болот)
+    let violationCount = 0;
+    const MAX_VIOLATIONS = 5;
 
-    // Тест башталганын текшерүү
+    // Глобалдуу эсепти башталгыч абалга келтирүү
+    window.userViolationCount = 0;
+
     const checkTestStarted = () => {
         const runningScreen = document.getElementById('runningScreen');
         if (runningScreen && runningScreen.style.display !== 'none') {
@@ -17,30 +19,20 @@
     setInterval(checkTestStarted, 500);
 
     // 1. Контексттик меню, көчүрүү, кесүү, сүйрөөнү бөгөттөө
-    document.addEventListener('contextmenu', function (e) {
-        e.preventDefault();
-    }, false);
-
-    document.addEventListener('copy', function (e) {
+    document.addEventListener('contextmenu', e => e.preventDefault(), false);
+    document.addEventListener('copy', e => {
         e.clipboardData.setData('text/plain', 'Тесттен көчүрүүгө тыюу салынган!');
         e.preventDefault();
     }, false);
-
-    document.addEventListener('cut', function (e) {
-        e.preventDefault();
-    }, false);
-
-    document.addEventListener('selectstart', function (e) {
+    document.addEventListener('cut', e => e.preventDefault(), false);
+    document.addEventListener('selectstart', e => {
         if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
             e.preventDefault();
         }
     }, false);
+    document.addEventListener('dragstart', e => e.preventDefault(), false);
 
-    document.addEventListener('dragstart', function (e) {
-        e.preventDefault();
-    }, false);
-
-    // 2. Ысык баскычтарды бөгөттөө (F12, Ctrl+C, Ctrl+A, DevTools, PrintScreen)
+    // 2. Ысык баскычтарды бөгөттөө
     document.addEventListener('keydown', function (e) {
         const isCmdOrCtrl = e.ctrlKey || e.metaKey;
         const key = e.key ? e.key.toLowerCase() : '';
@@ -67,13 +59,11 @@
         }
     }, false);
 
-    // 3. Бузууларды каттоо жана оверлейди (эскертүүнү) көрсөтүү
+    // 3. Бузууларды каттоо жана экранга чыгаруу
     function registerViolation() {
         if (!isTestActive) return;
 
         violationCount++;
-        
-        // Глобалдуу объектке сактоо (результат жөнөткөндө Firebase/серверге кошо кетиш үчүн)
         window.userViolationCount = violationCount;
 
         let overlay = document.getElementById('ai-protection-overlay');
@@ -91,15 +81,13 @@
             document.body.appendChild(overlay);
         }
 
-        // Эгерде уруксат берилген сан ашып кетсе
         if (violationCount > MAX_VIOLATIONS) {
             overlay.innerHTML = `
                 <i class="fa-solid fa-ban" style="font-size:3.5rem; color:#ff0055; margin-bottom:15px;"></i>
                 <div style="color:#ff0055; font-size:1.6rem; margin-bottom:10px;">ТЕСТ БӨГӨТТӨЛДҮ!</div>
                 <div>Сиз башка терезеге өтүү эрежесин өтө көп буздуңуз (${violationCount - 1}/${MAX_VIOLATIONS}).</div>
-                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жыйынтыгыңыз мугалимге жөнөтүлдү.</div>
+                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жйынтыгыңыз мугалимге жөнөтүлдү.</div>
             `;
-            // Тестти токтотуу чакыруусу (эгер public-test.js ичинде бүтүрүү функциясы болсо)
             if (typeof window.finishTestAuto === 'function') {
                 window.finishTestAuto();
             }
@@ -124,12 +112,10 @@
         }
     }
 
-    // Фокусту жоготкондо (Edge Copilot, башка вкладка же колдонмого өткөндө)
     window.addEventListener('blur', function () {
         registerViolation();
     });
 
-    // Чычкан экрандын чегинен чыгып кеткенде
     document.addEventListener('mouseleave', function (e) {
         if (e.clientY <= 0 || e.clientX <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
             registerViolation();
