@@ -9,7 +9,7 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// 1. MATHLIVE КЛАВИАТУРАСЫН ТУУРА ЖАНА КООЗ ИКОНКАЛАР МЕНЕН ОРНОТУУ
+// 1. MATHLIVE КЛАВИАТУРАСЫ
 if (window.mathVirtualKeyboard) {
     window.mathVirtualKeyboard.layouts = [
         {
@@ -74,24 +74,35 @@ if (window.mathVirtualKeyboard) {
     ];
 }
 
-// 2. РЕДАКТОРГО ПРОБЕЛ ЖАНА ДЕФИС БАСЫЛГАНДА ТЕКСТТИ ТУУРА ЖАЗУУ БАПТАМАСЫ
+// 2. ТЕКСТТИ КӨЧҮРҮП КОЙГОНДО БОШТУКТАРДЫ ЖАНА ДЕФИСТЕРДИ САКТОО
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
     const mathField = document.createElement('math-field');
     
-    // Пробел, дефис жана тексттик режим үчүн баптаолор
     mathField.smartMode = true;
     mathField.mathVirtualKeyboardPolicy = "auto";
     
-    // Алдын ала маани орнотуу
     if (defaultValue) {
         mathField.setValue(defaultValue);
     }
     mathField.placeholder = placeholderText;
 
-    // Клавиатурадан басылган баскычтарды көзөмөлдөө (Дефис жана пробел көйгөйүн чечүү)
+    // СӨЗДӨР БИРИГИП КЕТПЕШИ ҮЧҮН: КӨЧҮРҮП КЕЛГЕНДЕ (PASTE) ТЕКСТТИ ТУУРА КИРГИЗҮҮ
+    mathField.addEventListener('paste', (ev) => {
+        const text = (ev.clipboardData || window.clipboardData).getData('text');
+        if (text) {
+            ev.preventDefault();
+            // Текстте формула белгилери (\, $, _) болбосо, аны кадимки ТЕКСТ режиминде кошот
+            if (!text.includes('\\') && !text.includes('$')) {
+                mathField.insert(text, { mode: 'text' });
+            } else {
+                mathField.insert(text);
+            }
+        }
+    });
+
+    // Дефис (-) басылганда кадимки дефис катары кошуу
     mathField.addEventListener('keydown', (ev) => {
         if (ev.key === '-') {
-            // Режимге карабай дефисти текст катары киргизүү
             if (mathField.mode === 'math') {
                 ev.preventDefault();
                 mathField.insert('-');
