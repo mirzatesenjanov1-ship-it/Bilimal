@@ -74,12 +74,31 @@ if (window.mathVirtualKeyboard) {
     ];
 }
 
+// 2. РЕДАКТОРГО ПРОБЕЛ ЖАНА ДЕФИС БАСЫЛГАНДА ТЕКСТТИ ТУУРА ЖАЗУУ БАПТАМАСЫ
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
     const mathField = document.createElement('math-field');
-    mathField.setValue(defaultValue || '');
-    mathField.placeholder = placeholderText;
+    
+    // Пробел, дефис жана тексттик режим үчүн баптаолор
+    mathField.smartMode = true;
     mathField.mathVirtualKeyboardPolicy = "auto";
     
+    // Алдын ала маани орнотуу
+    if (defaultValue) {
+        mathField.setValue(defaultValue);
+    }
+    mathField.placeholder = placeholderText;
+
+    // Клавиатурадан басылган баскычтарды көзөмөлдөө (Дефис жана пробел көйгөйүн чечүү)
+    mathField.addEventListener('keydown', (ev) => {
+        if (ev.key === '-') {
+            // Режимге карабай дефисти текст катары киргизүү
+            if (mathField.mode === 'math') {
+                ev.preventDefault();
+                mathField.insert('-');
+            }
+        }
+    });
+
     parentContainer.appendChild(mathField);
     return mathField;
 }
