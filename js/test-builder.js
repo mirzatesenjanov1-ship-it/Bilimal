@@ -9,44 +9,40 @@ let questionCounter = 0;
 const urlParams = new URLSearchParams(window.location.search);
 editTestId = urlParams.get('id');
 
-// ДАЯР ФОРМУЛА ШАБЛОНДОРУ ЖАНА СИМВОЛДОР
+// ТАЗА ЖАНА ТҮШҮНҮКТҮҮ ФОРМУЛА ШАБЛОНДОРУ
 const TEMPLATES = [
-    // Бөлчөктөр
-    { label: '<span class="box-icon"></span>/<span class="box-icon"></span>', code: '\\frac{?}{?}', cursorOffset: 6 },
-    { label: '<span class="box-icon"></span>/%', code: '\\frac{?}{\\%}', cursorOffset: 6 },
+    // Бөлчөк (Word сыяктуу)
+    { label: '<span class="box-icon"></span>/<span class="box-icon"></span>', code: '$\\frac{?}{?}$', cursorOffset: 7 },
     
-    // Даража жана индекстер
-    { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup>', code: '^{?}', cursorOffset: 2 },
-    { label: '<span class="box-icon"></span><sub><span class="box-icon"></span></sub>', code: '_{?}', cursorOffset: 2 },
-    { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup><sub><span class="box-icon"></span></sub>', code: '_{?}^{?}', cursorOffset: 2 },
-
+    // Даража жана индекс
+    { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup>', code: '$?^{?}$', cursorOffset: 4 },
+    { label: '<span class="box-icon"></span><sub><span class="box-icon"></span></sub>', code: '$?_{?}$', cursorOffset: 4 },
+    
     // Тамырлар
-    { label: '√<span class="box-icon"></span>', code: '\\sqrt{?}', cursorOffset: 6 },
-    { label: '<sup><span class="box-icon"></span></sup>√<span class="box-icon"></span>', code: '\\sqrt[?]{?}', cursorOffset: 6 },
-    { label: '<sup>2</sup>√<span class="box-icon"></span>', code: '\\sqrt[2]{?}', cursorOffset: 7 },
-    { label: '<sup>3</sup>√<span class="box-icon"></span>', code: '\\sqrt[3]{?}', cursorOffset: 7 },
+    { label: '√<span class="box-icon"></span>', code: '$\\sqrt{?}$', cursorOffset: 7 },
+    { label: '<sup>n</sup>√<span class="box-icon"></span>', code: '$\\sqrt[n]{?}$', cursorOffset: 9 },
+
+    // Жөнөкөй Интеграл жана Сумма
+    { label: '∫', code: '$\\int_{?}^{?}$', cursorOffset: 7 },
+    { label: '∑', code: '$\\sum_{?}^{?}$', cursorOffset: 7 },
 
     // Тригонометрия
-    { label: 'sin <span class="box-icon"></span>', code: '\\sin(? )', cursorOffset: 5 },
-    { label: 'cos <span class="box-icon"></span>', code: '\\cos(? )', cursorOffset: 5 },
-    { label: 'tan <span class="box-icon"></span>', code: '\\tan(? )', cursorOffset: 5 },
-    { label: 'cot <span class="box-icon"></span>', code: '\\cot(? )', cursorOffset: 5 },
-    { label: 'sec <span class="box-icon"></span>', code: '\\sec(? )', cursorOffset: 5 },
-    { label: 'csc <span class="box-icon"></span>', code: '\\csc(? )', cursorOffset: 5 },
+    { label: 'sin', code: '$\\sin(?)$', cursorOffset: 6 },
+    { label: 'cos', code: '$\\cos(?)$', cursorOffset: 6 },
+    { label: 'tan', code: '$\\tan(?)$', cursorOffset: 6 },
+    { label: 'cot', code: '$\\cot(?)$', cursorOffset: 6 },
 
-    // Символдор жана физикалык чоңдуктар
-    { label: 'α', code: '\\alpha', cursorOffset: 6 },
-    { label: 'β', code: '\\beta', cursorOffset: 5 },
-    { label: 'Ω', code: '\\Omega', cursorOffset: 6 },
-    { label: 'λ', code: '\\lambda', cursorOffset: 7 },
-    { label: '℃', code: '^\\circ C', cursorOffset: 8 },
-    { label: 'v⃗', code: '\\vec{v}', cursorOffset: 7 },
-    { label: '∫', code: '\\int_{?}^{?}', cursorOffset: 5 },
-    { label: '∑', code: '\\sum_{?}^{?}', cursorOffset: 5 },
-    { label: 'Δ', code: '\\Delta', cursorOffset: 6 },
-    { label: '∞', code: '\\infty', cursorOffset: 6 },
-    { label: '≈', code: '\\approx', cursorOffset: 7 },
-    { label: '±', code: '\\pm', cursorOffset: 3 }
+    // Грек ариптери жана Символдор
+    { label: 'α', code: '$\\alpha$', cursorOffset: 8 },
+    { label: 'β', code: '$\\beta$', cursorOffset: 7 },
+    { label: 'Ω', code: '$\\Omega$', cursorOffset: 8 },
+    { label: 'λ', code: '$\\lambda$', cursorOffset: 9 },
+    { label: '℃', code: '$^\\circ C$', cursorOffset: 9 },
+    { label: 'v⃗', code: '$\\vec{v}$', cursorOffset: 8 },
+    { label: 'Δ', code: '$\\Delta$', cursorOffset: 8 },
+    { label: '∞', code: '$\\infty$', cursorOffset: 8 },
+    { label: '≈', code: '$\\approx$', cursorOffset: 9 },
+    { label: '±', code: '$\\pm$', cursorOffset: 5 }
 ];
 
 // ГОРИЗОНТАЛДЫК СЫДЫРЫЛМА ПАНЕЛДИ ТҮЗҮҮ
@@ -71,7 +67,7 @@ function createScrollableToolbar(targetInput) {
     return toolbar;
 }
 
-// КУРСОР ТОКТОГОН ЖЕРГЕ ШАБЛОН КИРГИЗҮҮ ЖАНА КУРСОРДУ ЫҢГАЙЛУУ ОРУНДАТУУ
+// КУРСОР ТОКТОГОН ЖЕРГЕ ШАБЛОН КИРГИЗҮҮ ЖАНА КУРСОРДУ ЗУУЛАТЫП ЫҢГАЙЛУУ ЖАЙГАШТЫРУУ
 function insertTemplateAtCursor(input, code, cursorOffset) {
     const start = input.selectionStart || input.value.length;
     const end = input.selectionEnd || input.value.length;
@@ -86,7 +82,7 @@ function insertTemplateAtCursor(input, code, cursorOffset) {
     input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-// КИРГИЗҮҮ ТАЛААЛАРЫНА (INPUT/TEXTAREA) ПАНЕЛДИ БАЙЛОО
+// ТАЛААЛАРГА (INPUT/TEXTAREA) ПАНЕЛДИ ТИРКӨӨ
 function attachToolbarToInput(input) {
     if (!input || input.dataset.hasToolbar) return;
     input.dataset.hasToolbar = "true";
@@ -103,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('editBadge').style.display = 'inline-block';
                 await loadExistingTest(editTestId);
             } else {
-                addQuestion('single'); // Жаңы тест түзүүдө 1 дефолт суроо кошуу
+                addQuestion('single');
             }
         } else {
             alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
@@ -160,7 +156,7 @@ function addQuestion(type = 'single', data = null) {
 
     container.appendChild(qBox);
 
-    // Панелдерди тиркөө
+    // Куралдар панелин суроого жана PISA контекстине кошуу
     attachToolbarToInput(qBox.querySelector('.q-text'));
     const pisaTextarea = qBox.querySelector('.q-pisa-context');
     if (pisaTextarea) attachToolbarToInput(pisaTextarea);
@@ -251,7 +247,7 @@ function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false)
     `;
     container.appendChild(item);
 
-    // Вариант киргизүү талаасына да куралдар панелин кошуу
+    // Вариант киргизүү талаасына да куралдар панелин байлоо
     attachToolbarToInput(item.querySelector('.opt-text'));
 }
 
@@ -265,7 +261,7 @@ function addMatchPair(container, leftVal = '', rightVal = '') {
     `;
     container.appendChild(pair);
 
-    // Дал келтирүү талааларына да куралдар панелин кошуу
+    // Дал келтирүү талааларына да панелди байлоо
     attachToolbarToInput(pair.querySelector('.match-left'));
     attachToolbarToInput(pair.querySelector('.match-right'));
 }
