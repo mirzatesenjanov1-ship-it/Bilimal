@@ -6,7 +6,7 @@
     <title>Тест Конструктору — BiliMal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- MathJax 3 (Формулаларды тестте кооз көрсөтүү үчүн) -->
+    <!-- MathJax 3 Engine -->
     <script>
         window.MathJax = {
             tex: {
@@ -18,14 +18,10 @@
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
-    <!-- MathLive Visual Formula Editor (Word сыяктуу графикалык редактор) -->
-    <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive-static.css" />
-    <script src="https://unpkg.com/mathlive"></script>
-
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', sans-serif; }
         body { background:#03030d; color:#fff; padding:20px 4%; min-height:100vh; }
-        .builder-card { background:rgba(15,23,42,0.8); border:1px solid rgba(0,240,255,0.2); border-radius:12px; padding:25px; max-width:900px; margin:0 auto; backdrop-filter: blur(10px); }
+        .builder-card { background:rgba(15,23,42,0.8); border:1px solid rgba(0,240,255,0.2); border-radius:12px; padding:25px; max-width:950px; margin:0 auto; backdrop-filter: blur(10px); }
         
         .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
         .back-link { color: #00f0ff; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
@@ -45,32 +41,64 @@
         
         .btn { background:linear-gradient(45deg, #00f0ff, #0077ff); color:#fff; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:700; transition:0.3s; display: inline-flex; align-items: center; gap: 8px; justify-content: center; }
         .btn:hover { box-shadow:0 0 15px rgba(0,240,255,0.5); transform: translateY(-2px); }
-        .btn-sm { padding: 8px 14px; font-size: 0.85rem; }
         .btn-secondary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; }
         .btn-secondary:hover { background: rgba(0,240,255,0.2); border-color: #00f0ff; }
         
-        .symbol-toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
-        .symbol-btn { background: rgba(255,255,255,0.08); border: 1px solid rgba(0,240,255,0.3); color: #00f0ff; padding: 5px 10px; border-radius: 4px; font-size: 0.82rem; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
-        .symbol-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 8px rgba(0,240,255,0.4); }
-        .symbol-btn.pro-btn { background: linear-gradient(45deg, #7928ca, #ff0080); color: #fff; border: none; font-weight: bold; }
-        .symbol-btn.pro-btn:hover { box-shadow: 0 0 12px rgba(255,0,128,0.6); }
+        /* Горизонталынан сыдырылма (Scrollable Toolbar) */
+        .symbol-toolbar-scroll { 
+            display: flex; 
+            gap: 6px; 
+            overflow-x: auto; 
+            white-space: nowrap; 
+            padding: 8px 4px 12px 4px; 
+            margin-bottom: 10px;
+            scroll-behavior: smooth;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.15);
+        }
+        
+        /* Scrollbar Стилин Көрктөө */
+        .symbol-toolbar-scroll::-webkit-scrollbar { height: 6px; }
+        .symbol-toolbar-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); border-radius: 3px; }
+        .symbol-toolbar-scroll::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 3px; }
+        .symbol-toolbar-scroll::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
 
-        /* Formula Modal Style */
-        .fe-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 15px; }
-        .fe-modal { background: #0b0f19; border: 1px solid #00f0ff; border-radius: 12px; width: 100%; max-width: 750px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); color: #fff; }
-        .fe-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #030712; border-bottom: 1px solid rgba(0, 240, 255, 0.2); }
-        .fe-header h3 { color: #00f0ff; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
-        .fe-close-btn { background: transparent; border: none; color: #a5b4fc; font-size: 1.4rem; cursor: pointer; }
-        .fe-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .tpl-btn { 
+            background: rgba(15, 23, 42, 0.9); 
+            border: 1px solid rgba(0, 240, 255, 0.3); 
+            color: #00f0ff; 
+            padding: 6px 12px; 
+            border-radius: 6px; 
+            font-size: 0.9rem; 
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;
+            flex-shrink: 0;
+            user-select: none;
+        }
+        .tpl-btn:hover { 
+            background: #00f0ff; 
+            color: #000; 
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.5); 
+            transform: translateY(-1px);
+        }
         
-        /* MathLive Visual Field Style */
-        math-field { font-size: 1.4rem; padding: 12px; background: #02040a; border: 1px solid #00f0ff; border-radius: 8px; color: #fff; width: 100%; outline: none; }
-        
-        .quick-templates { display: flex; flex-wrap: wrap; gap: 8px; }
-        .template-chip { background: rgba(255,255,255,0.06); border: 1px solid rgba(0,240,255,0.3); color: #00f0ff; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
-        .template-chip:hover { background: #00f0ff; color: #000; }
-        
-        .fe-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #030712; border-top: 1px solid rgba(0, 240, 255, 0.2); }
+        .tpl-btn .box-icon {
+            display: inline-block;
+            border: 1px dashed currentColor;
+            width: 11px;
+            height: 11px;
+            margin: 0 2px;
+            vertical-align: middle;
+            border-radius: 1px;
+        }
+
+        /* WYSIWYG Текст талаасы */
+        .input-wrapper { position: relative; width: 100%; margin-bottom: 12px; }
+        .math-live-preview { min-height: 48px; padding: 10px 14px; background: #02040a; border: 1px solid rgba(0,240,255,0.4); border-radius: 6px; color: #fff; cursor: text; display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 1rem; }
+        .math-live-preview:hover { border-color: #00f0ff; }
+        .raw-input { width: 100%; min-height: 48px; background: #020208; border: 1px solid #00f0ff; color: #00f0ff; font-family: 'Consolas', monospace; padding: 10px; border-radius: 6px; resize: vertical; display: none; }
     </style>
 </head>
 <body>
@@ -119,96 +147,113 @@
         </form>
     </div>
 
-    <!-- MathLive Visual Editor Modal -->
-    <div id="formulaModal" class="fe-modal-overlay">
-        <div class="fe-modal">
-            <div class="fe-header">
-                <h3><i class="fa-solid fa-square-root-variable"></i> Визуалдык Формула Редактору</h3>
-                <button type="button" class="fe-close-btn" onclick="closeFormulaModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            
-            <div class="fe-body">
-                <p style="font-size: 0.85rem; color: #a5b4fc;">Төмөндөгү талаага териңиз же экрандагы клавиатураны колдонуңуз:</p>
-                
-                <!-- MathLive Visual Element -->
-                <math-field id="mfInput"></math-field>
-
-                <label style="font-size:0.8rem; color:#a5b4fc; margin-top:5px;">Даяр физика/математика шаблондору:</label>
-                <div class="quick-templates">
-                    <button type="button" class="template-chip" onclick="insertTemplate('\\frac{a}{b}')">Бөлчөк (a/b)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('x^{2}')">Даража (x²)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('x_{0}')">Индекс (x₀)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('\\sqrt{x}')">Тамыр (√x)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('\\int_{a}^{b}')">Интеграл (∫)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('\\vec{v}')">Вектор (v⃗)</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('E=mc^2')">E=mc²</button>
-                    <button type="button" class="template-chip" onclick="insertTemplate('I=\\frac{U}{R}')">I=U/R</button>
-                </div>
-            </div>
-
-            <div class="fe-footer">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeFormulaModal()">Баш тартуу</button>
-                <button type="button" class="btn btn-sm" onclick="applyFormula()"><i class="fa-solid fa-check"></i> Текстке Кошуу</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Logic -->
+    <!-- Main JS Bundle Logic -->
     <script type="module" src="../js/test-builder.js"></script>
 
-    <!-- Formula Engine Logic -->
+    <!-- Visual Template Injector Engine -->
     <script>
-        let currentActiveInput = null;
-
-        // Символду же формуланы түздөн-түз активдүү инпутка киргизүү
-        window.insertSymbol = function(btn, symbol) {
-            const container = btn.closest('.q-box') || btn.closest('.form-group') || document;
-            const input = container.querySelector('textarea, input[type="text"]');
-            if (input) {
-                const start = input.selectionStart || input.value.length;
-                const end = input.selectionEnd || input.value.length;
-                input.value = input.value.substring(0, start) + symbol + input.value.substring(end);
-                input.focus();
-                input.selectionStart = input.selectionEnd = start + symbol.length;
-            }
-        };
-
-        // Визуалдык редакторду ачуу
-        window.openFormulaModal = function(btn) {
-            const container = btn.closest('.q-box') || btn.closest('.form-group') || btn.parentElement;
-            currentActiveInput = container.querySelector('textarea, input[type="text"]');
+        // БАРДЫК ДАЯР ЯЧЕЙКАЛЫК ШАБЛОНДОР МЕНЕН СИМВОЛДОР
+        const TEMPLATES = [
+            // Бөлчөктөр (1-сүрөт)
+            { label: '<span class="box-icon"></span>/<span class="box-icon"></span>', code: '\\frac{?}{?}', cursorOffset: 6 },
+            { label: '<span class="box-icon"></span>/%', code: '\\frac{?}{\\%}', cursorOffset: 6 },
             
-            const modal = document.getElementById('formulaModal');
-            const mf = document.getElementById('mfInput');
-            
-            mf.setValue('');
-            modal.style.display = 'flex';
-            setTimeout(() => mf.focus(), 100);
-        };
+            // Даража жана индекстер (2-сүрөт)
+            { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup>', code: '^{?}', cursorOffset: 2 },
+            { label: '<span class="box-icon"></span><sub><span class="box-icon"></span></sub>', code: '_{?}', cursorOffset: 2 },
+            { label: '<span class="box-icon"></span><sup><span class="box-icon"></span></sup><sub><span class="box-icon"></span></sub>', code: '_{?}^{?}', cursorOffset: 2 },
 
-        window.closeFormulaModal = function() {
-            document.getElementById('formulaModal').style.display = 'none';
-        };
+            // Тамырлар (3-сүрөт)
+            { label: '√<span class="box-icon"></span>', code: '\\sqrt{?}', cursorOffset: 6 },
+            { label: '<sup><span class="box-icon"></span></sup>√<span class="box-icon"></span>', code: '\\sqrt[?]{?}', cursorOffset: 6 },
+            { label: '<sup>2</sup>√<span class="box-icon"></span>', code: '\\sqrt[2]{?}', cursorOffset: 7 },
+            { label: '<sup>3</sup>√<span class="box-icon"></span>', code: '\\sqrt[3]{?}', cursorOffset: 7 },
 
-        window.insertTemplate = function(latex) {
-            const mf = document.getElementById('mfInput');
-            mf.insert(latex);
-            mf.focus();
-        };
+            // Тригонометрия (4-сүрөт)
+            { label: 'sin <span class="box-icon"></span>', code: '\\sin(? )', cursorOffset: 5 },
+            { label: 'cos <span class="box-icon"></span>', code: '\\cos(? )', cursorOffset: 5 },
+            { label: 'tan <span class="box-icon"></span>', code: '\\tan(? )', cursorOffset: 5 },
+            { label: 'cot <span class="box-icon"></span>', code: '\\cot(? )', cursorOffset: 5 },
+            { label: 'sec <span class="box-icon"></span>', code: '\\sec(? )', cursorOffset: 5 },
+            { label: 'csc <span class="box-icon"></span>', code: '\\csc(? )', cursorOffset: 5 },
 
-        window.applyFormula = function() {
-            const mf = document.getElementById('mfInput');
-            const latex = mf.getValue('latex');
-            
-            if (latex && currentActiveInput) {
-                const formatted = ` $${latex}$ `;
-                const start = currentActiveInput.selectionStart || currentActiveInput.value.length;
-                const end = currentActiveInput.selectionEnd || currentActiveInput.value.length;
+            // Физикалык & Математикалык Символдор
+            { label: 'α', code: '\\alpha', cursorOffset: 6 },
+            { label: 'β', code: '\\beta', cursorOffset: 5 },
+            { label: 'Ω', code: '\\Omega', cursorOffset: 6 },
+            { label: 'λ', code: '\\lambda', cursorOffset: 7 },
+            { label: '℃', code: '^\\circ C', cursorOffset: 8 },
+            { label: 'v⃗', code: '\\vec{v}', cursorOffset: 7 },
+            { label: '∫', code: '\\int_{?}^{?}', cursorOffset: 5 },
+            { label: '∑', code: '\\sum_{?}^{?}', cursorOffset: 5 },
+            { label: 'Δ', code: '\\Delta', cursorOffset: 6 },
+            { label: '∞', code: '\\infty', cursorOffset: 6 },
+            { label: '≈', code: '\\approx', cursorOffset: 7 },
+            { label: '±', code: '\\pm', cursorOffset: 3 }
+        ];
+
+        // Суроонун же варианттын үстүнө горизонталынан сыдырылма панелди динамикалык түзүү
+        window.createScrollableToolbar = function(targetInput) {
+            const toolbar = document.createElement('div');
+            toolbar.className = 'symbol-toolbar-scroll';
+
+            TEMPLATES.forEach(tpl => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'tpl-btn';
+                btn.innerHTML = tpl.label;
+                btn.title = 'Шаблонду киргизүү';
                 
-                currentActiveInput.value = currentActiveInput.value.substring(0, start) + formatted + currentActiveInput.value.substring(end);
-                currentActiveInput.focus();
-            }
-            closeFormulaModal();
+                // Чыкылдатканда курсор турган жерге шаблон кошуу
+                btn.onmousedown = (e) => {
+                    e.preventDefault(); // Инпуттан фокусту жоготпош үчүн
+                    insertTemplateAtCursor(targetInput, tpl.code, tpl.cursorOffset);
+                };
+                toolbar.appendChild(btn);
+            });
+
+            return toolbar;
+        };
+
+        // Текстке ошол замат курсор токтогон жерге шаблон түшүрүү
+        function insertTemplateAtCursor(input, code, cursorOffset) {
+            const start = input.selectionStart || input.value.length;
+            const end = input.selectionEnd || input.value.length;
+            const val = input.value;
+
+            // Формула $ белгисинин ичинде болушун текшерүү же кошуу
+            let textToInsert = code;
+            
+            input.value = val.substring(0, start) + textToInsert + val.substring(end);
+            
+            // Фокусту кайра киргизилген ячейканын (суроо белгиси токтогон жеринин) ичине тууралоо
+            input.focus();
+            const newCursorPos = start + (cursorOffset || textToInsert.length);
+            input.setSelectionRange(newCursorPos, newCursorPos);
+
+            // Резервдеги MathJax дисплейин жаңыртуу
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Инпуттарды жана Суроо-Жооп Блокторун Интеграциялоо Функциясы
+        window.setupQuestionMath = function(qBox) {
+            const inputs = qBox.querySelectorAll('textarea, input[type="text"]');
+            
+            inputs.forEach(input => {
+                if(input.dataset.toolbarAttached) return;
+                input.dataset.toolbarAttached = "true";
+
+                // Сыдырылма панелди инпуттун өйдө жагына кошуу
+                const toolbar = window.createScrollableToolbar(input);
+                input.parentNode.insertBefore(toolbar, input);
+
+                // Инпуттун ичиндеги MathJax визуализациясы
+                const wrapper = document.createElement('div');
+                wrapper.className = 'input-wrapper';
+                input.parentNode.insertBefore(wrapper, input);
+                wrapper.appendChild(toolbar);
+                wrapper.appendChild(input);
+            });
         };
     </script>
 </body>
