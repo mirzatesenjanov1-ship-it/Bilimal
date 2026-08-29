@@ -6,7 +6,7 @@
     <title>Тест Конструктору — BiliMal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- MathJax 3 Engine -->
+    <!-- MathJax 3 (Формулаларды тестте кооз көрсөтүү үчүн) -->
     <script>
         window.MathJax = {
             tex: {
@@ -17,6 +17,10 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- MathLive Visual Formula Editor (Word сыяктуу графикалык редактор) -->
+    <link rel="stylesheet" href="https://unpkg.com/mathlive/dist/mathlive-static.css" />
+    <script src="https://unpkg.com/mathlive"></script>
 
     <style>
         * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', sans-serif; }
@@ -51,45 +55,22 @@
         .symbol-btn.pro-btn { background: linear-gradient(45deg, #7928ca, #ff0080); color: #fff; border: none; font-weight: bold; }
         .symbol-btn.pro-btn:hover { box-shadow: 0 0 12px rgba(255,0,128,0.6); }
 
-        /* Word-Style WYSIWYG Container */
-        .math-input-wrapper { position: relative; width: 100%; margin-bottom: 10px; }
-        .math-preview-render { min-height: 50px; padding: 10px 14px; background: #02040a; border: 1px solid rgba(0,240,255,0.4); border-radius: 6px; color: #fff; cursor: text; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; font-size: 1.05rem; }
-        .math-preview-render:hover { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.15); }
-        .math-raw-textarea { width: 100%; min-height: 50px; display: none; background: #020208; border: 1px solid #00f0ff; color: #00f0ff; font-family: 'Consolas', monospace; padding: 10px; border-radius: 6px; resize: vertical; }
-
-        /* Formula Editor Modal Fixes */
-        .fe-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 12px; }
-        .fe-modal { background: #0b0f19; border: 1px solid #00f0ff; border-radius: 12px; width: 100%; max-width: 850px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); color: #fff; }
-        
-        .fe-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #030712; border-bottom: 1px solid rgba(0, 240, 255, 0.2); flex-shrink: 0; }
-        .fe-header h3 { color: #00f0ff; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+        /* Formula Modal Style */
+        .fe-modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 10000; padding: 15px; }
+        .fe-modal { background: #0b0f19; border: 1px solid #00f0ff; border-radius: 12px; width: 100%; max-width: 750px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 30px rgba(0, 240, 255, 0.25); color: #fff; }
+        .fe-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #030712; border-bottom: 1px solid rgba(0, 240, 255, 0.2); }
+        .fe-header h3 { color: #00f0ff; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
         .fe-close-btn { background: transparent; border: none; color: #a5b4fc; font-size: 1.4rem; cursor: pointer; }
-        .fe-close-btn:hover { color: #ff0055; }
+        .fe-body { padding: 20px; display: flex; flex-direction: column; gap: 15px; }
         
-        .fe-body { padding: 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+        /* MathLive Visual Field Style */
+        math-field { font-size: 1.4rem; padding: 12px; background: #02040a; border: 1px solid #00f0ff; border-radius: 8px; color: #fff; width: 100%; outline: none; }
         
-        .fe-search-box input { width: 100%; padding: 8px 12px; font-size: 0.88rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 6px; color: #fff; }
+        .quick-templates { display: flex; flex-wrap: wrap; gap: 8px; }
+        .template-chip { background: rgba(255,255,255,0.06); border: 1px solid rgba(0,240,255,0.3); color: #00f0ff; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; cursor: pointer; transition: 0.2s; }
+        .template-chip:hover { background: #00f0ff; color: #000; }
         
-        .fe-nav-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); flex-shrink: 0; }
-        .fe-tab-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a5b4fc; padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; white-space: nowrap; }
-        .fe-tab-btn.active, .fe-tab-btn:hover { background: rgba(0, 240, 255, 0.15); border-color: #00f0ff; color: #00f0ff; }
-        
-        .fe-palette-grid { display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; background: rgba(0, 0, 0, 0.4); padding: 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.08); align-content: flex-start; flex-shrink: 0; }
-        .fe-item-btn { background: #131b2e; border: 1px solid rgba(0, 240, 255, 0.25); color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
-        .fe-item-btn:hover { background: #00f0ff; color: #000; font-weight: bold; }
-        
-        .fe-editor-area { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
-        .fe-toolbar-actions { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
-        .fe-mode-selector { display: flex; gap: 10px; align-items: center; font-size: 0.8rem; color: #a5b4fc; }
-        .fe-mode-selector label { cursor: pointer; color: #fff; display: flex; align-items: center; gap: 4px; }
-        
-        .fe-textarea { width: 100%; font-family: 'Consolas', monospace; font-size: 0.95rem; background: #02040a; border: 1px solid rgba(0, 240, 255, 0.4); color: #00f0ff; border-radius: 6px; padding: 10px; resize: none; height: 60px; }
-        
-        .fe-preview-box { background: rgba(0, 240, 255, 0.03); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; padding: 12px; min-height: 70px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; flex-shrink: 0; }
-        .fe-preview-title { position: absolute; top: 4px; left: 8px; font-size: 0.65rem; color: #7dd3fc; text-transform: uppercase; }
-        .fe-preview-content { font-size: 1.15rem; color: #fff; max-width: 100%; overflow-x: auto; text-align: center; }
-        
-        .fe-footer { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #030712; border-top: 1px solid rgba(0, 240, 255, 0.2); flex-shrink: 0; }
+        .fe-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; background: #030712; border-top: 1px solid rgba(0, 240, 255, 0.2); }
     </style>
 </head>
 <body>
@@ -138,312 +119,96 @@
         </form>
     </div>
 
-    <!-- Equation Editor Modal -->
-    <div id="formulaEditorModal" class="fe-modal-overlay">
+    <!-- MathLive Visual Editor Modal -->
+    <div id="formulaModal" class="fe-modal-overlay">
         <div class="fe-modal">
             <div class="fe-header">
-                <h3><i class="fa-solid fa-calculator"></i> Formula Editor (Word Style)</h3>
-                <button type="button" class="fe-close-btn" onclick="closeFormulaEditor()"><i class="fa-solid fa-xmark"></i></button>
+                <h3><i class="fa-solid fa-square-root-variable"></i> Визуалдык Формула Редактору</h3>
+                <button type="button" class="fe-close-btn" onclick="closeFormulaModal()"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="fe-body">
-                <div class="fe-search-box">
-                    <input type="text" id="feSearchInput" placeholder="Формула же символ издеңиз..." oninput="filterFormulaPalette()">
-                </div>
+                <p style="font-size: 0.85rem; color: #a5b4fc;">Төмөндөгү талаага териңиз же экрандагы клавиатураны колдонуңуз:</p>
+                
+                <!-- MathLive Visual Element -->
+                <math-field id="mfInput"></math-field>
 
-                <div class="fe-nav-tabs" id="feTabs">
-                    <button type="button" class="fe-tab-btn active" onclick="switchFEPalette('struct', event)">Structures</button>
-                    <button type="button" class="fe-tab-btn" onclick="switchFEPalette('calc', event)">Calculus & Math</button>
-                    <button type="button" class="fe-tab-btn" onclick="switchFEPalette('greek', event)">Greek Letters</button>
-                    <button type="button" class="fe-tab-btn" onclick="switchFEPalette('symbols', event)">Physics Symbols</button>
-                    <button type="button" class="fe-tab-btn" onclick="switchFEPalette('units', event)">Units & Const</button>
-                    <button type="button" class="fe-tab-btn" onclick="switchFEPalette('templates', event)">Physics Templates</button>
-                </div>
-
-                <div class="fe-palette-grid" id="fePalette"></div>
-
-                <div class="fe-editor-area">
-                    <div class="fe-toolbar-actions">
-                        <div style="display:flex; gap:6px;">
-                            <button type="button" class="symbol-btn" onclick="feUndo()"><i class="fa-solid fa-rotate-left"></i> Undo</button>
-                            <button type="button" class="symbol-btn" onclick="feRedo()"><i class="fa-solid fa-rotate-right"></i> Redo</button>
-                            <button type="button" class="symbol-btn" onclick="feClear()"><i class="fa-solid fa-trash-can"></i> Тазалоо</button>
-                        </div>
-                        <div class="fe-mode-selector">
-                            <span>Режим:</span>
-                            <label><input type="radio" name="feMode" value="inline" checked onchange="updateFePreview()"> Inline ($...$)</label>
-                            <label><input type="radio" name="feMode" value="display" onchange="updateFePreview()"> Display ($$...$$)</label>
-                        </div>
-                    </div>
-
-                    <textarea id="feLatexInput" class="fe-textarea" placeholder="LaTeX кодун жазыңыз..." oninput="onFeInput()"></textarea>
-                </div>
-
-                <div class="fe-preview-box">
-                    <span class="fe-preview-title">Live Mathematical Preview</span>
-                    <div id="fePreview" class="fe-preview-content">$$\text{Preview}$$</div>
+                <label style="font-size:0.8rem; color:#a5b4fc; margin-top:5px;">Даяр физика/математика шаблондору:</label>
+                <div class="quick-templates">
+                    <button type="button" class="template-chip" onclick="insertTemplate('\\frac{a}{b}')">Бөлчөк (a/b)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('x^{2}')">Даража (x²)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('x_{0}')">Индекс (x₀)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('\\sqrt{x}')">Тамыр (√x)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('\\int_{a}^{b}')">Интеграл (∫)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('\\vec{v}')">Вектор (v⃗)</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('E=mc^2')">E=mc²</button>
+                    <button type="button" class="template-chip" onclick="insertTemplate('I=\\frac{U}{R}')">I=U/R</button>
                 </div>
             </div>
 
             <div class="fe-footer">
-                <div></div>
-                <div style="display:flex; gap:10px;">
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeFormulaEditor()">Баш тартуу</button>
-                    <button type="button" class="btn btn-sm" onclick="insertFormulaToTarget()"><i class="fa-solid fa-check"></i> Текстке Киргизүү</button>
-                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeFormulaModal()">Баш тартуу</button>
+                <button type="button" class="btn btn-sm" onclick="applyFormula()"><i class="fa-solid fa-check"></i> Текстке Кошуу</button>
             </div>
         </div>
     </div>
 
-    <!-- Main JS Bundle Logic -->
+    <!-- Main Logic -->
     <script type="module" src="../js/test-builder.js"></script>
 
     <!-- Formula Engine Logic -->
     <script>
-        window.feTargetInput = null;
-        let feHistory = [];
-        let feHistoryStep = -1;
+        let currentActiveInput = null;
 
-        const PALETTES = {
-            struct: [
-                { label: 'Fraction (a/b)', latex: '\\frac{a}{b}' },
-                { label: 'Power (x²)', latex: 'x^{2}' },
-                { label: 'Index (x₀)', latex: 'x_{0}' },
-                { label: 'Power & Index (x₀²)', latex: 'x_{0}^{2}' },
-                { label: 'Sqrt (√x)', latex: '\\sqrt{x}' },
-                { label: 'Cube Root (∛x)', latex: '\\sqrt[3]{x}' },
-                { label: 'Vector (v⃗)', latex: '\\vec{v}' },
-                { label: 'Vector Modulus (|v⃗|)', latex: '|\\vec{v}|' }
-            ],
-            calc: [
-                { label: 'Integral (∫)', latex: '\\int f(x) dx' },
-                { label: 'Def Integral (∫ₐᵇ)', latex: '\\int_{a}^{b} f(x) dx' },
-                { label: 'Derivative (df/dx)', latex: '\\frac{df}{dx}' },
-                { label: 'Sum (∑)', latex: '\\sum_{i=1}^{n} x_{i}' },
-                { label: 'Limit (lim)', latex: '\\lim_{x \\to 0}' },
-                { label: 'sin α', latex: '\\sin \\alpha' },
-                { label: 'cos β', latex: '\\cos \\beta' },
-                { label: 'tan θ', latex: '\\tan \\theta' }
-            ],
-            greek: [
-                { label: 'α', latex: '\\alpha' }, { label: 'β', latex: '\\beta' }, { label: 'γ', latex: '\\gamma' },
-                { label: 'δ', latex: '\\delta' }, { label: 'ε', latex: '\\varepsilon' }, { label: 'θ', latex: '\\theta' },
-                { label: 'λ', latex: '\\lambda' }, { label: 'μ', latex: '\\mu' }, { label: 'π', latex: '\\pi' },
-                { label: 'ρ', latex: '\\rho' }, { label: 'σ', latex: '\\sigma' }, { label: 'φ', latex: '\\phi' },
-                { label: 'ω', latex: '\\omega' }, { label: 'Δ', latex: '\\Delta' }, { label: 'Ω', latex: '\\Omega' }
-            ],
-            symbols: [
-                { label: '∞', latex: '\\infty' }, { label: '≈', latex: '\\approx' }, { label: '≠', latex: '\\neq' },
-                { label: '≤', latex: '\\le' }, { label: '≥', latex: '\\ge' }, { label: '±', latex: '\\pm' },
-                { label: '∝', latex: '\\propto' }, { label: '→', latex: '\\rightarrow' }, { label: '·', latex: '\\cdot' },
-                { label: '×', latex: '\\times' }, { label: '°C', latex: '^\\circ C' }
-            ],
-            units: [
-                { label: 'm/s', latex: '\\text{m/s}' }, { label: 'm/s²', latex: '\\text{m/s}^2' },
-                { label: 'J (Жоуль)', latex: '\\text{J}' }, { label: 'W (Ватт)', latex: '\\text{W}' },
-                { label: 'Pa (Паскаль)', latex: '\\text{Pa}' }, { label: 'Hz (Герц)', latex: '\\text{Hz}' },
-                { label: 'Ω (Ом)', latex: '\\Omega' }, { label: 'g (9.8 m/s²)', latex: 'g = 9.8 \\text{ m/s}^2' }
-            ],
-            templates: [
-                { label: 'v = s/t', latex: 'v = \\frac{s}{t}' },
-                { label: 'F = ma', latex: 'F = ma' },
-                { label: 'Ek = mv²/2', latex: 'E_k = \\frac{m v^2}{2}' },
-                { label: 'Q = cmΔT', latex: 'Q = cm\\Delta T' },
-                { label: 'I = U/R', latex: 'I = \\frac{U}{R}' },
-                { label: 'E = mc²', latex: 'E = mc^2' }
-            ]
+        // Символду же формуланы түздөн-түз активдүү инпутка киргизүү
+        window.insertSymbol = function(btn, symbol) {
+            const container = btn.closest('.q-box') || btn.closest('.form-group') || document;
+            const input = container.querySelector('textarea, input[type="text"]');
+            if (input) {
+                const start = input.selectionStart || input.value.length;
+                const end = input.selectionEnd || input.value.length;
+                input.value = input.value.substring(0, start) + symbol + input.value.substring(end);
+                input.focus();
+                input.selectionStart = input.selectionEnd = start + symbol.length;
+            }
         };
 
-        // Safe Input Converter (No freeze)
-        window.attachMathRenderToTextarea = function(textarea) {
-            if (textarea.dataset.mathBound) return;
-            textarea.dataset.mathBound = "true";
-
-            const wrapper = document.createElement('div');
-            wrapper.className = 'math-input-wrapper';
+        // Визуалдык редакторду ачуу
+        window.openFormulaModal = function(btn) {
+            const container = btn.closest('.q-box') || btn.closest('.form-group') || btn.parentElement;
+            currentActiveInput = container.querySelector('textarea, input[type="text"]');
             
-            const renderDiv = document.createElement('div');
-            renderDiv.className = 'math-preview-render';
-            renderDiv.title = 'Чикылдатып оңдоңуз (Word сыяктуу)';
+            const modal = document.getElementById('formulaModal');
+            const mf = document.getElementById('mfInput');
             
-            textarea.parentNode.insertBefore(wrapper, textarea);
-            wrapper.appendChild(textarea);
-            wrapper.appendChild(renderDiv);
-
-            textarea.classList.add('math-raw-textarea');
-
-            const updateRender = () => {
-                const val = textarea.value.trim();
-                if(!val) {
-                    renderDiv.innerHTML = '<span style="color:#64748b; font-size:0.88rem;">Суроонун текстин жазыңыз же формула кошуңуз...</span>';
-                } else {
-                    renderDiv.textContent = val;
-                    if (window.MathJax && window.MathJax.typesetPromise) {
-                        window.MathJax.typesetPromise([renderDiv]).catch(err => console.log(err));
-                    }
-                }
-            };
-
-            renderDiv.addEventListener('click', () => {
-                renderDiv.style.display = 'none';
-                textarea.style.display = 'block';
-                textarea.focus();
-            });
-
-            textarea.addEventListener('blur', () => {
-                textarea.style.display = 'none';
-                renderDiv.style.display = 'flex';
-                updateRender();
-            });
-
-            updateRender();
-        };
-
-        window.openFormulaEditor = function(targetEl) {
-            window.feTargetInput = targetEl;
-            const modal = document.getElementById('formulaEditorModal');
+            mf.setValue('');
             modal.style.display = 'flex';
-            
-            const val = targetEl ? targetEl.value : '';
-            const textarea = document.getElementById('feLatexInput');
-            textarea.value = val.replace(/^\$\$|\$\$$|^\$|\$$/g, '');
-            
-            feHistory = [textarea.value];
-            feHistoryStep = 0;
-            
-            switchFEPalette('struct');
-            updateFePreview();
+            setTimeout(() => mf.focus(), 100);
         };
 
-        window.closeFormulaEditor = function() {
-            document.getElementById('formulaEditorModal').style.display = 'none';
+        window.closeFormulaModal = function() {
+            document.getElementById('formulaModal').style.display = 'none';
         };
 
-        window.switchFEPalette = function(tabKey, evt) {
-            const tabs = document.querySelectorAll('.fe-tab-btn');
-            tabs.forEach(t => t.classList.remove('active'));
-            if(evt && evt.target) {
-                evt.target.classList.add('active');
-            } else if(tabs.length > 0) {
-                tabs[0].classList.add('active');
-            }
-            
-            const grid = document.getElementById('fePalette');
-            grid.innerHTML = '';
-            
-            const list = PALETTES[tabKey] || [];
-            list.forEach(item => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'fe-item-btn';
-                btn.innerText = item.label;
-                btn.onclick = () => feInsertLatex(item.latex);
-                grid.appendChild(btn);
-            });
+        window.insertTemplate = function(latex) {
+            const mf = document.getElementById('mfInput');
+            mf.insert(latex);
+            mf.focus();
         };
 
-        window.filterFormulaPalette = function() {
-            const q = document.getElementById('feSearchInput').value.toLowerCase().trim();
-            const grid = document.getElementById('fePalette');
-            grid.innerHTML = '';
+        window.applyFormula = function() {
+            const mf = document.getElementById('mfInput');
+            const latex = mf.getValue('latex');
             
-            if(!q) { switchFEPalette('struct'); return; }
-            
-            let matches = [];
-            Object.keys(PALETTES).forEach(key => {
-                PALETTES[key].forEach(item => {
-                    if((item.label + ' ' + item.latex).toLowerCase().includes(q)) matches.push(item);
-                });
-            });
-
-            matches.forEach(item => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'fe-item-btn';
-                btn.innerText = item.label;
-                btn.onclick = () => feInsertLatex(item.latex);
-                grid.appendChild(btn);
-            });
-        };
-
-        window.feInsertLatex = function(code) {
-            const textarea = document.getElementById('feLatexInput');
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const text = textarea.value;
-            
-            textarea.value = text.substring(0, start) + code + text.substring(end);
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = start + code.length;
-            
-            onFeInput();
-        };
-
-        window.onFeInput = function() {
-            updateFePreview();
-        };
-
-        window.feClear = function() {
-            document.getElementById('feLatexInput').value = '';
-            updateFePreview();
-        };
-
-        window.updateFePreview = function() {
-            const latex = document.getElementById('feLatexInput').value.trim();
-            const modeRadio = document.querySelector('input[name="feMode"]:checked');
-            const isDisplay = modeRadio ? modeRadio.value === 'display' : false;
-            const previewEl = document.getElementById('fePreview');
-            
-            if(!latex) {
-                previewEl.innerHTML = '<span style="color:#64748b; font-size:0.9rem;">(Формула бул жерде көрүнөт)</span>';
-                return;
-            }
-
-            const wrapper = isDisplay ? `$$\n${latex}\n$$` : `$${latex}$`;
-            previewEl.textContent = wrapper;
-            
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise([previewEl]).catch(err => console.log('MathJax error:', err));
-            }
-        };
-
-        window.insertFormulaToTarget = function() {
-            const latex = document.getElementById('feLatexInput').value.trim();
-            if(!latex) {
-                closeFormulaEditor();
-                return;
-            }
-
-            const modeRadio = document.querySelector('input[name="feMode"]:checked');
-            const isDisplay = modeRadio ? modeRadio.value === 'display' : false;
-            const formatted = isDisplay ? ` $$${latex}$$ ` : ` $${latex}$ `;
-            
-            if(window.feTargetInput) {
-                const el = window.feTargetInput;
-                const start = el.selectionStart || el.value.length;
-                const end = el.selectionEnd || el.value.length;
-                el.value = el.value.substring(0, start) + formatted + el.value.substring(end);
+            if (latex && currentActiveInput) {
+                const formatted = ` $${latex}$ `;
+                const start = currentActiveInput.selectionStart || currentActiveInput.value.length;
+                const end = currentActiveInput.selectionEnd || currentActiveInput.value.length;
                 
-                el.dispatchEvent(new Event('blur', { bubbles: true }));
+                currentActiveInput.value = currentActiveInput.value.substring(0, start) + formatted + currentActiveInput.value.substring(end);
+                currentActiveInput.focus();
             }
-
-            closeFormulaEditor();
-        };
-
-        // Helper function for custom buttons inside dynamically generated questions
-        window.setupQuestionMath = function(qBox) {
-            const textarea = qBox.querySelector('textarea, input[type="text"]');
-            if(textarea) window.attachMathRenderToTextarea(textarea);
-
-            const toolbar = qBox.querySelector('.symbol-toolbar');
-            if(toolbar && !toolbar.querySelector('.fe-trigger-btn')) {
-                const feBtn = document.createElement('button');
-                feBtn.type = 'button';
-                feBtn.className = 'symbol-btn pro-btn fe-trigger-btn';
-                feBtn.innerHTML = '<i class="fa-solid fa-square-root-variable"></i> Equation Editor';
-                feBtn.onclick = () => window.openFormulaEditor(textarea);
-                toolbar.appendChild(feBtn);
-            }
+            closeFormulaModal();
         };
     </script>
 </body>
