@@ -8,7 +8,7 @@ let timerInterval = null;
 
 // Анти-чит өзгөрмөлөрү
 let warningCount = 0;
-const MAX_WARNINGS = 3;
+const MAX_WARNINGS = 3; // Лимит катары 3 эскертүү (кааласаңыз сан өзгөртсөңүз болот)
 let isTestFinished = false;
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -67,10 +67,7 @@ async function startTest() {
     const maxAttempts = testData.maxAttempts !== undefined ? parseInt(testData.maxAttempts) : 0;
 
     if (maxAttempts > 0) {
-        // Базадан ушул окуучу канча жолу тапшырганын эсептөө
         const studentAttempts = await getStudentAttemptsCount(testId, name);
-
-        // Браузердин LocalStorage эсинен да текшерүү
         const localKey = `bilimal_att_${testId}_${cleanName(name)}`;
         const localAttempts = parseInt(localStorage.getItem(localKey) || "0");
 
@@ -95,7 +92,6 @@ async function startTest() {
     renderQuestion();
 }
 
-// Окуучунун аты-жөнү боюнча базадагы тапшырган санын эсептөөчү функция
 async function getStudentAttemptsCount(targetTestId, studentName) {
     let count = 0;
     try {
@@ -117,7 +113,6 @@ async function getStudentAttemptsCount(targetTestId, studentName) {
     return count;
 }
 
-// Стрингди тазалоо функциясы (Аралык боштуктарды жана регистрацияны тегиздөө)
 function cleanName(str) {
     if (!str) return '';
     return str.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -240,6 +235,10 @@ async function finishTest(reason = 'normal') {
     if (isTestFinished) return;
     isTestFinished = true;
 
+    // Overlay болсо аны алып салуу
+    const overlay = document.getElementById('ai-protection-overlay');
+    if (overlay) overlay.style.display = 'none';
+
     if (timerInterval) clearInterval(timerInterval);
     saveAnswer();
 
@@ -302,7 +301,6 @@ async function finishTest(reason = 'normal') {
         const resultsRef = ref(db, `test_results/${testId}`);
         await push(resultsRef, payload);
 
-        // LocalStorage ичиндеги тапшыруу эсебин +1 көбөйтүү
         const localKey = `bilimal_att_${testId}_${cleanName(name)}`;
         const prevLocal = parseInt(localStorage.getItem(localKey) || "0");
         localStorage.setItem(localKey, (prevLocal + 1).toString());
@@ -369,19 +367,59 @@ function enableStrictProtection() {
     document.body.style.msUserSelect = 'none';
 }
 
+// АНТИ-ЧИТ / ЭКРАНДАН ЧЫГУУ ЖАНА BLUR КОРГООСУ
 function activateTabSwitchProtection() {
-    const handleViolation = () => {
+    const triggerViolation = () => {
         if (isTestFinished) return;
-        if (document.hidden) {
-            warningCount++;
-            if (warningCount < MAX_WARNINGS) {
-                alert(`⚠️ ЭСКЕРТҮҮ (${warningCount}/${MAX_WARNINGS})!\nТест учурунда башка баракчага өтүүгө болбойт.`);
-            } else {
-                alert("❌ Эрежелер кайра-кайра бузулгандыктан тест бөгөттөлдү!");
-                finishTest('cheating');
-            }
+
+        warningCount++;
+
+        let overlay = document.getElementById('ai-protection-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'ai-protection-overlay';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#03030d; z-index:999999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#00f0ff; font-size:1.3rem; font-weight:bold; text-align:center; padding:20px; box-sizing:border-box;';
+            
+            overlay.addEventListener('click', function() {
+                if (warningCount < MAX_WARNINGS && !isTestFinished) {
+                    overlay.style.display = 'none';
+                }
+            });
+
+            document.body.appendChild(overlay);
+        }
+
+        if (warningCount >= MAX_WARNINGS) {
+            overlay.innerHTML = `
+                <i class="fa-solid fa-ban" style="font-size:3.5rem; color:#ff0055; margin-bottom:15px;"></i>
+                <div style="color:#ff0055; font-size:1.6rem; margin-bottom:10px;">ТЕСТ БӨГӨТТӨЛДҮ!</div>
+                <div>Сиз башка терезеге өтүү эрежесин өтө көп буздуңуз (${warningCount}/${MAX_WARNINGS}).</div>
+                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жйынтыгыңыз мугалимге жөнөтүлдү.</div>
+            `;
+            overlay.style.display = 'flex';
+            finishTest('cheating');
+        } else {
+            overlay.innerHTML = `
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:3.5rem; color:#ffcc00; margin-bottom:15px;"></i>
+                <div style="font-size:1.5rem; margin-bottom:10px;">ЭСКЕРТҮҮ: Башка терезеге же AI куралына өтүүгө болбойт!</div>
+                <div style="background:rgba(255,0,85,0.2); border:1px solid #ff0055; color:#ff0055; padding:8px 16px; border-radius:20px; margin:15px 0; font-size:1.1rem;">
+                    ⚠️ Тесттен чыгуу эрежесин бузуу: <span style="font-size:1.4rem; font-weight:bold; color:#fff;">${warningCount}</span> / ${MAX_WARNINGS}
+                </div>
+                <div style="font-size:1rem; color:#a5b4fc; margin-top:10px; cursor:pointer;">Тестке кайтуу үчүн ушул экранды чыкылдатыңыз.</div>
+            `;
+            overlay.style.display = 'flex';
         }
     };
 
-    document.addEventListener('visibilitychange', handleViolation);
+    // 1. Вкладканы алмаштырганда (Visibilitychange)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            triggerViolation();
+        }
+    });
+
+    // 2. Edge Copilot / Башка колдонмого өткөндө (Blur)
+    window.addEventListener('blur', () => {
+        triggerViolation();
+    });
 }
