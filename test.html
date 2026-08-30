@@ -157,7 +157,7 @@
             white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            line-height: 1.5;
+            line-height: 1.6;
             font-size: 1.15rem;
             max-width: 100% !important;
             display: block !important;
@@ -169,7 +169,8 @@
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
-            display: inline-block !important;
+            display: inline !important;
+            margin: 0 3px !important;
         }
 
         @media (max-width: 600px) {
@@ -405,10 +406,13 @@
 
                     text = text.replace(/\\text\{([^}]+)\}/g, '$1');
 
-                    if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
-                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]*)/g, function(match) {
-                            return '$' + match.trim() + '$';
-                        });
+                    // Текстте даяр $ белгиси жок болсо гана коопсуз изоляция жасайбыз
+                    if (!text.includes('$')) {
+                        // Сандык өлчөм бирдиктерин туура ажыратуу (мисалы: 1000кг/м^3, 25см^2, 2,4м^2)
+                        text = text.replace(/(\d+(?:[.,]\d+)?)\s*([a-zA-Za-яА-ЯӨөҮүҢң]+(?:\^[0-9\-]+|\/[a-zA-Za-яА-ЯӨөҮүҢң0-9\^]+)+)/g, '$1 $2');
+                        
+                        // Эгер индекс же даража болсо гана формуланы $ ичине алуу (сөздөргө тийбей)
+                        text = text.replace(/(?<!\w)([a-zA-Za-яА-ЯӨөҮүҢң0-9\/\.,]+(?:\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+)(?!\w)/g, ' $1 ');
                     }
 
                     node.nodeValue = text;
