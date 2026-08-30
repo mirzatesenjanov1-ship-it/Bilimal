@@ -157,20 +157,22 @@
             white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            line-height: 1.6;
+            line-height: 1.7;
             font-size: 1.15rem;
             max-width: 100% !important;
             display: block !important;
             margin: 15px 0;
         }
 
+        /* MathJax туура жайгашуусу жана текст менен табигый көрүнүүсү үчүн стилдер */
         mjx-container, mjx-math, .MathJax {
             white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
-            display: inline !important;
-            margin: 0 3px !important;
+            display: inline-block !important;
+            margin: 0 4px !important;
+            vertical-align: middle !important;
         }
 
         @media (max-width: 600px) {
@@ -392,7 +394,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формула белгилерин MathJax аркылуу туура көрсөтүү -->
+    <!-- Тексттеги формулаларды жана өлчөм бирдиктерди акылдуу таанып MathJax аркылуу сулуу көрсөтүү -->
     <script>
         let isMathJaxRendering = false;
 
@@ -402,21 +404,34 @@
             const processNode = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
-                    if (!text) return;
+                    if (!text || text.trim() === '') return;
 
-                    text = text.replace(/\\text\{([^}]+)\}/g, '$1');
+                    // 1. \alpha, \rho сыяктуу жазылган LaTeX грек тамгаларын оңдоо
+                    text = text.replace(/\\(alpha|beta|gamma|delta|epsilon|theta|lambda|mu|nu|pi|rho|sigma|tau|phi|omega)/gi, function(match, name) {
+                        return '$\\' + name.toLowerCase() + '$';
+                    });
 
-                    // Текстте даяр $ белгиси жок болсо гана коопсуз изоляция жасайбыз
-                    if (!text.includes('$')) {
-                        // Сандык өлчөм бирдиктерин туура ажыратуу (мисалы: 1000кг/м^3, 25см^2, 2,4м^2)
-                        text = text.replace(/(\d+(?:[.,]\d+)?)\s*([a-zA-Za-яА-ЯӨөҮүҢң]+(?:\^[0-9\-]+|\/[a-zA-Za-яА-ЯӨөҮүҢң0-9\^]+)+)/g, '$1 $2');
-                        
-                        // Эгер индекс же даража болсо гана формуланы $ ичине алуу (сөздөргө тийбей)
-                        text = text.replace(/(?<!\w)([a-zA-Za-яА-ЯӨөҮүҢң0-9\/\.,]+(?:\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+)(?!\w)/g, ' $1 ');
-                    }
+                    // 2. Киргизилген туюнтмаларды ($ жокторду) аныктап MathJax кошуу:
+                    // p_0, a^3, a^2, м^3, м^2, кг/м^3, МН, F = a^3 ( p - p_0 )gh сыяктууларды $...$ ичине алуу
+                    
+                    // a) Формулалык варианттар (мисалы: F = a^2 ( ap - hp_0 )g же p_0)
+                    text = text.replace(/(?<!\$)([A-Za-z0-9_\^\+\-\*\/\(\)\s=]+(?:[\^_][0-9a-zA-Za-яА-Я]+)+[A-Za-z0-9_\^\+\-\*\/\(\)\s=]*)(?!\$)/g, function(match) {
+                        let trimmed = match.trim();
+                        // Тексттин катардагы жөнөкөй сөздөрү аралашып кетпөөсү үчүн текшерүү
+                        if (trimmed.length > 0 && !trimmed.includes('суу') && !trimmed.includes('куб')) {
+                            return ' $' + trimmed + '$ ';
+                        }
+                        return match;
+                    });
+
+                    // б) Өлчөм бирдиктери (м^3, м^2, кг/м^3) жана жалгыз жазылган индекстер/даражалар
+                    text = text.replace(/(?<!\$)\b([a-zA-Za-яА-ЯӨөҮүҢң0-9]+(?:\^[0-9]+|_[0-9a-zA-Za-яА-Я]+)+|\b(?:кг\/м\^3|м\^3|м\^2|МН))\b(?!\$)/g, ' $$1$ ');
+
+                    // кош доллар ($$) чыгып калса тазалоо
+                    text = text.replace(/\$\$+/g, '$');
 
                     node.nodeValue = text;
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && !node.classList.contains('MathJax')) {
                     Array.from(node.childNodes).forEach(processNode);
                 }
             };
