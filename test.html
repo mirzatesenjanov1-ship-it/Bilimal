@@ -164,14 +164,14 @@
             margin: 15px 0;
         }
 
-        /* MathJax туура жайгашуусу жана текст менен табигый көрүнүүсү үчүн стилдер */
+        /* MathJax контейнерлерин катардагы текст менен сыйдам туташтыруу */
         mjx-container, mjx-math, .MathJax {
             white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
             display: inline-block !important;
-            margin: 0 4px !important;
+            margin: 0 2px !important;
             vertical-align: middle !important;
         }
 
@@ -394,77 +394,103 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формулаларды жана өлчөм бирдиктерди акылдуу таанып MathJax аркылуу сулуу көрсөтүү -->
+    <!-- Жогорку деңгээлдеги физикалык формулаларды парсерлөө жана MathJax рендеринг коду -->
     <script>
-        let isMathJaxRendering = false;
+        let isProcessingMath = false;
 
-        function formatMathExpressions(container) {
-            if (!container) return;
+        // Физикалык формуланы, өзгөрмөлөрдү жана бирдиктерди таза LaTeX форматына салуучу парсер
+        function parsePhysicsText(text) {
+            if (!text || typeof text !== 'string') return text;
 
-            const processNode = (node) => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    let text = node.nodeValue;
-                    if (!text || text.trim() === '') return;
+            // 1. \alpha, \rho, \theta сыяктуу LaTeX командаларын сактоо
+            let parsed = text.replace(/\\(alpha|beta|gamma|delta|epsilon|theta|lambda|mu|nu|pi|rho|sigma|tau|phi|omega)\b/gi, function(match, name) {
+                return `$\\${name.toLowerCase()}$`;
+            });
 
-                    // 1. \alpha, \rho сыяктуу жазылган LaTeX грек тамгаларын оңдоо
-                    text = text.replace(/\\(alpha|beta|gamma|delta|epsilon|theta|lambda|mu|nu|pi|rho|sigma|tau|phi|omega)/gi, function(match, name) {
-                        return '$\\' + name.toLowerCase() + '$';
-                    });
+            // 2. Варианттардагы F = a^3 ( p - p_0 )gh сыяктуу теңдемелерди таанып ороо
+            parsed = parsed.replace(/\b([A-Za-z]\s*=\s*[^<>\n]+)/g, function(match) {
+                if (match.includes('$')) return match;
+                let cleaned = match
+                    .replace(/([a-zA-Z])_([0-9a-zA-Z]+)/g, '$1_{$2}') // p_0 -> p_{0}
+                    .replace(/([a-zA-Z0-9])\^([0-9a-zA-Z]+)/g, '$1^{$2}'); // a^3 -> a^{3}
+                return `$${cleaned}$`;
+            });
 
-                    // 2. Киргизилген туюнтмаларды ($ жокторду) аныктап MathJax кошуу:
-                    // p_0, a^3, a^2, м^3, м^2, кг/м^3, МН, F = a^3 ( p - p_0 )gh сыяктууларды $...$ ичине алуу
-                    
-                    // a) Формулалык варианттар (мисалы: F = a^2 ( ap - hp_0 )g же p_0)
-                    text = text.replace(/(?<!\$)([A-Za-z0-9_\^\+\-\*\/\(\)\s=]+(?:[\^_][0-9a-zA-Za-яА-Я]+)+[A-Za-z0-9_\^\+\-\*\/\(\)\s=]*)(?!\$)/g, function(match) {
-                        let trimmed = match.trim();
-                        // Тексттин катардагы жөнөкөй сөздөрү аралашып кетпөөсү үчүн текшерүү
-                        if (trimmed.length > 0 && !trimmed.includes('суу') && !trimmed.includes('куб')) {
-                            return ' $' + trimmed + '$ ';
-                        }
-                        return match;
-                    });
+            // 3. Текстте калган жалгыз индекстер жана даражалар (мисалы: p_0 же a^2)
+            parsed = parsed.replace(/(?<!\$)\b([a-zA-Za-яА-ЯӨөҮүҢң]+(?:_[0-9a-zA-Za-яА-Я]+|\^[0-9]+)+)\b(?!\$)/g, function(match) {
+                let cleaned = match
+                    .replace(/([a-zA-Za-яА-ЯӨөҮүҢң]+)_([0-9a-zA-Za-яА-Я]+)/g, '$1_{$2}')
+                    .replace(/([a-zA-Za-яА-ЯӨөҮүҢң]+)\^([0-9]+)/g, '$1^{$2}');
+                return `$${cleaned}$`;
+            });
 
-                    // б) Өлчөм бирдиктери (м^3, м^2, кг/м^3) жана жалгыз жазылган индекстер/даражалар
-                    text = text.replace(/(?<!\$)\b([a-zA-Za-яА-ЯӨөҮүҢң0-9]+(?:\^[0-9]+|_[0-9a-zA-Za-яА-Я]+)+|\b(?:кг\/м\^3|м\^3|м\^2|МН))\b(?!\$)/g, ' $$1$ ');
+            // 4. Өлчөм бирдиктерин тууралоо (кг/м^3, м^3, м^2, МН, кН, см^2)
+            parsed = parsed.replace(/(?<!\$)\b(\d+(?:[.,]\d+)?)\s*(кг\/м\^3|кг\/м³|м\^3|м³|м\^2|м²|см\^2|см²|МН|кН|Н|Дж|Вт)\b(?!\$)/g, function(match, num, unit) {
+                let cleanUnit = unit
+                    .replace('кг/м^3', '\\text{кг/м}^3').replace('кг/м³', '\\text{кг/м}^3')
+                    .replace('м^3', '\\text{м}^3').replace('м³', '\\text{м}^3')
+                    .replace('м^2', '\\text{м}^2').replace('м²', '\\text{м}^2')
+                    .replace('см^2', '\\text{см}^2').replace('см²', '\\text{см}^2')
+                    .replace('МН', '\\text{МН}').replace('кН', '\\text{кН}');
+                return `${num} $${cleanUnit}$`;
+            });
 
-                    // кош доллар ($$) чыгып калса тазалоо
-                    text = text.replace(/\$\$+/g, '$');
+            // ашыкча $ белгилерин бириктирүү ($$ -> $)
+            parsed = parsed.replace(/\$\$+/g, '$');
 
-                    node.nodeValue = text;
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && !node.classList.contains('MathJax')) {
-                    Array.from(node.childNodes).forEach(processNode);
-                }
-            };
-
-            processNode(container);
+            return parsed;
         }
 
-        function renderMath() {
-            if (isMathJaxRendering) return;
-            const target = document.getElementById('runningScreen');
-            if (!target) return;
-
-            isMathJaxRendering = true;
-            formatMathExpressions(target);
-
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise([target])
-                    .catch((err) => console.error(err))
-                    .finally(() => { isMathJaxRendering = false; });
-            } else {
-                isMathJaxRendering = false;
+        // Текст түйүндөрүн (Node) коопсуз айлануу
+        function processNodeText(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                let text = node.nodeValue;
+                if (text && text.trim().length > 0) {
+                    let newText = parsePhysicsText(text);
+                    if (newText !== text) {
+                        let span = document.createElement('span');
+                        span.innerHTML = newText;
+                        node.parentNode.replaceChild(span, node);
+                    }
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && !node.classList.contains('MathJax') && !node.tagName.startsWith('MJX')) {
+                    Array.from(node.childNodes).forEach(processNodeText);
+                }
             }
         }
 
-        const targetNode = document.getElementById('runningScreen');
-        if (targetNode) {
-            let renderTimeout;
+        // Асинхрондуу MathJax рендеринг функциясы
+        function executeMathJaxRender() {
+            if (isProcessingMath) return;
+            const container = document.getElementById('runningScreen');
+            if (!container) return;
+
+            isProcessingMath = true;
+            processNodeText(container);
+
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetClear([container]);
+                window.MathJax.typesetPromise([container])
+                    .catch((err) => console.error("MathJax Render Error:", err))
+                    .finally(() => { 
+                        isProcessingMath = false; 
+                    });
+            } else {
+                isProcessingMath = false;
+            }
+        }
+
+        // MutationObserver - Суроо алмашкан ар бир учурда автоматтык түрдө иштетүү
+        const testContainer = document.getElementById('runningScreen');
+        if (testContainer) {
+            let debounceTimer;
             const observer = new MutationObserver(() => {
-                if (isMathJaxRendering) return;
-                clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(renderMath, 150);
+                if (isProcessingMath) return;
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(executeMathJaxRender, 100);
             });
-            observer.observe(targetNode, { childList: true, subtree: true });
+            observer.observe(testContainer, { childList: true, subtree: true });
         }
     </script>
 </body>
