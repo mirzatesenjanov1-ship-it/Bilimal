@@ -171,6 +171,7 @@
             max-width: 100% !important;
             display: inline-block !important;
             color: inherit !important;
+            margin: 0 3px !important; /* Сөздөрдүн биригип калышын алдын алуучу кошумча аралык */
         }
 
         @media (max-width: 600px) {
@@ -393,7 +394,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формула белгилерин MathJax аркылуу туура көрсөтүү (ЖАКШЫРТЫЛГАН) -->
+    <!-- Тексттеги формула белгилерин жана индекстерди иштетүүчү жаңыртылган алгоритм -->
     <script>
         let isMathJaxRendering = false;
 
@@ -405,31 +406,42 @@
                     let text = node.nodeValue;
                     if (!text || !text.trim()) return;
 
-                    // 1. \text{...} форматын тазалоо же калыбына келтирүү
+                    // 1. \text{...} форматын тазалоо
                     text = text.replace(/\\text\{([^}]+)\}/g, '$1');
 
-                    // 2. Escape болбой калган грек тамгаларын калыбына келтирип, $...$ ичине кошуу
-                    const greekLetters = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'rho_0', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega'];
-                    
-                    // Эгер чийки \alpha же туура эмес escaped alpha/rho болсо $ калыпта калыбына келтирүү
-                    greekLetters.forEach(greek => {
-                        const regexWithSlash = new RegExp(`(?<!\\$)\\\\${greek}(?!\\$)`, 'g');
-                        text = text.replace(regexWithSlash, `$\\${greek}$`);
-                        
-                        // Эгер backslash таптакыр түшүп калган болсо (мисалы " alpha " же " rho_0 ")
-                        const regexWithoutSlash = new RegExp(`(?<=\\s|^)${greek}(?=\\s|\\,|\\.|\\;|\\)|$)`, 'g');
-                        text = text.replace(regexWithoutSlash, `$\\${greek}$`);
+                    // 2. Нижний индекси бар грек жана стандарттык өзгөрмөлөрдү ($ астында эместерди) бир бүтүн туюнтмага айландыруу
+                    // Мисалы: \rho_0, rho_0, \alpha_1, v_0, m_1 сыяктуу бүтүндөй иштетүү
+                    text = text.replace(/(?<!\$)(?:\\?([a-zA-Z\alpha\beta\gamma\delta\rho\mu\nu\omega]+))_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g, function(match, symbol, sub) {
+                        let cleanSymbol = symbol.startsWith('\\') ? symbol : '\\' + symbol;
+                        // Эгер жөнөкөй латын тамгасы болсо (v_0, m_1), slash кошпойт
+                        if (['v', 'm', 't', 'p', 'f', 'x', 'y', 'z', 'a', 'b', 'c', 'n', 'k'].includes(symbol.toLowerCase())) {
+                            cleanSymbol = symbol;
+                        }
+                        return ' $' + cleanSymbol + '_' + sub + '$ ';
                     });
 
-                    // 3. Даража, индекс, бөлчөк же математикалык белгилер бар болсо жана $ жок болсо $...$ ороо
+                    // 3. Жөнөкөй чийки грек тамгаларын $...$ ороо (эгер $ ичинде болбосо)
+                    const greekList = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega'];
+                    greekList.forEach(greek => {
+                        const regSlash = new RegExp(`(?<!\\$)\\\\${greek}(?!\\$)`, 'g');
+                        text = text.replace(regSlash, ` $\\${greek}$ `);
+                        
+                        const regNoSlash = new RegExp(`(?<=\\s|^)${greek}(?=\\s|\\,|\\.|\\;|\\)|$)`, 'g');
+                        text = text.replace(regNoSlash, ` $\\${greek}$ `);
+                    });
+
+                    // 4. Даража жана индекс бар туюнтмаларды сөздөрдөн ажыратып $...$ ороо
                     if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
-                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]*)/g, function(match) {
-                            return '$' + match.trim() + '$';
+                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]*)/g, function(match) {
+                            return ' $' + match.trim() + '$ ';
                         });
                     }
 
-                    // 4. Физикалык бирдиктерди тууралоо (мисалы: 800кг/м³ -> 800 кг/м³)
-                    text = text.replace(/(\d+)(кг|м|см|мм|Па|кПа|Ж|Дж|Н)\b/g, '$1 $2');
+                    // 5. Физикалык бирдиктердин ортосуна аралык кошуу жана биригүүнү алдын алуу (800кг/м³ -> 800 кг/м³)
+                    text = text.replace(/(\d+)\s*(кг|г|м|см|мм|Па|кПа|Ж|Дж|Н|В|А| Ом)\b/g, '$1 $2');
+
+                    // 6. Ашыкча кош боштуктарды иретке келтирүү
+                    text = text.replace(/\s+/g, ' ');
 
                     node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
@@ -451,11 +463,10 @@
 
             isMathJaxRendering = true;
 
-            // DOM ичиндеги чийки формулаларды $...$ форматына келтирүү
+            // DOM мазмунун рендерингке даярдоо
             formatMathExpressions(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
-                // Эски MathJax рендеринг кэшин тазалоо
                 if (window.MathJax.typesetClear) {
                     window.MathJax.typesetClear([target]);
                 }
@@ -470,14 +481,13 @@
             }
         }
 
-        // DOM мутацияларын байкоочу Observer
+        // DOM өзгөрүүлөрүн көзөмөлдөө
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
             const observer = new MutationObserver((mutations) => {
                 if (isMathJaxRendering) return;
 
-                // Эгер өзгөрүү MathJax түзгөн контейнерлерден болсо, кайра чакырбоо
                 const isMathJaxChange = mutations.some(m => 
                     Array.from(m.addedNodes).some(n => 
                         n.nodeType === Node.ELEMENT_NODE && 
