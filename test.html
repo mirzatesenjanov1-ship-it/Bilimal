@@ -31,7 +31,7 @@
                 processEnvironments: true
             },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
             },
             svg: { fontCache: 'global' }
         };
@@ -170,6 +170,7 @@
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
             display: inline-block !important;
+            color: inherit !important;
         }
 
         @media (max-width: 600px) {
@@ -392,7 +393,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формула белгилерин MathJax аркылуу туура көрсөтүү -->
+    <!-- Тексттеги формула белгилерин MathJax аркылуу туура көрсөтүү (ЖАКШЫРТЫЛГАН) -->
     <script>
         let isMathJaxRendering = false;
 
@@ -402,18 +403,40 @@
             const processNode = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
-                    if (!text) return;
+                    if (!text || !text.trim()) return;
 
+                    // 1. \text{...} форматын тазалоо же калыбына келтирүү
                     text = text.replace(/\\text\{([^}]+)\}/g, '$1');
 
+                    // 2. Escape болбой калган грек тамгаларын калыбына келтирип, $...$ ичине кошуу
+                    const greekLetters = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'rho_0', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega'];
+                    
+                    // Эгер чийки \alpha же туура эмес escaped alpha/rho болсо $ калыпта калыбына келтирүү
+                    greekLetters.forEach(greek => {
+                        const regexWithSlash = new RegExp(`(?<!\\$)\\\\${greek}(?!\\$)`, 'g');
+                        text = text.replace(regexWithSlash, `$\\${greek}$`);
+                        
+                        // Эгер backslash таптакыр түшүп калган болсо (мисалы " alpha " же " rho_0 ")
+                        const regexWithoutSlash = new RegExp(`(?<=\\s|^)${greek}(?=\\s|\\,|\\.|\\;|\\)|$)`, 'g');
+                        text = text.replace(regexWithoutSlash, `$\\${greek}$`);
+                    });
+
+                    // 3. Даража, индекс, бөлчөк же математикалык белгилер бар болсо жана $ жок болсо $...$ ороо
                     if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
                         text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\s\cdot\/\=\-\+]*)/g, function(match) {
                             return '$' + match.trim() + '$';
                         });
                     }
 
+                    // 4. Физикалык бирдиктерди тууралоо (мисалы: 800кг/м³ -> 800 кг/м³)
+                    text = text.replace(/(\d+)(кг|м|см|мм|Па|кПа|Ж|Дж|Н)\b/g, '$1 $2');
+
                     node.nodeValue = text;
-                } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE') {
+                } else if (node.nodeType === Node.ELEMENT_NODE && 
+                           node.tagName !== 'SCRIPT' && 
+                           node.tagName !== 'STYLE' && 
+                           !node.classList.contains('MathJax') && 
+                           !node.tagName.startsWith('MJX-')) {
                     Array.from(node.childNodes).forEach(processNode);
                 }
             };
@@ -424,28 +447,49 @@
         function renderMath() {
             if (isMathJaxRendering) return;
             const target = document.getElementById('runningScreen');
-            if (!target) return;
+            if (!target || target.style.display === 'none') return;
 
             isMathJaxRendering = true;
+
+            // DOM ичиндеги чийки формулаларды $...$ форматына келтирүү
             formatMathExpressions(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
+                // Эски MathJax рендеринг кэшин тазалоо
+                if (window.MathJax.typesetClear) {
+                    window.MathJax.typesetClear([target]);
+                }
+
                 window.MathJax.typesetPromise([target])
                     .catch((err) => console.error("MathJax error:", err))
-                    .finally(() => { isMathJaxRendering = false; });
+                    .finally(() => { 
+                        setTimeout(() => { isMathJaxRendering = false; }, 100);
+                    });
             } else {
                 isMathJaxRendering = false;
             }
         }
 
+        // DOM мутацияларын байкоочу Observer
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
-            const observer = new MutationObserver(() => {
+            const observer = new MutationObserver((mutations) => {
                 if (isMathJaxRendering) return;
+
+                // Эгер өзгөрүү MathJax түзгөн контейнерлерден болсо, кайра чакырбоо
+                const isMathJaxChange = mutations.some(m => 
+                    Array.from(m.addedNodes).some(n => 
+                        n.nodeType === Node.ELEMENT_NODE && 
+                        (n.tagName.startsWith('MJX-') || n.classList.contains('MathJax'))
+                    )
+                );
+                if (isMathJaxChange) return;
+
                 clearTimeout(renderTimeout);
                 renderTimeout = setTimeout(renderMath, 150);
             });
+            
             observer.observe(targetNode, { childList: true, subtree: true });
         }
     </script>
