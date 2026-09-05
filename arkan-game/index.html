@@ -659,7 +659,7 @@
             }
         }
 
-        // --- ЖАҢЫЛАНГАН АЛА-ТОО ФОНУ ЖАНА АРКАН ТАРТКАН ПОЗАЛАР ---
+        // --- ДҮЙНӨНҮ ЖАНА КААРМАНДАРДЫ ТАРТУУ ---
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
@@ -671,10 +671,10 @@
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. АЛА-ТОО ЧОКУЛАРЫ (Кыргызстандын бийик карлуу тоолору)
+            // 2. АЛА-ТОО ЧОКУЛАРЫ
             drawKyrgyzMountains();
 
-            // 3. ЖАШЫЛ ЖЕР (Жайлоо сыяктуу чөп)
+            // 3. ЖАЙЛОО (Чөп)
             const centerY = canvas.height * 0.72;
             let groundGradient = ctx.createLinearGradient(0, centerY, 0, canvas.height);
             groundGradient.addColorStop(0, '#4ade80');
@@ -682,7 +682,6 @@
             ctx.fillStyle = groundGradient;
             ctx.fillRect(0, centerY, canvas.width, canvas.height - centerY);
 
-            // Талаанын текстурасы жана тилкеси
             ctx.strokeStyle = '#166534';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -695,36 +694,49 @@
 
             animationPulse += 0.08;
 
-            // 4. АРКАН
-            ctx.strokeStyle = '#3f3f46';
-            ctx.lineWidth = 6;
+            // АРКАНДЫН БИЙИКТИГИ (КОЛДОР ДАЛ УШУЛ ДЕҢГЭЭЛДЕ КАРМАЙТ)
+            const ropeY = centerY - 35;
+
+            // 4. ТЕКСТУРАЛУУ РЕАЛДУУ АРКАН
+            ctx.save();
+            ctx.strokeStyle = '#854d0e'; // Аркандын негизги сары-күрөң түсү
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
             ctx.beginPath();
-            ctx.moveTo(0, centerY - 10);
-            ctx.lineTo(canvas.width, centerY - 10);
+            ctx.moveTo(0, ropeY);
+            ctx.lineTo(canvas.width, ropeY);
             ctx.stroke();
+
+            // Аркандын өрүлгөн оймолору
+            ctx.strokeStyle = '#a16207';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.moveTo(0, ropeY - 1);
+            ctx.lineTo(canvas.width, ropeY - 1);
+            ctx.stroke();
+            ctx.restore();
 
             // 5. ОРТОДОГУ КЫЗЫЛ ЛЕНТА (Белги)
             ctx.fillStyle = '#ef4444';
             ctx.beginPath();
-            ctx.fillRect(centerX - 3, centerY - 10, 6, 25);
+            ctx.fillRect(centerX - 4, ropeY - 12, 8, 24);
 
             let spacing = (playerCount > 5) ? Math.max(50, 320 / playerCount) : 75;
 
             // Командаларды тартуу
-            drawTeam(canvas.width * 0.35 + ropeOffset, centerY - 10, '#0284c7', '#1e293b', leftTeam.name, false, animationPulse, playerCount, spacing);
-            drawTeam(canvas.width * 0.65 + ropeOffset, centerY - 10, '#dc2626', '#1e293b', rightTeam.name, true, animationPulse, playerCount, spacing);
+            drawTeam(canvas.width * 0.35 + ropeOffset, centerY, shirtColor='#0284c7', '#1e293b', leftTeam.name, false, animationPulse, playerCount, spacing, ropeY);
+            drawTeam(canvas.width * 0.65 + ropeOffset, centerY, shirtColor='#dc2626', '#1e293b', rightTeam.name, true, animationPulse, playerCount, spacing, ropeY);
 
             ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
 
             if (gameActive) requestAnimationFrame(drawGame);
         }
 
-        // АЛА-ТОО ЖАНА КАРДАРДЫ ТАРТУУ
         function drawKyrgyzMountains() {
             const h = canvas.height;
             const w = canvas.width;
 
-            // Аркы жактагы тоолор (көгүлтүр рельеф)
             ctx.fillStyle = '#94a3b8';
             ctx.beginPath();
             ctx.moveTo(0, h * 0.72);
@@ -736,14 +748,12 @@
             ctx.lineTo(w, h * 0.72);
             ctx.fill();
 
-            // Алдыга жакыныраак Ала-Тоолор
             drawMountainPeak(w * 0.25, h * 0.18, w * 0.3, h * 0.72, '#64748b', '#f8fafc');
             drawMountainPeak(w * 0.7, h * 0.15, w * 0.35, h * 0.72, '#475569', '#ffffff');
             drawMountainPeak(w * 0.05, h * 0.28, w * 0.25, h * 0.72, '#475569', '#f1f5f9');
         }
 
         function drawMountainPeak(peakX, peakY, baseWidth, baseY, rockColor, snowColor) {
-            // Тоонун өзү (аска)
             ctx.fillStyle = rockColor;
             ctx.beginPath();
             ctx.moveTo(peakX - baseWidth / 2, baseY);
@@ -752,7 +762,6 @@
             ctx.closePath();
             ctx.fill();
 
-            // Тоонун башындагы Кар Чокусу (Ала-Тоо)
             ctx.fillStyle = snowColor;
             ctx.beginPath();
             ctx.moveTo(peakX, peakY);
@@ -765,160 +774,155 @@
             ctx.fill();
         }
 
-        function drawTeam(startX, centerY, shirtColor, pantsColor, teamName, isRightSide, pulse, count, spacing) {
+        function drawTeam(startX, centerY, shirtColor, pantsColor, teamName, isRightSide, pulse, count, spacing, ropeY) {
             ctx.fillStyle = shirtColor;
             ctx.font = "bold 16px 'Segoe UI', sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText(teamName, startX + (isRightSide ? 80 : -80), centerY - 110);
+            ctx.fillText(teamName, startX + (isRightSide ? 80 : -80), centerY - 120);
 
             for (let i = 0; i < count; i++) {
                 let distance = isRightSide ? (i * spacing) : -(i * spacing);
                 let x = startX + distance;
-                let y = centerY;
 
-                drawKyrgyzPlayerVector(x, y, shirtColor, pantsColor, isRightSide, pulse + i);
+                drawKyrgyzPlayerVector(x, centerY, shirtColor, pantsColor, isRightSide, pulse + i, ropeY);
             }
         }
 
-        // --- РЕАЛДУУ АРКАН ТАРТКАН ПОЗА ЖАНА БУТТАРДЫ ТАРТУУ ---
-        function drawKyrgyzPlayerVector(x, y, shirtColor, pantsColor, isRightSide, localPulse) {
+        // --- ТОЛУК ОҢДОЛГОН АДАМДАРДЫ ЖАНА АРКАН КАРМАГАН ПОЗАЛАРДЫ ТАРТУУ ---
+        function drawKyrgyzPlayerVector(x, groundY, shirtColor, pantsColor, isRightSide, localPulse, ropeY) {
             ctx.save();
-            
-            // Күч келгендеги титирөө жана артка эңкейүү
-            let pullEffort = Math.sin(localPulse * 1.5) * 2; 
-            let bodyAngle = isRightSide ? (0.42 + pullEffort * 0.02) : (-0.42 - pullEffort * 0.02);
-            
-            ctx.translate(x, y);
 
-            // 1. РЕАЛДУУ БУТТАР ЖАНА МУУНДАР (Бүгүлгөн таяныч позасы)
+            // Аркан тарткандагы чайпалуу анимациясы
+            let pullEffort = Math.sin(localPulse * 1.5) * 2;
+            let leanAngle = isRightSide ? (0.35 + pullEffort * 0.02) : (-0.35 - pullEffort * 0.02);
+
+            // Каармандын негизги таяныч чекити - анын буту тийген жер
+            ctx.translate(x, groundY);
+
+            // 1. БУТТАР (Жерге бекем кадалган)
             ctx.strokeStyle = pantsColor;
             ctx.lineWidth = 10;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // Жерди катуу таянган АРТКЫ БУТ (Бүгүлгөн муун)
-            let backHipX = isRightSide ? 10 : -10;
-            let backKneeX = isRightSide ? 28 : -28;
-            let backKneeY = 18;
-            let backFootX = isRightSide ? 38 : -38;
-            let backFootY = 32;
+            // Арткы бут (Артка созулуп бүгүлгөн)
+            let backFootX = isRightSide ? 30 : -30;
+            let backKneeX = isRightSide ? 18 : -18;
+            let backKneeY = -18;
 
             ctx.beginPath();
-            ctx.moveTo(backHipX, 0);
+            ctx.moveTo(0, -32); // Дененин белинен чыгарылат
             ctx.lineTo(backKneeX, backKneeY);
-            ctx.lineTo(backFootX, backFootY);
+            ctx.lineTo(backFootX, 0); // Жерге тийет
             ctx.stroke();
 
-            // АЛДЫҢКЫ БУТ (Тирелип түз сунулган)
-            let frontHipX = isRightSide ? -8 : 8;
-            let frontKneeX = isRightSide ? -22 : 22;
-            let frontKneeY = 15;
-            let frontFootX = isRightSide ? -28 : 28;
-            let frontFootY = 32;
+            // Алдыңкы бут (Түз тирелип турган)
+            let frontFootX = isRightSide ? -18 : 18;
+            let frontKneeX = isRightSide ? -10 : 10;
+            let frontKneeY = -16;
 
             ctx.beginPath();
-            ctx.moveTo(frontHipX, 0);
+            ctx.moveTo(0, -32);
             ctx.lineTo(frontKneeX, frontKneeY);
-            ctx.lineTo(frontFootX, frontFootY);
+            ctx.lineTo(frontFootX, 0); // Жерге тийет
             ctx.stroke();
 
-            // КРОССОВКАЛАР (Бут кийимдер)
-            ctx.fillStyle = '#1e293b';
+            // Бут кийимдер (Кроссовкалар)
+            ctx.fillStyle = '#0f172a';
             ctx.beginPath();
-            ctx.roundRect(backFootX - (isRightSide ? 2 : 12), backFootY - 2, 16, 8, 3);
-            ctx.roundRect(frontFootX - (isRightSide ? 2 : 12), frontFootY - 2, 16, 8, 3);
+            ctx.roundRect(backFootX - (isRightSide ? 2 : 12), -4, 15, 6, 2);
+            ctx.roundRect(frontFootX - (isRightSide ? 2 : 12), -4, 15, 6, 2);
             ctx.fill();
 
-            // 2. АРТКА ЭҢКЕЙГЕН ТОРС (Дене Көчө)
-            ctx.rotate(bodyAngle);
+            // 2. ДЕНЕ ЖАНА БАШ (Эңкейген абалы)
+            ctx.translate(0, -32); // Бел чекитине жылуу
+            ctx.rotate(leanAngle);  // Артка эңкейтүү
 
+            // Дене (Торс)
             ctx.fillStyle = shirtColor;
             ctx.beginPath();
-            ctx.moveTo(-13, -38);
-            ctx.lineTo(13, -38);
-            ctx.lineTo(10, 2);
-            ctx.lineTo(-10, 2);
+            ctx.moveTo(-12, -35);
+            ctx.lineTo(12, -35);
+            ctx.lineTo(9, 0);
+            ctx.lineTo(-9, 0);
             ctx.closePath();
             ctx.fill();
 
-            // КЫРГЫЗ ТУУЗУНУН БЕЛГИСИ (Патч)
+            // Кыргызстандын гербинин/туусунун сүрөтү
             ctx.fillStyle = '#dc2626';
-            let patchX = isRightSide ? 3 : -11;
-            ctx.fillRect(patchX, -34, 8, 6);
+            let patchX = isRightSide ? 2 : -10;
+            ctx.fillRect(patchX, -30, 8, 6);
             ctx.fillStyle = '#facc15';
             ctx.beginPath();
-            ctx.arc(patchX + 4, -31, 1.8, 0, Math.PI * 2);
+            ctx.arc(patchX + 4, -27, 1.8, 0, Math.PI * 2);
             ctx.fill();
 
-            // 3. АРКАНДЫ МЫКТЫ КАРМАГАН КОЛДОР
-            ctx.strokeStyle = '#fdba74'; // Тери түсү
-            ctx.lineWidth = 7;
-            let handReach = isRightSide ? -28 : 28;
-
-            ctx.beginPath();
-            ctx.moveTo(-2, -28);
-            ctx.lineTo(handReach / 2, -14);
-            ctx.lineTo(handReach, 0);
-            ctx.stroke();
-
-            // Кийимдин жеңи
-            ctx.strokeStyle = shirtColor;
-            ctx.lineWidth = 9;
-            ctx.beginPath();
-            ctx.moveTo(-2, -28);
-            ctx.lineTo(handReach / 2, -14);
-            ctx.stroke();
-
-            // 4. БАШ ЖАНА КЫРГЫЗ КАЛПАГЫ
+            // БАШЖАНА КӨЗДӨР
             ctx.fillStyle = '#fdba74';
             ctx.beginPath();
-            ctx.arc(0, -48, 10, 0, Math.PI * 2);
+            ctx.arc(0, -45, 10, 0, Math.PI * 2);
             ctx.fill();
 
-            // Көз / Чач
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
-            ctx.arc(isRightSide ? -4 : 4, -49, 2, 0, Math.PI * 2);
+            ctx.arc(isRightSide ? -4 : 4, -46, 2, 0, Math.PI * 2);
             ctx.fill();
 
             // АК КАЛПАК
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.moveTo(-12, -52);
-            ctx.quadraticCurveTo(-13, -72, 0, -76);
-            ctx.quadraticCurveTo(13, -72, 12, -52);
+            ctx.moveTo(-11, -49);
+            ctx.quadraticCurveTo(-12, -68, 0, -72);
+            ctx.quadraticCurveTo(12, -68, 11, -49);
             ctx.closePath();
             ctx.fill();
 
-            // Калпактын кайырмасы (Көмүр кара)
+            // Калпактын кайырмасы
             ctx.fillStyle = '#0f172a';
             ctx.beginPath();
-            ctx.ellipse(0, -52, 13, 3.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, -49, 12, 3, 0, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.ellipse(0, -53.5, 11, 2.5, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, -50.5, 10, 2, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // КАЛПАКТАГЫ ОЙМО (Жагалмай мүйүз)
+            // Калпактын оймосу
             ctx.strokeStyle = '#0f172a';
-            ctx.lineWidth = 1.6;
-            ctx.lineCap = 'round';
-            
-            let ox = isRightSide ? -2 : 2; 
-            let oy = -64;
-
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            ctx.moveTo(ox, oy + 3);
-            ctx.lineTo(ox, oy - 3);
-            ctx.moveTo(ox, oy - 1);
-            ctx.quadraticCurveTo(ox - 4, oy - 4, ox - 4, oy - 1);
-            ctx.quadraticCurveTo(ox - 4, oy + 2, ox - 1, oy + 1);
-            ctx.moveTo(ox, oy - 1);
-            ctx.quadraticCurveTo(ox + 4, oy - 4, ox + 4, oy - 1);
-            ctx.quadraticCurveTo(ox + 4, oy + 2, ox + 1, oy + 1);
+            ctx.moveTo(0, -58);
+            ctx.lineTo(0, -64);
             ctx.stroke();
+
+            // 3. АРКАНДЫ ДАЛ КАРМАГАН КОЛДОР
+            // Дененин абалына жараша аркан жайгашкан жердин жергиликтүү координатасын табуу
+            let localRopeY = (ropeY - (groundY - 32)); 
+
+            ctx.strokeStyle = '#fdba74'; // Тери түсү
+            ctx.lineWidth = 7;
+            ctx.lineCap = 'round';
+
+            // Алдыңкы жана арткы колдор арканды кысып кармап турат
+            ctx.beginPath();
+            ctx.moveTo(-4, -25);
+            ctx.lineTo(isRightSide ? -18 : 18, localRopeY + 12); // Арканды көздөй барат
+            ctx.stroke();
+
+            ctx.strokeStyle = shirtColor;
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(4, -25);
+            ctx.lineTo(isRightSide ? -12 : 12, localRopeY + 12);
+            ctx.stroke();
+
+            // Муштумдар (Аркандын үстүндөгү колдор)
+            ctx.fillStyle = '#fdba74';
+            ctx.beginPath();
+            ctx.arc(isRightSide ? -18 : 18, localRopeY + 12, 4.5, 0, Math.PI * 2);
+            ctx.arc(isRightSide ? -12 : 12, localRopeY + 12, 4.5, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.restore();
         }
