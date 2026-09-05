@@ -118,7 +118,7 @@
         #gameCanvas {
             display: block;
             width: 100%;
-            background: #000;
+            background: #f8f9fa;
         }
         .game-header {
             position: absolute;
@@ -136,9 +136,10 @@
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.1);
             backdrop-filter: blur(5px);
+            color: #fff;
         }
-        .team-hud.left { border-left: 4px solid #00f0ff; }
-        .team-hud.right { border-right: 4px solid #ff0055; text-align: right; }
+        .team-hud.left { border-left: 4px solid #00a8ff; }
+        .team-hud.right { border-right: 4px solid #e84118; text-align: right; }
         
         .quiz-container {
             display: flex;
@@ -662,238 +663,201 @@
             }
         }
 
-        // --- ENHANCED GRAPHICS AND DRAWING FUNCTIONS ---
+        // --- NEW VECTOR GRAPHICS DRAWING ---
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Фон: Асман
-            let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.7);
-            skyGradient.addColorStop(0, '#0a1118');
-            skyGradient.addColorStop(0.5, '#132233');
-            skyGradient.addColorStop(1, '#233a52');
+            // Таза ачык фон (Сүрөттөгүдөй минимализм)
+            let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, '#f2f4f8');
+            skyGradient.addColorStop(1, '#e2e8f0');
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Асмандагы жылдыздар
-            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-            for(let i=0; i<30; i++){
-                let sx = (i * 137) % canvas.width;
-                let sy = (i * 59) % (canvas.height * 0.5);
-                ctx.fillRect(sx, sy, (i%2)+1, (i%2)+1);
-            }
-
-            const centerY = canvas.height * 0.72;
+            const centerY = canvas.height * 0.65;
             const centerX = canvas.width / 2 + ropeOffset;
             const playerCount = Math.max(1, parsedQuestions.length);
 
-            // Чөп талаасы (Градиент жана текстура)
-            let grassGradient = ctx.createLinearGradient(0, centerY - 10, 0, canvas.height);
-            grassGradient.addColorStop(0, '#1d3e1f');
-            grassGradient.addColorStop(0.2, '#142e16');
-            grassGradient.addColorStop(1, '#0b1a0c');
-            ctx.fillStyle = grassGradient;
-            ctx.fillRect(0, centerY, canvas.width, canvas.height - centerY);
+            animationPulse += 0.08;
 
-            // Чөп сызыгы (Чек ара)
-            ctx.strokeStyle = '#2d5e30';
-            ctx.lineWidth = 4;
+            // Чыңалган Түз Аркан (Сүрөттөгүдөй)
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(0, centerY);
             ctx.lineTo(canvas.width, centerY);
             ctx.stroke();
 
-            animationPulse += 0.08;
-
-            // Каармандардын позициясын эсептөө (Аркан байланыш үчүн)
-            let spacing = (playerCount > 6) ? Math.max(25, 250 / playerCount) : 45;
-            let leftHandX = (canvas.width * 0.35 + ropeOffset) + (playerCount - 1) * (-spacing);
-            let rightHandX = (canvas.width * 0.65 + ropeOffset) + (playerCount - 1) * spacing;
-
-            // 1. РЕАЛДУУ АРКАН СИСТЕМАСЫ (Сол командадан оң командага чейин)
-            drawRealisticRope(0, centerY, leftHandX - 10, centerY, centerX, centerY + Math.sin(animationPulse*0.5)*3, rightHandX + 10, centerY, canvas.width, centerY);
-
-            // 2. ОРТОДОГУ ТАРТЫШ АНЫКТАМА КЫЗЫЛ КЫМЫЗ/ЛЕНТА
-            ctx.save();
-            ctx.shadowColor = 'rgba(255,0,0,0.5)';
-            ctx.shadowBlur = 8;
-            ctx.fillStyle = '#ff0033';
+            // Аркандын аягындагы эркин түшкөн учтары
             ctx.beginPath();
-            ctx.arc(centerX, centerY + 2, 7, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillRect(centerX - 3, centerY + 8, 6, 22);
-            ctx.restore();
-
-            // Ортодогу статикалык кызыл чек ара
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 4]);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, centerY - 40);
-            ctx.lineTo(canvas.width / 2, centerY + 40);
+            ctx.moveTo(30, centerY);
+            ctx.quadraticCurveTo(15, centerY + 20, 10, centerY + 45);
+            ctx.moveTo(canvas.width - 30, centerY);
+            ctx.quadraticCurveTo(canvas.width - 15, centerY + 20, canvas.width - 10, centerY + 45);
             ctx.stroke();
-            ctx.setLineDash([]);
 
-            // 3. КОМАНДАЛАРДЫ ТАРТУУ
-            drawTeam(canvas.width * 0.35 + ropeOffset, centerY, '#00f0ff', leftTeam.name, false, animationPulse, playerCount, spacing);
-            drawTeam(canvas.width * 0.65 + ropeOffset, centerY, '#ff0055', rightTeam.name, true, animationPulse, playerCount, spacing);
+            // Ортодогу кызыл салаңдаган лента
+            ctx.fillStyle = '#d63031';
+            ctx.beginPath();
+            ctx.moveTo(centerX - 3, centerY);
+            ctx.lineTo(centerX + 3, centerY);
+            ctx.quadraticCurveTo(centerX + 12, centerY + 18, centerX + 18, centerY + 30);
+            ctx.lineTo(centerX + 12, centerY + 32);
+            ctx.quadraticCurveTo(centerX + 5, centerY + 18, centerX - 3, centerY);
+            ctx.fill();
+
+            // Динамикалык аралык эсептөө
+            let spacing = (playerCount > 5) ? Math.max(50, 320 / playerCount) : 75;
+
+            // Командаларды тартуу
+            drawTeam(canvas.width * 0.35 + ropeOffset, centerY, '#00a8ff', '#1f2d3d', leftTeam.name, false, animationPulse, playerCount, spacing);
+            drawTeam(canvas.width * 0.65 + ropeOffset, centerY, '#e84118', '#2f3640', rightTeam.name, true, animationPulse, playerCount, spacing);
 
             ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
 
             if (gameActive) requestAnimationFrame(drawGame);
         }
 
-        // РЕАЛДУУ ИЙИЛМЕ АРКАН ТАРТУУ
-        function drawRealisticRope(x0, y0, x1, y1, cx, cy, x2, y2, x3, y3) {
-            ctx.save();
-            
-            // Көлөкө
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 10;
-            ctx.beginPath();
-            ctx.moveTo(x0, y0 + 12);
-            ctx.lineTo(x1, y1 + 12);
-            ctx.quadraticCurveTo(cx, cy + 15, x2, y2 + 12);
-            ctx.lineTo(x3, y3 + 12);
-            ctx.stroke();
-
-            // Негизги негиз
-            ctx.strokeStyle = '#b8860b';
-            ctx.lineWidth = 9;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(x0, y0);
-            ctx.lineTo(x1, y1);
-            ctx.quadraticCurveTo(cx, cy, x2, y2);
-            ctx.lineTo(x3, y3);
-            ctx.stroke();
-
-            // Текстуралык өрүм
-            ctx.strokeStyle = '#f4a460';
-            ctx.lineWidth = 7;
-            ctx.setLineDash([8, 6]);
-            ctx.stroke();
-
-            ctx.strokeStyle = '#422701';
-            ctx.lineWidth = 3;
-            ctx.setLineDash([3, 11]);
-            ctx.stroke();
-
-            ctx.restore();
-        }
-
-        function drawTeam(startX, centerY, mainColor, teamName, isRightSide, pulse, count, spacing) {
-            ctx.fillStyle = mainColor;
+        function drawTeam(startX, centerY, shirtColor, pantsColor, teamName, isRightSide, pulse, count, spacing) {
+            ctx.fillStyle = shirtColor;
             ctx.font = "bold 16px 'Segoe UI', sans-serif";
             ctx.textAlign = "center";
-            ctx.shadowColor = mainColor;
-            ctx.shadowBlur = 6;
-            ctx.fillText(teamName, startX + (isRightSide ? 60 : -60), centerY - 100);
-            ctx.shadowBlur = 0;
+            ctx.fillText(teamName, startX + (isRightSide ? 70 : -70), centerY - 110);
 
             for (let i = 0; i < count; i++) {
                 let distance = isRightSide ? (i * spacing) : -(i * spacing);
-                let lean = Math.sin(pulse + i) * 6; 
-                let pullBack = isRightSide ? (10 + lean) : (-10 - lean);
-                
-                let x = startX + distance + pullBack;
+                let x = startX + distance;
                 let y = centerY;
 
-                drawHDPlayer(x, y, mainColor, isRightSide, pulse + i);
+                drawKyrgyzPlayerVector(x, y, shirtColor, pantsColor, isRightSide, pulse + i);
             }
         }
 
-        // ЖАКШЫРТЫЛГАН (HD) ОЮНЧУНУ ТАРТУУ
-        function drawHDPlayer(x, y, teamColor, isRightSide, localPulse) {
+        // СҮРӨТТӨГҮДӨЙ СТИЛДЕГИ ВЕКТОРДУК КАРМАН
+        function drawKyrgyzPlayerVector(x, y, shirtColor, pantsColor, isRightSide, localPulse) {
             ctx.save();
             
-            let leanAngle = isRightSide ? (0.2 + Math.sin(localPulse)*0.04) : (-0.2 - Math.sin(localPulse)*0.04);
+            // Чалкалап аркан тартуу кыймылы
+            let legMovement = Math.sin(localPulse) * 2;
+            let leanAngle = isRightSide ? (0.32 + Math.sin(localPulse)*0.03) : (-0.32 - Math.sin(localPulse)*0.03);
+            
             ctx.translate(x, y);
             ctx.rotate(leanAngle);
 
-            // Бут алдындагы чаң
-            ctx.fillStyle = 'rgba(200, 180, 140, 0.2)';
-            ctx.beginPath();
-            ctx.ellipse(0, 10, 18, 5, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Ч өтүк (Буттар)
-            ctx.lineWidth = 7;
-            ctx.strokeStyle = '#1a110b';
-            ctx.lineCap = "round";
+            // 1. КРОССОВКАЛАР
+            ctx.fillStyle = '#00a8ff';
+            let bootX1 = isRightSide ? 15 : -35;
+            let bootX2 = isRightSide ? -25 : 15;
             
             ctx.beginPath();
-            ctx.moveTo(-2, -8);
-            ctx.lineTo(isRightSide ? -18 : -10, 12);
-            ctx.moveTo(2, -8);
-            ctx.lineTo(isRightSide ? 10 : 18, 12);
+            ctx.roundRect(bootX1, 38, 22, 10, 4);
+            ctx.roundRect(bootX2, 38, 22, 10, 4);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(bootX1, 44, 22, 4);
+            ctx.fillRect(bootX2, 44, 22, 4);
+
+            // 2. ШАЛБАР / ШЫМ (Бүгүлгөн реалдуу буттар)
+            ctx.strokeStyle = pantsColor;
+            ctx.lineWidth = 14;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Арткы бут
+            ctx.beginPath();
+            ctx.moveTo(-5, 0);
+            ctx.lineTo(isRightSide ? 12 : -25, 20);
+            ctx.lineTo(isRightSide ? 22 : -28, 40);
             ctx.stroke();
 
-            // Дене / Чепкен (Улуттук стилде)
-            ctx.fillStyle = teamColor;
+            // Алдыңкы бут
             ctx.beginPath();
-            ctx.moveTo(-12, -42);
-            ctx.lineTo(12, -42);
-            ctx.lineTo(9, -8);
-            ctx.lineTo(-9, -8);
+            ctx.moveTo(5, 0);
+            ctx.lineTo(isRightSide ? -15 : 10, 18);
+            ctx.lineTo(isRightSide ? -18 : 22, 40);
+            ctx.stroke();
+
+            // 3. ТОРС / ФУТБОЛКА
+            ctx.fillStyle = shirtColor;
+            ctx.beginPath();
+            ctx.moveTo(-14, -42);
+            ctx.lineTo(14, -42);
+            ctx.lineTo(10, 2);
+            ctx.lineTo(-10, 2);
             ctx.closePath();
             ctx.fill();
 
-            // Ортодогу кыргыз оймосу/сызыгы
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
+            // Кыргыз ССР же Мамлекеттик туу патчы (Ийинде)
+            ctx.fillStyle = '#e84118';
+            let patchX = isRightSide ? 4 : -12;
+            ctx.fillRect(patchX, -38, 8, 6);
+            ctx.fillStyle = '#fbc531';
             ctx.beginPath();
-            ctx.moveTo(0, -42);
-            ctx.lineTo(0, -8);
-            ctx.stroke();
-
-            // Моюн
-            ctx.fillStyle = '#f1c27d';
-            ctx.fillRect(-3, -47, 6, 6);
-
-            // Баш
-            ctx.fillStyle = '#f1c27d';
-            ctx.beginPath();
-            ctx.arc(0, -54, 11, 0, Math.PI * 2);
+            ctx.arc(patchX + 4, -35, 1.8, 0, Math.PI * 2);
             ctx.fill();
 
-            // Беттин деталдары (Көз/Каш жана тартылуу эмоциясы)
-            ctx.fillStyle = '#333';
-            let eyeX = isRightSide ? -4 : 4;
-            ctx.fillRect(eyeX - 1, -56, 2, 4); // Көз
-            ctx.fillRect(eyeX + (isRightSide ? 4 : -4), -56, 2, 4);
+            // 4. КОЛДОР (Арканды толук кармаган)
+            ctx.strokeStyle = shirtColor;
+            ctx.lineWidth = 10;
+            let handReach = isRightSide ? -30 : 30;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, -32);
+            ctx.lineTo(handReach / 2, -18);
+            ctx.lineTo(handReach, 0);
+            ctx.stroke();
 
-            // КЫРГЫЗ КАЛПАГЫ (Жогорку сапатта)
+            // Муштум
+            ctx.fillStyle = '#f5cd79';
+            ctx.beginPath();
+            ctx.arc(handReach, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 5. МУЮН ЖАНА БАШ
+            ctx.fillStyle = '#f5cd79';
+            ctx.fillRect(-3, -48, 6, 8); // Моюн
+
+            ctx.beginPath();
+            ctx.arc(0, -54, 11, 0, Math.PI * 2); // Бет
+            ctx.fill();
+
+            // Чачтар
+            ctx.fillStyle = '#2d3436';
+            ctx.beginPath();
+            ctx.arc(0, -55, 11.5, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // 6. АК КАЛПАП (Сүрөттөгүдөй вектордук стиль)
+            // Калпактын ак негизи
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.moveTo(-13, -59);
-            ctx.quadraticCurveTo(0, -82, 13, -59);
+            ctx.moveTo(-13, -58);
+            ctx.quadraticCurveTo(-14, -78, 0, -82);
+            ctx.quadraticCurveTo(14, -78, 13, -58);
             ctx.closePath();
             ctx.fill();
 
-            // Калпактын талаасы (Кара алкагы)
-            ctx.fillStyle = '#111111';
+            // Калпактын кайырмасы (Кара кыюу)
+            ctx.fillStyle = '#2d3436';
             ctx.beginPath();
-            ctx.ellipse(0, -59, 14, 4, 0, 0, Math.PI * 2);
+            ctx.ellipse(0, -58, 14, 4, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Калпактын чокусундагы седеп же чачак
-            ctx.strokeStyle = '#111';
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.ellipse(0, -60, 12, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Калпактагы улуттук оймо (Сүрөттөгү кара/боз оймо)
+            ctx.strokeStyle = '#2d3436';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(0, -78);
-            ctx.lineTo(isRightSide ? 5 : -5, -83);
-            ctx.stroke();
-
-            // Колдор (Арканды кармап турган)
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = '#f1c27d';
-            ctx.lineJoin = 'round';
-            
-            let pullX = isRightSide ? -22 : 22;
-            ctx.beginPath();
-            ctx.moveTo(0, -36);
-            ctx.lineTo(pullX / 2, -20);
-            ctx.lineTo(pullX, -5);
+            let patternX = isRightSide ? -3 : 3;
+            ctx.moveTo(patternX, -64);
+            ctx.lineTo(patternX, -74);
+            ctx.moveTo(patternX - 3, -70);
+            ctx.lineTo(patternX + 3, -70);
             ctx.stroke();
 
             ctx.restore();
