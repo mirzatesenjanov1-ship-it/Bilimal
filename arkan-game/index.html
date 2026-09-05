@@ -217,7 +217,7 @@
 </head>
 <body>
 
-    <!-- Комуз музыкасы ушул жерде кошулду -->
+    <!-- Комуз музыкасы -->
     <audio id="bgMusic" loop src="/arkan-game/komuzakbakai.mp3"></audio>
 
     <!-- SETUP LAYER -->
@@ -311,7 +311,7 @@
     </div>
 
     <script>
-        // --- 1. TRANSLATIONS DATA ---
+        // --- TRANSLATIONS DATA ---
         const translations = {
             ky: {
                 setupTitle: "Аркан Тартыш: Жөндөөлөр",
@@ -452,8 +452,10 @@
                 rightInput.value = t.defaultRightName;
             }
 
-            const defaultQuestionsText = t.defaultTopics.map(item => `${item.q}\n*${item.a}\n${item.w.join('\n')}`).join('\n\n');
-            document.getElementById('questionsTextArea').value = defaultQuestionsText;
+            if(!document.getElementById('questionsTextArea').value.trim()){
+                const defaultQuestionsText = t.defaultTopics.map(item => `${item.q}\n*${item.a}\n${item.w.join('\n')}`).join('\n\n');
+                document.getElementById('questionsTextArea').value = defaultQuestionsText;
+            }
 
             loadSavedTests();
             if (gameActive) {
@@ -462,7 +464,7 @@
             }
         }
 
-        // --- 2. GAME LOGIC & CANVAS INITIALIZATION ---
+        // --- GAME LOGIC & CANVAS INITIALIZATION ---
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const bgMusic = document.getElementById('bgMusic');
@@ -492,7 +494,7 @@
             Object.keys(saved).forEach(name => {
                 const div = document.createElement('div');
                 div.className = 'test-item';
-                div.innerHTML = `<span>${name}</span><div><button class="btn-select" onclick="selectTest('${name}')">${t.btnSelect}</button><button class="btn-delete" onclick="deleteTest('${name}')">❌</button></div>`;
+                div.innerHTML = `<span>${name}</span><div><button class="btn-select" onclick="selectTest('${name.replace(/'/g, "\\'")}')">${t.btnSelect}</button><button class="btn-delete" onclick="deleteTest('${name.replace(/'/g, "\\'")}')">❌</button></div>`;
                 container.appendChild(div);
             });
         }
@@ -525,7 +527,7 @@
         });
 
         function parseQuestions(text) {
-            const blocks = text.split('\n\n');
+            const blocks = text.split(/\n\s*\n/);
             const result = [];
             blocks.forEach(b => {
                 const lines = b.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -559,7 +561,6 @@
             document.getElementById('setup-layer').style.display = 'none';
             document.getElementById('ui-layer').style.display = 'block';
 
-            // Оюн башталганда музыканы ойнотуу
             try { 
                 bgMusic.currentTime = 0;
                 bgMusic.play(); 
@@ -661,11 +662,10 @@
             }
         }
 
-        // --- 3. DYNAMIC CANVAS DRAWING (WITH KALPAK & KYRGYZ CHARACTER ANIMATION) ---
+        // --- DRAWING CANVAS WITH DYNAMIC PLAYER COUNT ---
         function drawGame() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Тоолор жана Фон
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             skyGradient.addColorStop(0, '#0f2027');
             skyGradient.addColorStop(0.6, '#203a43');
@@ -676,13 +676,12 @@
             const centerY = canvas.height * 0.72;
             const centerX = canvas.width / 2 + ropeOffset;
 
-            // Жер / Жашыл талаа
             ctx.fillStyle = '#1e3c20';
             ctx.fillRect(0, centerY + 20, canvas.width, canvas.height - centerY);
 
             animationPulse += 0.08;
 
-            // 1. АРКАН (Аркан тартыш)
+            // Аркан
             ctx.beginPath();
             ctx.moveTo(30, centerY);
             ctx.lineTo(canvas.width - 30, centerY);
@@ -690,7 +689,6 @@
             ctx.lineWidth = 8;
             ctx.stroke();
 
-            // Аркандын текстуралык сызыктары
             ctx.beginPath();
             ctx.setLineDash([5, 5]);
             ctx.moveTo(30, centerY);
@@ -700,11 +698,10 @@
             ctx.stroke();
             ctx.setLineDash([]);
 
-            // 2. Ортодогу Маркер Лента (Кызыл желек)
+            // Кызыл лента
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(centerX - 4, centerY - 15, 8, 30);
             
-            // Ортодогу кызыл сызык (Жерде)
             ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -712,25 +709,28 @@
             ctx.lineTo(canvas.width / 2, centerY + 30);
             ctx.stroke();
 
-            // 3. Командаларды тартуу (Кыргыз жигиттери)
-            drawTeam(canvas.width * 0.28 + ropeOffset, centerY, '#00f0ff', leftTeam.name, false, animationPulse);
-            drawTeam(canvas.width * 0.72 + ropeOffset, centerY, '#ff0055', rightTeam.name, true, animationPulse);
+            // СУРООНУН САНЫНА ЖАРАША ОЮНЧУЛАРДЫ ТАРТУУ
+            const playerCount = Math.max(1, parsedQuestions.length);
+            drawTeam(canvas.width * 0.35 + ropeOffset, centerY, '#00f0ff', leftTeam.name, false, animationPulse, playerCount);
+            drawTeam(canvas.width * 0.65 + ropeOffset, centerY, '#ff0055', rightTeam.name, true, animationPulse, playerCount);
 
-            // Плавный сдвиг каната
             ropeOffset += (targetRopeOffset - ropeOffset) * 0.05;
 
             if (gameActive) requestAnimationFrame(drawGame);
         }
 
-        // Кыргыз каарманын калпагы жана улуттук кийими менен тартуу
-        function drawTeam(startX, centerY, mainColor, teamName, isRightSide, pulse) {
+        function drawTeam(startX, centerY, mainColor, teamName, isRightSide, pulse, count) {
             ctx.fillStyle = mainColor;
             ctx.font = "bold 16px 'Segoe UI', sans-serif";
             ctx.textAlign = "center";
             ctx.fillText(teamName, startX + (isRightSide ? 60 : -60), centerY - 95);
 
-            for (let i = 0; i < 3; i++) {
-                let distance = isRightSide ? (i * 55) : -(i * 55);
+            // Суроонун санына жараша каармандар арасындагы басыкты эсептөө
+            let spacing = 45;
+            if (count > 6) spacing = Math.max(25, 250 / count);
+
+            for (let i = 0; i < count; i++) {
+                let distance = isRightSide ? (i * spacing) : -(i * spacing);
                 let lean = Math.sin(pulse + i) * 8; 
                 let pullBack = isRightSide ? (12 + lean) : (-12 - lean);
                 
@@ -748,7 +748,7 @@
             ctx.translate(x, y);
             ctx.rotate(leanAngle);
 
-            // 1. БУТТАР
+            // Буттар
             ctx.lineWidth = 6;
             ctx.strokeStyle = '#111';
             ctx.lineCap = "round";
@@ -760,7 +760,7 @@
             ctx.lineTo(12, 25);
             ctx.stroke();
 
-            // 2. ДЕНЕ / ЧЫПТАМА (Чепкен)
+            // Дене
             ctx.fillStyle = teamColor;
             ctx.beginPath();
             ctx.moveTo(-10, -40);
@@ -774,13 +774,13 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // 3. БАШ
+            // Баш
             ctx.fillStyle = '#ffdbac';
             ctx.beginPath();
             ctx.arc(0, -52, 11, 0, Math.PI * 2);
             ctx.fill();
 
-            // 4. АК КАЛПАК
+            // Калпак
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
             ctx.moveTo(-11, -56);
@@ -800,7 +800,7 @@
             ctx.lineTo(isRightSide ? 4 : -4, -77);
             ctx.stroke();
 
-            // 5. КОЛДОР
+            // Колдор
             ctx.lineWidth = 5;
             ctx.strokeStyle = '#ffdbac';
             
@@ -813,7 +813,7 @@
             ctx.restore();
         }
 
-        // --- 4. EVENT LISTENERS FOR LANGUAGE BUTTONS ---
+        // Event Listeners
         ['ky', 'ru', 'en'].forEach(lang => {
             const btnSetup = document.getElementById(`btn-lang-${lang}`);
             const btnGame = document.getElementById(`btn-game-lang-${lang}`);
