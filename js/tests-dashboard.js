@@ -5,10 +5,8 @@ import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/
 let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Firebase Auth же берилген auth объектисин колдонуу
     const firebaseAuth = auth || getAuth();
     
-    // Auth абалын байкоо
     onAuthStateChanged(firebaseAuth, (user) => {
         if (user) {
             currentUser = {
@@ -17,12 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             loadMyTests();
         } else {
-            // Firebase Auth табылбаса LocalStorage текшерүү
             checkLocalStorageAuth();
         }
     });
 
-    // Мүмкүн болгон fallback: сакталган сессияны дароо текшерүү
     setTimeout(() => {
         if (!currentUser) {
             checkLocalStorageAuth();
@@ -86,7 +82,6 @@ async function loadMyTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Мүмкүн болгон БАРДЫК автордук талааларды жыйноо (Legacy Compatibility)
                 const possibleEmails = [
                     test.authorEmail,
                     test.email,
@@ -103,26 +98,21 @@ async function loadMyTests() {
                     test.createdBy
                 ].filter(Boolean).map(i => i.toString());
 
-                // ШАЙКЕШТИК ТЕКШЕРҮҮСҮ:
                 let isMyTest = false;
 
-                // 1. UID боюнча шайкештик
                 if (currUid && possibleIds.includes(currUid)) {
                     isMyTest = true;
                 }
 
-                // 2. Email боюнча шайкештик
                 if (!isMyTest && currEmail && possibleEmails.includes(currEmail)) {
                     isMyTest = true;
                 }
 
-                // 3. Эгер тестте эч кандай автордук маалымат жок болсо жана ушул локалдык браузерде түзүлгөн болсо
                 const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
                 if (!isMyTest && myLocalTests.includes(id)) {
                     isMyTest = true;
                 }
 
-                // Эгер автор аныкталса — тестти чыгарабыз
                 if (isMyTest) {
                     myTestCount++;
                     const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
