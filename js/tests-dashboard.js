@@ -1,30 +1,33 @@
 import { db, auth } from '../firebase/firebase-config.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"; // эгер firebase-auth өзүнчө болсо туура импорттоңуз
 import { ref, get, child, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getAuth, onAuthStateChanged as onAuthChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, (user) => {
+    const firebaseAuth = getAuth();
+    
+    // Auth абалын байкоо
+    onAuthChanged(firebaseAuth, (user) => {
         if (user) {
-            currentUser = user;
+            currentUser = {
+                uid: user.uid,
+                email: user.email ? user.email.toLowerCase().trim() : ''
+            };
             loadMyTests();
         } else {
-            // Эгер Firebase Auth иштебей жатса, LocalStorage аркылуу текшерүү
-            const storedEmail = localStorage.getItem('userEmail');
-            const storedUid = localStorage.getItem('userId');
-            
-            if (storedEmail || storedUid) {
-                currentUser = { 
-                    email: storedEmail ? storedEmail.toLowerCase().trim() : '', 
-                    uid: storedUid || '' 
-                };
-                loadMyTests();
-            } else {
-                renderNoAuthMessage();
-            }
+            // Firebase Auth табылбаса LocalStorage текшерүү
+            checkLocalStorageAuth();
         }
     });
+
+    // Мүмкүн болгон fallback: сакталган сессияны дароо текшерүү
+    setTimeout(() => {
+        if (!currentUser) {
+            checkLocalStorageAuth();
+        }
+    }, 1000);
 
     const closeModalBtn = document.getElementById('closeModal');
     if (closeModalBtn) {
@@ -35,13 +38,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+function checkLocalStorageAuth() {
+    const storedEmail = localStorage.getItem('userEmail') || localStorage.getItem('email') || localStorage.getItem('teacherEmail');
+    const storedUid = localStorage.getItem('userId') || localStorage.getItem('uid') || localStorage.getItem('teacherId');
+
+    if (storedEmail || storedUid) {
+        currentUser = {
+            email: storedEmail ? storedEmail.toLowerCase().trim() : '',
+            uid: storedUid || ''
+        };
+        loadMyTests();
+    } else {
+        renderNoAuthMessage();
+    }
+}
+
 function renderNoAuthMessage() {
     const container = document.getElementById('testContainer');
     if (container) {
         container.innerHTML = `
             <div style="text-align:center; padding:40px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
                 <i class="fa-solid fa-lock" style="font-size:3rem; color:#ef4444; margin-bottom:15px;"></i>
-                <h3 style="margin-bottom:10px;">Системага кирүү талап кылынат</h3>
+                <h3 style="margin-bottom:10px; color:#fff;">Системага кирүү талап кылынат</h3>
                 <p style="color:#94a3b8; margin-bottom:20px;">Өзүңүздүн тесттериңизди көрүү үчүн аккаунтуңузга кириңиз.</p>
                 <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
             </div>
@@ -62,20 +80,49 @@ async function loadMyTests() {
             container.innerHTML = '';
             let myTestCount = 0;
 
-            const currentEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
-            const currentUid = currentUser.uid || '';
+            const currEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
+            const currUid = currentUser.uid || '';
 
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
-                const testUid = test.authorId || test.userId || test.uid || '';
+                // Мүмкүн болгон БАРДЫК автордук талааларды жыйноо (Legacy Compatibility)
+                const possibleEmails = [
+                    test.authorEmail,
+                    test.email,
+                    test.userEmail,
+                    test.teacherEmail,
+                    test.createdByEmail
+                ].filter(Boolean).map(e => e.toString().toLowerCase().trim());
 
-                // КАТААЛ АВТОРДУК ТЕКШЕРҮҮ:
-                // Эгер тесттинauthorId/authorEmail маалыматы УЧУРДАГЫ кирген мугалимге туура келсе гана чыгарабыз.
-                const isMyTest = (currentUid && testUid && currentUid === testUid) ||
-                                 (currentEmail && testEmail && currentEmail === testEmail);
+                const possibleIds = [
+                    test.authorId,
+                    test.userId,
+                    test.uid,
+                    test.teacherId,
+                    test.createdBy
+                ].filter(Boolean).map(i => i.toString());
 
+                // ШАЙКЕШТИК ТЕКШЕРҮҮҮСҮ:
+                let isMyTest = false;
+
+                // 1. UID боюнча сәйкестүүлүк
+                if (currUid && possibleIds.includes(currUid)) {
+                    isMyTest = true;
+                }
+
+                // 2. Email боюнча сәйкестүүлүк
+                if (!isMyTest && currEmail && possibleEmails.includes(currEmail)) {
+                    isMyTest = true;
+                }
+
+                // 3. Эгер тестте эч кандай автордук маалымат жок болсо жана ушул локалдык браузерде түзүлгөн болсо
+                const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
+                if (!isMyTest && myLocalTests.includes(id)) {
+                    isMyTest = true;
+                }
+
+                // Эгер автор аныкталса — тестти чыгарабыз
                 if (isMyTest) {
                     myTestCount++;
                     const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
