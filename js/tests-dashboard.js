@@ -43,20 +43,21 @@ async function loadTests() {
             container.innerHTML = '';
             let userTestCount = 0;
 
-            const currentEmail = (currentUser.email || '').toLowerCase().trim();
+            // Кирген мугалимдин стандартызацияланган почтасы жана UID
+            const currentEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
             const currentUid = currentUser.uid;
 
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Тесттеги автордук маалыматтарды текшерүү
+                // Тесттин ээсинин электрондук почтасы жана ID маалыматтарын топтоо
                 const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
                 const testUid = test.authorId || test.userId || test.uid || '';
 
-                // Эгер email же UID дал келсе ЖЕ тестте автор тууралуу таптакыр маалымат жок болсо (эски тесттер) чыгарабыз
-                const isOwner = (currentEmail && testEmail && currentEmail === testEmail) ||
-                                (currentUid && testUid && currentUid === testUid) ||
-                                (!testEmail && !testUid);
+                // СТРЕКТ КУПУЯЛУУЛУК ФИЛЬТРИ: 
+                // Бир гана почтасы же UID'си азыркы мугалимге дал келген тесттер чыгат
+                const isOwner = (currentEmail && testEmail && currentEmail === testEmail) || 
+                                (currentUid && testUid && currentUid === testUid);
 
                 if (isOwner) {
                     userTestCount++;
