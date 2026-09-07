@@ -8,13 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
-            loadTests();
+            loadMyTests();
         } else {
-            // Эгер Firebase Auth иштебей жатса, LocalStorage аркылуу текшерип көрөбүз
+            // Эгер Firebase Auth иштебей жатса, LocalStorage аркылуу текшерүү
             const storedEmail = localStorage.getItem('userEmail');
-            if (storedEmail) {
-                currentUser = { email: storedEmail, uid: localStorage.getItem('userId') || '' };
-                loadTests();
+            const storedUid = localStorage.getItem('userId');
+            
+            if (storedEmail || storedUid) {
+                currentUser = { 
+                    email: storedEmail ? storedEmail.toLowerCase().trim() : '', 
+                    uid: storedUid || '' 
+                };
+                loadMyTests();
             } else {
                 renderNoAuthMessage();
             }
@@ -24,7 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeModalBtn = document.getElementById('closeModal');
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => {
-            document.getElementById('resultsModal').style.display = 'none';
+            const modal = document.getElementById('resultsModal');
+            if (modal) modal.style.display = 'none';
         });
     }
 });
@@ -36,14 +42,14 @@ function renderNoAuthMessage() {
             <div style="text-align:center; padding:40px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
                 <i class="fa-solid fa-lock" style="font-size:3rem; color:#ef4444; margin-bottom:15px;"></i>
                 <h3 style="margin-bottom:10px;">Системага кирүү талап кылынат</h3>
-                <p style="color:#94a3b8; margin-bottom:20px;">Түзүлгөн тесттерди көрүү үчүн аккаунтуңузга кириңиз.</p>
+                <p style="color:#94a3b8; margin-bottom:20px;">Өзүңүздүн тесттериңизди көрүү үчүн аккаунтуңузга кириңиз.</p>
                 <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
             </div>
         `;
     }
 }
 
-async function loadTests() {
+async function loadMyTests() {
     const container = document.getElementById('testContainer');
     if (!container || !currentUser) return;
 
@@ -54,7 +60,7 @@ async function loadTests() {
         if (snapshot.exists()) {
             const data = snapshot.val();
             container.innerHTML = '';
-            let userTestCount = 0;
+            let myTestCount = 0;
 
             const currentEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
             const currentUid = currentUser.uid || '';
@@ -62,20 +68,16 @@ async function loadTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Бардык альтернативдик автор талааларын текшерүү
                 const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
                 const testUid = test.authorId || test.userId || test.uid || '';
 
-                // АВТОРДУК ДАЛ КЕЛҮҮ ШАРТЫ:
-                // 1. Почтасы окшош болсо
-                // 2. Же UID окшош болсо
-                // 3. Же базадагы тестте автор көрсөтүлбөй калган болсо (баарына көрсөтүү)
-                const isOwner = (currentEmail && testEmail && currentEmail === testEmail) || 
-                                (currentUid && testUid && currentUid === testUid) ||
-                                (!testEmail && !testUid);
+                // КАТААЛ АВТОРДУК ТЕКШЕРҮҮ:
+                // Эгер тесттинauthorId/authorEmail маалыматы УЧУРДАГЫ кирген мугалимге туура келсе гана чыгарабыз.
+                const isMyTest = (currentUid && testUid && currentUid === testUid) ||
+                                 (currentEmail && testEmail && currentEmail === testEmail);
 
-                if (isOwner) {
-                    userTestCount++;
+                if (isMyTest) {
+                    myTestCount++;
                     const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
                     const isHidden = test.hidden || false;
                     const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0;
@@ -92,7 +94,7 @@ async function loadTests() {
                         <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
                         <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
                         <p><i class="fa-solid fa-circle-question"></i> Суроолор: <strong>${qCount} даана</strong></p>
-                        <p><i class="fa-solid fa-rotate-right"></i> Тапшыруу чеги: <strong>${attemptsText}</strong></p>
+                        <p><i class="fa-solid fa-rotate-right"></i> Лимит: <strong>${attemptsText}</strong></p>
 
                         <div class="card-actions">
                             <button class="btn-action btn-copy" data-id="${id}" title="Шилтемени көчүрүү">
@@ -119,10 +121,10 @@ async function loadTests() {
                 }
             });
 
-            if (userTestCount === 0) {
+            if (myTestCount === 0) {
                 container.innerHTML = `
                     <div style="text-align:center; padding:40px; grid-column: 1/-1;">
-                        <p style="color:#94a3b8; font-size:1.1rem; margin-bottom:15px;">Сизде азырынча түзүлгөн тесттер жок.</p>
+                        <p style="color:#94a3b8; font-size:1.1rem; margin-bottom:15px;">Сизде азырынча түзүлгөн жеке тесттер жок.</p>
                         <a href="test-builder.html" class="btn-create"><i class="fa-solid fa-plus"></i> Биринчи тестти түзүү</a>
                     </div>
                 `;
@@ -158,7 +160,7 @@ function attachEventListeners() {
             const currentStatus = btn.getAttribute('data-hidden') === 'true';
             try {
                 await update(ref(db, `tests/${id}`), { hidden: !currentStatus });
-                loadTests();
+                loadMyTests();
             } catch (err) {
                 alert("Ката чыкты: " + err.message);
             }
@@ -179,7 +181,7 @@ function attachEventListeners() {
                 }
                 try {
                     await update(ref(db, `tests/${id}`), { maxAttempts: newAttempts });
-                    loadTests();
+                    loadMyTests();
                 } catch (err) {
                     alert("Ката: " + err.message);
                 }
@@ -201,7 +203,7 @@ function attachEventListeners() {
             if (confirm("Чын эле бул тестти өчүргүңүз келеби?")) {
                 try {
                     await remove(ref(db, `tests/${id}`));
-                    loadTests();
+                    loadMyTests();
                 } catch (err) {
                     alert("Өчүрүүдө ката чыкты: " + err.message);
                 }
