@@ -3,10 +3,12 @@ import { ref, get, child, remove, update } from "https://www.gstatic.com/firebas
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 let currentUser = null;
+let isLoaded = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     const firebaseAuth = auth || getAuth();
-    
+
+    // Firebase Auth абалын көзөмөлдөө
     onAuthStateChanged(firebaseAuth, (user) => {
         if (user) {
             currentUser = {
@@ -19,11 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Тез арада табылбай калса LocalStorage текшерүү fallback
     setTimeout(() => {
-        if (!currentUser) {
+        if (!isLoaded && !currentUser) {
             checkLocalStorageAuth();
         }
-    }, 1000);
+    }, 1200);
 
     const closeModalBtn = document.getElementById('closeModal');
     if (closeModalBtn) {
@@ -50,14 +53,15 @@ function checkLocalStorageAuth() {
 }
 
 function renderNoAuthMessage() {
+    isLoaded = true;
     const container = document.getElementById('testContainer');
     if (container) {
         container.innerHTML = `
-            <div style="text-align:center; padding:40px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
+            <div style="text-align:center; padding:50px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
                 <i class="fa-solid fa-lock" style="font-size:3rem; color:#ef4444; margin-bottom:15px;"></i>
                 <h3 style="margin-bottom:10px; color:#fff;">Системага кирүү талап кылынат</h3>
                 <p style="color:#94a3b8; margin-bottom:20px;">Өзүңүздүн тесттериңизди көрүү үчүн аккаунтуңузга кириңиз.</p>
-                <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
+                <a href="/login.html" class="btn-create" style="display:inline-flex;">Кирүү барагына өтүү</a>
             </div>
         `;
     }
@@ -71,6 +75,8 @@ async function loadMyTests() {
         const dbRef = ref(db);
         const snapshot = await get(child(dbRef, 'tests'));
 
+        isLoaded = true;
+
         if (snapshot.exists()) {
             const data = snapshot.val();
             container.innerHTML = '';
@@ -82,6 +88,7 @@ async function loadMyTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
+                // Бардык мүмкүн болгон автордук талаалар
                 const possibleEmails = [
                     test.authorEmail,
                     test.email,
@@ -100,14 +107,17 @@ async function loadMyTests() {
 
                 let isMyTest = false;
 
+                // 1. UID боюнча
                 if (currUid && possibleIds.includes(currUid)) {
                     isMyTest = true;
                 }
 
+                // 2. Email боюнча
                 if (!isMyTest && currEmail && possibleEmails.includes(currEmail)) {
                     isMyTest = true;
                 }
 
+                // 3. Браузердик fallback
                 const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
                 if (!isMyTest && myLocalTests.includes(id)) {
                     isMyTest = true;
@@ -159,23 +169,29 @@ async function loadMyTests() {
             });
 
             if (myTestCount === 0) {
-                container.innerHTML = `
-                    <div style="text-align:center; padding:40px; grid-column: 1/-1;">
-                        <p style="color:#94a3b8; font-size:1.1rem; margin-bottom:15px;">Сизде азырынча түзүлгөн жеке тесттер жок.</p>
-                        <a href="test-builder.html" class="btn-create"><i class="fa-solid fa-plus"></i> Биринчи тестти түзүү</a>
-                    </div>
-                `;
+                renderEmptyState(container);
             } else {
                 attachEventListeners();
             }
 
         } else {
-            container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Базада тесттер табылган жок.</p>';
+            renderEmptyState(container);
         }
     } catch (err) {
         console.error("Тесттерди жүктөөдө ката:", err);
-        container.innerHTML = `<p style="color:#ef4444; grid-column: 1/-1;">Жүктөөдө ката чыкты: ${err.message}</p>`;
+        container.innerHTML = `<p style="color:#ef4444; grid-column: 1/-1; text-align:center;">Жүктөөдө ката чыкты: ${err.message}</p>`;
     }
+}
+
+function renderEmptyState(container) {
+    container.innerHTML = `
+        <div style="text-align:center; padding:60px 20px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px border-dashed #1e293b;">
+            <i class="fa-solid fa-folder-open" style="font-size:3rem; color:#334155; margin-bottom:15px;"></i>
+            <h3 style="color:#fff; margin-bottom:10px;">Сизде азырынча түзүлгөн жеке тесттер жок</h3>
+            <p style="color:#94a3b8; font-size:0.95rem; margin-bottom:20px;">Жаңы тест түзүү үчүн жогорудагы же төмөндөгү баскычты басыңыз.</p>
+            <a href="test-builder.html" class="btn-create"><i class="fa-solid fa-plus"></i> Биринчи тестти түзүү</a>
+        </div>
+    `;
 }
 
 function attachEventListeners() {
