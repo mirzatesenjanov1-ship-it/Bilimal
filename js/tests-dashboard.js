@@ -10,14 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
             currentUser = user;
             loadTests();
         } else {
-            const container = document.getElementById('testContainer');
-            if (container) {
-                container.innerHTML = `
-                    <div style="text-align:center; padding:30px; grid-column: 1/-1;">
-                        <p style="color:#ff0055; margin-bottom:15px;"><i class="fa-solid fa-lock"></i> Бул баракчага кирүү үчүн системага киришиңиз керек!</p>
-                        <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
-                    </div>
-                `;
+            // Эгер Firebase Auth иштебей жатса, LocalStorage аркылуу текшерип көрөбүз
+            const storedEmail = localStorage.getItem('userEmail');
+            if (storedEmail) {
+                currentUser = { email: storedEmail, uid: localStorage.getItem('userId') || '' };
+                loadTests();
+            } else {
+                renderNoAuthMessage();
             }
         }
     });
@@ -29,6 +28,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function renderNoAuthMessage() {
+    const container = document.getElementById('testContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
+                <i class="fa-solid fa-lock" style="font-size:3rem; color:#ef4444; margin-bottom:15px;"></i>
+                <h3 style="margin-bottom:10px;">Системага кирүү талап кылынат</h3>
+                <p style="color:#94a3b8; margin-bottom:20px;">Түзүлгөн тесттерди көрүү үчүн аккаунтуңузга кириңиз.</p>
+                <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
+            </div>
+        `;
+    }
+}
 
 async function loadTests() {
     const container = document.getElementById('testContainer');
@@ -43,22 +56,23 @@ async function loadTests() {
             container.innerHTML = '';
             let userTestCount = 0;
 
-            // Кирген мугалимдин стандартызацияланган почтасы жана UID
             const currentEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
-            const currentUid = currentUser.uid;
+            const currentUid = currentUser.uid || '';
 
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Бардык мүмкүн болгон автордук талааларды текшерүү
+                // Бардык альтернативдик автор талааларын текшерүү
                 const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
                 const testUid = test.authorId || test.userId || test.uid || '';
 
-                // АВТОРДУКТУ ТЕКШЕРҮҮ ЛОГИКАСЫ
-                // 1. Почтасы дал келсе
-                // 2. Же UID'си дал келсе
+                // АВТОРДУК ДАЛ КЕЛҮҮ ШАРТЫ:
+                // 1. Почтасы окшош болсо
+                // 2. Же UID окшош болсо
+                // 3. Же базадагы тестте автор көрсөтүлбөй калган болсо (баарына көрсөтүү)
                 const isOwner = (currentEmail && testEmail && currentEmail === testEmail) || 
-                                (currentUid && testUid && currentUid === testUid);
+                                (currentUid && testUid && currentUid === testUid) ||
+                                (!testEmail && !testUid);
 
                 if (isOwner) {
                     userTestCount++;
@@ -72,24 +86,23 @@ async function loadTests() {
                     card.id = `card_${id}`;
                     card.innerHTML = `
                         <span class="badge ${isHidden ? 'badge-unpub' : 'badge-pub'}">
-                            ${isHidden ? '• Жашырылган' : '• Жарыяланган'}
+                            ${isHidden ? '• Жашырылган' : '• Активдүү'}
                         </span>
                         <h3>${escapeHtml(test.title || 'Аталышы жок тест')}</h3>
                         <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
                         <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
-                        <p><i class="fa-solid fa-circle-question"></i> Суроолор саны: <strong>${qCount}</strong></p>
+                        <p><i class="fa-solid fa-circle-question"></i> Суроолор: <strong>${qCount} даана</strong></p>
                         <p><i class="fa-solid fa-rotate-right"></i> Тапшыруу чеги: <strong>${attemptsText}</strong></p>
-                        ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${escapeHtml(test.topic)}</p>` : ''}
 
                         <div class="card-actions">
-                            <button class="btn-action btn-copy" data-id="${id}">
+                            <button class="btn-action btn-copy" data-id="${id}" title="Шилтемени көчүрүү">
                                 <i class="fa-solid fa-link"></i> Шилтеме
                             </button>
                             <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
-                                <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Көрсөтүү' : 'Жашыруу'}
+                                <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Ачуу' : 'Жашыруу'}
                             </button>
                             <button class="btn-action btn-attempts" data-id="${id}" data-attempts="${maxAttempts}">
-                                <i class="fa-solid fa-repeat"></i> Аракеттер
+                                <i class="fa-solid fa-repeat"></i> Лимит
                             </button>
                             <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
                                 <i class="fa-solid fa-pen"></i> Оңдоо
@@ -107,17 +120,22 @@ async function loadTests() {
             });
 
             if (userTestCount === 0) {
-                container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Сизде азырынча түзүлгөн тесттер жок.</p>';
+                container.innerHTML = `
+                    <div style="text-align:center; padding:40px; grid-column: 1/-1;">
+                        <p style="color:#94a3b8; font-size:1.1rem; margin-bottom:15px;">Сизде азырынча түзүлгөн тесттер жок.</p>
+                        <a href="test-builder.html" class="btn-create"><i class="fa-solid fa-plus"></i> Биринчи тестти түзүү</a>
+                    </div>
+                `;
             } else {
                 attachEventListeners();
             }
 
         } else {
-            container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Азырынча эч кандай тест түзүлө элек.</p>';
+            container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Базада тесттер табылган жок.</p>';
         }
     } catch (err) {
         console.error("Тесттерди жүктөөдө ката:", err);
-        container.innerHTML = `<p style="color:#ff0055; grid-column: 1/-1;">Ката чыкты: ${err.message}</p>`;
+        container.innerHTML = `<p style="color:#ef4444; grid-column: 1/-1;">Жүктөөдө ката чыкты: ${err.message}</p>`;
     }
 }
 
@@ -142,7 +160,7 @@ function attachEventListeners() {
                 await update(ref(db, `tests/${id}`), { hidden: !currentStatus });
                 loadTests();
             } catch (err) {
-                alert("Статусту өзгөртүүдө ката чыкты: " + err.message);
+                alert("Ката чыкты: " + err.message);
             }
         });
     });
@@ -152,21 +170,18 @@ function attachEventListeners() {
             const id = btn.getAttribute('data-id');
             const currentAttempts = btn.getAttribute('data-attempts');
             
-            const userInput = prompt("Окуучу бул тестти канча жолу тапшыра аларын жазыңыз:\n(0 - чексиз жолу, же сан киргизиңиз: 1, 2, 3...)", currentAttempts);
-            
+            const userInput = prompt("Тапшыруу сан чегин киргизиңиз (0 - чексиз жолу):", currentAttempts);
             if (userInput !== null) {
                 const newAttempts = parseInt(userInput.trim());
                 if (isNaN(newAttempts) || newAttempts < 0) {
-                    alert("Сураныч, туура сан жазыңыз (0 же андан чоң)!");
+                    alert("Туура сан киргизиңиз!");
                     return;
                 }
-
                 try {
                     await update(ref(db, `tests/${id}`), { maxAttempts: newAttempts });
-                    alert("Тапшыруу жолу ийгиликтүү жаңыртылды!");
                     loadTests();
                 } catch (err) {
-                    alert("Базаны жаңыртууда ката чыкты: " + err.message);
+                    alert("Ката: " + err.message);
                 }
             }
         });
@@ -183,12 +198,10 @@ function attachEventListeners() {
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
-            if (confirm("Бул тестти чындап эле өчүрүүнү каалайсызбы?")) {
+            if (confirm("Чын эле бул тестти өчүргүңүз келеби?")) {
                 try {
                     await remove(ref(db, `tests/${id}`));
-                    const card = document.getElementById(`card_${id}`);
-                    if (card) card.remove();
-                    alert("Тест өчүрүлдү!");
+                    loadTests();
                 } catch (err) {
                     alert("Өчүрүүдө ката чыкты: " + err.message);
                 }
@@ -211,121 +224,54 @@ async function viewResults(testId, title) {
     try {
         const dbRef = ref(db);
         let foundResultsObj = null;
-        let parentNode = 'test_results';
 
-        try {
-            const snap = await get(child(dbRef, `test_results/${testId}`));
-            if (snap.exists()) {
-                foundResultsObj = snap.val();
-                parentNode = 'test_results';
-            }
-        } catch (e1) {
-            console.warn("test_results ичинен окулган жок:", e1.message);
-        }
+        const snap1 = await get(child(dbRef, `test_results/${testId}`));
+        if (snap1.exists()) foundResultsObj = snap1.val();
 
         if (!foundResultsObj) {
-            try {
-                const snap = await get(child(dbRef, `results/${testId}`));
-                if (snap.exists()) {
-                    foundResultsObj = snap.val();
-                    parentNode = 'results';
-                }
-            } catch (e2) {
-                console.warn("results ичинен окулган жок:", e2.message);
-            }
+            const snap2 = await get(child(dbRef, `results/${testId}`));
+            if (snap2.exists()) foundResultsObj = snap2.val();
         }
 
         if (foundResultsObj) {
             tableBody.innerHTML = '';
-            const entries = Object.entries(foundResultsObj);
-
-            entries.forEach(([key, r]) => {
-                const cheatedCount = r.cheatedCount || 0;
-                let cheatedBadge = `<span style="color:#10b981;">Таза (0)</span>`;
-
-                if (cheatedCount > 0) {
-                    cheatedBadge = `<span style="color:#ff0055; font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> ${cheatedCount} жолу</span>`;
-                }
-
-                if (r.cheatingAttempt) {
-                    cheatedBadge += ` <small style="color:#ff0055;">(Бөгөттөлгөн)</small>`;
-                }
-
-                const resultUniqueId = key || (r.studentName ? `${r.studentName}_${r.date}` : Math.random().toString());
-                const storageKey = `checked_result_${testId}_${resultUniqueId}`;
-                const isChecked = localStorage.getItem(storageKey) === 'true';
-
+            let index = 1;
+            Object.entries(foundResultsObj).forEach(([key, r]) => {
                 const tr = document.createElement('tr');
-                if (isChecked) tr.classList.add('checked-row-bg');
-
                 tr.innerHTML = `
-                    <td class="check-col">
-                        <input type="checkbox" class="result-checkbox" ${isChecked ? 'checked' : ''} data-key="${storageKey}">
-                    </td>
-                    <td class="student-name-td ${isChecked ? 'checked-student-name' : ''}">${escapeHtml(r.studentName || '-')}</td>
+                    <td>${index++}</td>
+                    <td><strong>${escapeHtml(r.studentName || '-')}</strong></td>
                     <td>${escapeHtml(r.studentClass || '-')}</td>
-                    <td><strong>${r.score || 0}</strong> / ${r.totalQuestions || '-'}</td>
-                    <td><strong>${r.percent || 0}%</strong></td>
-                    <td>${cheatedBadge}</td>
+                    <td>${r.score || 0} / ${r.totalQuestions || '-'}</td>
+                    <td><span style="color:#00f2fe; font-weight:bold;">${r.percent || 0}%</span></td>
+                    <td>${r.cheatedCount > 0 ? `<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> ${r.cheatedCount} жолу</span>` : '<span style="color:#10b981;">Таза</span>'}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
-                    <td class="check-col">
-                        <button class="btn-row-delete" title="Өчүрүү" style="background:transparent; border:none; color:#ff0055; cursor:pointer; font-size:1rem;">
-                            <i class="fa-solid fa-trash-can"></i>
+                    <td>
+                        <button class="btn-delete-res" data-key="${key}" style="background:none; border:none; color:#ef4444; cursor:pointer;">
+                            <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
                 `;
 
-                const chk = tr.querySelector('.result-checkbox');
-                chk.addEventListener('change', (e) => {
-                    const checked = e.target.checked;
-                    const nameTd = tr.querySelector('.student-name-td');
-
-                    if (checked) {
-                        nameTd.classList.add('checked-student-name');
-                        tr.classList.add('checked-row-bg');
-                        localStorage.setItem(storageKey, 'true');
-                    } else {
-                        nameTd.classList.remove('checked-student-name');
-                        tr.classList.remove('checked-row-bg');
-                        localStorage.removeItem(storageKey);
-                    }
-                });
-
-                const delBtn = tr.querySelector('.btn-row-delete');
-                delBtn.addEventListener('click', async () => {
-                    const studentName = r.studentName || 'Бул окуучунун';
-                    if (confirm(`Чын эле ${studentName} жыйынтыгын өчүргүңүз келеби?`)) {
-                        try {
-                            await remove(ref(db, `${parentNode}/${testId}/${key}`));
-                            localStorage.removeItem(storageKey);
-                            tr.remove();
-
-                            if (tableBody.children.length === 0) {
-                                tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
-                            }
-                        } catch (delErr) {
-                            alert("Өчүрүүдө ката чыкты: " + delErr.message);
-                        }
+                tr.querySelector('.btn-delete-res').addEventListener('click', async () => {
+                    if (confirm("Жыйынтыкты өчүрүүнү каалайсызбы?")) {
+                        await remove(ref(db, `test_results/${testId}/${key}`));
+                        await remove(ref(db, `results/${testId}/${key}`));
+                        tr.remove();
                     }
                 });
 
                 tableBody.appendChild(tr);
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Бул тестти азырынча эч ким тапшыра элек.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
-        console.error("Жыйынтыктарды жүктөөдө ката:", err);
-        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ff0055;">Ката чыкты: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444;">Ката: ${err.message}</td></tr>`;
     }
 }
 
 function escapeHtml(str) {
     if (typeof str !== 'string') return str;
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
