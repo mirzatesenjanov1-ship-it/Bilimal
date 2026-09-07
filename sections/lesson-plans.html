@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ачык Сабак Пландары - Bilimal.org</title>
-  <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -13,7 +12,6 @@
 </head>
 <body class="min-h-screen pb-12">
 
-  <!-- TOP BAR -->
   <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
     <div class="max-w-7xl mx-auto flex justify-between items-center">
       <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2">
@@ -32,7 +30,6 @@
       <p class="text-slate-400 mt-2">Мугалимдер үчүн даярдалган акысыз ачык сабак пландарынын базасы</p>
     </div>
 
-    <!-- SEARCH BAR -->
     <div class="max-w-xl mx-auto mb-8">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -41,7 +38,6 @@
       </div>
     </div>
 
-    <!-- PUBLIC PLANS GRID -->
     <div id="public-plans-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div class="col-span-full text-center py-10 text-slate-400">
         <i class="fa-solid fa-circle-notch fa-spin text-2xl text-amber-500"></i>
@@ -51,7 +47,6 @@
 
   </main>
 
-  <!-- FIREBASE SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
@@ -76,7 +71,7 @@
 
     async function loadPublicPlans() {
       try {
-        const snap = await db.ref('library').once('value');
+        const snap = await db.ref('lesson_plans').once('value');
         const data = snap.val() || {};
 
         // FILTER: ONLY KEEP isPublic === true
@@ -101,25 +96,25 @@
 
       plans.forEach(plan => {
         const card = document.createElement('div');
-        card.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl flex flex-col justify-between";
+        card.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/50 transition";
         card.innerHTML = `
           <div>
             <div class="flex justify-between items-center mb-3">
               <span class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full font-medium">
-                ${plan.subject || 'Предмет'} • ${plan.grade || 'Класс'}
+                ${plan.subject || 'Предмет'} ${plan.grade ? '• ' + plan.grade : ''}
               </span>
               <span class="text-xs text-emerald-400">🌐 Ачык</span>
             </div>
-            <h3 class="text-lg font-bold text-white mb-2">${plan.title}</h3>
+            <h3 class="text-lg font-bold text-white mb-2">${plan.title || plan.name || 'Сабак планы'}</h3>
             <p class="text-xs text-slate-400 line-clamp-3">${plan.goals || ''}</p>
           </div>
           <div class="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center">
             <span class="text-xs text-slate-400">Акысыз маалымат</span>
-            ${plan.pdfUrl ? `
-              <a href="${plan.pdfUrl}" target="_blank" class="text-xs bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg hover:bg-amber-600 transition">
-                📄 PDF жүктөө
+            ${(plan.pdfUrl || plan.url) ? `
+              <a href="${plan.pdfUrl || plan.url}" target="_blank" class="text-xs bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg hover:bg-amber-600 transition flex items-center gap-1">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Документти ачуу
               </a>
-            ` : '<span class="text-xs text-slate-500">PDF жок</span>'}
+            ` : '<span class="text-xs text-slate-500">Документ жок</span>'}
           </div>
         `;
         container.appendChild(card);
@@ -129,7 +124,7 @@
     document.getElementById('public-search').addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase();
       const filtered = publicPlans.filter(p => 
-        p.title.toLowerCase().includes(q) || 
+        (p.title || p.name || '').toLowerCase().includes(q) || 
         (p.subject && p.subject.toLowerCase().includes(q))
       );
       renderPublicGrid(filtered);
