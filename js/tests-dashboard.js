@@ -43,15 +43,22 @@ async function loadTests() {
             container.innerHTML = '';
             let userTestCount = 0;
 
+            const currentEmail = (currentUser.email || '').toLowerCase().trim();
+            const currentUid = currentUser.uid;
+
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // КИРГЕН КОЛДОНУУЧУНУН ЭЛЕКТРОНДУК ПОЧТАСЫ БОЮНЧА ФИЛЬТР
-                const userEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
+                // Тесттеги автордук маалыматтарды текшерүү
                 const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
+                const testUid = test.authorId || test.userId || test.uid || '';
 
-                // Эгер тесттин email'и кирген мугалимдин email'ине дал келсе гана чыгарабыз
-                if (userEmail && testEmail && userEmail === testEmail) {
+                // Эгер email же UID дал келсе ЖЕ тестте автор тууралуу таптакыр маалымат жок болсо (эски тесттер) чыгарабыз
+                const isOwner = (currentEmail && testEmail && currentEmail === testEmail) ||
+                                (currentUid && testUid && currentUid === testUid) ||
+                                (!testEmail && !testUid);
+
+                if (isOwner) {
                     userTestCount++;
                     const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
                     const isHidden = test.hidden || false;
