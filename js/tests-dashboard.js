@@ -50,12 +50,13 @@ async function loadTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Тесттин ээсинин электрондук почтасы жана ID маалыматтарын топтоо
+                // Бардык мүмкүн болгон автордук талааларды текшерүү
                 const testEmail = (test.authorEmail || test.email || test.userEmail || '').toLowerCase().trim();
                 const testUid = test.authorId || test.userId || test.uid || '';
 
-                // СТРЕКТ КУПУЯЛУУЛУК ФИЛЬТРИ: 
-                // Бир гана почтасы же UID'си азыркы мугалимге дал келген тесттер чыгат
+                // АВТОРДУКТУ ТЕКШЕРҮҮ ЛОГИКАСЫ
+                // 1. Почтасы дал келсе
+                // 2. Же UID'си дал келсе
                 const isOwner = (currentEmail && testEmail && currentEmail === testEmail) || 
                                 (currentUid && testUid && currentUid === testUid);
 
@@ -63,7 +64,7 @@ async function loadTests() {
                     userTestCount++;
                     const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
                     const isHidden = test.hidden || false;
-                    const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0; // 0 = чексиз
+                    const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0;
                     const attemptsText = maxAttempts === 0 ? 'Чексиз' : `${maxAttempts} жолу`;
 
                     const card = document.createElement('div');
@@ -106,22 +107,21 @@ async function loadTests() {
             });
 
             if (userTestCount === 0) {
-                container.innerHTML = '<p style="color:#94a3b8">Сизде азырынча түзүлгөн тесттер жок.</p>';
+                container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Сизде азырынча түзүлгөн тесттер жок.</p>';
             } else {
                 attachEventListeners();
             }
 
         } else {
-            container.innerHTML = '<p style="color:#94a3b8">Азырынча эч кандай тест түзүлө элек.</p>';
+            container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Азырынча эч кандай тест түзүлө элек.</p>';
         }
     } catch (err) {
         console.error("Тесттерди жүктөөдө ката:", err);
-        container.innerHTML = `<p style="color:#ff0055">Ката чыкты: ${err.message}</p>`;
+        container.innerHTML = `<p style="color:#ff0055; grid-column: 1/-1;">Ката чыкты: ${err.message}</p>`;
     }
 }
 
 function attachEventListeners() {
-    // Шилтемени көчүрүү
     document.querySelectorAll('.btn-copy').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -134,7 +134,6 @@ function attachEventListeners() {
         });
     });
 
-    // Жашыруу / Көрсөтүү
     document.querySelectorAll('.btn-toggle').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -148,7 +147,6 @@ function attachEventListeners() {
         });
     });
 
-    // Тапшыруу санын башкаруу (maxAttempts)
     document.querySelectorAll('.btn-attempts').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -174,7 +172,6 @@ function attachEventListeners() {
         });
     });
 
-    // Жыйынтыктарды көрүү
     document.querySelectorAll('.btn-results').forEach(btn => {
         btn.addEventListener('click', () => {
             const id = btn.getAttribute('data-id');
@@ -183,7 +180,6 @@ function attachEventListeners() {
         });
     });
 
-    // Өчүрүү
     document.querySelectorAll('.btn-delete').forEach(btn => {
         btn.addEventListener('click', async () => {
             const id = btn.getAttribute('data-id');
@@ -206,6 +202,8 @@ async function viewResults(testId, title) {
     const titleEl = document.getElementById('modalTitle');
     const tableBody = document.getElementById('resultsTableBody');
 
+    if (!modal || !titleEl || !tableBody) return;
+
     titleEl.innerText = `Жыйынтыктар: ${title}`;
     tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
@@ -215,7 +213,6 @@ async function viewResults(testId, title) {
         let foundResultsObj = null;
         let parentNode = 'test_results';
 
-        // test_results/TEST_ID аркылуу издөө
         try {
             const snap = await get(child(dbRef, `test_results/${testId}`));
             if (snap.exists()) {
@@ -226,7 +223,6 @@ async function viewResults(testId, title) {
             console.warn("test_results ичинен окулган жок:", e1.message);
         }
 
-        // Эгер табылбаса эски results/TEST_ID аркылуу издөө
         if (!foundResultsObj) {
             try {
                 const snap = await get(child(dbRef, `results/${testId}`));
@@ -241,7 +237,6 @@ async function viewResults(testId, title) {
 
         if (foundResultsObj) {
             tableBody.innerHTML = '';
-            
             const entries = Object.entries(foundResultsObj);
 
             entries.forEach(([key, r]) => {
@@ -256,7 +251,6 @@ async function viewResults(testId, title) {
                     cheatedBadge += ` <small style="color:#ff0055;">(Бөгөттөлгөн)</small>`;
                 }
 
-                // Уникалдуу ID: key же r.id же Name+Date комби
                 const resultUniqueId = key || (r.studentName ? `${r.studentName}_${r.date}` : Math.random().toString());
                 const storageKey = `checked_result_${testId}_${resultUniqueId}`;
                 const isChecked = localStorage.getItem(storageKey) === 'true';
@@ -281,7 +275,6 @@ async function viewResults(testId, title) {
                     </td>
                 `;
 
-                // Чекбокс клик окуясы
                 const chk = tr.querySelector('.result-checkbox');
                 chk.addEventListener('change', (e) => {
                     const checked = e.target.checked;
@@ -298,7 +291,6 @@ async function viewResults(testId, title) {
                     }
                 });
 
-                // Өчүрүү баскычынын клик окуясы
                 const delBtn = tr.querySelector('.btn-row-delete');
                 delBtn.addEventListener('click', async () => {
                     const studentName = r.studentName || 'Бул окуучунун';
@@ -328,7 +320,6 @@ async function viewResults(testId, title) {
     }
 }
 
-// Экранирование функциясы (XSS бөгөттөө үчүн)
 function escapeHtml(str) {
     if (typeof str !== 'string') return str;
     return str
