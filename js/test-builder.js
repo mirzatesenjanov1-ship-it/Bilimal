@@ -76,6 +76,7 @@ if (window.mathVirtualKeyboard) {
 
 // 2. ТЕКСТТИ КӨЧҮРҮП КОЙГОНДО БОШТУКТАРДЫ ЖАНА ДЕФИСТЕРДИ САКТОО
 function attachMathEditor(parentContainer, placeholderText = '', defaultValue = '') {
+    if (!parentContainer) return null;
     const mathField = document.createElement('math-field');
     
     mathField.smartMode = true;
@@ -117,17 +118,26 @@ function attachMathEditor(parentContainer, placeholderText = '', defaultValue = 
 document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            currentUser = user;
-            if (editTestId) {
-                const badge = document.getElementById('editBadge');
-                if (badge) badge.style.display = 'inline-block';
-                await loadExistingTest(editTestId);
-            } else {
-                addQuestion('single');
-            }
+            currentUser = {
+                uid: user.uid,
+                email: user.email ? user.email.toLowerCase().trim() : ''
+            };
+            await initBuilder();
         } else {
-            alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
-            window.location.href = '/login.html';
+            // Fallback: LocalStorage аркылуу колдонуучуну текшерүү
+            const storedEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
+            const storedUid = localStorage.getItem('userId') || localStorage.getItem('uid');
+
+            if (storedEmail || storedUid) {
+                currentUser = {
+                    uid: storedUid || 'local_' + Date.now(),
+                    email: storedEmail ? storedEmail.toLowerCase().trim() : ''
+                };
+                await initBuilder();
+            } else {
+                alert("Тест түзүү же оңдоо үчүн системага киришиңиз керек!");
+                window.location.href = '/login.html';
+            }
         }
     });
 
@@ -138,10 +148,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (form) form.addEventListener('submit', handleFormSubmit);
 });
 
+async function initBuilder() {
+    if (editTestId) {
+        const badge = document.getElementById('editBadge');
+        if (badge) badge.style.display = 'inline-block';
+        await loadExistingTest(editTestId);
+    } else {
+        const container = document.getElementById('questionsContainer');
+        if (container && container.children.length === 0) {
+            addQuestion('single');
+        }
+    }
+}
+
 function addQuestion(type = 'single', data = null) {
     questionCounter++;
     const qId = `q_${questionCounter}`;
     const container = document.getElementById('questionsContainer');
+    if (!container) return;
 
     const qBox = document.createElement('div');
     qBox.className = 'q-box';
@@ -200,14 +224,19 @@ window.removeQuestion = function(qId) {
 
 window.changeQuestionType = function(qId, newType) {
     const qBox = document.getElementById(qId);
+    if (!qBox) return;
     const pisaArea = qBox.querySelector('.pisa-area');
-    pisaArea.style.display = newType === 'pisa' ? 'block' : 'none';
+    if (pisaArea) {
+        pisaArea.style.display = newType === 'pisa' ? 'block' : 'none';
+    }
     renderOptions(qId, newType, null);
 };
 
 function renderOptions(qId, type, existingOptions = null) {
     const qBox = document.getElementById(qId);
+    if (!qBox) return;
     const optionsBody = qBox.querySelector('.options-body');
+    if (!optionsBody) return;
     optionsBody.innerHTML = '';
 
     if (type === 'matching') {
@@ -265,6 +294,7 @@ function renderOptions(qId, type, existingOptions = null) {
 }
 
 function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false) {
+    if (!container) return;
     const item = document.createElement('div');
     item.className = 'opt-item';
     const inputType = isMultiple ? 'checkbox' : 'radio';
@@ -281,6 +311,7 @@ function addOptionItem(container, qId, isMultiple, text = '', isCorrect = false)
 }
 
 function addMatchPair(container, leftVal = '', rightVal = '') {
+    if (!container) return;
     const pair = document.createElement('div');
     pair.className = 'match-pair';
     pair.innerHTML = `
@@ -301,13 +332,20 @@ async function loadExistingTest(id) {
 
         if (snapshot.exists()) {
             const data = snapshot.val();
-            document.getElementById('testTitle').value = data.title || '';
-            document.getElementById('testSubject').value = data.subject || '';
-            document.getElementById('testGrade').value = data.grade || '';
-            document.getElementById('testTopic').value = data.topic || '';
-            document.getElementById('testDuration').value = data.duration || 15;
+            const titleInput = document.getElementById('testTitle');
+            const subjectInput = document.getElementById('testSubject');
+            const gradeInput = document.getElementById('testGrade');
+            const topicInput = document.getElementById('testTopic');
+            const durationInput = document.getElementById('testDuration');
 
-            document.getElementById('questionsContainer').innerHTML = '';
+            if (titleInput) titleInput.value = data.title || '';
+            if (subjectInput) subjectInput.value = data.subject || '';
+            if (gradeInput) gradeInput.value = data.grade || '';
+            if (topicInput) topicInput.value = data.topic || '';
+            if (durationInput) durationInput.value = data.duration || 15;
+
+            const container = document.getElementById('questionsContainer');
+            if (container) container.innerHTML = '';
             questionCounter = 0;
 
             if (data.questions && Array.isArray(data.questions)) {
@@ -332,16 +370,20 @@ async function handleFormSubmit(e) {
     }
 
     const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Сакталууда...';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Сакталууда...';
+    }
 
     const questionsArr = [];
     const qBoxes = document.querySelectorAll('.q-box');
 
     qBoxes.forEach(qBox => {
-        const type = qBox.querySelector('.q-type-select').value;
+        const typeSelect = qBox.querySelector('.q-type-select');
+        const type = typeSelect ? typeSelect.value : 'single';
         const text = qBox.qMathField ? qBox.qMathField.getValue('latex') : '';
-        const imageUrl = qBox.querySelector('.q-img').value.trim();
+        const imgInput = qBox.querySelector('.q-img');
+        const imageUrl = imgInput ? imgInput.value.trim() : '';
         const pisaContext = qBox.pisaMathField ? qBox.pisaMathField.getValue('latex') : '';
 
         const qObj = {
@@ -359,7 +401,7 @@ async function handleFormSubmit(e) {
             qBox.querySelectorAll('.match-pair').forEach(p => {
                 const left = p.leftMathField ? p.leftMathField.getValue('latex') : '';
                 const right = p.rightMathField ? p.rightMathField.getValue('latex') : '';
-                if (left && right) {
+                if (left || right) {
                     pairs.push({ left, right });
                 }
             });
@@ -367,7 +409,8 @@ async function handleFormSubmit(e) {
         } else {
             const options = [];
             qBox.querySelectorAll('.opt-item').forEach(optItem => {
-                const isCorrect = optItem.querySelector('input[type="radio"], input[type="checkbox"]').checked;
+                const checkInput = optItem.querySelector('input[type="radio"], input[type="checkbox"]');
+                const isCorrect = checkInput ? checkInput.checked : false;
                 const optText = optItem.optMathField ? optItem.optMathField.getValue('latex') : '';
                 if (optText) {
                     options.push({ text: optText, isCorrect: isCorrect });
@@ -381,38 +424,75 @@ async function handleFormSubmit(e) {
 
     if (questionsArr.length === 0) {
         alert("Кем дегенде 1 суроо кошуңуз!");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        }
         return;
     }
 
+    const uid = currentUser.uid || 'anon_' + Date.now();
+    const email = currentUser.email || '';
+
+    const titleEl = document.getElementById('testTitle');
+    const subjectEl = document.getElementById('testSubject');
+    const gradeEl = document.getElementById('testGrade');
+    const topicEl = document.getElementById('testTopic');
+    const durationEl = document.getElementById('testDuration');
+
+    // Бардык автордук атрибуттарды кошуп, эски/жаңы системалар менен толук шайкештикти камсыздоо
     const testPayload = {
-        title: document.getElementById('testTitle').value.trim(),
-        subject: document.getElementById('testSubject').value.trim(),
-        grade: document.getElementById('testGrade').value.trim(),
-        topic: document.getElementById('testTopic').value.trim(),
-        duration: parseInt(document.getElementById('testDuration').value) || 15,
-        ownerUid: currentUser.uid,
+        title: titleEl ? titleEl.value.trim() : '',
+        subject: subjectEl ? subjectEl.value.trim() : '',
+        grade: gradeEl ? gradeEl.value.trim() : '',
+        topic: topicEl ? topicEl.value.trim() : '',
+        duration: durationEl ? (parseInt(durationEl.value) || 15) : 15,
+        
+        // Көп тармактуу шайкештик (Multi-Property Compatibility)
+        ownerUid: uid,
+        authorId: uid,
+        userId: uid,
+        uid: uid,
+        authorEmail: email,
+        email: email,
+        userEmail: email,
+
         updatedAt: new Date().toISOString(),
         questions: questionsArr
     };
 
     try {
+        let targetId = editTestId;
         if (editTestId) {
             await update(ref(db, `tests/${editTestId}`), testPayload);
             alert("Тест ийгиликтүү жаңыртылды!");
         } else {
+            targetId = `test_${Date.now()}`;
             testPayload.createdAt = new Date().toISOString();
             testPayload.hidden = false;
-            const newTestRef = ref(db, `tests/${Date.now()}`);
+            const newTestRef = ref(db, `tests/${targetId}`);
             await set(newTestRef, testPayload);
             alert("Жаңы тест ийгиликтүү түзүлдү жана жарыяланды!");
         }
+
+        // Жеке сессияга сактоо
+        try {
+            const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
+            if (!myLocalTests.includes(targetId)) {
+                myLocalTests.push(targetId);
+                localStorage.setItem('my_created_tests', JSON.stringify(myLocalTests));
+            }
+        } catch (e) {
+            console.warn("LocalStorage сактоо эскертүүсү:", e);
+        }
+
         window.location.href = 'tests.html';
     } catch (err) {
         console.error("Сактоо катасы:", err);
         alert("Сактоодо ката чыкты: " + err.message);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Сактоо жана Жарыялоо 🚀';
+        }
     }
 }
