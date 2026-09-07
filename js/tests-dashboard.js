@@ -46,56 +46,49 @@ async function loadTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // КУПУЯЛУУЛУК ФИЛЬТРИ: Катталган мугалимдин өзүнүн гана тесттерин сорттоо
-                const isOwner = (test.authorId && test.authorId === currentUser.uid) ||
-                                (test.userId && test.userId === currentUser.uid) ||
-                                (test.authorEmail && test.authorEmail.toLowerCase() === currentUser.email.toLowerCase()) ||
-                                (test.email && test.email.toLowerCase() === currentUser.email.toLowerCase());
+                // Бардык түзүлгөн тесттерди чектөөсүз чыгаруу
+                userTestCount++;
+                const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
+                const isHidden = test.hidden || false;
+                const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0; // 0 = чексиз
+                const attemptsText = maxAttempts === 0 ? 'Чексиз' : `${maxAttempts} жолу`;
 
-                if (isOwner) {
-                    userTestCount++;
-                    const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
-                    const isHidden = test.hidden || false;
-                    const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0; // 0 = чексиз
-                    const attemptsText = maxAttempts === 0 ? 'Чексиз' : `${maxAttempts} жолу`;
+                const card = document.createElement('div');
+                card.className = 'test-card';
+                card.id = `card_${id}`;
+                card.innerHTML = `
+                    <span class="badge ${isHidden ? 'badge-unpub' : 'badge-pub'}">
+                        ${isHidden ? '• Жашырылган' : '• Жарыяланган'}
+                    </span>
+                    <h3>${escapeHtml(test.title || 'Аталышы жок тест')}</h3>
+                    <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
+                    <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
+                    <p><i class="fa-solid fa-circle-question"></i> Суроолор саны: <strong>${qCount}</strong></p>
+                    <p><i class="fa-solid fa-rotate-right"></i> Тапшыруу чеги: <strong>${attemptsText}</strong></p>
+                    ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${escapeHtml(test.topic)}</p>` : ''}
 
-                    const card = document.createElement('div');
-                    card.className = 'test-card';
-                    card.id = `card_${id}`;
-                    card.innerHTML = `
-                        <span class="badge ${isHidden ? 'badge-unpub' : 'badge-pub'}">
-                            ${isHidden ? '• Жашырылган' : '• Жарыяланган'}
-                        </span>
-                        <h3>${escapeHtml(test.title || 'Аталышы жок тест')}</h3>
-                        <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
-                        <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
-                        <p><i class="fa-solid fa-circle-question"></i> Суроолор саны: <strong>${qCount}</strong></p>
-                        <p><i class="fa-solid fa-rotate-right"></i> Тапшыруу чеги: <strong>${attemptsText}</strong></p>
-                        ${test.topic ? `<p><i class="fa-solid fa-tag"></i> Тема: ${escapeHtml(test.topic)}</p>` : ''}
-
-                        <div class="card-actions">
-                            <button class="btn-action btn-copy" data-id="${id}">
-                                <i class="fa-solid fa-link"></i> Шилтеме
-                            </button>
-                            <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
-                                <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Көрсөтүү' : 'Жашыруу'}
-                            </button>
-                            <button class="btn-action btn-attempts" data-id="${id}" data-attempts="${maxAttempts}">
-                                <i class="fa-solid fa-repeat"></i> Аракеттер
-                            </button>
-                            <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
-                                <i class="fa-solid fa-pen"></i> Оңдоо
-                            </a>
-                            <button class="btn-action btn-results" data-id="${id}" data-title="${escapeHtml(test.title || 'Тест')}">
-                                <i class="fa-solid fa-chart-column"></i> Жыйынтыктар
-                            </button>
-                            <button class="btn-action btn-delete" data-id="${id}">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                }
+                    <div class="card-actions">
+                        <button class="btn-action btn-copy" data-id="${id}">
+                            <i class="fa-solid fa-link"></i> Шилтеме
+                        </button>
+                        <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
+                            <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Көрсөтүү' : 'Жашыруу'}
+                        </button>
+                        <button class="btn-action btn-attempts" data-id="${id}" data-attempts="${maxAttempts}">
+                            <i class="fa-solid fa-repeat"></i> Аракеттер
+                        </button>
+                        <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
+                            <i class="fa-solid fa-pen"></i> Оңдоо
+                        </a>
+                        <button class="btn-action btn-results" data-id="${id}" data-title="${escapeHtml(test.title || 'Тест')}">
+                            <i class="fa-solid fa-chart-column"></i> Жыйынтыктар
+                        </button>
+                        <button class="btn-action btn-delete" data-id="${id}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
             });
 
             if (userTestCount === 0) {
