@@ -1,160 +1,326 @@
 import { db, auth } from '../firebase/firebase-config.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { ref, get, child, remove, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 
 let currentUser = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    onAuthStateChanged(auth, async (user) => {
+    // Firebase Auth же берилген auth объектисин колдонуу
+    const firebaseAuth = auth || getAuth();
+    
+    // Auth абалын байкоо
+    onAuthStateChanged(firebaseAuth, (user) => {
         if (user) {
             currentUser = {
                 uid: user.uid,
                 email: user.email ? user.email.toLowerCase().trim() : ''
             };
-            await loadTeacherTests();
+            loadMyTests();
         } else {
-            // Fallback: LocalStorage аркылуу колдонуучунун сессиясын текшерүү
-            const storedEmail = localStorage.getItem('userEmail') || localStorage.getItem('email');
-            const storedUid = localStorage.getItem('userId') || localStorage.getItem('uid');
-
-            if (storedEmail || storedUid) {
-                currentUser = {
-                    uid: storedUid || 'local_' + Date.now(),
-                    email: storedEmail ? storedEmail.toLowerCase().trim() : ''
-                };
-                await loadTeacherTests();
-            } else {
-                alert("Платформага кирүү үчүн авторизация талап кылынат!");
-                window.location.href = '/login.html';
-            }
+            // Firebase Auth табылбаса LocalStorage текшерүү
+            checkLocalStorageAuth();
         }
     });
+
+    // Мүмкүн болгон fallback: сакталган сессияны дароо текшерүү
+    setTimeout(() => {
+        if (!currentUser) {
+            checkLocalStorageAuth();
+        }
+    }, 1000);
+
+    const closeModalBtn = document.getElementById('closeModal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            const modal = document.getElementById('resultsModal');
+            if (modal) modal.style.display = 'none';
+        });
+    }
 });
 
-async function loadTeacherTests() {
-    const loadingEl = document.getElementById('loadingIndicator') || document.querySelector('.loading-text') || createOrGetLoadingEl();
-    const container = document.getElementById('testsContainer') || document.getElementById('tests-list') || document.querySelector('.tests-grid');
+function checkLocalStorageAuth() {
+    const storedEmail = localStorage.getItem('userEmail') || localStorage.getItem('email') || localStorage.getItem('teacherEmail');
+    const storedUid = localStorage.getItem('userId') || localStorage.getItem('uid') || localStorage.getItem('teacherId');
+
+    if (storedEmail || storedUid) {
+        currentUser = {
+            email: storedEmail ? storedEmail.toLowerCase().trim() : '',
+            uid: storedUid || ''
+        };
+        loadMyTests();
+    } else {
+        renderNoAuthMessage();
+    }
+}
+
+function renderNoAuthMessage() {
+    const container = document.getElementById('testContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px; grid-column: 1/-1; background:#0f172a; border-radius:12px; border:1px solid #1e293b;">
+                <i class="fa-solid fa-lock" style="font-size:3rem; color:#ef4444; margin-bottom:15px;"></i>
+                <h3 style="margin-bottom:10px; color:#fff;">Системага кирүү талап кылынат</h3>
+                <p style="color:#94a3b8; margin-bottom:20px;">Өзүңүздүн тесттериңизди көрүү үчүн аккаунтуңузга кириңиз.</p>
+                <a href="/login.html" class="btn-create" style="display:inline-block;">Кирүү барагына өтүү</a>
+            </div>
+        `;
+    }
+}
+
+async function loadMyTests() {
+    const container = document.getElementById('testContainer');
+    if (!container || !currentUser) return;
 
     try {
         const dbRef = ref(db);
         const snapshot = await get(child(dbRef, 'tests'));
 
-        if (loadingEl) loadingEl.style.display = 'none';
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            container.innerHTML = '';
+            let myTestCount = 0;
 
-        if (!container) {
-            console.warn("Тесттерди көрсөтүүчү контейнер (DOM element) табылган жок.");
-            return;
-        }
+            const currEmail = currentUser.email ? currentUser.email.toLowerCase().trim() : '';
+            const currUid = currentUser.uid || '';
 
-        container.innerHTML = '';
+            Object.keys(data).forEach((id) => {
+                const test = data[id];
 
-        if (!snapshot.exists()) {
-            container.innerHTML = '<div class="no-data">Азырынча эч кандай тест түзүлө элек.</div>';
-            return;
-        }
+                // Мүмкүн болгон БАРДЫК автордук талааларды жыйноо (Legacy Compatibility)
+                const possibleEmails = [
+                    test.authorEmail,
+                    test.email,
+                    test.userEmail,
+                    test.teacherEmail,
+                    test.createdByEmail
+                ].filter(Boolean).map(e => e.toString().toLowerCase().trim());
 
-        const allTests = snapshot.val();
-        const userTests = [];
+                const possibleIds = [
+                    test.authorId,
+                    test.userId,
+                    test.uid,
+                    test.teacherId,
+                    test.createdBy
+                ].filter(Boolean).map(i => i.toString());
 
-        // Колдонуучунун ID/Email боюнча тесттерин чыпкалоо
-        for (const key in allTests) {
-            const test = allTests[key];
-            test.id = key;
+                // ШАЙКЕШТИК ТЕКШЕРҮҮСҮ:
+                let isMyTest = false;
 
-            const isOwner = 
-                (test.ownerUid && test.ownerUid === currentUser.uid) ||
-                (test.authorId && test.authorId === currentUser.uid) ||
-                (test.userId && test.userId === currentUser.uid) ||
-                (test.uid && test.uid === currentUser.uid) ||
-                (test.authorEmail && test.authorEmail.toLowerCase() === currentUser.email) ||
-                (test.email && test.email.toLowerCase() === currentUser.email) ||
-                (test.userEmail && test.userEmail.toLowerCase() === currentUser.email);
+                // 1. UID боюнча шайкештик
+                if (currUid && possibleIds.includes(currUid)) {
+                    isMyTest = true;
+                }
 
-            if (isOwner) {
-                userTests.push(test);
+                // 2. Email боюнча шайкештик
+                if (!isMyTest && currEmail && possibleEmails.includes(currEmail)) {
+                    isMyTest = true;
+                }
+
+                // 3. Эгер тестте эч кандай автордук маалымат жок болсо жана ушул локалдык браузерде түзүлгөн болсо
+                const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
+                if (!isMyTest && myLocalTests.includes(id)) {
+                    isMyTest = true;
+                }
+
+                // Эгер автор аныкталса — тестти чыгарабыз
+                if (isMyTest) {
+                    myTestCount++;
+                    const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
+                    const isHidden = test.hidden || false;
+                    const maxAttempts = test.maxAttempts !== undefined ? test.maxAttempts : 0;
+                    const attemptsText = maxAttempts === 0 ? 'Чексиз' : `${maxAttempts} жолу`;
+
+                    const card = document.createElement('div');
+                    card.className = 'test-card';
+                    card.id = `card_${id}`;
+                    card.innerHTML = `
+                        <span class="badge ${isHidden ? 'badge-unpub' : 'badge-pub'}">
+                            ${isHidden ? '• Жашырылган' : '• Активдүү'}
+                        </span>
+                        <h3>${escapeHtml(test.title || 'Аталышы жок тест')}</h3>
+                        <p><i class="fa-solid fa-book"></i> Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> (${escapeHtml(test.grade || '-')}-класс)</p>
+                        <p><i class="fa-solid fa-clock"></i> Убактысы: <strong>${test.duration || 15} мүнөт</strong></p>
+                        <p><i class="fa-solid fa-circle-question"></i> Суроолор: <strong>${qCount} даана</strong></p>
+                        <p><i class="fa-solid fa-rotate-right"></i> Лимит: <strong>${attemptsText}</strong></p>
+
+                        <div class="card-actions">
+                            <button class="btn-action btn-copy" data-id="${id}" title="Шилтемени көчүрүү">
+                                <i class="fa-solid fa-link"></i> Шилтеме
+                            </button>
+                            <button class="btn-action btn-toggle" data-id="${id}" data-hidden="${isHidden}">
+                                <i class="fa-solid ${isHidden ? 'fa-eye' : 'fa-eye-slash'}"></i> ${isHidden ? 'Ачуу' : 'Жашыруу'}
+                            </button>
+                            <button class="btn-action btn-attempts" data-id="${id}" data-attempts="${maxAttempts}">
+                                <i class="fa-solid fa-repeat"></i> Лимит
+                            </button>
+                            <a href="test-builder.html?id=${encodeURIComponent(id)}" class="btn-action">
+                                <i class="fa-solid fa-pen"></i> Оңдоо
+                            </a>
+                            <button class="btn-action btn-results" data-id="${id}" data-title="${escapeHtml(test.title || 'Тест')}">
+                                <i class="fa-solid fa-chart-column"></i> Жыйынтыктар
+                            </button>
+                            <button class="btn-action btn-delete" data-id="${id}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+            });
+
+            if (myTestCount === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding:40px; grid-column: 1/-1;">
+                        <p style="color:#94a3b8; font-size:1.1rem; margin-bottom:15px;">Сизде азырынча түзүлгөн жеке тесттер жок.</p>
+                        <a href="test-builder.html" class="btn-create"><i class="fa-solid fa-plus"></i> Биринчи тестти түзүү</a>
+                    </div>
+                `;
+            } else {
+                attachEventListeners();
             }
+
+        } else {
+            container.innerHTML = '<p style="color:#94a3b8; grid-column: 1/-1;">Базада тесттер табылган жок.</p>';
         }
-
-        if (userTests.length === 0) {
-            container.innerHTML = `
-                <div class="empty-state" style="text-align:center; padding:40px; color:#a5b4fc;">
-                    <i class="fa-solid fa-folder-open" style="font-size: 48px; margin-bottom:15px; display:block;"></i>
-                    <p>Сиз тараптан азырынча тест түзүлө элек.</p>
-                    <a href="test-builder.html" class="btn btn-primary" style="margin-top:10px; display:inline-block;">Жаңы Тест Түзүү</a>
-                </div>
-            `;
-            return;
-        }
-
-        // Тесттерди акыркы өзгөртүлгөн убактысы боюнча сорттоо
-        userTests.sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0));
-
-        // Тесттерди экранга чыгаруу
-        userTests.forEach(test => {
-            const card = document.createElement('div');
-            card.className = 'test-card';
-            card.style.cssText = "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px; margin-bottom: 15px; color: #fff;";
-
-            const qCount = test.questions ? (Array.isArray(test.questions) ? test.questions.length : Object.keys(test.questions).length) : 0;
-
-            card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                        <h3 style="margin:0 0 8px 0; color:#00f0ff; font-size:1.2rem;">${escapeHtml(test.title || 'Аталышсыз тест')}</h3>
-                        <p style="margin:0 0 5px 0; color:#cbd5e1; font-size:0.9rem;">Предмет: <strong>${escapeHtml(test.subject || '-')}</strong> | Класс: <strong>${escapeHtml(test.grade || '-')}</strong></p>
-                        <p style="margin:0; color:#94a3b8; font-size:0.85rem;">Суроолор: <strong>${qCount}</strong> | Убакыт: <strong>${test.duration || 15} мүн</strong></p>
-                    </div>
-                    <div style="display:flex; gap:8px;">
-                        <a href="test-builder.html?id=${test.id}" class="btn btn-sm" style="background:#3b82f6; color:#fff; padding:6px 12px; border-radius:6px; text-decoration:none;"><i class="fa-solid fa-pen"></i> Оңдоо</a>
-                        <button onclick="deleteTest('${test.id}')" class="btn btn-sm" style="background:#ef4444; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
     } catch (err) {
-        console.error("Тесттерди жүктөөдө ката чыкты:", err);
-        if (loadingEl) loadingEl.style.display = 'none';
-        if (container) {
-            container.innerHTML = `<div class="error-msg" style="color:#f87171;">Маалыматты жүктөөдө ката чыкты: ${err.message}</div>`;
-        }
+        console.error("Тесттерди жүктөөдө ката:", err);
+        container.innerHTML = `<p style="color:#ef4444; grid-column: 1/-1;">Жүктөөдө ката чыкты: ${err.message}</p>`;
     }
 }
 
-window.deleteTest = async function(testId) {
-    if (!confirm("Чын эле бул тестти өчүрүүнү каалайсызбы?")) return;
+function attachEventListeners() {
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const link = `${window.location.origin}/test.html?testId=${id}`;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Тесттин шилтемеси көчүрүлдү:\n" + link);
+            }).catch(() => {
+                prompt("Шилтемени көчүрүп алыңыз:", link);
+            });
+        });
+    });
+
+    document.querySelectorAll('.btn-toggle').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const currentStatus = btn.getAttribute('data-hidden') === 'true';
+            try {
+                await update(ref(db, `tests/${id}`), { hidden: !currentStatus });
+                loadMyTests();
+            } catch (err) {
+                alert("Ката чыкты: " + err.message);
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-attempts').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            const currentAttempts = btn.getAttribute('data-attempts');
+            
+            const userInput = prompt("Тапшыруу сан чегин киргизиңиз (0 - чексиз жолу):", currentAttempts);
+            if (userInput !== null) {
+                const newAttempts = parseInt(userInput.trim());
+                if (isNaN(newAttempts) || newAttempts < 0) {
+                    alert("Туура сан киргизиңиз!");
+                    return;
+                }
+                try {
+                    await update(ref(db, `tests/${id}`), { maxAttempts: newAttempts });
+                    loadMyTests();
+                } catch (err) {
+                    alert("Ката: " + err.message);
+                }
+            }
+        });
+    });
+
+    document.querySelectorAll('.btn-results').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-id');
+            const title = btn.getAttribute('data-title');
+            viewResults(id, title);
+        });
+    });
+
+    document.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const id = btn.getAttribute('data-id');
+            if (confirm("Чын эле бул тестти өчүргүңүз келеби?")) {
+                try {
+                    await remove(ref(db, `tests/${id}`));
+                    loadMyTests();
+                } catch (err) {
+                    alert("Өчүрүүдө ката чыкты: " + err.message);
+                }
+            }
+        });
+    });
+}
+
+async function viewResults(testId, title) {
+    const modal = document.getElementById('resultsModal');
+    const titleEl = document.getElementById('modalTitle');
+    const tableBody = document.getElementById('resultsTableBody');
+
+    if (!modal || !titleEl || !tableBody) return;
+
+    titleEl.innerText = `Жыйынтыктар: ${title}`;
+    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
+    modal.style.display = 'flex';
 
     try {
-        await remove(ref(db, `tests/${testId}`));
-        alert("Тест өчүрүлдү!");
-        await loadTeacherTests();
-    } catch (err) {
-        console.error("Өчүрүүдө ката чыкты:", err);
-        alert("Өчүрүү мүмкүн болбоду: " + err.message);
-    }
-};
+        const dbRef = ref(db);
+        let foundResultsObj = null;
 
-function createOrGetLoadingEl() {
-    let el = document.getElementById('loadingIndicator');
-    if (!el) {
-        const textHolder = document.body;
-        // Эгер тексти бар болсо табат
-        const allNodes = document.querySelectorAll('*');
-        for (let node of allNodes) {
-            if (node.children.length === 0 && node.textContent.includes('Тесттер жүктөлүүдө')) {
-                return node;
-            }
+        const snap1 = await get(child(dbRef, `test_results/${testId}`));
+        if (snap1.exists()) foundResultsObj = snap1.val();
+
+        if (!foundResultsObj) {
+            const snap2 = await get(child(dbRef, `results/${testId}`));
+            if (snap2.exists()) foundResultsObj = snap2.val();
         }
+
+        if (foundResultsObj) {
+            tableBody.innerHTML = '';
+            let index = 1;
+            Object.entries(foundResultsObj).forEach(([key, r]) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index++}</td>
+                    <td><strong>${escapeHtml(r.studentName || '-')}</strong></td>
+                    <td>${escapeHtml(r.studentClass || '-')}</td>
+                    <td>${r.score || 0} / ${r.totalQuestions || '-'}</td>
+                    <td><span style="color:#00f2fe; font-weight:bold;">${r.percent || 0}%</span></td>
+                    <td>${r.cheatedCount > 0 ? `<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> ${r.cheatedCount} жолу</span>` : '<span style="color:#10b981;">Таза</span>'}</td>
+                    <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
+                    <td>
+                        <button class="btn-delete-res" data-key="${key}" style="background:none; border:none; color:#ef4444; cursor:pointer;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+
+                tr.querySelector('.btn-delete-res').addEventListener('click', async () => {
+                    if (confirm("Жыйынтыкты өчүрүүнү каалайсызбы?")) {
+                        await remove(ref(db, `test_results/${testId}/${key}`));
+                        await remove(ref(db, `results/${testId}/${key}`));
+                        tr.remove();
+                    }
+                });
+
+                tableBody.appendChild(tr);
+            });
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Азырынча эч ким тапшыра элек.</td></tr>';
+        }
+    } catch (err) {
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444;">Ката: ${err.message}</td></tr>`;
     }
-    return el;
 }
 
 function escapeHtml(str) {
-    return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
