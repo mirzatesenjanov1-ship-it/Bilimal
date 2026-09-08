@@ -539,7 +539,7 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Модулдары -->
+    <!-- Firebase SDK Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -561,7 +561,7 @@
         function getOrSetTeacherKey() {
             let key = localStorage.getItem('bilimal_teacher_key');
             if (!key) {
-                key = prompt("Мугалимдин жеке ключун (сыр сөзүн) киргизиңиз же ойлоп табыңыз:\n\n(Эгер мурунку 24 окуучуну кайтаргыңыз келсе 'legacy' же 'main' деп жазыңыз)", "legacy");
+                key = prompt("Мугалимдин жеке ключун (сыр сөзүн) киргизиңиз же ойлоп табыңыз:\n\n(Мурунку 24 окуучуну кайтаруу үчүн 'legacy' деп жазыңыз)", "legacy");
                 if (!key || key.trim() === '') {
                     key = 'legacy';
                 }
@@ -586,6 +586,7 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
+        // Эгер мугалим "legacy" болсо эски /movements жолу, болбосо /teachers_data/{key} жолу колдонулат
         const teacherPath = (currentTeacherKey === 'legacy' || currentTeacherKey === 'main') ? 'movements' : `teachers_data/${currentTeacherKey}`;
         const currentRef = ref(database, teacherPath);
 
@@ -608,7 +609,7 @@
             }, 2000);
         });
 
-        // Firebase укуктарын жана жүктөлүшүн текшерүүчү кармагыч (Error handler кошулду)
+        // Firebase-ден окуп алуу жана иштеп чыгуу
         onValue(currentRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
@@ -623,11 +624,11 @@
             renderTable(allRecords);
             updateStats(allRecords);
         }, (error) => {
-            console.error("Firebase катасы:", error);
+            console.error("Firebase Катасы:", error);
             const tbody = document.getElementById('movement-table-body');
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
-                Базага кошулууда ката чыкты: ${error.message}<br>
-                Firebase Console'дон Rules (Эрежелер) бөлүмүн текшериңиз.
+                <strong>Базага кошулууда ката чыкты:</strong> ${error.message}<br><br>
+                <small>Чечим: Firebase Console -> Realtime Database -> Rules бөлүмүнөн <code>movements</code> жана <code>teachers_data</code> үчүн <code>.read: true, .write: true</code> эрежелерин коюңуз.</small>
             </td></tr>`;
         });
 
@@ -677,7 +678,11 @@
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
-                        await remove(ref(database, `${teacherPath}/${id}`));
+                        try {
+                            await remove(ref(database, `${teacherPath}/${id}`));
+                        } catch (err) {
+                            alert("Өчүрүүдө ката чыкты: " + err.message);
+                        }
                     }
                 });
             });
