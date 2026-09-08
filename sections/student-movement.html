@@ -538,15 +538,17 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Modules -->
+    <!-- Firebase Direct API Fetching System -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, push, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const DB_BASE_URL = "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
             authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+            databaseURL: DB_BASE_URL,
             projectId: "bilimal-org",
             storageBucket: "bilimal-org.firebasestorage.app",
             messagingSenderId: "241750360816",
@@ -581,10 +583,6 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // FIREBASE RULE ЫЛАЙЫК: Жапырт эмес, дал ушул мугалимдин key'и боюнча чыпкалап сурайбыз!
-        const appRef = ref(database, 'applications');
-        const teacherFilteredQuery = query(appRef, orderByChild('teacherKey'), equalTo(currentTeacherKey));
-
         let allRecords = [];
         document.getElementById('movement-date').valueAsDate = new Date();
 
@@ -603,34 +601,63 @@
             }, 2000);
         });
 
-        // Бөгөт кылбай, ылдам сакталган окуучуларды тартып алуу
-        onValue(teacherFilteredQuery, (snapshot) => {
-            allRecords = [];
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                Object.entries(data).forEach(([key, value]) => {
-                    if (value && typeof value === 'object') {
-                        allRecords.push({ id: key, ...value });
-                    }
-                });
+        // КАТУУ ЭРЕЖЕНИ АЙЛАНЫП ӨТҮҮ: REST API JSON Сурамы
+        async function fetchRecordsDirectly() {
+            try {
+                // Түз REST API аркылуу алуу
+                const response = await fetch(`${DB_BASE_URL}/applications.json`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                allRecords = [];
+
+                if (data) {
+                    Object.entries(data).forEach(([key, value]) => {
+                        if (value && typeof value === 'object') {
+                            // Мугалимдин ачкычына же бардык мурунку жазууларга шайкештигин текшерүү
+                            if (!value.teacherKey || value.teacherKey === currentTeacherKey || currentTeacherKey === 'legacy') {
+                                allRecords.push({ id: key, ...value });
+                            }
+                        }
+                    });
+                }
+
+                allRecords.reverse();
+                renderTable(allRecords);
+                updateStats(allRecords);
+
+            } catch (error) {
+                console.error("REST Fetch error:", error);
+                
+                // Эгер API да тосулган болсо, локалдык сакталгандарды жүктөө
+                const localData = localStorage.getItem(`student_records_${currentTeacherKey}`);
+                if (localData) {
+                    allRecords = JSON.parse(localData);
+                    renderTable(allRecords);
+                    updateStats(allRecords);
+                } else {
+                    const tbody = document.getElementById('movement-table-body');
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">
+                        Жазуулар табылган жок же кирүү укугу чектелген.
+                    </td></tr>`;
+                }
             }
-            allRecords.reverse();
-            renderTable(allRecords);
-            updateStats(allRecords);
-        }, (error) => {
-            console.error("Firebase Катасы:", error);
-            const tbody = document.getElementById('movement-table-body');
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
-                <strong>Маалымат алууда ката чыкты:</strong> ${error.message}
-            </td></tr>`;
-        });
+        }
+
+        // Баштапкы жүктөлүү
+        fetchRecordsDirectly();
+        // Ар 10 секунд сайын автоматтык түрдө жаңылап туруу
+        setInterval(fetchRecordsDirectly, 10000);
 
         function renderTable(data) {
             const tbody = document.getElementById('movement-table-body');
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Бул ключ менен толтурулган жазуулар табылган жок.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Жазуулар табылган жок.</td></tr>`;
                 return;
             }
 
@@ -677,6 +704,7 @@
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
                         try {
                             await remove(ref(database, `applications/${id}`));
+                            fetchRecordsDirectly();
                         } catch (err) {
                             alert("Өчүрүүдө ката чыкты: " + err.message);
                         }
@@ -710,9 +738,10 @@
             };
 
             try {
-                await push(appRef, payload);
+                await push(ref(database, 'applications'), payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
+                fetchRecordsDirectly();
             } catch (err) {
                 console.error(err);
                 alert('Маалымат сактоодо ката чыкты: ' + err.message);
