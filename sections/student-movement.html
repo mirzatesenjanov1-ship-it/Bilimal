@@ -421,13 +421,13 @@
                 <i class="fas fa-user-shield"></i>
                 <span>Мугалимдин өздүк ключу: <strong id="teacherKeyDisplay" style="color: #fff;">...</strong></span>
             </div>
-            <button class="btn-key-change" id="changeKeyBtn"><i class="fas fa-key"></i> Ключту алмаштыруу / Мурункуну кайтаруу</button>
+            <button class="btn-key-change" id="changeKeyBtn"><i class="fas fa-key"></i> Ключту алмаштыруу / Өзгөртүү</button>
         </div>
 
         <div class="student-link-card">
             <div class="link-info">
                 <h3><i class="fas fa-link"></i> Окуучулар өздөрү толтуруучу анкета шилтемеси:</h3>
-                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору купуя түрдө өзүңүздүн гана журналыңызга түшөт.</p>
+                <p>Ушул шилтемени окуучулардын WhatsApp тайпасына жөнөтүңүз. Алардын жооптору түз сиздин журналыңызга түшөт.</p>
             </div>
             <div class="link-input-group">
                 <input type="text" id="shareableLink" value="" readonly>
@@ -561,11 +561,7 @@
         function getOrSetTeacherKey() {
             let key = localStorage.getItem('bilimal_teacher_key');
             if (!key) {
-                key = prompt("Мугалимдин жеке ключун (сыр сөзүн) киргизиңиз же ойлоп табыңыз:\n\n(Мурунку 24 окуучуну кайтаруу үчүн 'legacy' деп жазыңыз)", "legacy");
-                if (!key || key.trim() === '') {
-                    key = 'legacy';
-                }
-                key = key.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+                key = 'default_teacher';
                 localStorage.setItem('bilimal_teacher_key', key);
             }
             return key;
@@ -575,7 +571,7 @@
         document.getElementById('teacherKeyDisplay').innerText = currentTeacherKey;
 
         document.getElementById('changeKeyBtn').addEventListener('click', () => {
-            const newKey = prompt("Жаңы мугалимдик ключту же сыр сөздү киргизиңиз:\n(Мурунку 24 окуучуңуз үчүн 'legacy' деп жазыңыз)", currentTeacherKey);
+            const newKey = prompt("Жаңы мугалимдик ключту же сыр сөздү киргизиңиз:", currentTeacherKey);
             if (newKey && newKey.trim() !== '') {
                 const sanitizedKey = newKey.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
                 localStorage.setItem('bilimal_teacher_key', sanitizedKey);
@@ -586,9 +582,9 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // Эгер мугалим "legacy" болсо эски /movements жолу, болбосо /teachers_data/{key} жолу колдонулат
-        const teacherPath = (currentTeacherKey === 'legacy' || currentTeacherKey === 'main') ? 'movements' : `teachers_data/${currentTeacherKey}`;
-        const currentRef = ref(database, teacherPath);
+        // Сиздин Firebase эрежеңизде 'applications' ноду ачык (.write: true)
+        // Ошондуктан бардык маалыматтар өчпөстөн ушул ноддун ичинде сакталат
+        const appRef = ref(database, 'applications');
 
         let allRecords = [];
 
@@ -609,14 +605,17 @@
             }, 2000);
         });
 
-        // Firebase-ден окуп алуу жана иштеп чыгуу
-        onValue(currentRef, (snapshot) => {
+        // Firebase-тен маалыматты жүктөө
+        onValue(appRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 Object.entries(data).forEach(([key, value]) => {
                     if (value && typeof value === 'object') {
-                        allRecords.push({ id: key, ...value });
+                        // Агымдагы мугалимге таандык же жалпы жазууларды чыпкалоо
+                        if (!value.teacherKey || value.teacherKey === currentTeacherKey) {
+                            allRecords.push({ id: key, ...value });
+                        }
                     }
                 });
             }
@@ -627,8 +626,7 @@
             console.error("Firebase Катасы:", error);
             const tbody = document.getElementById('movement-table-body');
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
-                <strong>Базага кошулууда ката чыкты:</strong> ${error.message}<br><br>
-                <small>Чечим: Firebase Console -> Realtime Database -> Rules бөлүмүнөн <code>movements</code> жана <code>teachers_data</code> үчүн <code>.read: true, .write: true</code> эрежелерин коюңуз.</small>
+                <strong>Ката чыкты:</strong> ${error.message}
             </td></tr>`;
         });
 
@@ -637,7 +635,7 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Жазуулар табылган жок (Ключ: ${currentTeacherKey})</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Жазуулар табылган жок.</td></tr>`;
                 return;
             }
 
@@ -679,7 +677,7 @@
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
                         try {
-                            await remove(ref(database, `${teacherPath}/${id}`));
+                            await remove(ref(database, `applications/${id}`));
                         } catch (err) {
                             alert("Өчүрүүдө ката чыкты: " + err.message);
                         }
@@ -702,6 +700,7 @@
             btn.disabled = true;
 
             const payload = {
+                teacherKey: currentTeacherKey,
                 fullName: document.getElementById('student-name').value.trim(),
                 studentClass: document.getElementById('student-class').value.trim(),
                 type: document.getElementById('movement-type').value,
@@ -712,7 +711,7 @@
             };
 
             try {
-                await push(currentRef, payload);
+                await push(appRef, payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
             } catch (err) {
