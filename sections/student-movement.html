@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Окуучулардын Кыймылы жана Анкетасы (Келди - Кетти)</title>
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
@@ -539,7 +538,7 @@
         </div>
     </div>
 
-    <!-- Firebase SDK & Local Fallback Logic -->
+    <!-- Firebase SDK Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -582,11 +581,10 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // PERMISSION_DENIED катасын болтурбоо үчүн атайын 'movements' нодун колдонобуз
-        const movementsRef = ref(database, `movements/${currentTeacherKey}`);
+        // Окуучулар мурун сактаган бардык арыздар сакталган 'applications' ноду
+        const appRef = ref(database, 'applications');
 
         let allRecords = [];
-
         document.getElementById('movement-date').valueAsDate = new Date();
 
         document.getElementById('copyBtn').addEventListener('click', () => {
@@ -604,40 +602,27 @@
             }, 2000);
         });
 
-        // Локалдык сактоодон маалыматтарды жүктөө (эгер Firebase тосулуп калса)
-        function loadLocalRecords() {
-            const localData = localStorage.getItem(`student_records_${currentTeacherKey}`);
-            if (localData) {
-                try {
-                    allRecords = JSON.parse(localData);
-                } catch (e) {
-                    allRecords = [];
-                }
-            } else {
-                allRecords = [];
-            }
-            renderTable(allRecords);
-            updateStats(allRecords);
-        }
-
-        // Firebase-тен маалымат алуу жана ката болсо оффлайн тартипке өтүү
-        onValue(movementsRef, (snapshot) => {
+        // Firebase-тен бардык окуучулардын мурунку жана жаңы дайындарын жүктөө
+        onValue(appRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 Object.entries(data).forEach(([key, value]) => {
                     if (value && typeof value === 'object') {
+                        // Окуучулардын мурунку жана азыркы толтурган бардык талааларын ийкемдүү кабыл алуу
                         allRecords.push({ id: key, ...value });
                     }
                 });
             }
             allRecords.reverse();
-            localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
             renderTable(allRecords);
             updateStats(allRecords);
         }, (error) => {
-            console.warn("Firebase окууга чектөө койду, оффлайн режиминде иштөөдө:", error.message);
-            loadLocalRecords();
+            console.error("Firebase Катасы:", error);
+            const tbody = document.getElementById('movement-table-body');
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
+                <strong>Ката чыкты:</strong> ${error.message}. <br><small>Сураныч, Firebase Console -> Rules бөлүмүнөн read: true уруксатын бериңиз.</small>
+            </td></tr>`;
         });
 
         function renderTable(data) {
@@ -664,15 +649,19 @@
                 }
 
                 const dateDisplay = item.date || (item.timestamp ? new Date(item.timestamp).toLocaleDateString() : '-');
+                const studentName = item.fullName || item.name || item.studentName || '-';
+                const studentClass = item.studentClass || item.class || '-';
+                const statusInfo = item.status || item.school || item.university || '-';
+                const extraNotes = item.notes || item.reason || item.phone || '-';
 
                 tr.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${dateDisplay}</td>
-                    <td><strong>${item.fullName || item.name || '-'}</strong></td>
-                    <td>${item.studentClass || item.class || '-'}</td>
+                    <td><strong>${studentName}</strong></td>
+                    <td>${studentClass}</td>
                     <td><span class="badge ${badgeClass}">${typeText}</span></td>
-                    <td>${item.status || item.school || '-'}</td>
-                    <td><small style="color: var(--text-muted);">${item.notes || item.reason || '-'}</small></td>
+                    <td>${statusInfo}</td>
+                    <td><small style="color: var(--text-muted);">${extraNotes}</small></td>
                     <td>
                         <button class="btn-delete" data-id="${item.id}" title="Өчүрүү">
                             <i class="fas fa-trash"></i>
@@ -687,12 +676,9 @@
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
                         try {
-                            await remove(ref(database, `movements/${currentTeacherKey}/${id}`));
+                            await remove(ref(database, `applications/${id}`));
                         } catch (err) {
-                            allRecords = allRecords.filter(r => r.id !== id);
-                            localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
-                            renderTable(allRecords);
-                            updateStats(allRecords);
+                            alert("Өчүрүүдө ката чыкты: " + err.message);
                         }
                     }
                 });
@@ -724,17 +710,13 @@
             };
 
             try {
-                await push(movementsRef, payload);
-            } catch (err) {
-                console.warn("Firebase тармак катасы, локалдык сакталды:", err.message);
-                payload.id = 'local_' + Date.now();
-                allRecords.unshift(payload);
-                localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
-                renderTable(allRecords);
-                updateStats(allRecords);
-            } finally {
+                await push(appRef, payload);
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
+            } catch (err) {
+                console.error(err);
+                alert('Маалымат сактоодо ката чыкты: ' + err.message);
+            } finally {
                 btn.disabled = false;
             }
         });
@@ -742,9 +724,9 @@
         document.getElementById('search-input').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const filtered = allRecords.filter(r => {
-                const name = (r.fullName || r.name || '').toLowerCase();
+                const name = (r.fullName || r.name || r.studentName || '').toLowerCase();
                 const cls = (r.studentClass || r.class || '').toLowerCase();
-                const status = (r.status || r.school || '').toLowerCase();
+                const status = (r.status || r.school || r.university || '').toLowerCase();
                 return name.includes(query) || cls.includes(query) || status.includes(query);
             });
             renderTable(filtered);
@@ -753,7 +735,7 @@
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (allRecords.length === 0) return alert('Экспорттоого маалымат жок!');
 
-            let csv = '\uFEFF'; // UTF-8 BOM
+            let csv = '\uFEFF';
             csv += 'Дата,Аты-Жону,Класс,Туру,Окуу жай/Мектеп,Кошумча маалымат\n';
             allRecords.forEach(r => {
                 let typeName = 'Келди';
@@ -761,10 +743,10 @@
                 if (r.type === 'self' || !r.type) typeName = 'Анкета';
                 
                 const dateVal = r.date || (r.timestamp ? new Date(r.timestamp).toLocaleDateString() : '-');
-                const nameVal = r.fullName || r.name || '-';
+                const nameVal = r.fullName || r.name || r.studentName || '-';
                 const classVal = r.studentClass || r.class || '-';
-                const statusVal = r.status || r.school || '-';
-                const notesVal = r.notes || r.reason || '-';
+                const statusVal = r.status || r.school || r.university || '-';
+                const notesVal = r.notes || r.reason || r.phone || '-';
 
                 csv += `"${dateVal}","${nameVal}","${classVal}","${typeName}","${statusVal}","${notesVal}"\n`;
             });
