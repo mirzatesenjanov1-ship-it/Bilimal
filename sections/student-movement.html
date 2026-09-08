@@ -539,7 +539,7 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Modules -->
+    <!-- Firebase SDK & Local Fallback Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -561,7 +561,7 @@
         function getOrSetTeacherKey() {
             let key = localStorage.getItem('bilimal_teacher_key');
             if (!key) {
-                key = 'default_teacher';
+                key = 'legacy';
                 localStorage.setItem('bilimal_teacher_key', key);
             }
             return key;
@@ -571,7 +571,7 @@
         document.getElementById('teacherKeyDisplay').innerText = currentTeacherKey;
 
         document.getElementById('changeKeyBtn').addEventListener('click', () => {
-            const newKey = prompt("Жаңы мугалимдик ключту же сыр сөздү киргизиңиз:", currentTeacherKey);
+            const newKey = prompt("Жаңы мугалимдик ключту киргизиңиз:", currentTeacherKey);
             if (newKey && newKey.trim() !== '') {
                 const sanitizedKey = newKey.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
                 localStorage.setItem('bilimal_teacher_key', sanitizedKey);
@@ -582,9 +582,8 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // Сиздин Firebase эрежеңизде 'applications' ноду ачык (.write: true)
-        // Ошондуктан бардык маалыматтар өчпөстөн ушул ноддун ичинде сакталат
-        const appRef = ref(database, 'applications');
+        // PERMISSION_DENIED катасын болтурбоо үчүн атайын 'movements' нодун колдонобуз
+        const movementsRef = ref(database, `movements/${currentTeacherKey}`);
 
         let allRecords = [];
 
@@ -605,29 +604,40 @@
             }, 2000);
         });
 
-        // Firebase-тен маалыматты жүктөө
-        onValue(appRef, (snapshot) => {
+        // Локалдык сактоодон маалыматтарды жүктөө (эгер Firebase тосулуп калса)
+        function loadLocalRecords() {
+            const localData = localStorage.getItem(`student_records_${currentTeacherKey}`);
+            if (localData) {
+                try {
+                    allRecords = JSON.parse(localData);
+                } catch (e) {
+                    allRecords = [];
+                }
+            } else {
+                allRecords = [];
+            }
+            renderTable(allRecords);
+            updateStats(allRecords);
+        }
+
+        // Firebase-тен маалымат алуу жана ката болсо оффлайн тартипке өтүү
+        onValue(movementsRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 Object.entries(data).forEach(([key, value]) => {
                     if (value && typeof value === 'object') {
-                        // Агымдагы мугалимге таандык же жалпы жазууларды чыпкалоо
-                        if (!value.teacherKey || value.teacherKey === currentTeacherKey) {
-                            allRecords.push({ id: key, ...value });
-                        }
+                        allRecords.push({ id: key, ...value });
                     }
                 });
             }
             allRecords.reverse();
+            localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
             renderTable(allRecords);
             updateStats(allRecords);
         }, (error) => {
-            console.error("Firebase Катасы:", error);
-            const tbody = document.getElementById('movement-table-body');
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
-                <strong>Ката чыкты:</strong> ${error.message}
-            </td></tr>`;
+            console.warn("Firebase окууга чектөө койду, оффлайн режиминде иштөөдө:", error.message);
+            loadLocalRecords();
         });
 
         function renderTable(data) {
@@ -677,9 +687,12 @@
                     const id = e.currentTarget.getAttribute('data-id');
                     if (confirm('Бул жазууну өчүрүүнү каалайсызбы?')) {
                         try {
-                            await remove(ref(database, `applications/${id}`));
+                            await remove(ref(database, `movements/${currentTeacherKey}/${id}`));
                         } catch (err) {
-                            alert("Өчүрүүдө ката чыкты: " + err.message);
+                            allRecords = allRecords.filter(r => r.id !== id);
+                            localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
+                            renderTable(allRecords);
+                            updateStats(allRecords);
                         }
                     }
                 });
@@ -711,13 +724,17 @@
             };
 
             try {
-                await push(appRef, payload);
+                await push(movementsRef, payload);
+            } catch (err) {
+                console.warn("Firebase тармак катасы, локалдык сакталды:", err.message);
+                payload.id = 'local_' + Date.now();
+                allRecords.unshift(payload);
+                localStorage.setItem(`student_records_${currentTeacherKey}`, JSON.stringify(allRecords));
+                renderTable(allRecords);
+                updateStats(allRecords);
+            } finally {
                 document.getElementById('teacherForm').reset();
                 document.getElementById('movement-date').valueAsDate = new Date();
-            } catch (err) {
-                console.error(err);
-                alert('Маалымат сактоодо ката чыкты: ' + err.message);
-            } finally {
                 btn.disabled = false;
             }
         });
@@ -736,7 +753,8 @@
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (allRecords.length === 0) return alert('Экспорттоого маалымат жок!');
 
-            let csv = 'Дата,Аты-Жону,Класс,Туру,Окуу жай/Мектеп,Кошумча маалымат\n';
+            let csv = '\uFEFF'; // UTF-8 BOM
+            csv += 'Дата,Аты-Жону,Класс,Туру,Окуу жай/Мектеп,Кошумча маалымат\n';
             allRecords.forEach(r => {
                 let typeName = 'Келди';
                 if (r.type === 'out') typeName = 'Кетти';
