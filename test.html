@@ -394,11 +394,11 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формула белгилерин, градустарды жана Google Drive сүрөттөрүн иштетүүчү алгоритм -->
+    <!-- Тексттеги формулаларды жана сүрөттөрдү тууралоочу такталган скрипт -->
     <script>
         let isMathJaxRendering = false;
 
-        // Google Drive шилтемелерин түз сүрөт дарегине айландыруучу функция
+        // Google Drive сүрөттөрүн түз ачылуучу шилтемеге айландыруу
         function fixGoogleDriveImages(container) {
             if (!container) return;
             const images = container.querySelectorAll('img');
@@ -420,63 +420,38 @@
             });
         }
 
-        function formatMathExpressions(container) {
+        // Тексттеги $ ичинде эмес градус/индекс белгилерин MathJax форматына келтирүү
+        function processTextMath(container) {
             if (!container) return;
 
-            const processNode = (node) => {
+            const walkNodes = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
                     if (!text || !text.trim()) return;
 
-                    // 1. Градус туюнтмаларын оңдоо (100^{o}, 100^{\circ}, 100^\circ C, 100°C)
-                    text = text.replace(/(\d+)\s*(\^\{?[oO\circ]+\}?|\^\circ|°)\s*([cCкК]?)/g, function(match, num, deg, unit) {
-                        let unitStr = (unit.toLowerCase() === 'c' || unit.toLowerCase() === 'к') ? '\\text{C}' : '';
-                        return ' $' + num + '^\\circ ' + unitStr + '$ ';
-                    });
-
-                    // 2. Нижний индекси бар грек жана стандарттык өзгөрмөлөрдү тууралоо
-                    text = text.replace(/(?<!\$)(?:\\?([a-zA-Z\alpha\beta\gamma\delta\rho\mu\nu\omega]+))_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g, function(match, symbol, sub) {
-                        let cleanSymbol = symbol.startsWith('\\') ? symbol : '\\' + symbol;
-                        if (['v', 'm', 't', 'p', 'f', 'x', 'y', 'z', 'a', 'b', 'c', 'n', 'k'].includes(symbol.toLowerCase())) {
-                            cleanSymbol = symbol;
-                        }
-                        return ' $' + cleanSymbol + '_' + sub + '$ ';
-                    });
-
-                    // 3. Грек тамгаларын $...$ ороо
-                    const greekList = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega'];
-                    greekList.forEach(greek => {
-                        const regSlash = new RegExp(`(?<!\\$)\\\\${greek}(?!\\$)`, 'g');
-                        text = text.replace(regSlash, ` $\\${greek}$ `);
-                        
-                        const regNoSlash = new RegExp(`(?<=\\s|^)${greek}(?=\\s|\\,|\\.|\\;|\\)|$)`, 'g');
-                        text = text.replace(regNoSlash, ` $\\${greek}$ `);
-                    });
-
-                    // 4. Даража жана индекс бар туюнтмалар
-                    if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
-                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]*)/g, function(match) {
-                            return ' $' + match.trim() + '$ ';
+                    // Эгерде текст атайын $ белгиси менен оролбогон болсо гана оңдойбуз
+                    if (!text.includes('$')) {
+                        // 1. Градустарды оңдоо: 100^{o}C, 100^o C, 100°C -> $100^{\circ}C$
+                        text = text.replace(/(\d+)\s*(\^\{?[oO\circ]+\}?|\^\circ|°)\s*([cCкК]?)/g, function(m, num, deg, unit) {
+                            let u = (unit.toLowerCase() === 'c' || unit.toLowerCase() === 'к') ? 'C' : '';
+                            return ` $${num}^{\\circ}${u}$ `;
                         });
+
+                        // 2. Индекстерди оңдоо: t_1, v_0, m_1 -> $t_1$, $v_0$
+                        text = text.replace(/\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)\b/g, ' $$$1_$2$$ ');
+
+                        node.nodeValue = text;
                     }
-
-                    // 5. Физикалык бирдиктердин ортосуна аралык кошуу (800кг/м³ -> 800 кг/м³)
-                    text = text.replace(/(\d+)\s*(кг|г|м|см|мм|Па|кПа|Ж|Дж|Н|В|А|Ом)\b/g, '$1 $2');
-
-                    // 6. Кош боштуктарды иретке келтирүү
-                    text = text.replace(/\s+/g, ' ');
-
-                    node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
                            node.tagName !== 'SCRIPT' && 
                            node.tagName !== 'STYLE' && 
                            !node.classList.contains('MathJax') && 
                            !node.tagName.startsWith('MJX-')) {
-                    Array.from(node.childNodes).forEach(processNode);
+                    Array.from(node.childNodes).forEach(walkNodes);
                 }
             };
 
-            processNode(container);
+            walkNodes(container);
         }
 
         function renderMath() {
@@ -486,10 +461,13 @@
 
             isMathJaxRendering = true;
 
-            // Drive сүрөттөрүн жана матек туюнтмаларын иштетүү
+            // 1. Google Drive сүрөт шилтемелерин ондоо
             fixGoogleDriveImages(target);
-            formatMathExpressions(target);
 
+            // 2. Градус ж.б. формулаларды доллар ($) белгисине ороо
+            processTextMath(target);
+
+            // 3. MathJax аркылуу формуланы тартуу
             if (window.MathJax && window.MathJax.typesetPromise) {
                 if (window.MathJax.typesetClear) {
                     window.MathJax.typesetClear([target]);
@@ -505,7 +483,7 @@
             }
         }
 
-        // DOM өзгөрүүлөрүн көзөмөлдөө
+        // Өзгөрүүлөрдү байкоочу Observer
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
