@@ -21,15 +21,14 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- MathJax Конфигурациясы (Ишенимдүү жана толук TeX колдоосу) -->
+    <!-- MathJax Конфигурациясы -->
     <script>
         window.MathJax = {
             tex: { 
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 processEscapes: true,
-                processEnvironments: true,
-                packages: {'[+]': ['noerrors', 'noundefined']}
+                processEnvironments: true
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
@@ -146,7 +145,7 @@
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
         }
-        .test-image { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(0,240,255,0.3); }
+        .test-image { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(0,240,255,0.3); display: block; }
 
         .matching-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; align-items: center; }
         .matching-row select { background: #020208; border: 1px solid rgba(0,240,255,0.3); color: #fff; padding: 10px; border-radius: 6px; outline: none; width: 100%; }
@@ -395,60 +394,90 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Тексттеги формулаларды жана сүрөттөрдү тууралоочу такталган скрипт -->
+    <!-- Google Drive сүрөттөрүн жана Тексттеги формулаларды иштетүүчү алгоритм -->
     <script>
         let isMathJaxRendering = false;
 
-        // Google Drive сүрөттөрүн түз ачылуучу шилтемеге айландыруу
-        function fixGoogleDriveImages(container) {
+        // Google Drive шилтемесин түз сүрөт кайтаруучу URL'ге айландыруучу функция
+        function convertDriveUrl(url) {
+            if (!url || typeof url !== 'string') return url;
+            let fileId = '';
+            const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            
+            if (match1 && match1[1]) {
+                fileId = match1[1];
+            } else if (match2 && match2[1]) {
+                fileId = match2[1];
+            }
+
+            if (fileId) {
+                return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+            return url;
+        }
+
+        // Беттеги бардык Google Drive сүрөттөрүнүн src attribute'тун оңдоо
+        function processImages(container) {
             if (!container) return;
-            const images = container.querySelectorAll('img');
-            images.forEach(img => {
-                let src = img.getAttribute('src');
-                if (src && src.includes('drive.google.com')) {
-                    let fileId = '';
-                    const matchFile = src.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-                    const matchId = src.match(/id=([a-zA-Z0-9_-]+)/);
-                    if (matchFile && matchFile[1]) {
-                        fileId = matchFile[1];
-                    } else if (matchId && matchId[1]) {
-                        fileId = matchId[1];
-                    }
-                    if (fileId) {
-                        img.src = `https://lh3.googleusercontent.com/d/${fileId}`;
+            const imgs = container.querySelectorAll('img');
+            imgs.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && (src.includes('drive.google.com') || src.includes('docs.google.com'))) {
+                    const converted = convertDriveUrl(src);
+                    if (src !== converted) {
+                        img.src = converted;
                     }
                 }
             });
         }
 
-        // Тексттеги \text{C}, ^{o}, °C сыяктуу ката туюнтмаларды таза китептегидей $100^\circ\mathrm{C}$ форматына келтирүү
-        function processTextMath(container) {
+        function formatMathExpressions(container) {
             if (!container) return;
 
-            const walkNodes = (node) => {
+            const processNode = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
                     if (!text || !text.trim()) return;
 
-                    // 1. Ачык \text{C} же \text{К} сыяктуу бузулган LaTeX коддорун оңдоо
-                    text = text.replace(/\\text\{[cCкК]\}/g, '\\mathrm{C}');
-                    
-                    // 2. Эгер $ ичинде эмес, кадимки текстте 100^{o}C же 100°C же 100^o C кездешсе, аны таза MathJax $100^\circ\mathrm{C}$ форматына айландыруу
-                    text = text.replace(/(\d+)\s*(\^\{?[oO\circ]+\}?|\^\circ|°)\s*(\\text\{[cCкК]\}|\\mathrm\{[cCкК]\}|[cCкК])?/g, function(match, num, deg, unit) {
-                        let u = '';
-                        if (unit) {
-                            let cleanUnit = unit.replace(/\\text\{|\\mathrm\{|\}/g, '').toUpperCase();
-                            if (cleanUnit === 'C' || cleanUnit === 'К') {
-                                u = '\\mathrm{C}';
-                            }
+                    // 1. \text{...} форматын тазалоо
+                    text = text.replace(/\\text\{([^}]+)\}/g, '$1');
+
+                    // 2. Градус жана Температураны сактоо (100°C, 100 °C, 100° туура иштетүү, 0 даражасына айлантпоо)
+                    text = text.replace(/(\d+)\s*°\s*C\b/g, ' $1 ^\\circ\\text{C} ');
+                    text = text.replace(/(\d+)\s*°\b/g, ' $1^\\circ ');
+
+                    // 3. Нижний индекси бар өзгөрмөлөрдү туура $...$ ороо
+                    text = text.replace(/(?<!\$)(?:\\?([a-zA-Z\alpha\beta\gamma\delta\rho\mu\nu\omega]+))_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g, function(match, symbol, sub) {
+                        let cleanSymbol = symbol.startsWith('\\') ? symbol : '\\' + symbol;
+                        if (['v', 'm', 't', 'p', 'f', 'x', 'y', 'z', 'a', 'b', 'c', 'n', 'k'].includes(symbol.toLowerCase())) {
+                            cleanSymbol = symbol;
                         }
-                        return `$${num}^\\circ ${u}$`.trim();
+                        return ' $' + cleanSymbol + '_' + sub + '$ ';
                     });
 
-                    // 3. Таза эмес калган индекстерди $t_1$, $v_0$ форматына келтирүү
-                    if (!text.includes('$')) {
-                        text = text.replace(/\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)\b/g, '$$$1_$2$$');
+                    // 4. Грек тамгаларын $...$ ороо
+                    const greekList = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'sigma', 'tau', 'phi', 'chi', 'psi', 'omega'];
+                    greekList.forEach(greek => {
+                        const regSlash = new RegExp(`(?<!\\$)\\\\${greek}(?!\\$)`, 'g');
+                        text = text.replace(regSlash, ` $\\${greek}$ `);
+                        
+                        const regNoSlash = new RegExp(`(?<=\\s|^)${greek}(?=\\s|\\,|\\.|\\;|\\)|$)`, 'g');
+                        text = text.replace(regNoSlash, ` $\\${greek}$ `);
+                    });
+
+                    // 5. Даража жана индекс бар туюнтмаларды сөздөрдөн ажыратып $...$ ороо (Градуска тийбей)
+                    if (/[^$_]*(\^|\_|\{\d+\}|\\frac|\\cdot|\\times)[^$_]*/.test(text) && !text.includes('$')) {
+                        text = text.replace(/([A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]+(\^\{?[0-9a-zA-Z\-]+\}?|\_\{?[0-9a-zA-Z\-]+\}?)+[A-Za-z0-9К-яа-яӨөҮүҢң\cdot\/\=\-\+]*)/g, function(match) {
+                            return ' $' + match.trim() + '$ ';
+                        });
                     }
+
+                    // 6. Физикалык бирдиктердин ортосуна аралык кошуу (800кг/м³ -> 800 кг/м³)
+                    text = text.replace(/(\d+)\s*(кг|г|м|см|мм|Па|кПа|Ж|Дж|Н|В|А|Ом)\b/g, '$1 $2');
+
+                    // 7. Кош боштуктарды тазалоо
+                    text = text.replace(/\s+/g, ' ');
 
                     node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
@@ -456,11 +485,11 @@
                            node.tagName !== 'STYLE' && 
                            !node.classList.contains('MathJax') && 
                            !node.tagName.startsWith('MJX-')) {
-                    Array.from(node.childNodes).forEach(walkNodes);
+                    Array.from(node.childNodes).forEach(processNode);
                 }
             };
 
-            walkNodes(container);
+            processNode(container);
         }
 
         function renderMath() {
@@ -470,13 +499,12 @@
 
             isMathJaxRendering = true;
 
-            // 1. Google Drive сүрөт шилтемелерин оңдоо
-            fixGoogleDriveImages(target);
+            // Google Drive сүрөт шилтемелерин дароо алмаштыруу
+            processImages(target);
 
-            // 2. Градус ж.б. формулаларды таза китеп форматына келтирүү
-            processTextMath(target);
+            // DOM мазмунун рендерингке даярдоо
+            formatMathExpressions(target);
 
-            // 3. MathJax аркылуу рендердеп берүү
             if (window.MathJax && window.MathJax.typesetPromise) {
                 if (window.MathJax.typesetClear) {
                     window.MathJax.typesetClear([target]);
@@ -492,7 +520,7 @@
             }
         }
 
-        // DOM өзгөрүүлөрүн көзөмөлдөөчү Observer
+        // DOM өзгөрүүлөрүн көзөмөлдөө
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
