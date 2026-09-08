@@ -541,7 +541,7 @@
     <!-- Firebase SDK Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, onValue, push, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -581,8 +581,9 @@
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // Окуучулар мурун сактаган бардык арыздар сакталган 'applications' ноду
+        // FIREBASE RULE ЫЛАЙЫК: Жапырт эмес, дал ушул мугалимдин key'и боюнча чыпкалап сурайбыз!
         const appRef = ref(database, 'applications');
+        const teacherFilteredQuery = query(appRef, orderByChild('teacherKey'), equalTo(currentTeacherKey));
 
         let allRecords = [];
         document.getElementById('movement-date').valueAsDate = new Date();
@@ -602,14 +603,13 @@
             }, 2000);
         });
 
-        // Firebase-тен бардык окуучулардын мурунку жана жаңы дайындарын жүктөө
-        onValue(appRef, (snapshot) => {
+        // Бөгөт кылбай, ылдам сакталган окуучуларды тартып алуу
+        onValue(teacherFilteredQuery, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 Object.entries(data).forEach(([key, value]) => {
                     if (value && typeof value === 'object') {
-                        // Окуучулардын мурунку жана азыркы толтурган бардык талааларын ийкемдүү кабыл алуу
                         allRecords.push({ id: key, ...value });
                     }
                 });
@@ -621,7 +621,7 @@
             console.error("Firebase Катасы:", error);
             const tbody = document.getElementById('movement-table-body');
             tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
-                <strong>Ката чыкты:</strong> ${error.message}. <br><small>Сураныч, Firebase Console -> Rules бөлүмүнөн read: true уруксатын бериңиз.</small>
+                <strong>Маалымат алууда ката чыкты:</strong> ${error.message}
             </td></tr>`;
         });
 
@@ -630,7 +630,7 @@
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Жазуулар табылган жок.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-muted); padding: 20px;">Бул ключ менен толтурулган жазуулар табылган жок.</td></tr>`;
                 return;
             }
 
