@@ -38,7 +38,6 @@
             margin: 0 auto;
         }
 
-        /* Top Header Navigation */
         header {
             display: flex;
             justify-content: space-between;
@@ -105,7 +104,6 @@
             border-color: var(--accent-color);
         }
 
-        /* TEACHER KEY CARD BANNER */
         .teacher-key-card {
             background: #1e293b;
             border: 1px solid #3b82f6;
@@ -137,7 +135,6 @@
             font-size: 12px;
         }
 
-        /* BANNER FOR STUDENT LINK */
         .student-link-card {
             background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
             border: 1px solid #4338ca;
@@ -213,7 +210,6 @@
             background: #6366f1;
         }
 
-        /* Stats Dashboard */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -250,7 +246,6 @@
             font-weight: bold;
         }
 
-        /* Layout Grid */
         .grid-layout {
             display: grid;
             grid-template-columns: 360px 1fr;
@@ -327,7 +322,6 @@
             opacity: 0.9;
         }
 
-        /* Table Toolbar */
         .table-toolbar {
             display: flex;
             justify-content: space-between;
@@ -410,7 +404,6 @@
 <body>
 
     <div class="container">
-        <!-- HEADER -->
         <header>
             <div class="header-title">
                 <a href="/sections/curators.html" class="btn-secondary"><i class="fas fa-arrow-left"></i> Башкы бетке</a>
@@ -423,7 +416,6 @@
             </div>
         </header>
 
-        <!-- TEACHER KEY DISPLAY -->
         <div class="teacher-key-card">
             <div class="key-title">
                 <i class="fas fa-user-shield"></i>
@@ -432,7 +424,6 @@
             <button class="btn-key-change" id="changeKeyBtn"><i class="fas fa-key"></i> Ключту алмаштыруу / Мурункуну кайтаруу</button>
         </div>
 
-        <!-- STUDENT SURVEY LINK BANNER -->
         <div class="student-link-card">
             <div class="link-info">
                 <h3><i class="fas fa-link"></i> Окуучулар өздөрү толтуруучу анкета шилтемеси:</h3>
@@ -444,7 +435,6 @@
             </div>
         </div>
 
-        <!-- STATS DASHBOARD -->
         <div class="stats-grid">
             <div class="stat-card">
                 <i class="fas fa-users"></i>
@@ -469,7 +459,6 @@
         </div>
 
         <div class="grid-layout">
-            <!-- INPUT FORM CARD -->
             <div class="card">
                 <div class="card-title"><i class="fas fa-pen-fancy"></i> Мугалим тараптан каттоо</div>
                 <form id="teacherForm">
@@ -513,7 +502,6 @@
                 </form>
             </div>
 
-            <!-- TABLE VIEW CARD -->
             <div class="card">
                 <div class="table-toolbar">
                     <div class="card-title" style="margin-bottom: 0;"><i class="fas fa-list"></i> Кыймыл Журналы</div>
@@ -549,7 +537,6 @@
                 </div>
             </div>
         </div>
-
     </div>
 
     <!-- Firebase SDK Модулдары -->
@@ -571,9 +558,6 @@
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
 
-        // ------------------------------------------------------------------
-        // МУГАЛИМДИН КЛЮЧУН ИШТЕТҮҮ ЖАНА АЗЫРКЫ 24 ОКУУЧУНУ КОРГОО
-        // ------------------------------------------------------------------
         function getOrSetTeacherKey() {
             let key = localStorage.getItem('bilimal_teacher_key');
             if (!key) {
@@ -590,7 +574,6 @@
         let currentTeacherKey = getOrSetTeacherKey();
         document.getElementById('teacherKeyDisplay').innerText = currentTeacherKey;
 
-        // Ключту алмаштыруу баскычы
         document.getElementById('changeKeyBtn').addEventListener('click', () => {
             const newKey = prompt("Жаңы мугалимдик ключту же сыр сөздү киргизиңиз:\n(Мурунку 24 окуучуңуз үчүн 'legacy' деп жазыңыз)", currentTeacherKey);
             if (newKey && newKey.trim() !== '') {
@@ -600,21 +583,16 @@
             }
         });
 
-        // Окуучулар үчүн ар бир мугалимге уникалдуу шилтеме
         const shareLinkInput = document.getElementById("shareableLink");
         shareLinkInput.value = `https://bilimal.org/sections/student-form.html?teacher=${currentTeacherKey}`;
 
-        // Сиздин гана маалыматтарыңыз сакталуучу Firebase папкасы
-        // Эгер 'legacy' болсо, дал ошол мурунку 24 окуучу сакталган негизги 'movements' ачылат!
         const teacherPath = (currentTeacherKey === 'legacy' || currentTeacherKey === 'main') ? 'movements' : `teachers_data/${currentTeacherKey}`;
         const currentRef = ref(database, teacherPath);
 
         let allRecords = [];
 
-        // Дата киргизүү талаасына бүгүнкү датаны коюу
         document.getElementById('movement-date').valueAsDate = new Date();
 
-        // Шилтемени көчүрүү функциясы
         document.getElementById('copyBtn').addEventListener('click', () => {
             const copyText = document.getElementById("shareableLink");
             copyText.select();
@@ -630,14 +608,13 @@
             }, 2000);
         });
 
-        // Firebase'ден ушул мугалимге гана тиешелүү маалыматты жүктөө
+        // Firebase укуктарын жана жүктөлүшүн текшерүүчү кармагыч (Error handler кошулду)
         onValue(currentRef, (snapshot) => {
             allRecords = [];
             if (snapshot.exists()) {
                 const data = snapshot.val();
                 Object.entries(data).forEach(([key, value]) => {
-                    // Түз объект болсо кошуп алабыз
-                    if (value && typeof value === 'object' && (value.fullName || value.name)) {
+                    if (value && typeof value === 'object') {
                         allRecords.push({ id: key, ...value });
                     }
                 });
@@ -645,9 +622,15 @@
             allRecords.reverse();
             renderTable(allRecords);
             updateStats(allRecords);
+        }, (error) => {
+            console.error("Firebase катасы:", error);
+            const tbody = document.getElementById('movement-table-body');
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--accent-red); padding: 20px;">
+                Базага кошулууда ката чыкты: ${error.message}<br>
+                Firebase Console'дон Rules (Эрежелер) бөлүмүн текшериңиз.
+            </td></tr>`;
         });
 
-        // Таблицаны тартып чыгаруу
         function renderTable(data) {
             const tbody = document.getElementById('movement-table-body');
             tbody.innerHTML = '';
@@ -690,7 +673,6 @@
                 tbody.appendChild(tr);
             });
 
-            // Өчүрүү баскычтарын иштетүү
             document.querySelectorAll('.btn-delete').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -701,7 +683,6 @@
             });
         }
 
-        // Статистиканы жаңылоо
         function updateStats(data) {
             document.getElementById('stat-total').innerText = data.length;
             document.getElementById('stat-in').innerText = data.filter(r => r.type === 'in').length;
@@ -709,7 +690,6 @@
             document.getElementById('stat-self').innerText = data.filter(r => r.type === 'self' || !r.type).length;
         }
 
-        // Мугалим тараптан сактоо
         document.getElementById('teacherForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -732,13 +712,12 @@
                 document.getElementById('movement-date').valueAsDate = new Date();
             } catch (err) {
                 console.error(err);
-                alert('Ката чыкты!');
+                alert('Маалымат сактоодо ката чыкты: ' + err.message);
             } finally {
                 btn.disabled = false;
             }
         });
 
-        // Издөө функциясы
         document.getElementById('search-input').addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
             const filtered = allRecords.filter(r => {
@@ -750,7 +729,6 @@
             renderTable(filtered);
         });
 
-        // CSV Экспорттоо
         document.getElementById('exportBtn').addEventListener('click', () => {
             if (allRecords.length === 0) return alert('Экспорттоого маалымат жок!');
 
