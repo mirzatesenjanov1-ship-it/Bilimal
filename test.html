@@ -21,14 +21,15 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- MathJax Конфигурациясы -->
+    <!-- MathJax Конфигурациясы (Ишенимдүү жана толук TeX колдоосу) -->
     <script>
         window.MathJax = {
             tex: { 
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
                 displayMath: [['$$', '$$'], ['\\[', '\\]']],
                 processEscapes: true,
-                processEnvironments: true
+                processEnvironments: true,
+                packages: {'[+]': ['noerrors', 'noundefined']}
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
@@ -420,7 +421,7 @@
             });
         }
 
-        // Тексттеги $ ичинде эмес градус/индекс белгилерин MathJax форматына келтирүү
+        // Тексттеги \text{C}, ^{o}, °C сыяктуу ката туюнтмаларды таза китептегидей $100^\circ\mathrm{C}$ форматына келтирүү
         function processTextMath(container) {
             if (!container) return;
 
@@ -429,19 +430,27 @@
                     let text = node.nodeValue;
                     if (!text || !text.trim()) return;
 
-                    // Эгерде текст атайын $ белгиси менен оролбогон болсо гана оңдойбуз
+                    // 1. Ачык \text{C} же \text{К} сыяктуу бузулган LaTeX коддорун оңдоо
+                    text = text.replace(/\\text\{[cCкК]\}/g, '\\mathrm{C}');
+                    
+                    // 2. Эгер $ ичинде эмес, кадимки текстте 100^{o}C же 100°C же 100^o C кездешсе, аны таза MathJax $100^\circ\mathrm{C}$ форматына айландыруу
+                    text = text.replace(/(\d+)\s*(\^\{?[oO\circ]+\}?|\^\circ|°)\s*(\\text\{[cCкК]\}|\\mathrm\{[cCкК]\}|[cCкК])?/g, function(match, num, deg, unit) {
+                        let u = '';
+                        if (unit) {
+                            let cleanUnit = unit.replace(/\\text\{|\\mathrm\{|\}/g, '').toUpperCase();
+                            if (cleanUnit === 'C' || cleanUnit === 'К') {
+                                u = '\\mathrm{C}';
+                            }
+                        }
+                        return `$${num}^\\circ ${u}$`.trim();
+                    });
+
+                    // 3. Таза эмес калган индекстерди $t_1$, $v_0$ форматына келтирүү
                     if (!text.includes('$')) {
-                        // 1. Градустарды оңдоо: 100^{o}C, 100^o C, 100°C -> $100^{\circ}C$
-                        text = text.replace(/(\d+)\s*(\^\{?[oO\circ]+\}?|\^\circ|°)\s*([cCкК]?)/g, function(m, num, deg, unit) {
-                            let u = (unit.toLowerCase() === 'c' || unit.toLowerCase() === 'к') ? 'C' : '';
-                            return ` $${num}^{\\circ}${u}$ `;
-                        });
-
-                        // 2. Индекстерди оңдоо: t_1, v_0, m_1 -> $t_1$, $v_0$
-                        text = text.replace(/\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)\b/g, ' $$$1_$2$$ ');
-
-                        node.nodeValue = text;
+                        text = text.replace(/\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)\b/g, '$$$1_$2$$');
                     }
+
+                    node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
                            node.tagName !== 'SCRIPT' && 
                            node.tagName !== 'STYLE' && 
@@ -461,13 +470,13 @@
 
             isMathJaxRendering = true;
 
-            // 1. Google Drive сүрөт шилтемелерин ондоо
+            // 1. Google Drive сүрөт шилтемелерин оңдоо
             fixGoogleDriveImages(target);
 
-            // 2. Градус ж.б. формулаларды доллар ($) белгисине ороо
+            // 2. Градус ж.б. формулаларды таза китеп форматына келтирүү
             processTextMath(target);
 
-            // 3. MathJax аркылуу формуланы тартуу
+            // 3. MathJax аркылуу рендердеп берүү
             if (window.MathJax && window.MathJax.typesetPromise) {
                 if (window.MathJax.typesetClear) {
                     window.MathJax.typesetClear([target]);
@@ -483,7 +492,7 @@
             }
         }
 
-        // Өзгөрүүлөрдү байкоочу Observer
+        // DOM өзгөрүүлөрүн көзөмөлдөөчү Observer
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
