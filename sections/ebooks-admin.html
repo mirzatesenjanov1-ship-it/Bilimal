@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- MATHJAX INTEGRATION (Физикалык жана математикалык формулалар үчүн) -->
+    <!-- MATHJAX INTEGRATION -->
     <script>
         window.MathJax = {
             tex: {
@@ -133,37 +133,124 @@
             border-color: #38bdf8;
         }
 
-        /* Formula & Toolbar Integration */
+        /* MATH TOOLBAR & VIRTUAL KEYBOARD STYLES */
+        .editor-container {
+            border: 1px solid #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #0f172a;
+        }
+
         .editor-toolbar {
             display: flex;
-            gap: 8px;
-            background: #0f172a;
-            padding: 8px;
-            border: 1px solid #334155;
-            border-bottom: none;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
+            flex-wrap: wrap;
+            gap: 6px;
+            background: #1e293b;
+            padding: 10px;
+            border-bottom: 1px solid #334155;
         }
 
         .editor-toolbar button {
-            background: #1e293b;
+            background: #0f172a;
             border: 1px solid #334155;
             color: #38bdf8;
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
         }
 
         .editor-toolbar button:hover {
-            background: #334155;
+            background: #38bdf8;
+            color: #0f172a;
         }
 
         .editor-textarea {
-            border-top-left-radius: 0;
-            border-top-right-radius: 0;
-            min-height: 120px;
+            width: 100%;
+            min-height: 180px;
+            border: none;
+            border-radius: 0;
+            padding: 14px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.6;
             resize: vertical;
+        }
+
+        /* VIRTUAL KEYBOARD CONTAINER */
+        .math-keyboard-panel {
+            background: #1e293b;
+            border-top: 1px solid #334155;
+            padding: 12px;
+            display: none;
+        }
+
+        .math-keyboard-panel.active {
+            display: block;
+        }
+
+        .keyboard-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 6px;
+        }
+
+        .tab-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        .keyboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            gap: 8px;
+        }
+
+        .sym-btn {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #f8fafc;
+            padding: 10px 4px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            text-align: center;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .sym-btn:hover {
+            background: #0284c7;
+            border-color: #38bdf8;
+            color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .sym-btn svg {
+            fill: currentColor;
+            width: 18px;
+            height: 18px;
         }
 
         .btn-submit {
@@ -414,13 +501,81 @@
                 </div>
                 
                 <div class="form-group full">
-                    <label>Сүрөттөмө же Макала тексти (Формула киргизүү үчүн $ ... $ же $$ ... $$ колдонуңуз)</label>
-                    <div class="editor-toolbar">
-                        <button type="button" onclick="insertFormula('inline')">+ Саптык Формула ($x$)</button>
-                        <button type="button" onclick="insertFormula('block')">+ Блоктук Формула ($$x$$)</button>
-                        <button type="button" onclick="insertFormula('fraction')">+ Бөлчөк (\frac{a}{b})</button>
+                    <label>Сүрөттөмө же Илимий макала (Формула & Сүрөт панелин колдонуңуз)</label>
+                    
+                    <div class="editor-container">
+                        <div class="editor-toolbar">
+                            <button type="button" onclick="toggleMathKeyboard()"><i class="fas fa-keyboard"></i> Формула/Символ панели</button>
+                            <button type="button" onclick="insertCode('$ ', ' $')"><i class="fas fa-square-root-variable"></i> Саптык ($x$)</button>
+                            <button type="button" onclick="insertCode('\n$$\n', '\n$$\n')"><i class="fas fa-square-root-alt"></i> Блоктук ($$x$$)</button>
+                            <button type="button" onclick="insertImagePrompt()"><i class="fas fa-image"></i> Сүрөт кошуу</button>
+                        </div>
+
+                        <!-- VIRTUAL MATH KEYBOARD -->
+                        <div class="math-keyboard-panel" id="math-keyboard-panel">
+                            <div class="keyboard-tabs">
+                                <button type="button" class="tab-btn active" onclick="switchTab('formulas', this)">Формулалар (Калыптар)</button>
+                                <button type="button" class="tab-btn" onclick="switchTab('greek', this)">Грек тамгалары (Физика)</button>
+                                <button type="button" class="tab-btn" onclick="switchTab('operators', this)">Операторлор & Физика</button>
+                            </div>
+
+                            <!-- TAB 1: FORMULAS -->
+                            <div class="keyboard-grid tab-content" id="tab-formulas">
+                                <div class="sym-btn" title="Бөлчөк" onclick="insertSnippet('\\frac{\\square}{\\square}')">
+                                    <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2zM12 5a2 2 0 100 4 2 2 0 000-4zm0 10a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                                </div>
+                                <div class="sym-btn" title="Даража (x^n)" onclick="insertSnippet('\\square^{\\square}')">x<sup>□</sup></div>
+                                <div class="sym-btn" title="Индекс (x_n)" onclick="insertSnippet('\\square_{\\square}')">x<sub>□</sub></div>
+                                <div class="sym-btn" title="Кош индекс" onclick="insertSnippet('\\square_{\\square}^{\\square}')">x<sub>□</sub><sup>□</sup></div>
+                                <div class="sym-btn" title="Квадраттык уң" onclick="insertSnippet('\\sqrt{\\square}')">√□</div>
+                                <div class="sym-btn" title="n-даражалуу уң" onclick="insertSnippet('\\sqrt[\\square]{\\square}')"><sup>□</sup>√□</div>
+                                <div class="sym-btn" title="Сумма" onclick="insertSnippet('\\sum_{i=1}^{\\square} {\\square}')">∑</div>
+                                <div class="sym-btn" title="Интеграл" onclick="insertSnippet('\\int_{\\square}^{\\square} {\\square} d\\square')">∫</div>
+                                <div class="sym-btn" title="Предел" onclick="insertSnippet('\\lim_{\\square \\to \\square}')">lim</div>
+                                <div class="sym-btn" title="Вектор" onclick="insertSnippet('\\vec{\\square}')">a⃗</div>
+                                <div class="sym-btn" title="Кашаалар" onclick="insertSnippet('\\left( \\square \\right)')">(□)</div>
+                                <div class="sym-btn" title="Тик кашаа" onclick="insertSnippet('\\left[ \\square \\right]')">[□]</div>
+                            </div>
+
+                            <!-- TAB 2: GREEK LETTERS -->
+                            <div class="keyboard-grid tab-content" id="tab-greek" style="display:none;">
+                                <div class="sym-btn" onclick="insertSnippet('\\alpha')">α</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\beta')">β</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\gamma')">γ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\delta')">δ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\epsilon')">ε</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\theta')">θ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\lambda')">λ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\mu')">μ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\rho')">ρ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\sigma')">σ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\tau')">τ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\phi')">ϕ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\omega')">ω</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\Delta')">Δ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\Omega')">Ω</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\pi')">π</div>
+                            </div>
+
+                            <!-- TAB 3: OPERATORS -->
+                            <div class="keyboard-grid tab-content" id="tab-operators" style="display:none;">
+                                <div class="sym-btn" onclick="insertSnippet('\\pm')">±</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\times')">×</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\div')">÷</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\neq')">≠</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\approx')">≈</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\le')">≤</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\ge')">≥</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\infty')">∞</div>
+                                <div class="sym-btn" onclick="insertSnippet('^{\\circ}\\text{C}')">°C</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\hbar')">ℏ</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\partial')">∂</div>
+                                <div class="sym-btn" onclick="insertSnippet('\\nabla')">∇</div>
+                            </div>
+                        </div>
+
+                        <textarea id="book-desc" class="editor-textarea" placeholder="Илимий макаланын тексти же сүрөттөмөсүн жазыңыз..."></textarea>
                     </div>
-                    <textarea id="book-desc" class="editor-textarea" placeholder="Сүрөттөмөнү же макаланы жазыңыз..."></textarea>
                 </div>
 
                 <div class="form-group">
@@ -567,19 +722,54 @@
             return false;
         });
 
-        // Редакторго формула шаблондорун киргизүү
-        function insertFormula(type) {
+        /* РЕДАКТОРГО ФОРМУЛА ЖАНА СИМВОЛДОРДУ КИРГИЗҮҮ ФУНКЦИЯЛАРЫ */
+        function toggleMathKeyboard() {
+            const panel = document.getElementById('math-keyboard-panel');
+            panel.classList.toggle('active');
+        }
+
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+            
+            btn.classList.add('active');
+            document.getElementById(`tab-${tabName}`).style.display = 'grid';
+        }
+
+        function insertSnippet(snippet) {
             const textarea = document.getElementById('book-desc');
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            let text = '';
 
-            if (type === 'inline') text = '$E = mc^2$';
-            if (type === 'block') text = '\n$$\n\\frac{a}{b}\n$$\n';
-            if (type === 'fraction') text = '\\frac{x}{y}';
-
-            textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+            textarea.value = textarea.value.substring(0, start) + snippet + textarea.value.substring(end);
             textarea.focus();
+            
+            // Квадрат белгиси болсо курсорду ошол квадратка жылдыруу логикасы
+            const sqIndex = snippet.indexOf('\\square');
+            if (sqIndex !== -1) {
+                textarea.setSelectionRange(start + sqIndex, start + sqIndex + 7);
+            } else {
+                textarea.setSelectionRange(start + snippet.length, start + snippet.length);
+            }
+        }
+
+        function insertCode(before, after) {
+            const textarea = document.getElementById('book-desc');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selText = textarea.value.substring(start, end);
+
+            textarea.value = textarea.value.substring(0, start) + before + selText + after + textarea.value.substring(end);
+            textarea.focus();
+            textarea.setSelectionRange(start + before.length, start + before.length + selText.length);
+        }
+
+        function insertImagePrompt() {
+            const url = prompt("Сүрөттүн интернеттеги шилтемесин (URL) киргизиңиз:");
+            if (url && url.trim() !== "") {
+                const imgTag = `\n<img src="${url.trim()}" style="max-width:100%; border-radius:8px; margin: 15px 0;" alt="Макала сүрөтү">\n`;
+                insertSnippet(imgTag);
+            }
         }
     </script>
 
@@ -880,7 +1070,7 @@
                     card.innerHTML = `
                         ${isAdminLoggedIn ? `<span class="status-tag ${isBookPublic ? 'status-public' : 'status-private'}">${isBookPublic ? 'Ачык' : 'Жабык'}</span>` : ''}
                         <h3>${escapeHtml(item.title)}</h3>
-                        <div style="margin-top:8px; font-size:14px; color:#ccc; white-space:pre-line;">${escapeHtml(item.desc)}</div>
+                        <div style="margin-top:8px; font-size:14px; color:#ccc; white-space:pre-line;">${sanitizeContent(item.desc)}</div>
                         <div class="card-actions">
                             ${item.pdfUrl ? `<button class="btn-read" data-pdf="${escapeAttribute(item.pdfUrl)}" data-title="${escapeAttribute(item.title)}"><i class="fas fa-book-open"></i> Окуу (Толук экран)</button>` : '<span style="font-size:12px; color:#aaa;">(Макала)</span>'}
                             ${isAdminLoggedIn ? `
@@ -937,7 +1127,6 @@
             }
         }
 
-        // УНИВЕРСАЛДЫК EMBED URL ИШТЕТҮҮЧҮ ФУНКЦИЯ
         function getEmbeddablePdfUrl(url) {
             if (!url) return '';
             const cleanUrl = url.trim();
@@ -983,6 +1172,12 @@
 
         function escapeHtml(str) {
             return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+        }
+
+        function sanitizeContent(str) {
+            if (!str) return '';
+            // HTML img тегдерине уруксат берүү жана калган кооптуу тегдерди тазалоо
+            return str.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
         }
 
         function escapeAttribute(str) {
