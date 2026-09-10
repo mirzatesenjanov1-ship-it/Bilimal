@@ -1,483 +1,552 @@
 <!DOCTYPE html>
-<html lang="ky">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Аркан Тартыш - Физика & Билим</title>
+    <title>Аркан Тартыш - Физикалык Оюн</title>
     <style>
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            user-select: none;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        body {
-            background-color: #0b0e14;
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0f172a;
             color: #fff;
-            overflow-x: hidden;
         }
-        .lang-btn-group {
+
+        /* --- SETUP LAYER (ЖӨНГӨ САЛУУЛАР) --- */
+        #setup-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.95);
+            z-index: 100;
             display: flex;
-            gap: 8px;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .setup-container {
+            max-width: 800px;
+            width: 100%;
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+            margin-bottom: 20px;
+        }
+
+        .lang-switch {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
             margin-bottom: 15px;
         }
+
         .lang-btn {
-            background: #1a2332;
-            color: #8a99ad;
-            border: 1px solid #2a384c;
-            padding: 6px 14px;
+            background: #334155;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
             transition: 0.2s;
         }
-        .lang-btn.active, .lang-btn:hover {
-            background: #00f0ff;
-            color: #000;
-            border-color: #00f0ff;
+
+        .lang-btn.active {
+            background: #0284c7;
         }
-        #setup-layer {
-            max-width: 800px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #131b26;
-            border-radius: 12px;
-            border: 1px solid #223147;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+
+        h1 {
+            text-align: center;
+            color: #38bdf8;
+            margin-bottom: 20px;
+            font-size: 28px;
         }
-        .form-group {
+
+        .input-group {
             margin-bottom: 15px;
         }
+
         label {
             display: block;
             margin-bottom: 5px;
-            color: #00f0ff;
-            font-weight: bold;
+            color: #94a3b8;
+            font-size: 14px;
         }
+
         input[type="text"], textarea {
             width: 100%;
             padding: 10px;
-            background: #0b0e14;
-            border: 1px solid #223147;
-            border-radius: 6px;
+            border-radius: 8px;
+            border: 1px solid #475569;
+            background: #0f172a;
             color: #fff;
             font-size: 14px;
         }
+
         textarea {
-            height: 140px;
+            height: 120px;
             resize: vertical;
         }
+
+        .teams-inputs {
+            display: flex;
+            gap: 15px;
+        }
+
+        .teams-inputs .input-group {
+            flex: 1;
+        }
+
         .btn-main {
-            background: linear-gradient(45deg, #00f0ff, #0077ff);
-            color: #000;
-            font-weight: bold;
-            padding: 12px 24px;
+            width: 100%;
+            padding: 12px;
+            background: #0284c7;
+            color: #fff;
             border: none;
             border-radius: 8px;
-            cursor: pointer;
-            width: 100%;
             font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
             margin-top: 10px;
-            transition: 0.3s;
         }
+
         .btn-main:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
+            background: #0369a1;
         }
+
         .saved-tests {
-            margin-top: 20px;
-            border-top: 1px solid #223147;
-            padding-top: 15px;
+            margin-top: 15px;
+            background: #0f172a;
+            padding: 10px;
+            border-radius: 8px;
+            max-height: 100px;
+            overflow-y: auto;
         }
+
         .test-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1a2332;
-            padding: 8px 12px;
-            margin-top: 8px;
-            border-radius: 6px;
+            padding: 5px 0;
+            border-bottom: 1px solid #1e293b;
         }
-        .test-item button {
-            margin-left: 5px;
+
+        .btn-select {
+            background: #16a34a;
+            color: #fff;
+            border: none;
             padding: 4px 8px;
             border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        .btn-delete {
+            background: #dc2626;
+            color: #fff;
             border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
             cursor: pointer;
         }
-        .btn-select { background: #00ff88; color: #000; font-weight: bold; }
-        .btn-delete { background: #ff4757; color: #fff; }
 
+        /* --- GAME UI LAYER --- */
         #ui-layer {
-            display: none;
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-        }
-        #gameCanvas {
-            display: block;
-            width: 100%;
-        }
-        .game-header {
             position: absolute;
-            top: 10px;
+            top: 0;
             left: 0;
             width: 100%;
-            display: flex;
-            justify-content: space-between;
-            padding: 0 20px;
+            height: 100%;
+            display: none;
             z-index: 10;
         }
-        .team-hud {
-            background: rgba(19, 27, 38, 0.85);
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            backdrop-filter: blur(5px);
-            color: #fff;
+
+        #gameCanvas {
+            width: 100%;
+            height: 55%;
+            display: block;
         }
-        .team-hud.left { border-left: 4px solid #00a8ff; }
-        .team-hud.right { border-right: 4px solid #e84118; text-align: right; }
-        
-        .quiz-container {
+
+        .questions-container {
+            height: 45%;
             display: flex;
-            height: calc(45vh - 20px);
-            background: #0b0e14;
-            border-top: 2px solid #223147;
+            background: #020617;
+            border-top: 2px solid #1e293b;
         }
-        .quiz-side {
+
+        .team-side {
             flex: 1;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
             position: relative;
         }
-        .quiz-side.left { border-right: 1px solid #223147; }
-        .question-box {
+
+        .team-side.left {
+            border-right: 1px solid #1e293b;
+            background: rgba(2, 132, 199, 0.05);
+        }
+
+        .team-side.right {
+            background: rgba(220, 38, 38, 0.05);
+        }
+
+        .team-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .team-name {
             font-size: 18px;
             font-weight: bold;
-            margin-bottom: 15px;
-            color: #fff;
-            min-height: 50px;
         }
+
+        .left .team-name { color: #38bdf8; }
+        .right .team-name { color: #f87171; }
+
+        .score-badge {
+            background: #1e293b;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 14px;
+        }
+
+        .question-text {
+            font-size: 16px;
+            margin-bottom: 15px;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+        }
+
         .answers-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
+            flex-grow: 1;
         }
+
         .answer-btn {
-            background: #1a2332;
-            border: 1px solid #2a384c;
+            background: #1e293b;
             color: #fff;
-            padding: 12px;
-            border-radius: 6px;
-            cursor: pointer;
+            border: 1px solid #334155;
+            padding: 10px;
+            border-radius: 8px;
             font-size: 14px;
-            transition: 0.2s;
+            cursor: pointer;
+            transition: 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
+
         .answer-btn:hover {
-            background: #2a384c;
-            border-color: #00f0ff;
+            background: #334155;
         }
+
         .waiting-overlay {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(11, 14, 20, 0.95);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.9);
             display: none;
             justify-content: center;
             align-items: center;
-            font-size: 20px;
-            color: #00f0ff;
+            font-size: 18px;
             font-weight: bold;
+            color: #e2e8f0;
             z-index: 5;
         }
+
+        /* --- RESULT MODAL --- */
         .modal {
             position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
             display: none;
             justify-content: center;
             align-items: center;
-            z-index: 100;
+            z-index: 200;
         }
+
         .modal-content {
-            background: #131b26;
+            background: #1e293b;
             padding: 30px;
-            border-radius: 12px;
+            border-radius: 16px;
+            text-align: center;
             max-width: 500px;
             width: 90%;
-            text-align: center;
-            border: 1px solid #00f0ff;
+            border: 1px solid #475569;
         }
-        .modal-content h2 { margin-bottom: 15px; }
-        .modal-content p { margin-bottom: 20px; line-height: 1.6; }
 
-        /* Adsterra Жарнама блоктору үчүн стилдер */
-        .adsterra-container {
-            width: 100%;
+        .modal-title {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .modal-desc {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .top-bar-game {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 20;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 15px 0;
-            overflow: hidden;
-            min-height: 90px;
+            gap: 10px;
+        }
+
+        .ad-container {
+            margin-top: 15px;
+            text-align: center;
+            width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <audio id="bgMusic" loop src="/arkan-game/komuzakbakai.mp3"></audio>
-
+    <!-- SETUP LAYER -->
     <div id="setup-layer">
-        <div class="lang-btn-group">
-            <button class="lang-btn" id="btn-lang-ky">Кыргызча</button>
-            <button class="lang-btn" id="btn-lang-ru">Русский</button>
-            <button class="lang-btn" id="btn-lang-en">English</button>
-        </div>
-
-        <h1 id="setup-title" style="text-align: center; margin-bottom: 20px; color: #00f0ff;">Аркан Тартыш: Жөндөөлөр</h1>
-
-        <div class="adsterra-container" id="ad-setup-top">
+        <div class="setup-container">
+            <div class="lang-switch">
+                <button class="lang-btn" id="btn-lang-ky">KY</button>
+                <button class="lang-btn" id="btn-lang-ru">RU</button>
+                <button class="lang-btn" id="btn-lang-en">EN</button>
             </div>
 
-        <div style="display: flex; gap: 15px;">
-            <div class="form-group" style="flex: 1;">
-                <label id="lbl-left-team">Сол тараптагы команда:</label>
-                <input type="text" id="leftTeamInput" value="Көк Танк">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label id="lbl-right-team">Оң тараптагы команда:</label>
-                <input type="text" id="rightTeamInput" value="Кара Тулпар">
-            </div>
-        </div>
+            <h1 id="txt-title">Аркан Тартыш</h1>
 
-        <div class="form-group">
-            <label id="lbl-test-content">Тесттин мазмуну (Суроо / *Туура жооп / Ката жоопдор):</label>
-            <textarea id="questionsTextArea"></textarea>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <input type="text" id="testNameInput" placeholder="Тесттин аталышы" style="flex: 2;">
-            <button class="btn-main" id="saveTestBtn" style="flex: 1; margin-top: 0;">Сактоо</button>
-        </div>
-
-        <button class="btn-main" id="startGameBtn" style="margin-top: 15px; background: linear-gradient(45deg, #00ff88, #00b894);">Оюнду Баштоо 🚀</button>
-
-        <div class="adsterra-container" id="ad-setup-bottom">
+            <div class="teams-inputs">
+                <div class="input-group">
+                    <label id="lbl-left-team">1-Команда (Сол)</label>
+                    <input type="text" id="leftTeamInput" value="Көк Танк">
+                </div>
+                <div class="input-group">
+                    <label id="lbl-right-team">2-Команда (Оң)</label>
+                    <input type="text" id="rightTeamInput" value="Кара Тулпар">
+                </div>
             </div>
 
-        <div class="saved-tests">
-            <label id="lbl-saved-tests">Сакталган тесттер:</label>
-            <div id="savedTestsList"></div>
+            <div class="input-group">
+                <label id="lbl-questions">Суроолор жана Жооптор</label>
+                <textarea id="questionsTextArea" placeholder="Суроо 1&#10;*Туура жооп&#10;Ката жооп 1&#10;Ката жооп 2&#10;&#10;Суроо 2..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label id="lbl-test-name">Тесттин аты (сактоо үчүн)</label>
+                <input type="text" id="testNameInput" placeholder="Механика 1-бөлүм">
+                <button class="btn-main" id="saveTestBtn" style="background:#16a34a; margin-top:5px;">💾 Сактоо</button>
+            </div>
+
+            <div class="saved-tests" id="savedTestsList"></div>
+
+            <button class="btn-main" id="startGameBtn">🚀 Оюнду баштоо</button>
+
+            <!-- Adsterra Native / Banner Ad Block -->
+            <div class="ad-container">
+                <script type="text/javascript">
+                    atOptions = {
+                        'key' : 'adsterra_placeholder_key',
+                        'format' : 'iframe',
+                        'height' : 90,
+                        'width' : 728,
+                        'params' : {}
+                    };
+                </script>
+                <script type="text/javascript" src="//www.highperformanceformat.com/adsterra_placeholder_key/invoke.js"></script>
+            </div>
         </div>
     </div>
 
+    <!-- GAME UI LAYER -->
     <div id="ui-layer">
-        <div class="game-header">
-            <div class="team-hud left">
-                <h3 id="leftSideName">Көк Танк</h3>
-                <div>Упай: <span id="leftScoreDisplay" style="color: #00f0ff;">0</span></div>
-            </div>
-            <div class="lang-btn-group">
-                <button class="lang-btn" id="btn-game-lang-ky">KY</button>
-                <button class="lang-btn" id="btn-game-lang-ru">RU</button>
-                <button class="lang-btn" id="btn-game-lang-en">EN</button>
-                <button class="lang-btn" id="btn-exit" style="background: #ff4757; color: #fff;" onclick="location.reload()">Чыгуу</button>
-            </div>
-            <div class="team-hud right">
-                <h3 id="rightSideName">Кара Тулпар</h3>
-                <div>Упай: <span id="rightScoreDisplay" style="color: #ff0055;">0</span></div>
-            </div>
+        <div class="top-bar-game">
+            <button class="lang-btn" id="btn-game-lang-ky">KY</button>
+            <button class="lang-btn" id="btn-game-lang-ru">RU</button>
+            <button class="lang-btn" id="btn-game-lang-en">EN</button>
         </div>
 
         <canvas id="gameCanvas"></canvas>
 
-        <div class="quiz-container">
-            <div class="quiz-side left">
-                <div class="waiting-overlay" id="leftWaitingOverlay"><span id="left-overlay-text">Атаандашты күтүүдө...</span></div>
-                <div>
-                    <div id="leftProgress" style="color: #8a99ad; font-size: 12px; margin-bottom: 5px;">Суроо 1/5</div>
-                    <div class="question-box" id="leftQuestionText">Суроо жүктөлүп жатат...</div>
+        <div class="questions-container">
+            <!-- Left Side -->
+            <div class="team-side left">
+                <div class="team-header">
+                    <span class="team-name" id="leftSideName">Команда 1</span>
+                    <span class="score-badge">Упай: <span id="leftScoreDisplay">0</span></span>
                 </div>
+                <div class="score-badge" style="align-self: flex-start; margin-bottom: 5px;" id="leftProgress">Суроо: 0/0</div>
+                <div class="question-text" id="leftQuestionText">...</div>
                 <div class="answers-grid" id="leftAnswersGrid"></div>
+                <div class="waiting-overlay" id="leftWaitingOverlay">
+                    <span id="txt-left-waiting">Башка команданы күтүүдө...</span>
+                </div>
             </div>
 
-            <div class="quiz-side right">
-                <div class="waiting-overlay" id="rightWaitingOverlay"><span id="right-overlay-text">Атаандашты күтүүдө...</span></div>
-                <div>
-                    <div id="rightProgress" style="color: #8a99ad; font-size: 12px; margin-bottom: 5px;">Суроо 1/5</div>
-                    <div class="question-box" id="rightQuestionText">Суроо жүктөлүп жатат...</div>
+            <!-- Right Side -->
+            <div class="team-side right">
+                <div class="team-header">
+                    <span class="team-name" id="rightSideName">Команда 2</span>
+                    <span class="score-badge">Упай: <span id="rightScoreDisplay">0</span></span>
                 </div>
+                <div class="score-badge" style="align-self: flex-start; margin-bottom: 5px;" id="rightProgress">Суроо: 0/0</div>
+                <div class="question-text" id="rightQuestionText">...</div>
                 <div class="answers-grid" id="rightAnswersGrid"></div>
+                <div class="waiting-overlay" id="rightWaitingOverlay">
+                    <span id="txt-right-waiting">Башка команданы күтүүдө...</span>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- RESULT MODAL -->
     <div class="modal" id="resultModal">
         <div class="modal-content">
-            <h2 id="resultTitle">Жеңүүчү!</h2>
-            <p id="resultDesc">Оюн жыйынтыгы...</p>
-            
-            <div class="adsterra-container" id="ad-modal">
-                </div>
-
-            <button class="btn-main" id="modal-btn-return" onclick="location.reload()">Башкы менюга кайтуу</button>
+            <div class="modal-title" id="resultTitle">🏆 Жеңүүчү!</div>
+            <div class="modal-desc" id="resultDesc"></div>
+            <button class="btn-main" onclick="location.reload()">🔄 Кайра баштоо</button>
         </div>
     </div>
 
+    <audio id="bgMusic" loop src="https://actions.google.com/sounds/v1/sports/crowd_cheer.ogg"></audio>
+
     <script>
+        // --- ТИЛДЕР ЖАНА КОТОРМОЛОР ---
         const translations = {
             ky: {
-                setupTitle: "Аркан Тартыш: Жөндөөлөр",
-                lblLeftTeam: "Сол тараптагы команда:",
-                lblRightTeam: "Оң тараптагы команда:",
-                lblSavedTests: "Сакталган тесттер:",
-                lblTestContent: "Тесттин мазмуну (Суроо / *Туура жооп / Ката жоопдор):",
-                testNamePlaceholder: "Тесттин аталышы",
-                btnSaveTest: "Сактоо",
-                btnStartGame: "Оюнду Баштоо 🚀",
-                btnExit: "Чыгуу",
-                overlayText: "Атаандашты күтүүдө...",
-                btnReturn: "Башкы менюга кайтуу",
+                txtTitle: "Аркан Тартыш",
+                lblLeftTeam: "1-Команда (Сол)",
+                lblRightTeam: "2-Команда (Оң)",
+                lblQuestions: "Суроолор жана Жооптор (Формат: Суроо, *Туура жооп, Ката жооптор)",
+                lblTestName: "Тесттин аты (сактоо үчүн)",
+                btnSave: "💾 Сактоо",
+                btnStart: "🚀 Оюнду баштоо",
+                btnSelect: "Тандоо",
                 defaultLeftName: "Көк Танк",
                 defaultRightName: "Кара Тулпар",
-                btnSelect: "Тандоо",
+                waitingOverlay: "Башка команданы күтүүдө...",
+                questionPrefix: "Суроо:",
                 alertFillInfo: "Сураныч, тесттин атын жана суроолорду толтуруңуз!",
                 alertSavedSuccess: "Тест ийгиликтүү сакталды!",
-                alertInvalidFormat: "Тесттин форматы туура эмес!",
-                questionPrefix: "Суроо",
+                alertInvalidFormat: "Суроолордун форматы туура эмес!",
                 winTitleSuffix: "жеңишке жетти!",
-                winDrawTitle: "ТЕН-ЧЫГУУ!",
-                winReasonPrefix: "көбүрөөк туура жооп берди!",
-                winDrawText: "Эки команда тең бирдей жыйынтык көрсөтүштү!",
+                winDrawTitle: "ТЕН ЧЫГУУ!",
+                winReasonPrefix: "көп туура жооп бергени үчүн жеңди!",
+                winDrawText: "Эки команда тең бирдей сандагы суроолорго туура жооп беришти!",
                 totalTimeLabel: "Жалпы убакыт:",
-                secLabel: "сек",
                 resultsHeader: "Жыйынтыктар:",
                 correctAnswersLabel: "туура жооп",
-                defaultTopics: [
-                    { q: "Күчтүн бирдиги эмне?", a: "Ньютон", w: ["Джоуль", "Паскаль", "Ватт"] },
-                    { q: "Тездиктин формуласы кайсы?", a: "v = S / t", w: ["F = m * a", "P = F / S", "E = m * c²"] },
-                    { q: "Заттын үч абалы кайсылар?", a: "Катуу, суюк, газ", w: ["Плазма, ток, нур", "Атом, молекула, ион", "Энергия, масса, күч"] }
-                ]
+                secLabel: "сек"
             },
             ru: {
-                setupTitle: "Перетягивание Каната: Настройки",
-                lblLeftTeam: "Левая команда:",
-                lblRightTeam: "Правая команда:",
-                lblSavedTests: "Сохраненные тесты:",
-                lblTestContent: "Содержание теста (Вопрос / *Правильный ответ / Неправильные):",
-                testNamePlaceholder: "Название теста",
-                btnSaveTest: "Сохранить",
-                btnStartGame: "Начать Игру 🚀",
-                btnExit: "Выход",
-                overlayText: "Ожидание соперника...",
-                btnReturn: "В главное меню",
+                txtTitle: "Перетягивание Каната",
+                lblLeftTeam: "1-Команда (Слева)",
+                lblRightTeam: "2-Команда (Справа)",
+                lblQuestions: "Вопросы и Ответы (Формат: Вопрос, *Правильный ответ, Неправильные ответы)",
+                lblTestName: "Название теста (для сохранения)",
+                btnSave: "💾 Сохранить",
+                btnStart: "🚀 Начать игру",
+                btnSelect: "Выбрать",
                 defaultLeftName: "Синий Танк",
                 defaultRightName: "Черный Тулпар",
-                btnSelect: "Выбрать",
-                alertFillInfo: "Пожалуйста, заполните название и вопросы теста!",
+                waitingOverlay: "Ожидание другой команды...",
+                questionPrefix: "Вопрос:",
+                alertFillInfo: "Пожалуйста, заполните название теста и вопросы!",
                 alertSavedSuccess: "Тест успешно сохранен!",
-                alertInvalidFormat: "Неверный формат теста!",
-                questionPrefix: "Вопрос",
+                alertInvalidFormat: "Неверный формат вопросов!",
                 winTitleSuffix: "победил!",
                 winDrawTitle: "НИЧЬЯ!",
-                winReasonPrefix: "дал больше правильных ответов!",
-                winDrawText: "Обе команды показали одинаковый результат!",
+                winReasonPrefix: "победил, ответив на большее количество вопросов!",
+                winDrawText: "Обе команды ответили правильно на одинаковое количество вопросов!",
                 totalTimeLabel: "Общее время:",
-                secLabel: "сек",
                 resultsHeader: "Результаты:",
                 correctAnswersLabel: "правильных ответов",
-                defaultTopics: [
-                    { q: "Единица измерения силы?", a: "Ньютон", w: ["Джоуль", "Паскаль", "Ватт"] },
-                    { q: "Формула скорости?", a: "v = S / t", w: ["F = m * a", "P = F / S", "E = m * c²"] },
-                    { q: "Три состояния вещества?", a: "Твердое, жидкое, газ", w: ["Плазма, ток, луч", "Атом, молекула, ион", "Энергия, масса, сила"] }
-                ]
+                secLabel: "сек"
             },
             en: {
-                setupTitle: "Tug of War: Settings",
-                lblLeftTeam: "Left Team:",
-                lblRightTeam: "Right Team:",
-                lblSavedTests: "Saved Tests:",
-                lblTestContent: "Test Content (Question / *Correct answer / Wrong answers):",
-                testNamePlaceholder: "Test Title",
-                btnSaveTest: "Save",
-                btnStartGame: "Start Game 🚀",
-                btnExit: "Exit",
-                overlayText: "Waiting for opponent...",
-                btnReturn: "Return to Main Menu",
+                txtTitle: "Tug of War",
+                lblLeftTeam: "Team 1 (Left)",
+                lblRightTeam: "Team 2 (Right)",
+                lblQuestions: "Questions & Answers (Format: Question, *Correct answer, Wrong answers)",
+                lblTestName: "Test Name (for saving)",
+                btnSave: "💾 Save",
+                btnStart: "🚀 Start Game",
+                btnSelect: "Select",
                 defaultLeftName: "Blue Tank",
                 defaultRightName: "Black Tulpar",
-                btnSelect: "Select",
-                alertFillInfo: "Please fill in the title and questions!",
+                waitingOverlay: "Waiting for the other team...",
+                questionPrefix: "Question:",
+                alertFillInfo: "Please fill in the test name and questions!",
                 alertSavedSuccess: "Test saved successfully!",
-                alertInvalidFormat: "Invalid test format!",
-                questionPrefix: "Question",
-                winTitleSuffix: "Won!",
+                alertInvalidFormat: "Invalid question format!",
+                winTitleSuffix: "won!",
                 winDrawTitle: "DRAW!",
-                winReasonPrefix: "gave more correct answers!",
-                winDrawText: "Both teams achieved the same score!",
+                winReasonPrefix: "won by answering more questions correctly!",
+                winDrawText: "Both teams answered the same number of questions correctly!",
                 totalTimeLabel: "Total Time:",
-                secLabel: "sec",
                 resultsHeader: "Results:",
                 correctAnswersLabel: "correct answers",
-                defaultTopics: [
-                    { q: "What is the unit of force?", a: "Newton", w: ["Joule", "Pascal", "Watt"] },
-                    { q: "Formula for speed?", a: "v = S / t", w: ["F = m * a", "P = F / S", "E = m * c²"] },
-                    { q: "Three states of matter?", a: "Solid, Liquid, Gas", w: ["Plasma, Current, Ray", "Atom, Molecule, Ion", "Energy, Mass, Force"] }
-                ]
+                secLabel: "sec"
             }
         };
 
-        let currentLang = localStorage.getItem('site_lang') || 'ky';
+        // Баракча ачылганда дефолт катары "ru" ачылат
+        let currentLang = localStorage.getItem('arkan_game_lang') || 'ru';
 
         function setLanguage(lang) {
             currentLang = lang;
-            localStorage.setItem('site_lang', lang);
+            localStorage.setItem('arkan_game_lang', lang);
 
-            const buttons = ['ky', 'ru', 'en'];
-            buttons.forEach(b => {
-                const btnSetup = document.getElementById(`btn-lang-${b}`);
-                const btnGame = document.getElementById(`btn-game-lang-${b}`);
-                if (btnSetup) btnSetup.classList.toggle('active', b === lang);
-                if (btnGame) btnGame.classList.toggle('active', b === lang);
-            });
+            const t = translations[lang];
 
-            const t = translations[lang] || translations['ky'];
-
-            document.getElementById('setup-title').innerText = t.setupTitle;
+            document.getElementById('txt-title').innerText = t.txtTitle;
             document.getElementById('lbl-left-team').innerText = t.lblLeftTeam;
             document.getElementById('lbl-right-team').innerText = t.lblRightTeam;
-            document.getElementById('lbl-saved-tests').innerText = t.lblSavedTests;
-            document.getElementById('lbl-test-content').innerText = t.lblTestContent;
-            document.getElementById('testNameInput').placeholder = t.testNamePlaceholder;
-            document.getElementById('saveTestBtn').innerText = t.btnSaveTest;
-            document.getElementById('startGameBtn').innerText = t.btnStartGame;
-            document.getElementById('btn-exit').innerText = t.btnExit;
-            document.getElementById('left-overlay-text').innerText = t.overlayText;
-            document.getElementById('right-overlay-text').innerText = t.overlayText;
-            document.getElementById('modal-btn-return').innerText = t.btnReturn;
+            document.getElementById('lbl-questions').innerText = t.lblQuestions;
+            document.getElementById('lbl-test-name').innerText = t.lblTestName;
+            document.getElementById('saveTestBtn').innerText = t.btnSave;
+            document.getElementById('startGameBtn').innerText = t.btnStart;
 
-            const leftInput = document.getElementById('leftTeamInput');
-            const rightInput = document.getElementById('rightTeamInput');
-            if (leftInput.value === "Көк Танк" || leftInput.value === "Синий Танк" || leftInput.value === "Blue Tank") {
-                leftInput.value = t.defaultLeftName;
-            }
-            if (rightInput.value === "Кара Тулпар" || rightInput.value === "Черный Тулпар" || rightInput.value === "Black Tulpar") {
-                rightInput.value = t.defaultRightName;
-            }
+            document.getElementById('txt-left-waiting').innerText = t.waitingOverlay;
+            document.getElementById('txt-right-waiting').innerText = t.waitingOverlay;
 
-            if(!document.getElementById('questionsTextArea').value.trim()){
-                const defaultQuestionsText = t.defaultTopics.map(item => `${item.q}\n*${item.a}\n${item.w.join('\n')}`).join('\n\n');
-                document.getElementById('questionsTextArea').value = defaultQuestionsText;
-            }
+            ['ky', 'ru', 'en'].forEach(l => {
+                const b1 = document.getElementById(`btn-lang-${l}`);
+                const b2 = document.getElementById(`btn-game-lang-${l}`);
+                if (b1) b1.classList.toggle('active', l === lang);
+                if (b2) b2.classList.toggle('active', l === lang);
+            });
 
             loadSavedTests();
-            if (gameActive) {
-                renderSide('left');
-                renderSide('right');
-            }
         }
 
         const canvas = document.getElementById('gameCanvas');
