@@ -5,14 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BiliMal.org — Санариптик Билим Ааламы</title>
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            overflow: auto;
+        }
+
+        body {
             background-color: #05050e;
             color: #ffffff;
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            position: relative;
+            min-height: 100vh;
         }
+
+        /* Canvas фондо гана болот */
         #space-canvas {
             position: fixed;
             top: 0;
@@ -20,18 +28,225 @@
             width: 100vw;
             height: 100vh;
             z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Навигация */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 5%;
+            background: rgba(10, 10, 25, 0.7);
+            backdrop-filter: blur(8px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        nav a {
+            color: #fff;
+            text-decoration: none;
+            margin-left: 20px;
+            transition: 0.3s;
+        }
+
+        nav a:hover {
+            color: #00f0ff;
+        }
+
+        .lang-switcher {
+            display: flex;
+            gap: 5px;
+        }
+
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .lang-btn.active {
+            background: #00f0ff;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Башкы контент */
+        .hero {
+            text-align: center;
+            padding: 80px 20px 40px;
+        }
+
+        .hero h1 {
+            font-size: 42px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .hero p {
+            font-size: 18px;
+            max-width: 700px;
+            margin: 0 auto;
+            color: #cccccc;
+        }
+
+        /* Контенттик карточкалар */
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .card {
+            background: rgba(20, 20, 45, 0.65);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 12px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #00f0ff;
+            box-shadow: 0 10px 20px rgba(0, 240, 255, 0.2);
+        }
+
+        .card h3 {
+            font-size: 22px;
+            margin-bottom: 12px;
+            color: #00f0ff;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #dddddd;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .card-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #00f0ff, #7000ff);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .card-btn:hover {
+            opacity: 0.9;
+            box-shadow: 0 0 10px #00f0ff;
+        }
+
+        /* Футер */
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: rgba(5, 5, 15, 0.9);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 50px;
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        footer a {
+            color: #00f0ff;
+            text-decoration: none;
         }
     </style>
 </head>
 <body>
 
+    <!-- Космос Canvas -->
     <canvas id="space-canvas"></canvas>
 
-    <div id="quest-banner-container"></div>
-    <div id="story-modal" style="display: none;"></div>
+    <!-- Шапка / Навигация -->
+    <header>
+        <div class="logo">BiliMal.org</div>
+        <nav>
+            <a href="#" id="nav-home">Башкы бет</a>
+            <a href="#" id="nav-dashboard">Жеке кабинет 🚀</a>
+        </nav>
+        <div class="lang-switcher">
+            <button class="lang-btn active" id="btn-lang-ky" onclick="changeLanguage('ky')">КЫРГ</button>
+            <button class="lang-btn" id="btn-lang-ru" onclick="changeLanguage('ru')">РУС</button>
+            <button class="lang-btn" id="btn-lang-en" onclick="changeLanguage('en')">ENG</button>
+        </div>
+    </header>
 
+    <!-- Башкы Banner -->
+    <section class="hero">
+        <h1 id="hero-title">Санариптик Билим Ааламы</h1>
+        <p id="hero-desc">Бала бакчанын кызыктуу дүйнөсүнөн баштап, мектеп предметтерине, улуттук оюндарга жана тереңдетилген космостук физикага чейинки бирдиктүү билим берүү мейкиндиги.</p>
+    </section>
+
+    <!-- Карточкалар Бөлүгү -->
+    <main class="container">
+        <div class="card">
+            <h3 id="card-kinder-title">Бала бакча</h3>
+            <p id="card-kinder-desc">Эң кичинекей наристелер үчүн интерактивдүү түстөр, тамгалар, сандар жана кызыктуу анимациялык логикалар.</p>
+            <a href="#" class="card-btn" id="card-kinder-btn">Бакчага кирүү →</a>
+        </div>
+
+        <div class="card">
+            <h3 id="card-school-title">Мектеп предметтери</h3>
+            <p id="card-school-desc">1-класстан 11-класска чейинки жалпы билим берүүчү негизги сабактардын толук санарип программасы.</p>
+            <a href="#" class="card-btn" id="card-school-btn">Сабактарга өтүү →</a>
+        </div>
+
+        <div class="card">
+            <h3 id="card-books-title">Электрондук китептер</h3>
+            <p id="card-books-desc">Мектеп окуу китептеринин, методикалык колдонмолордун жана илимий адабияттардын электрондук базасы.</p>
+            <a href="#" class="card-btn" id="card-books-btn">Китептерди окуу →</a>
+        </div>
+
+        <div class="card">
+            <h3 id="card-games-title">Оюн Тесттери</h3>
+            <p id="card-games-desc">"Кыз Куумай" жана "Аркан Тартыш" сыяктуу кыргыз улуттук оюндары аркылуу физикалык формулаларды жарышып үйрөнүү.</p>
+            <a href="#" class="card-btn" id="card-games-btn">Оюнга кирүү →</a>
+        </div>
+
+        <div class="card">
+            <h3 id="card-physics-title">Физика жана Астрофизика</h3>
+            <p id="card-physics-desc">Кванттык хаос, фотоэффект, пульсарлар жана ааламдын жаралуу сырлары.</p>
+            <a href="#" class="card-btn" id="card-physics-btn">Илимге сүңгүү →</a>
+        </div>
+
+        <div class="card">
+            <h3 id="card-lab-title">Лабораториялык иштер</h3>
+            <p id="card-lab-desc">Виртуалдык лабораториялык тажрыйбалар, чынжыр куроо куралдары жана кадамдык формулалык Эсептөөлөр.</p>
+            <a href="#" class="card-btn" id="card-lab-btn">Лабораторияга өтүү →</a>
+        </div>
+    </main>
+
+    <!-- Подвал / Футер -->
+    <footer>
+        <p id="footer-text">© 2026 BiliMal.org — Санариптик билим берүү жана илим мейкиндиги. Бардык укуктар корголгон.</p>
+        <p style="margin-top: 10px;"><a href="#" id="footer-policy">Купуялык Саясаты (Privacy Policy)</a></p>
+    </footer>
+
+    <!-- JS Скрипттер -->
     <script>
-        // Canvas жана Контекстти баштоо
         const canvas = document.getElementById('space-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -41,12 +256,9 @@
         }
         resizeCanvas();
 
-        // Кара тешиктин координаталык коэффициенттери
         const BH_OFFSET_X = 0.5;
         const BH_OFFSET_Y = 0.4;
-        let bhRotation = 0;
 
-        // Инициализация функциялары
         function createStarPool(count, maxRadius, maxSpeed) {
             let pool = [];
             for (let i = 0; i < count; i++) {
@@ -64,34 +276,17 @@
             return pool;
         }
 
-        function createDustPool(count) {
-            let pool = [];
-            for (let i = 0; i < count; i++) {
-                pool.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 300 + 200,
-                    alpha: Math.random() * 0.02 + 0.01,
-                    vx: (Math.random() - 0.5) * 0.08,
-                    color: `rgba(${Math.floor(Math.random()*50)}, ${Math.floor(Math.random()*100+50)}, ${Math.floor(Math.random()*150+100)}, `
-                });
-            }
-            return pool;
-        }
-
-        // Жылдыздар, тумандуулук жана атомдор
         let starsLayer1 = createStarPool(100, 1, 0.2);
         let starsLayer2 = createStarPool(60, 1.5, 0.5);
         let starsLayer3 = createStarPool(30, 2.5, 0.8);
-        let dustClouds = createDustPool(15);
 
         let atoms = [
-            { x: window.innerWidth * 0.2, y: window.innerHeight * 0.3, r: 40, angle: 0 },
-            { x: window.innerWidth * 0.8, y: window.innerHeight * 0.7, r: 50, angle: 1 }
+            { x: window.innerWidth * 0.15, y: window.innerHeight * 0.3, r: 35, angle: 0 },
+            { x: window.innerWidth * 0.85, y: window.innerHeight * 0.65, r: 45, angle: 1 }
         ];
 
-        function renderStars(layer, baseBrightness) {
-            ctx.fillStyle = baseBrightness;
+        function renderStars(layer) {
+            ctx.fillStyle = '#ffffff';
             layer.forEach(star => {
                 star.x -= star.speed;
                 if (star.x < 0) star.x = canvas.width;
@@ -110,28 +305,10 @@
             ctx.globalAlpha = 1.0;
         }
 
-        function renderNebula() {
-            dustClouds.forEach(dust => {
-                dust.x += dust.vx;
-                if (dust.x < -dust.radius) dust.x = canvas.width + dust.radius;
-                if (dust.x > canvas.width + dust.radius) dust.x = -dust.radius;
-
-                let grad = ctx.createRadialGradient(dust.x, dust.y, 0, dust.x, dust.y, dust.radius);
-                grad.addColorStop(0, dust.color + dust.alpha + ')');
-                grad.addColorStop(1, 'rgba(0,0,0,0)');
-
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(dust.x, dust.y, dust.radius, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }
-
         function renderAstrophysicalBlackHole(x, y) {
-            bhRotation += 0.001; 
             const bhRadius = Math.min(canvas.width, canvas.height) * 0.07; 
 
-            // 1. Арткы аккрециялык диск
+            // Арткы диск
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(-12 * Math.PI / 180); 
@@ -147,25 +324,13 @@
             ctx.lineWidth = bhRadius * 0.5;
             ctx.strokeStyle = diskGrad;
             ctx.stroke();
+            ctx.restore();
 
-            let innerDiskGrad = ctx.createLinearGradient(-bhRadius * 2.5, 0, bhRadius * 2.5, 0);
-            innerDiskGrad.addColorStop(0, 'rgba(0,0,0,0)'); 
-            innerDiskGrad.addColorStop(0.8, 'rgba(255, 255, 255, 0.7)'); 
-            innerDiskGrad.addColorStop(1, 'rgba(0,0,0,0)');
-            
-            ctx.beginPath();
-            ctx.ellipse(0, 0, bhRadius * 2.5, bhRadius * 0.4, 0, Math.PI, Math.PI * 2);
-            ctx.lineWidth = bhRadius * 0.2;
-            ctx.strokeStyle = innerDiskGrad;
-            ctx.stroke();
-            ctx.restore(); 
-
-            // 2. Гравитациялык линзалоо шакекчеси
+            // Шакекче
             let ringGrad = ctx.createRadialGradient(x, y, bhRadius * 0.95, x, y, bhRadius * 1.8);
             ringGrad.addColorStop(0, '#000000');
             ringGrad.addColorStop(0.08, 'rgba(255, 255, 255, 0.9)'); 
             ringGrad.addColorStop(0.2, 'rgba(255, 140, 50, 0.5)');  
-            ringGrad.addColorStop(0.7, 'rgba(50, 20, 80, 0.15)');
             ringGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.fillStyle = ringGrad;
@@ -173,13 +338,13 @@
             ctx.arc(x, y, bhRadius * 1.8, 0, Math.PI * 2);
             ctx.fill();
 
-            // 3. Окуялар горизонту (Кара тешик)
+            // Кара тешик
             ctx.fillStyle = '#000000';
             ctx.beginPath();
             ctx.arc(x, y, bhRadius, 0, Math.PI * 2);
             ctx.fill();
 
-            // 4. Алдыңкы аккрециялык диск
+            // Алдыңкы диск
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(-12 * Math.PI / 180); 
@@ -189,14 +354,8 @@
             ctx.lineWidth = bhRadius * 0.5;
             ctx.strokeStyle = diskGrad;
             ctx.stroke();
-
-            ctx.beginPath();
-            ctx.ellipse(0, 0, bhRadius * 2.5, bhRadius * 0.4, 0, 0, Math.PI);
-            ctx.lineWidth = bhRadius * 0.2;
-            ctx.strokeStyle = innerDiskGrad;
-            ctx.stroke();
             ctx.restore();
-        } 
+        }
 
         function drawAtom(atom) {
             atom.angle += 0.02;
@@ -205,7 +364,7 @@
             ctx.arc(atom.x, atom.y, 6, 0, Math.PI * 2);
             ctx.fill();
             
-            ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
             ctx.lineWidth = 1;
             
             ctx.save();
@@ -222,30 +381,13 @@
             ctx.arc(e1x, e1y, 4, 0, Math.PI * 2);
             ctx.fill();
             ctx.restore();
-
-            ctx.save();
-            ctx.translate(atom.x, atom.y);
-            ctx.rotate(-Math.PI / 4);
-            ctx.beginPath();
-            ctx.ellipse(0, 0, atom.r, atom.r / 2, 0, 0, Math.PI * 2);
-            ctx.stroke();
-
-            let e2x = atom.r * Math.cos(-atom.angle * 1.2);
-            let e2y = (atom.r / 2) * Math.sin(-atom.angle * 1.2);
-            ctx.fillStyle = '#ffff00';
-            ctx.beginPath();
-            ctx.arc(e2x, e2y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
         }
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            renderNebula();
-            renderStars(starsLayer1, '#777777'); 
-            renderStars(starsLayer2, '#bbbbbb'); 
-            renderStars(starsLayer3, '#ffffff'); 
+            renderStars(starsLayer1); 
+            renderStars(starsLayer2); 
+            renderStars(starsLayer3); 
 
             let bhX = canvas.width * BH_OFFSET_X;
             let bhY = canvas.height * BH_OFFSET_Y;
@@ -258,337 +400,91 @@
 
         window.addEventListener('resize', () => {
             resizeCanvas();
-            atoms[0].x = canvas.width * 0.2;
+            atoms[0].x = canvas.width * 0.15;
             atoms[0].y = canvas.height * 0.3;
-            atoms[1].x = canvas.width * 0.8;
-            atoms[1].y = canvas.height * 0.7;
+            atoms[1].x = canvas.width * 0.85;
+            atoms[1].y = canvas.height * 0.65;
         });
-
-        window.addEventListener('DOMContentLoaded', () => {
-            resizeCanvas();
-            animate();
-            
-            fetch('sections/quest-banner.html')
-                .then(response => {
-                    if (!response.ok) throw new Error('Файл табылган жок');
-                    return response.text();
-                })
-                .then(data => {
-                    const banner = document.getElementById('quest-banner-container');
-                    if (banner) banner.innerHTML = data;
-                })
-                .catch(err => console.error('Квест баннерин жүктөөдө ката чыкты:', err));
-            
-            const userEmail = localStorage.getItem('bilimal_user_email');
-            const userPass = localStorage.getItem('bilimal_user_pass');
-            const loginModal = document.getElementById('login-modal');
-            
-            if (userEmail && userPass) {
-                if (loginModal) loginModal.style.display = 'none';
-            } else {
-                localStorage.setItem('bilimal_user_email', 'guest@bilimal.org');
-                localStorage.setItem('bilimal_user_pass', 'guest12345');
-                localStorage.setItem('bilimal_user_role', 'guest');
-                if (loginModal) loginModal.style.display = 'none';
-                document.body.style.overflow = 'auto'; 
-            }
-
-            const savedLang = localStorage.getItem('bilimal_lang') || 'ky';
-            changeLanguage(savedLang);
-            checkStoryStatus();
-        });
-
-        function loginUser() {
-            const emailInput = document.getElementById('email-input').value;
-            const passwordInput = document.getElementById('password-input').value;
-            const policyCheckbox = document.getElementById('policy-checkbox').checked;
-            
-            if (!policyCheckbox) {
-                alert('Сураныч, Купуялык саясатынын шарттарына макулдугуңузду билдириңиз!');
-                return;
-            }
-
-            if (emailInput.includes('@') && emailInput.includes('.') && passwordInput.length >= 6) {
-                localStorage.setItem('bilimal_user_email', emailInput);
-                localStorage.setItem('bilimal_user_pass', passwordInput);
-                localStorage.setItem('bilimal_user_role', 'user');
-                
-                const loginModal = document.getElementById('login-modal');
-                if (loginModal) loginModal.style.display = 'none';
-                alert('Кош келиңиз! Ийгиликтүү кирдиңиз.');
-                document.body.style.overflow = 'auto';
-            } else if (passwordInput.length < 6) {
-                alert('Пароль кеминде 6 белгиден турушу керек!');
-            } else {
-                alert('Сураныч, туура электрондук почта жазыңыз.');
-            }
-        }
-
-        function loginAsGuest() {
-            localStorage.setItem('bilimal_user_email', 'guest@bilimal.org');
-            localStorage.setItem('bilimal_user_pass', 'guest12345');
-            localStorage.setItem('bilimal_user_role', 'guest');
-            
-            const loginModal = document.getElementById('login-modal');
-            if (loginModal) loginModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            alert('Конок режими ийгиликтүү иштетилди! Бардык мазмун ачык.');
-        }
-
-        function checkStoryStatus() {
-            const storySeen = localStorage.getItem('bilimal_story_seen');
-            if (!storySeen) {
-                fetch('sections/quest-intro.html')
-                    .then(response => {
-                        if (!response.ok) throw new Error('Окуя файлы табылбады');
-                        return response.text();
-                    })
-                    .then(data => {
-                        const modal = document.getElementById('story-modal');
-                        if (modal) {
-                            modal.innerHTML = data;
-                            modal.style.display = 'flex';
-                            document.body.style.overflow = 'hidden';
-                        }
-                    })
-                    .catch(err => console.error('Окуяны жүктөөдө ката:', err));
-            }
-        }
-
-        function startQuestJourney() {
-            localStorage.setItem('bilimal_story_seen', 'true');
-            const storyModal = document.getElementById('story-modal');
-            if (storyModal) storyModal.style.display = 'none';
-            document.body.style.overflow = 'auto';
-            alert('Саякат башталды! Сизге 1-деңгээлдеги Механика Өрөөнү ачылды! 🚀');
-        }
 
         const translations = {
             ky: {
-                navHome: "Башкы бет",
-                navDashboard: "Жеке кабинет 🚀",
+                navHome: "Башкы бет", navDashboard: "Жеке кабинет 🚀",
                 heroTitle: "Санариптик Билим Ааламы",
                 heroDesc: "Бала бакчанын кызыктуу дүйнөсүнөн баштап, мектеп предметтерине, улуттук оюндарга жана тереңдетилген космостук физикага чейинки бирдиктүү билим берүү мейкиндиги.",
-                kinderTitle: "Бала бакча",
-                kinderDesc: "Эң кичинекей наристелер үчүн интерактивдүү түстөр, тамгалар, сандар жана кызыктуу анимациялык логикалар.",
-                kinderBtn: "Бакчага кирүү →",
-                schoolTitle: "Мектеп предметтери",
-                schoolDesc: "1-класстан 11-класска чейинки жалпы билим берүүчү негизги сабактардын толук санарип программасы.",
-                schoolBtn: "Сабактарга өтүү →",
-                booksTitle: "Электрондук китептер",
-                booksDesc: "Мектеп окуу китептеринин, методикалык колдонмолордун жана илимий адабияттардын электрондук базасы.",
-                booksBtn: "Китептерди окуу →",
-                gamesTitle: "Оюн Тесттери",
-                gamesDesc: "\"Кыз Куумай\" жана \"Аркан Тартыш\" сыяктуу кыргыз улуттук оюндары аркылуу физикалык формулаларды жарышып үйрөнүү.",
-                gamesBtn: "Оюнга кирүү →",
-                tankTitle: "Танк Согушу 2D",
-                tankDesc: "Классикалык Battle City стилиндеги ретро оюн. Өз стратегияңызды колдонуп, базаны коргоңуз жана душман танктарын кыйратыңыз!",
-                tankBtn: "Оюнду баштоо →",
-                testTitle: "Тест Борбору",
-                testDesc: "Шпаргалка жасоого бөгөт койгон заманбап Anti-Cheat v3 коргоо системасы бар укмуштуу сынактар.",
-                testBtn: "Тест тапшыруу →",
-                plansTitle: "Сабактын пландары",
-                plansDesc: "Мугалимдер үчүн даяр конспекттер, усулдук колдонмолор, чейректик пландар жана презентациялар.",
-                plansBtn: "Пландарды көрүү →",
-                physicsTitle: "Физика жана Астрофизика",
-                physicsDesc: "Кванттык хаос, фотоэффект, пульсарлар жана ааламдын жаралуу сырлары.",
-                physicsBtn: "Илимге сүңгүү →",
-                labTitle: "Лабораториялык иштер",
-                labDesc: "Виртуалдык лабораториялык тажрыйбалар, чынжыр куроо куралдары жана кадамдык формулалык Эсептөөлөр.",
-                labBtn: "Лабораторияга өтүү →",
-                authorTitle: "Автор жөнүндө",
-                authorDesc: "Долбоордун автору — физика мугалими, ошондой эле Mugalim.AI жана BiliMal.org платформаларынын негиздөөчүсү.",
-                authorBtn: "Байланышуу →",
-                footerText: "© 2026 BiliMal.org — Санариптик билим берүү жана илим мейкиндиги. Бардык укуктар корголгон.",
-                footerPolicy: "Купуялык Саясаты (Privacy Policy)",
-                loginTitle: "Кирүү",
-                loginWelcome: "BiliMal Платформасына Кош Келиңиз",
-                emailPlaceholder: "Электрондук почта",
-                passPlaceholder: "Пароль",
-                policySpan: "Мен сайттын ",
-                policyLink: "Купуялык саясаты",
-                policyEnd: " жана колдонуучулук шарттарына макулмун. Маалыматтарым корголот.",
-                btnLogin: "Сайтка Кирүү 🚀",
-                btnDemo: "Демо-режим (Көрүүчү катары кирүү) 👁️"
+                kinderTitle: "Бала бакча", kinderDesc: "Эң кичинекей наристелер үчүн интерактивдүү түстөр, тамгалар, сандар жана кызыктуу анимациялык логикалар.", kinderBtn: "Бакчага кирүү →",
+                schoolTitle: "Мектеп предметтери", schoolDesc: "1-класстан 11-класска чейинки жалпы билим берүүчү негизги сабактардын толук санарип программасы.", schoolBtn: "Сабактарга өтүү →",
+                booksTitle: "Электрондук китептер", booksDesc: "Мектеп окуу китептеринин, методикалык колдонмолордун жана илимий адабияттардын электрондук базасы.", booksBtn: "Китептерди окуу →",
+                gamesTitle: "Оюн Тесттери", gamesDesc: "\"Кыз Куумай\" жана \"Аркан Тартыш\" сыяктуу кыргыз улуттук оюндары аркылуу физикалык формулаларды жарышып үйрөнүү.", gamesBtn: "Оюнга кирүү →",
+                physicsTitle: "Физика жана Астрофизика", physicsDesc: "Кванттык хаос, фотоэффект, пульсарлар жана ааламдын жаралуу сырлары.", physicsBtn: "Илимге сүңгүү →",
+                labTitle: "Лабораториялык иштер", labDesc: "Виртуалдык лабораториялык тажрыйбалар, чынжыр куроо куралдары жана кадамдык формулалык Эсептөөлөр.", labBtn: "Лабораторияга өтүү →",
+                footerText: "© 2026 BiliMal.org — Санариптик билим берүү жана илим мейкиндиги. Бардык укуктар корголгон.", footerPolicy: "Купуялык Саясаты"
             },
             ru: {
-                navHome: "Главная",
-                navDashboard: "Личный кабинет 🚀",
+                navHome: "Главная", navDashboard: "Личный кабинет 🚀",
                 heroTitle: "Вселенная Цифрового Образования",
                 heroDesc: "Единое образовательное пространство от детского сада до космической физики.",
-                kinderTitle: "Детский сад",
-                kinderDesc: "Интерактивные цвета, буквы, цифры для самых маленьких.",
-                kinderBtn: "Войти в детсад →",
-                schoolTitle: "Школьные предметы",
-                schoolDesc: "Полная цифровая программа с 1 по 11 класс.",
-                schoolBtn: "Перейти к урокам →",
-                booksTitle: "Электронные книги",
-                booksDesc: "Электронная база учебников и научной литературы.",
-                booksBtn: "Читать книги →",
-                gamesTitle: "Игровые Тесты",
-                gamesDesc: "Изучение физики через национальные игры.",
-                gamesBtn: "Войти в игру →",
-                tankTitle: "Танковые Бои 2D",
-                tankDesc: "Ретро-игра в стиле классического Battle City.",
-                tankBtn: "Начать игру →",
-                testTitle: "Центр Тестирования",
-                testDesc: "Защищенные экзамены с Anti-Cheat v3.",
-                testBtn: "Пройти тест →",
-                plansTitle: "Планы уроков",
-                plansDesc: "Готовые конспекты и планы для учителей.",
-                plansBtn: "Смотреть планы →",
-                physicsTitle: "Физика и Астрофизика",
-                physicsDesc: "Квантовый хаос, пульсары и тайны Вселенной.",
-                physicsBtn: "Погрузиться в науку →",
-                labTitle: "Лабораторные работы",
-                labDesc: "Виртуальные лабораторные эксперименты.",
-                labBtn: "В лабораторию →",
-                authorTitle: "Об авторе",
-                authorDesc: "Автор проекта — учитель физики, основатель платформ Mugalim.AI и BiliMal.org.",
-                authorBtn: "Связаться →",
-                footerText: "© 2026 BiliMal.org — Пространство цифрового образования.",
-                footerPolicy: "Политика конфиденциальности",
-                loginTitle: "Вход",
-                loginWelcome: "Добро пожаловать на BiliMal",
-                emailPlaceholder: "Электронная почта",
-                passPlaceholder: "Пароль",
-                policySpan: "Я согласен с ",
-                policyLink: "Политикой конфиденциальности",
-                policyEnd: " и условиями использования.",
-                btnLogin: "Войти на сайт 🚀",
-                btnDemo: "Демо-режим 👁️"
+                kinderTitle: "Детский сад", kinderDesc: "Интерактивные цвета, буквы, цифры для самых маленьких.", kinderBtn: "Войти в детсад →",
+                schoolTitle: "Школьные предметы", schoolDesc: "Полная цифровая программа с 1 по 11 класс.", schoolBtn: "Перейти к урокам →",
+                booksTitle: "Электронные книги", booksDesc: "Электронная база учебников и научной литературы.", booksBtn: "Читать книги →",
+                gamesTitle: "Игровые Тесты", gamesDesc: "Изучение физики через национальные игры.", gamesBtn: "Войти в игру →",
+                physicsTitle: "Физика и Астрофизика", physicsDesc: "Квантовый хаос, пульсары и тайны Вселенной.", physicsBtn: "Погрузиться в науку →",
+                labTitle: "Лабораторные работы", labDesc: "Виртуальные лабораторные эксперименты.", labBtn: "В лабораторию →",
+                footerText: "© 2026 BiliMal.org — Пространство цифрового образования.", footerPolicy: "Политика конфиденциальности"
             },
             en: {
-                navHome: "Home",
-                navDashboard: "Dashboard 🚀",
+                navHome: "Home", navDashboard: "Dashboard 🚀",
                 heroTitle: "Digital Education Universe",
                 heroDesc: "A unified educational space from kindergarten to space physics.",
-                kinderTitle: "Kindergarten",
-                kinderDesc: "Interactive colors, letters, numbers, and fun animated logic.",
-                kinderBtn: "Enter Kindergarten →",
-                schoolTitle: "School Subjects",
-                schoolDesc: "Complete digital curriculum for core general education subjects.",
-                schoolBtn: "Go to Lessons →",
-                booksTitle: "E-books",
-                booksDesc: "Digital database of school textbooks and scientific literature.",
-                booksBtn: "Read Books →",
-                gamesTitle: "Game Tests",
-                gamesDesc: "Learn physics formulas through competitive national games.",
-                gamesBtn: "Enter Game →",
-                tankTitle: "Tank Battle 2D",
-                tankDesc: "Retro game in the style of classic Battle City.",
-                tankBtn: "Start Game →",
-                testTitle: "Test Center",
-                testDesc: "Exams with modern Anti-Cheat v3 system.",
-                testBtn: "Take Test →",
-                plansTitle: "Lesson Plans",
-                plansDesc: "Ready-made outlines and guides for teachers.",
-                plansBtn: "View Plans →",
-                physicsTitle: "Physics & Astrophysics",
-                physicsDesc: "Quantum chaos, photoelectric effect, and universe secrets.",
-                physicsBtn: "Dive into Science →",
-                labTitle: "Lab Works",
-                labDesc: "Virtual laboratory experiments and circuit building.",
-                labBtn: "Go to Labs →",
-                authorTitle: "About the Author",
-                authorDesc: "The project author is a physics teacher and founder of BiliMal.org.",
-                authorBtn: "Contact →",
-                footerText: "© 2026 BiliMal.org — Digital education and science space.",
-                footerPolicy: "Privacy Policy",
-                loginTitle: "Login",
-                loginWelcome: "Welcome to BiliMal Platform",
-                emailPlaceholder: "Email address",
-                passPlaceholder: "Password",
-                policySpan: "I agree to the ",
-                policyLink: "Privacy Policy",
-                policyEnd: " and terms of use.",
-                btnLogin: "Enter Site 🚀",
-                btnDemo: "Demo Mode 👁️"
+                kinderTitle: "Kindergarten", kinderDesc: "Interactive colors, letters, numbers, and fun animated logic.", kinderBtn: "Enter Kindergarten →",
+                schoolTitle: "School Subjects", schoolDesc: "Complete digital curriculum for core general education subjects.", schoolBtn: "Go to Lessons →",
+                booksTitle: "E-books", booksDesc: "Digital database of school textbooks and scientific literature.", booksBtn: "Read Books →",
+                gamesTitle: "Game Tests", gamesDesc: "Learn physics formulas through competitive national games.", gamesBtn: "Enter Game →",
+                physicsTitle: "Physics & Astrophysics", physicsDesc: "Quantum chaos, photoelectric effect, and universe secrets.", physicsBtn: "Dive into Science →",
+                labTitle: "Lab Works", labDesc: "Virtual laboratory experiments and circuit building.", labBtn: "Go to Labs →",
+                footerText: "© 2026 BiliMal.org — Digital education and science space.", footerPolicy: "Privacy Policy"
             }
         };
 
         function changeLanguage(lang) {
-            if (!translations[lang]) return;
-            localStorage.setItem('bilimal_lang', lang);
-
             document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`btn-lang-${lang}`);
             if (activeBtn) activeBtn.classList.add('active');
 
             const t = translations[lang];
+            document.getElementById('nav-home').innerText = t.navHome;
+            document.getElementById('nav-dashboard').innerText = t.navDashboard;
+            document.getElementById('hero-title').innerText = t.heroTitle;
+            document.getElementById('hero-desc').innerText = t.heroDesc;
 
-            const elements = {
-                'nav-home': t.navHome,
-                'nav-dashboard': t.navDashboard,
-                'hero-title': t.heroTitle,
-                'hero-desc': t.heroDesc,
-                'card-kinder-title': t.kinderTitle,
-                'card-kinder-desc': t.kinderDesc,
-                'card-kinder-btn': t.kinderBtn,
-                'card-school-title': t.schoolTitle,
-                'card-school-desc': t.schoolDesc,
-                'card-school-btn': t.schoolBtn,
-                'card-books-title': t.booksTitle,
-                'card-books-desc': t.booksDesc,
-                'card-books-btn': t.booksBtn,
-                'card-games-title': t.gamesTitle,
-                'card-games-desc': t.gamesDesc,
-                'card-games-btn': t.gamesBtn,
-                'card-tank-title': t.tankTitle,
-                'card-tank-desc': t.tankDesc,
-                'card-tank-btn': t.tankBtn,
-                'card-test-title': t.testTitle,
-                'card-test-desc': t.testDesc,
-                'card-test-btn': t.testBtn,
-                'card-plans-title': t.plansTitle,
-                'card-plans-desc': t.plansDesc,
-                'card-plans-btn': t.plansBtn,
-                'card-physics-title': t.physicsTitle,
-                'card-physics-desc': t.physicsDesc,
-                'card-physics-btn': t.physicsBtn,
-                'card-lab-title': t.labTitle,
-                'card-lab-desc': t.labDesc,
-                'card-lab-btn': t.labBtn,
-                'card-author-title': t.authorTitle,
-                'card-author-desc': t.authorDesc,
-                'card-author-btn': t.authorBtn,
-                'footer-text': t.footerText,
-                'footer-policy': t.footerPolicy,
-                'txt-login-title': t.loginTitle,
-                'txt-login-welcome': t.loginWelcome,
-                'btn-login-submit': t.btnLogin,
-                'btn-login-demo': t.btnDemo
-            };
+            document.getElementById('card-kinder-title').innerText = t.kinderTitle;
+            document.getElementById('card-kinder-desc').innerText = t.kinderDesc;
+            document.getElementById('card-kinder-btn').innerText = t.kinderBtn;
 
-            for (let id in elements) {
-                let el = document.getElementById(id);
-                if (el && elements[id]) el.innerText = elements[id];
-            }
+            document.getElementById('card-school-title').innerText = t.schoolTitle;
+            document.getElementById('card-school-desc').innerText = t.schoolDesc;
+            document.getElementById('card-school-btn').innerText = t.schoolBtn;
 
-            if (document.getElementById('email-input')) document.getElementById('email-input').placeholder = t.emailPlaceholder;
-            if (document.getElementById('password-input')) document.getElementById('password-input').placeholder = t.passPlaceholder;
-            
-            const policyContainer = document.getElementById('txt-policy-text');
-            if (policyContainer) {
-                policyContainer.innerHTML = `${t.policySpan}<a href="pages/privacy-policy.html" target="_blank">${t.policyLink}</a>${t.policyEnd}`;
-            }
+            document.getElementById('card-books-title').innerText = t.booksTitle;
+            document.getElementById('card-books-desc').innerText = t.booksDesc;
+            document.getElementById('card-books-btn').innerText = t.booksBtn;
+
+            document.getElementById('card-games-title').innerText = t.gamesTitle;
+            document.getElementById('card-games-desc').innerText = t.gamesDesc;
+            document.getElementById('card-games-btn').innerText = t.gamesBtn;
+
+            document.getElementById('card-physics-title').innerText = t.physicsTitle;
+            document.getElementById('card-physics-desc').innerText = t.physicsDesc;
+            document.getElementById('card-physics-btn').innerText = t.physicsBtn;
+
+            document.getElementById('card-lab-title').innerText = t.labTitle;
+            document.getElementById('card-lab-desc').innerText = t.labDesc;
+            document.getElementById('card-lab-btn').innerText = t.labBtn;
+
+            document.getElementById('footer-text').innerText = t.footerText;
+            document.getElementById('footer-policy').innerText = t.footerPolicy;
         }
 
-        // Коргоо механизми
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            alert("Эскертүү: Автордук укук корголгон! Көчүрүүгө тыюу салынат.");
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === "F12") { e.preventDefault(); return false; }
-            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
-                e.preventDefault(); return false;
-            }
-            if (e.ctrlKey && (e.key === 'u' || e.key === 'U')) { e.preventDefault(); return false; }
-            if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) { alert("Көчүрүүгө бөгөт коюлган!"); e.preventDefault(); return false; }
-            if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); return false; }
-        });
+        animate();
     </script>
 </body>
 </html>
