@@ -3,31 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ачык Сабак Пландары - Bilimal.org</title>
+  <title id="page-title">Ачык Сабак Пландары - Bilimal.org</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    /* Тил тандагыч стили */
+    .lang-switcher select {
+      background-color: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      border-radius: 0.75rem;
+      padding: 0.5rem 2rem 0.5rem 1rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1.5em 1.5em;
+    }
+    .lang-switcher select:focus { outline: none; border-color: #f59e0b; }
   </style>
 </head>
 <body class="min-h-screen pb-12">
 
   <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2">
+    <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+      <a href="/" class="text-xl font-bold text-amber-500 flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-graduation-cap"></i> Bilimal.org
       </a>
-      <a href="/sections/lesson-plans-vip.html" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
-        🔐 VIP Бардык Пландар
-      </a>
+      
+      <div class="flex items-center gap-2 md:gap-4 ml-auto">
+        <!-- Тил тандагыч -->
+        <div class="lang-switcher relative shrink-0">
+          <select id="language-select" onchange="changeLanguage(this.value)">
+            <option value="ky">KG</option>
+            <option value="ru">RU</option>
+            <option value="en">EN</option>
+            <option value="tr">TR</option>
+          </select>
+        </div>
+
+        <a href="/sections/lesson-plans-vip.html" id="btn-vip" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition shrink-0">
+          🔐 VIP Бардык Пландар
+        </a>
+      </div>
     </div>
   </header>
 
   <main class="max-w-7xl mx-auto px-4 mt-8">
 
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-extrabold text-white">📚 Ачык Сабак Пландары</h1>
-      <p class="text-slate-400 mt-2">Мугалимдер үчүн даярдалган акысыз ачык сабак пландарынын базасы</p>
+      <h1 class="text-3xl font-extrabold text-white" id="main-heading">📚 Ачык Сабак Пландары</h1>
+      <p class="text-slate-400 mt-2" id="main-subheading">Мугалимдер үчүн даярдалган акысыз ачык сабак пландарынын базасы</p>
     </div>
 
     <div class="max-w-xl mx-auto mb-8">
@@ -41,7 +70,7 @@
     <div id="public-plans-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div class="col-span-full text-center py-10 text-slate-400">
         <i class="fa-solid fa-circle-notch fa-spin text-2xl text-amber-500"></i>
-        <p class="mt-2">Пландар жүктөлүүдө...</p>
+        <p class="mt-2" id="txt-loading">Пландар жүктөлүүдө...</p>
       </div>
     </div>
 
@@ -51,6 +80,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
+    // ---firebase.js--- ( apiKey removed in render for safety, but kept structure)
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
       authDomain: "bilimal-org.firebaseapp.com",
@@ -69,12 +99,103 @@
     const db = firebase.database();
     let publicPlans = [];
 
+    // --- Тил Маалыматтары ---
+    const translations = {
+      ky: {
+        pageTitle: "Ачык Сабак Пландары - Bilimal.org",
+        vipBtn: "🔐 VIP Бардык Пландар",
+        heading: "📚 Ачык Сабак Пландары",
+        subheading: "Мугалимдер үчүн даярдалган акысыз ачык сабак пландарынын базасы",
+        searchPlh: "Сабак планын издөө...",
+        loading: "Пландар жүктөлүүдө...",
+        noPlans: "Азырынча ачык жарыяланган сабак пландары жок.",
+        cardOpen: "Документти ачуу",
+        cardNoDoc: "Документ жок",
+        cardFree: "Акысыз маалымат",
+        cardOpenDoc: "🌐 Ачык"
+      },
+      ru: {
+        pageTitle: "Планы Открытых Уроков - Bilimal.org",
+        vipBtn: "🔐 VIP Все Планы",
+        heading: "📚 Планы Открытых Уроков",
+        subheading: "База бесплатных планов открытых уроков для учителей",
+        searchPlh: "Поиск плана урока...",
+        loading: "Загрузка планов...",
+        noPlans: "Открытых планов уроков пока нет.",
+        cardOpen: "Открыть документ",
+        cardNoDoc: "Нет документа",
+        cardFree: "Бесплатная информация",
+        cardOpenDoc: "🌐 Открытый"
+      },
+      en: {
+        pageTitle: "Open Lesson Plans - Bilimal.org",
+        vipBtn: "🔐 VIP All Plans",
+        heading: "📚 Open Lesson Plans",
+        subheading: "Database of free open lesson plans prepared for teachers",
+        searchPlh: "Search lesson plan...",
+        loading: "Loading plans...",
+        noPlans: "No openly published lesson plans yet.",
+        cardOpen: "Open document",
+        cardNoDoc: "No document",
+        cardFree: "Free info",
+        cardOpenDoc: "🌐 Open"
+      },
+      tr: {
+        pageTitle: "Açık Ders Planları - Bilimal.org",
+        vipBtn: "🔐 VIP Tüm Planlar",
+        heading: "📚 Açık Ders Planları",
+        subheading: "Öğretmenler için hazırlanmış ücretsiz açık ders planları veritabanı",
+        searchPlh: "Ders planı ara...",
+        loading: "Planlar yükleniyor...",
+        noPlans: "Henüz açık ders planı yayınlanmadı.",
+        cardOpen: "Dökümanı aç",
+        cardNoDoc: "Döküman yok",
+        cardFree: "Ücretsiz bilgi",
+        cardOpenDoc: "🌐 Açık"
+      }
+    };
+
+    // --- Тил Функциялары ---
+    function getStoredLanguage() {
+      // Платформадагы негизги localStorage ачкычын колдонуу ("bilimal_lang")
+      return localStorage.getItem('bilimal_lang') || 'ky';
+    }
+
+    function changeLanguage(lang) {
+      localStorage.setItem('bilimal_lang', lang);
+      applyTranslations(lang);
+      // Пландар маалымат базасынан жүктөлгөндө предметтерди/максаттарды кайра көрсөтүү керек
+      if (publicPlans.length > 0) {
+        renderPublicGrid(publicPlans);
+      }
+    }
+
+    function applyTranslations(lang) {
+      const t = translations[lang] || translations.ky;
+      
+      // Барактын тили жана наамы
+      document.documentElement.lang = lang;
+      document.getElementById('page-title').innerText = t.pageTitle;
+      
+      // Header
+      document.getElementById('btn-vip').innerText = t.vipBtn;
+      
+      // Main
+      document.getElementById('main-heading').innerText = t.heading;
+      document.getElementById('main-subheading').innerText = t.subheading;
+      document.getElementById('public-search').placeholder = t.searchPlh;
+      document.getElementById('txt-loading').innerText = t.loading;
+
+      // Select элементин жаңыртуу
+      document.getElementById('language-select').value = lang;
+    }
+
+    // --- Негизги Логика ---
     async function loadPublicPlans() {
       try {
         const snap = await db.ref('lesson_plans').once('value');
         const data = snap.val() || {};
 
-        // FILTER: ONLY KEEP isPublic === true
         publicPlans = Object.keys(data)
           .map(id => ({ id, ...data[id] }))
           .filter(plan => plan.isPublic === true);
@@ -86,15 +207,20 @@
     }
 
     function renderPublicGrid(plans) {
+      const lang = getStoredLanguage();
+      const t = translations[lang] || translations.ky;
       const container = document.getElementById('public-plans-grid');
       container.innerHTML = '';
 
       if (plans.length === 0) {
-        container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">Азырынча ачык жарыяланган сабак пландары жок.</p>`;
+        container.innerHTML = `<p class="col-span-full text-center text-slate-400 py-10">${t.noPlans}</p>`;
         return;
       }
 
       plans.forEach(plan => {
+        // Эгер маалыматтар базасында тилдер боюнча субъект/максат болсо, 
+        // анда: plan.subject[lang] же plan.subject || 'Предмет'
+        
         const card = document.createElement('div');
         card.className = "bg-slate-800 border border-slate-700 p-5 rounded-2xl flex flex-col justify-between hover:border-amber-500/50 transition";
         card.innerHTML = `
@@ -103,18 +229,18 @@
               <span class="text-xs bg-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full font-medium">
                 ${plan.subject || 'Предмет'} ${plan.grade ? '• ' + plan.grade : ''}
               </span>
-              <span class="text-xs text-emerald-400">🌐 Ачык</span>
+              <span class="text-xs text-emerald-400">${t.cardOpenDoc}</span>
             </div>
             <h3 class="text-lg font-bold text-white mb-2">${plan.title || plan.name || 'Сабак планы'}</h3>
             <p class="text-xs text-slate-400 line-clamp-3">${plan.goals || ''}</p>
           </div>
           <div class="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center">
-            <span class="text-xs text-slate-400">Акысыз маалымат</span>
+            <span class="text-xs text-slate-400">${t.cardFree}</span>
             ${(plan.pdfUrl || plan.url) ? `
               <a href="${plan.pdfUrl || plan.url}" target="_blank" class="text-xs bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg hover:bg-amber-600 transition flex items-center gap-1">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i> Документти ачуу
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> ${t.cardOpen}
               </a>
-            ` : '<span class="text-xs text-slate-500">Документ жок</span>'}
+            ` : `<span class="text-xs text-slate-500">${t.cardNoDoc}</span>`}
           </div>
         `;
         container.appendChild(card);
@@ -130,7 +256,10 @@
       renderPublicGrid(filtered);
     });
 
-    // Initial Load
+    // --- Баштапкы жүктөө ---
+    // 1. Тилди колдонуу
+    applyTranslations(getStoredLanguage());
+    // 2. Пландарды жүктөө
     loadPublicPlans();
   </script>
 </body>
