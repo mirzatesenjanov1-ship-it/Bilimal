@@ -6,7 +6,7 @@
     <title data-i18n="docTitle">Дежурство Порталы - Bilimal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <!-- Firebase SDK (v9 Compact) -->
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -136,7 +136,6 @@
             font-size: 15px;
             transition: 0.3s;
         }
-        .btn-primary:hover { opacity: 0.9; }
 
         .duty-list { list-style: none; margin-top: 15px; }
         .duty-item {
@@ -168,12 +167,7 @@
         .student-name { font-size: 15px; font-weight: 600; }
         .duty-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-        }
+        .checkbox-container { display: flex; align-items: center; cursor: pointer; user-select: none; }
         .checkbox-container input { display: none; }
         .checkmark {
             width: 28px;
@@ -186,21 +180,18 @@
             justify-content: center;
             transition: 0.3s;
         }
-        .checkbox-container input:checked ~ .checkmark {
-            background: var(--accent-green);
-            border-color: var(--accent-green);
-        }
+        .checkbox-container input:checked ~ .checkmark { background: var(--accent-green); border-color: var(--accent-green); }
         .checkmark i { color: #fff; display: none; font-size: 16px; }
         .checkbox-container input:checked ~ .checkmark i { display: block; }
 
-        /* АДМИН ПАНЕЛЬ ЖАШЫРУУН */
+        /* АДМИН ПАНЕЛЬ */
         .admin-section {
             background: rgba(0, 210, 255, 0.05);
             border: 1px dashed var(--accent-blue);
             border-radius: 16px;
             padding: 20px;
             margin-top: 25px;
-            display: none; /* Ар дайым баштапкыда жашыруун */
+            display: none;
         }
         .admin-title { color: var(--accent-blue); font-size: 18px; font-weight: bold; margin-bottom: 15px; }
         .req-item {
@@ -239,7 +230,7 @@
         </div>
     </div>
 
-    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ (ОКУУЧУЛАР ҮЧҮН ГАНА) -->
+    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ (ОКУУЧУЛАР ҮЧҮН) -->
     <div id="registrationBlock" class="card">
         <div class="lock-notice">
             <i class="fas fa-user-lock"></i>
@@ -281,7 +272,7 @@
         <ul class="duty-list" id="dutyListContainer"></ul>
     </div>
 
-    <!-- 4. АДМИН ПАНЕЛЬ (БАШКАЛАРГА КӨРҮНБӨЙТ) -->
+    <!-- 4. АДМИН ПАНЕЛЬ -->
     <div class="admin-section" id="adminPanel">
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span data-i18n="adminTitle">Администратор Панели</span></div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="adminDesc">Окуучулардын уруксат суранычтары:</p>
@@ -291,14 +282,7 @@
 
 <script>
     const ADMIN_EMAIL = "mirzatestebesov51@gmail.com"; 
-    const ADMIN_SECRET_KEY = "mirza51"; // Сиз үчүн жашыруун ачкыч
-
-    // URL'де параметр бар экенин текшерүү (мисалы: ?admin_key=mirza51)
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin_key') === ADMIN_SECRET_KEY) {
-        localStorage.setItem('bilimal_is_admin', 'true');
-        localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
-    }
+    const ADMIN_SECRET_KEY = "mirza51";
 
     const firebaseConfig = {
         databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
@@ -351,7 +335,6 @@
     };
 
     let currentUserEmail = localStorage.getItem('bilimal_student_email') || '';
-    let isAdmin = localStorage.getItem('bilimal_is_admin') === 'true';
     let currentLang = localStorage.getItem('site_lang') || 'ky';
 
     function switchLanguage(lang) {
@@ -375,11 +358,29 @@
         switchLanguage(currentLang);
         setupStudentSelect();
 
+        // 1. АДМИНДИ ДАРОО ТЕКШЕРҮҮ
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasAdminKey = urlParams.get('admin_key') === ADMIN_SECRET_KEY;
+        const isSavedAdmin = localStorage.getItem('bilimal_is_admin') === 'true';
+
+        if (hasAdminKey || isSavedAdmin) {
+            localStorage.setItem('bilimal_is_admin', 'true');
+            localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
+            currentUserEmail = ADMIN_EMAIL;
+            
+            // Админге порталды жана админ панелди ДАРОО көрсөтүү
+            document.getElementById('mainDutyCard').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('registrationBlock').style.display = 'none';
+            document.getElementById('pendingBlock').style.display = 'none';
+
+            loadAdminRequests();
+        } else {
+            checkUserAccess();
+        }
+
         auth.signInAnonymously().then(() => {
-            checkUserAccess();
             listenToDutyData();
-        }).catch(err => {
-            checkUserAccess();
         });
 
         const today = new Date();
@@ -399,23 +400,11 @@
     }
 
     function checkUserAccess() {
-        // АДМИНДИ ТЕКШЕРҮҮ: Эгер түзмөк админ катары сакталган болсо же почта дал келсе
-        if (isAdmin || currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            document.getElementById('mainDutyCard').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'block'; // Админ панел ачылат
-            document.getElementById('registrationBlock').style.display = 'none';
-            document.getElementById('pendingBlock').style.display = 'none';
-            loadAdminRequests();
-            return;
-        }
-
-        // Жөнөкөй окуучулар үчүн админ панел таптакыр жабык болот
-        document.getElementById('adminPanel').style.display = 'none';
-
         if (!currentUserEmail) {
             document.getElementById('registrationBlock').style.display = 'block';
             document.getElementById('mainDutyCard').style.display = 'none';
             document.getElementById('pendingBlock').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'none';
             return;
         }
 
