@@ -203,14 +203,29 @@
             }
         };
 
-        let currentLang = localStorage.getItem("app_lang") || "ky";
+        // Башка баракчалардан (`test.html`, `lesson-plans.html` ж.б.) сакталган тилди текшерүү
+        function getSavedLanguage() {
+            return localStorage.getItem("site_lang") || 
+                   localStorage.getItem("app_lang") || 
+                   localStorage.getItem("bilimal_lang") || 
+                   "ky";
+        }
+
+        let currentLang = getSavedLanguage();
 
         function changeLanguage(lang) {
             currentLang = lang;
+            
+            // Баардык баракчалар бирдей колдонушу үчүн бардык сактагычтарга жазабыз
+            localStorage.setItem("site_lang", lang);
             localStorage.setItem("app_lang", lang);
-            document.getElementById('langSelector').value = lang;
+            localStorage.setItem("bilimal_lang", lang);
 
-            const t = translations[lang];
+            const selectElem = document.getElementById('langSelector');
+            if (selectElem) selectElem.value = lang;
+            document.documentElement.lang = lang; 
+
+            const t = translations[lang] || translations.ky;
             document.getElementById('i18n_title').innerHTML = `<i class="fa-solid fa-user-astronaut"></i> ${t.title}`;
             document.getElementById('i18n_desc').innerText = t.desc;
 
@@ -234,12 +249,13 @@
         const db = firebase.database();
 
         window.addEventListener('DOMContentLoaded', () => {
-            changeLanguage(currentLang);
+            // Баракча жүктөлгөндө мурунку тандалган тилди автоматтык түрдө колдонуу
+            changeLanguage(getSavedLanguage());
         });
 
         function loadPublicArticles() {
             const feed = document.getElementById('articlesFeed');
-            const t = translations[currentLang];
+            const t = translations[currentLang] || translations.ky;
 
             db.ref('library/astrophysics').on('value', snapshot => {
                 feed.innerHTML = '';
@@ -248,14 +264,24 @@
                     return;
                 }
 
+                let hasArticles = false;
+
                 snapshot.forEach(child => {
                     const data = child.val();
+                    
+                    // Эгер макалада тил көрсөтүлгөн болсо, ошол тилге дал келгенин гана чыгарат (же тил көрсөтүлбөсө баарын чыгарат)
+                    if (data.lang && data.lang !== currentLang) {
+                        return;
+                    }
+
+                    hasArticles = true;
+
                     const card = document.createElement('div');
                     card.className = 'article-card';
 
                     let mediaHtml = '';
                     if (data.imageUrl) {
-                        mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title}" onerror="this.style.display='none'">`;
+                        mediaHtml += `<img src="${data.imageUrl}" class="article-img" alt="${data.title || ''}" onerror="this.style.display='none'">`;
                     }
 
                     if (data.model3DUrl) {
@@ -272,18 +298,22 @@
                     }
 
                     card.innerHTML = `
-                        <h2 class="article-title">${data.title}</h2>
+                        <h2 class="article-title">${data.title || ''}</h2>
                         <div class="article-meta">
                             <span><i class="fa-solid fa-folder"></i> ${data.category || 'Астрофизика'}</span>
-                            <span><i class="fa-solid fa-calendar"></i> ${new Date(data.createdAt).toLocaleDateString()}</span>
+                            <span><i class="fa-solid fa-calendar"></i> ${data.createdAt ? new Date(data.createdAt).toLocaleDateString() : ''}</span>
                         </div>
                         ${mediaHtml}
                         ${formulaHtml}
-                        <div class="article-body">${data.content}</div>
+                        <div class="article-body">${data.content || ''}</div>
                     `;
 
                     feed.appendChild(card);
                 });
+
+                if (!hasArticles) {
+                    feed.innerHTML = `<div class="empty-state">${t.empty}</div>`;
+                }
 
                 if (window.MathJax) {
                     MathJax.typesetPromise([feed]).catch(err => console.log(err));
