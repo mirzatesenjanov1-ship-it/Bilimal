@@ -184,7 +184,6 @@
         .checkmark i { color: #fff; display: none; font-size: 16px; }
         .checkbox-container input:checked ~ .checkmark i { display: block; }
 
-        /* АДМИН ПАНЕЛЬ */
         .admin-section {
             background: rgba(0, 210, 255, 0.05);
             border: 1px dashed var(--accent-blue);
@@ -230,7 +229,7 @@
         </div>
     </div>
 
-    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ (ОКУУЧУЛАР ҮЧҮН) -->
+    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ -->
     <div id="registrationBlock" class="card">
         <div class="lock-notice">
             <i class="fas fa-user-lock"></i>
@@ -358,7 +357,6 @@
         switchLanguage(currentLang);
         setupStudentSelect();
 
-        // 1. АДМИНДИ ДАРОО ТЕКШЕРҮҮ
         const urlParams = new URLSearchParams(window.location.search);
         const hasAdminKey = urlParams.get('admin_key') === ADMIN_SECRET_KEY;
         const isSavedAdmin = localStorage.getItem('bilimal_is_admin') === 'true';
@@ -368,7 +366,6 @@
             localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
             currentUserEmail = ADMIN_EMAIL;
             
-            // Админге порталды жана админ панелди ДАРОО көрсөтүү
             document.getElementById('mainDutyCard').style.display = 'block';
             document.getElementById('adminPanel').style.display = 'block';
             document.getElementById('registrationBlock').style.display = 'none';
@@ -515,8 +512,9 @@
 
     let currentDutyState = {};
 
+    // ТҮЗӨТҮҮ: Базадагы "student_duty" өзүнчө түйүнүнө туташуу
     function listenToDutyData() {
-        db.ref('test_results/duty_state').on('value', snapshot => {
+        db.ref('student_duty').on('value', snapshot => {
             currentDutyState = snapshot.val() || {};
             renderDutyList();
         });
@@ -556,17 +554,18 @@
         });
     }
 
+    // ТҮЗӨТҮҮ: Маалыматтарды "student_duty" түйүнүнө сактоо
     function toggleDutyCheck(studentId, isChecked) {
         const todayStr = new Date().toISOString().split('T')[0];
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         if (isChecked) {
-            db.ref(`test_results/duty_state/${todayStr}/${studentId}`).set({
+            db.ref(`student_duty/${todayStr}/${studentId}`).set({
                 by: currentUserEmail,
                 time: nowTime
             });
         } else {
-            db.ref(`test_results/duty_state/${todayStr}/${studentId}`).remove();
+            db.ref(`student_duty/${todayStr}/${studentId}`).remove();
         }
     }
 </script>
