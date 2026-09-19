@@ -3,25 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Виртуалдык Санариптик Лабораториялар - Bilimal.org</title>
+  <title id="page-title">Виртуалдык Санариптик Лабораториялар - Bilimal.org</title>
   <!-- Tailwind CSS & FontAwesome -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     body { background-color: #050811; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    /* Тил тандагыч стили */
+    .lang-switcher select {
+      background-color: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 0.8rem;
+      border-radius: 0.75rem;
+      padding: 0.5rem 2rem 0.5rem 1rem;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      background-size: 1.5em 1.5em;
+    }
+    .lang-switcher select:focus { outline: none; border-color: #d946ef; }
   </style>
 </head>
 <body class="min-h-screen pb-12">
 
   <!-- TOP BAR -->
   <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40 px-4 py-3">
-    <div class="max-w-7xl mx-auto flex justify-between items-center">
-      <a href="/" class="text-amber-500 font-semibold text-sm border border-amber-500/30 px-3 py-1.5 rounded-xl hover:bg-amber-500 hover:text-slate-950 transition">
+    <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+      <a href="/" id="btn-back" class="text-amber-500 font-semibold text-sm border border-amber-500/30 px-3 py-1.5 rounded-xl hover:bg-amber-500 hover:text-slate-950 transition shrink-0">
         ← Предметтер бөлүмүнө кайт
       </a>
-      <a href="/sections/lab-works-vip.html" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition">
-        🧪 VIP Виртуалдык Лаборатория
-      </a>
+      
+      <div class="flex items-center gap-2 md:gap-4 ml-auto">
+        <!-- Тил тандагыч -->
+        <div class="lang-switcher relative shrink-0">
+          <select id="language-select" onchange="changeLanguage(this.value)">
+            <option value="ky">Кыргызча</option>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <a href="/sections/lab-works-vip.html" id="btn-vip" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition shrink-0">
+          🧪 VIP Виртуалдык Лаборатория
+        </a>
+      </div>
     </div>
   </header>
 
@@ -30,9 +58,9 @@
     <!-- TITLE -->
     <div class="text-center mb-10">
       <h1 class="text-3xl md:text-4xl font-extrabold text-white">
-        Виртуалдык Санариптик <span class="text-fuchsia-500">Лабораториялар</span> 🔬
+        <span id="title-main">Виртуалдык Санариптик</span> <span class="text-fuchsia-500" id="title-highlight">Лабораториялар</span> 🔬
       </h1>
-      <p class="text-slate-400 mt-2 text-sm md:text-base">
+      <p class="text-slate-400 mt-2 text-sm md:text-base" id="main-subheading">
         Мектеп окуучулары жана мугалимдер үчүн акысыз ачык виртуалдык симуляциялар
       </p>
     </div>
@@ -50,7 +78,7 @@
     <div id="public-labs-container" class="space-y-10">
       <div class="text-center py-10 text-slate-400">
         <i class="fa-solid fa-circle-notch fa-spin text-2xl text-fuchsia-500"></i>
-        <p class="mt-2">Ачык лабораториялар жүктөлүүдө...</p>
+        <p class="mt-2" id="txt-loading">Ачык лабораториялар жүктөлүүдө...</p>
       </div>
     </div>
 
@@ -79,14 +107,112 @@
     const db = firebase.database();
     let publicLabs = [];
 
+    // --- Тил Маалыматтары (i18n) ---
+    const translations = {
+      ky: {
+        pageTitle: "Виртуалдык Санариптик Лабораториялар - Bilimal.org",
+        btnBack: "← Предметтер бөлүмүнө кайт",
+        btnVip: "🧪 VIP Виртуалдык Лаборатория",
+        titleMain: "Виртуалдык Санариптик",
+        titleHighlight: "Лабораториялар",
+        subheading: "Мектеп окуучулары жана мугалимдер үчүн акысыз ачык виртуалдык симуляциялар",
+        searchPlh: "Лабораториялык ишти издөө...",
+        loading: "Ачык лабораториялар жүктөлүүдө...",
+        noLabs: "Азырынча ачык жарыяланган лабораториялык иштер жок.",
+        activeStatus: "АКТИВДҮҮ",
+        startExp: "Тажрыйбаны баштоо →",
+        manual: "Нускама",
+        noTitle: "Аталышы жок",
+        physicsSubject: "Физика",
+        errorTitle: "Маалыматтарды жүктөөдө ката чыкты.",
+        errorDesc: "Сервер менен байланышты текшериңиз."
+      },
+      ru: {
+        pageTitle: "Виртуальные Цифровые Лаборатории - Bilimal.org",
+        btnBack: "← Назад к разделам",
+        btnVip: "🧪 VIP Виртуальная Лаборатория",
+        titleMain: "Виртуальные Цифровые",
+        titleHighlight: "Лаборатории",
+        subheading: "Бесплатные открытые виртуальные симуляции для школьников и учителей",
+        searchPlh: "Поиск лабораторной работы...",
+        loading: "Загрузка открытых лабораторий...",
+        noLabs: "Открытых лабораторных работ пока нет.",
+        activeStatus: "АКТИВНО",
+        startExp: "Начать опыт →",
+        manual: "Инструкция",
+        noTitle: "Без названия",
+        physicsSubject: "Физика",
+        errorTitle: "Ошибка при загрузке данных.",
+        errorDesc: "Проверьте соединение с сервером."
+      },
+      en: {
+        pageTitle: "Virtual Digital Laboratories - Bilimal.org",
+        btnBack: "← Back to Subjects",
+        btnVip: "🧪 VIP Virtual Laboratory",
+        titleMain: "Virtual Digital",
+        titleHighlight: "Laboratories",
+        subheading: "Free open virtual simulations for students and teachers",
+        searchPlh: "Search lab work...",
+        loading: "Loading open laboratories...",
+        noLabs: "No openly published lab works yet.",
+        activeStatus: "ACTIVE",
+        startExp: "Start Experiment →",
+        manual: "Manual",
+        noTitle: "Untitled",
+        physicsSubject: "Physics",
+        errorTitle: "Error loading data.",
+        errorDesc: "Check connection to the server."
+      }
+    };
+
+    // --- Тил калыбын сактоо жана алуу ---
+    function getSavedLanguage() {
+      return localStorage.getItem("site_lang") || 
+             localStorage.getItem("app_lang") || 
+             localStorage.getItem("bilimal_lang") || 
+             "ky";
+    }
+
+    function changeLanguage(lang) {
+      localStorage.setItem("site_lang", lang);
+      localStorage.setItem("app_lang", lang);
+      localStorage.setItem("bilimal_lang", lang);
+      
+      applyTranslations(lang);
+
+      if (publicLabs.length > 0) {
+        renderPublicLabs(publicLabs);
+      }
+    }
+
+    function applyTranslations(lang) {
+      const t = translations[lang] || translations.ky;
+      
+      document.documentElement.lang = lang;
+      document.getElementById('page-title').innerText = t.pageTitle;
+      
+      document.getElementById('btn-back').innerText = t.btnBack;
+      document.getElementById('btn-vip').innerText = t.btnVip;
+      
+      document.getElementById('title-main').innerText = t.titleMain;
+      document.getElementById('title-highlight').innerText = t.titleHighlight;
+      document.getElementById('main-subheading').innerText = t.subheading;
+      
+      document.getElementById('public-lab-search').placeholder = t.searchPlh;
+      document.getElementById('txt-loading').innerText = t.loading;
+
+      document.getElementById('language-select').value = lang;
+    }
+
     async function loadPublicLabs() {
       const container = document.getElementById('public-labs-container');
+      const lang = getSavedLanguage();
+      const t = translations[lang] || translations.ky;
+
       try {
-        // Firebase Security Rules эрежесинде уруксат берилген 'library' түйүнүн колдонобуз
         const snap = await db.ref('library').once('value');
         const data = snap.val() || {};
 
-        // Лабораториялык иш катары белгиленген же ачык материалдарды фильтрлөө
         publicLabs = Object.keys(data)
           .map(id => ({ id, ...data[id] }))
           .filter(item => item.isPublic === true || item.type === 'lab_work' || item.category === 'lab_works');
@@ -97,19 +223,21 @@
         container.innerHTML = `
           <div class="text-center py-10 text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-2xl p-6">
             <i class="fa-solid fa-triangle-exclamation text-3xl mb-3"></i>
-            <p class="font-bold">Маалыматтарды жүктөөдө ката чыкты.</p>
-            <p class="text-xs text-slate-400 mt-1">Сервер менен байланышты текшериңиз.</p>
+            <p class="font-bold">${t.errorTitle}</p>
+            <p class="text-xs text-slate-400 mt-1">${t.errorDesc}</p>
           </div>
         `;
       }
     }
 
     function renderPublicLabs(labs) {
+      const lang = getSavedLanguage();
+      const t = translations[lang] || translations.ky;
       const container = document.getElementById('public-labs-container');
       container.innerHTML = '';
 
       if (labs.length === 0) {
-        container.innerHTML = `<p class="text-center text-slate-400 py-10">Азырынча ачык жарыяланган лабораториялык иштер жок.</p>`;
+        container.innerHTML = `<p class="text-center text-slate-400 py-10">${t.noLabs}</p>`;
         return;
       }
 
@@ -131,21 +259,21 @@
             <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between hover:border-fuchsia-500/50 transition">
               <div>
                 <div class="flex justify-between items-center mb-3">
-                  <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase">АКТИВДҮҮ</span>
-                  <span class="text-xs text-slate-400">${lab.subject || 'Физика'}</span>
+                  <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase">${t.activeStatus}</span>
+                  <span class="text-xs text-slate-400">${lab.subject || t.physicsSubject}</span>
                 </div>
-                <h3 class="text-xl font-bold text-cyan-400 mb-2">${lab.title || 'Аталышы жок'}</h3>
+                <h3 class="text-xl font-bold text-cyan-400 mb-2">${lab.title || t.noTitle}</h3>
                 <p class="text-sm text-slate-300 leading-relaxed">${lab.description || ''}</p>
               </div>
               <div class="mt-6 flex flex-wrap gap-3">
                 ${lab.simUrl ? `
                   <a href="${lab.simUrl}" target="_blank" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2">
-                    Тажрыйбаны баштоо →
+                    ${t.startExp}
                   </a>
                 ` : ''}
                 ${lab.pdfUrl ? `
                   <a href="${lab.pdfUrl}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-4 py-2 rounded-xl text-sm transition flex items-center gap-2 border border-slate-700">
-                    <i class="fa-solid fa-file-pdf"></i> Нускама
+                    <i class="fa-solid fa-file-pdf"></i> ${t.manual}
                   </a>
                 ` : ''}
               </div>
@@ -172,6 +300,8 @@
       renderPublicLabs(filtered);
     });
 
+    // --- Баштапкы жүктөө ---
+    applyTranslations(getSavedLanguage());
     loadPublicLabs();
   </script>
 </body>
