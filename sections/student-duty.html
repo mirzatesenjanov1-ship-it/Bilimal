@@ -250,7 +250,7 @@
         <div class="input-group">
             <label data-i18n="selectName">Тизмеден аты-жөнүңүздү тандаңыз:</label>
             <select id="studentSelect">
-                <!-- Окуучулардын аты-жөнү жүктөлөт -->
+                <!-- Окуучулардын тизмеси -->
             </select>
         </div>
 
@@ -262,14 +262,14 @@
         <button class="btn-primary" id="btnSubmitReq" onclick="submitRegistration()" data-i18n="sendReq">Сураныч жөнөтүү</button>
     </div>
 
-    <!-- 2. СУРАНЫЧ ЖӨНӨТҮЛГӨНДӨН КИЙИНКИ КҮТҮҮ БИЛДИРҮҮСҮ -->
+    <!-- 2. КҮТҮҮ БИЛДИРҮҮСҮ -->
     <div id="pendingBlock" class="card" style="display: none; text-align: center;">
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
         <h3 style="margin-bottom: 8px;" data-i18n="waitTitle">Суранычыңыз жөнөтүлдү</h3>
         <p style="font-size: 14px; color: var(--text-muted);" data-i18n="waitDesc">Мугалим суранычыңызды карап чыгып, уруксат (доступ) бергенде дежурство тизмеси автоматтык түрдө ачылат.</p>
     </div>
 
-    <!-- 3. ДЕЖУРСТВО ТИЗМЕСИ (УРУКСАТ БЕРИЛГЕНДЕ ГАНА АЧЫЛАТ) -->
+    <!-- 3. ДЕЖУРСТВО ТИЗМЕСИ -->
     <div class="card" id="mainDutyCard" style="display: none;">
         <div class="card-header">
             <div class="card-title"><i class="fas fa-user-shield"></i> <span data-i18n="dutyTitle">Кезмет Порталы</span></div>
@@ -279,7 +279,7 @@
         <p style="font-size: 14px; color: var(--text-muted);" id="currentDateText"></p>
 
         <ul class="duty-list" id="dutyListContainer">
-            <!-- Тизме жүктөлөт -->
+            <!-- Дүкөн тизмеси -->
         </ul>
     </div>
 
@@ -288,13 +288,19 @@
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span data-i18n="adminTitle">Администратор Панели</span></div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="adminDesc">Окуучулардын уруксат суранычтары:</p>
         <div id="requestsList">
-            <!-- Келген суранычтар -->
+            <!-- Күтүлүп жаткан суранычтар -->
         </div>
     </div>
 </div>
 
 <script>
+    // СИЗДИН ПОЧТАҢЫЗ АДМИН КАТАРЫ БЕЛГИЛЕНДИ
     const ADMIN_EMAIL = "mirzatestebesov51@gmail.com"; 
+
+    // Браузерге сиздин почтаңызды админ катары сактап коюу
+    if (!localStorage.getItem('bilimal_student_email')) {
+        localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
+    }
 
     const firebaseConfig = {
         databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
@@ -351,7 +357,7 @@
             sendReq: "Сураныч жөнөтүү",
             waitTitle: "Суранычыңыз жөнөтүлдү",
             waitDesc: "Мугалим суранычыңызды карап чыгып, уруксат (доступ) бергенде дежурство тизмеси автоматтык түрдө ачылат.",
-            statusApproved: "Уруксат берилди",
+            statusApproved: "Уруксат берилди (Админ)",
             adminTitle: "Администратор Панели",
             adminDesc: "Окуучулардын уруксат суранычтары:",
             markedBy: "Белгиледи:",
@@ -369,7 +375,7 @@
             sendReq: "Отправить запрос",
             waitTitle: "Запрос отправлен",
             waitDesc: "Портал дежурств откроется автоматически после того, как учитель подтвердит ваш доступ.",
-            statusApproved: "Доступ разрешен",
+            statusApproved: "Доступ разрешен (Админ)",
             adminTitle: "Панель Администратора",
             adminDesc: "Запросы учеников на доступ:",
             markedBy: "Отметил:",
@@ -387,7 +393,7 @@
             sendReq: "Send Request",
             waitTitle: "Request Sent",
             waitDesc: "The duty portal will open automatically once approved by the teacher.",
-            statusApproved: "Access Granted",
+            statusApproved: "Access Granted (Admin)",
             adminTitle: "Admin Panel",
             adminDesc: "Student access requests:",
             markedBy: "Marked by:",
@@ -396,7 +402,7 @@
         }
     };
 
-    let currentUserEmail = localStorage.getItem('bilimal_student_email') || '';
+    let currentUserEmail = localStorage.getItem('bilimal_student_email') || ADMIN_EMAIL;
     let currentLang = localStorage.getItem('site_lang') || 'ky';
 
     function switchLanguage(lang) {
@@ -422,7 +428,6 @@
         switchLanguage(currentLang);
         setupStudentSelect();
 
-        // Автоматтык анонимдүү киришти камсыз кылуу (Firebase Security Rules "auth != null" сактоо үчүн)
         auth.signInAnonymously().then(() => {
             checkUserAccess();
             listenToDutyData();
@@ -448,14 +453,7 @@
     }
 
     function checkUserAccess() {
-        if (!currentUserEmail) {
-            document.getElementById('registrationBlock').style.display = 'block';
-            document.getElementById('mainDutyCard').style.display = 'none';
-            document.getElementById('pendingBlock').style.display = 'none';
-            return;
-        }
-
-        // Админ болсо
+        // Эгер колдонуучу Админ болсо
         if (currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             document.getElementById('mainDutyCard').style.display = 'block';
             document.getElementById('adminPanel').style.display = 'block';
@@ -465,7 +463,7 @@
             return;
         }
 
-        // vip_users аркылуу текшерүү
+        // Окуучуларды vip_users ичинен текшерүү
         db.ref('vip_users').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
             if (snapshot.exists()) {
                 document.getElementById('mainDutyCard').style.display = 'block';
@@ -493,7 +491,6 @@
         });
     }
 
-    // Сураныч жөнөтүү (Катасыз иштейт)
     function submitRegistration() {
         const selectedName = document.getElementById('studentSelect').value;
         const emailInput = document.getElementById('studentEmailInput').value.trim().toLowerCase();
