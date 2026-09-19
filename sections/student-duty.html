@@ -1,195 +1,571 @@
 <!DOCTYPE html>
-<html lang="ky">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кезмет Порталы - Bilimal</title>
+    <title data-i18n="docTitle">Дежурство Порталы - Bilimal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK (v9 Compact) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
     <style>
         :root {
             --bg-color: #0b0e14;
             --card-bg: #111622;
             --border-color: #1e2640;
-            --accent-green: #10b981;
             --accent-blue: #00d2ff;
-            --accent-yellow: #f59e0b;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
             --text-main: #ffffff;
             --text-muted: #9ca3af;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
-        body { background: var(--bg-color); color: var(--text-main); padding: 20px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-        .container { max-width: 550px; width: 100%; }
-        .card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .btn-back { background: var(--border-color); color: #fff; border: none; padding: 8px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 14px; display: flex; align-items: center; gap: 6px; }
-        .user-welcome { background: rgba(0, 210, 255, 0.1); border: 1px solid var(--accent-blue); padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
-        .user-welcome strong { color: var(--accent-blue); font-size: 15px; }
-        .duty-box { background: #0b0e14; border: 1px solid var(--border-color); padding: 18px; border-radius: 12px; margin-bottom: 20px; }
-        .duty-title { font-size: 15px; font-weight: bold; color: var(--accent-green); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .duty-list { list-style: none; }
-        .duty-item { padding: 10px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
-        .duty-item:last-child { border-bottom: none; }
-        .btn-claim { width: 100%; background: var(--accent-green); color: #0b0e14; border: none; padding: 14px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
-        .btn-claim:hover { opacity: 0.9; transform: translateY(-2px); }
-        .btn-claim:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; transform: none; }
-        .alert { padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 13px; text-align: center; }
-        .alert-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container { max-width: 800px; width: 100%; }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+        .btn-back:hover { background: rgba(0, 210, 255, 0.1); color: var(--accent-blue); }
+
+        .lang-switcher { display: flex; gap: 6px; }
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .lang-btn.active { background: var(--accent-blue); color: #000; border-color: var(--accent-blue); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title { font-size: 20px; font-weight: bold; color: var(--accent-green); display: flex; align-items: center; gap: 10px; }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-pending { background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid #eab308; }
+        .status-approved { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+        /* Окуучулардын тизмеси */
+        .duty-list { list-style: none; margin-top: 15px; }
+        .duty-item {
+            background: #0b0e14;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .duty-info { display: flex; align-items: center; gap: 15px; }
+        .student-num {
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 210, 255, 0.1);
+            color: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .student-name { font-size: 16px; font-weight: 600; }
+        .duty-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-container input { display: none; }
+        .checkmark {
+            width: 28px;
+            height: 28px;
+            background: #111622;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+        .checkbox-container input:checked ~ .checkmark {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+        .checkmark i { color: #fff; display: none; font-size: 16px; }
+        .checkbox-container input:checked ~ .checkmark i { display: block; }
+
+        /* Админ панель */
+        .admin-section {
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px dashed var(--accent-blue);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+        .admin-title { color: var(--accent-blue); font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        .req-item {
+            background: #111622;
+            padding: 12px 16px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .btn-approve { background: var(--accent-green); color: #fff; }
+        .btn-reject { background: var(--accent-red); color: #fff; margin-left: 5px; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            background: #0b0e14;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            outline: none;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #0b0e14;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <div class="top-bar">
+        <a href="/sections/student-portal.html" class="btn-back">
+            <i class="fas fa-arrow-left"></i> <span data-i18n="backBtn">Назад</span>
+        </a>
+        <div class="lang-switcher">
+            <button class="lang-btn" onclick="switchLanguage('ky')">KY</button>
+            <button class="lang-btn active" onclick="switchLanguage('ru')">RU</button>
+            <button class="lang-btn" onclick="switchLanguage('en')">EN</button>
+        </div>
+    </div>
+
+    <!-- МҮЧӨЛҮК/СУРАНЫЧ БЛОГУ -->
+    <div id="registrationBlock" class="card" style="display: none;">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-id-card"></i> <span data-i18n="regTitle">Регистрация в графике</span></div>
+        </div>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="regDesc">
+            Выберите ваше ФИО из списка и отправьте запрос учителю для подтверждения доступа:
+        </p>
+        <div class="input-group">
+            <label data-i18n="selectName">Выберите ваше имя:</label>
+            <select id="studentSelect">
+                <!-- Окуучулардын тизмеси автоматтык жүктөлөт -->
+            </select>
+        </div>
+        <button class="btn-primary" onclick="submitRegistration()" data-i18n="sendReq">Отправить запрос</button>
+    </div>
+
+    <!-- ДЕЖУРСТВО БАРАКЧАСЫ -->
     <div class="card">
-        <div class="header">
-            <a href="/sections/student-portal.html" class="btn-back"><i class="fas fa-arrow-left"></i> Артка</a>
-            <h3 style="color: var(--accent-green); display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-user-shield"></i> Кезмет Порталы
-            </h3>
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-user-shield"></i> <span data-i18n="dutyTitle">Портал дежурств</span></div>
+            <div id="userStatusBadge"></div>
         </div>
 
-        <!-- ОКУУЧУНУН АТЫ ЖӨНҮ -->
-        <div class="user-welcome">
-            Окуучу: <strong id="studentDisplayName">Жүктөлүүдө...</strong>
-            <div style="font-size: 12px; color: var(--text-muted);" id="studentEmailDisplay">--</div>
+        <p style="font-size: 14px; color: var(--text-muted);" id="currentDateText"></p>
+
+        <ul class="duty-list" id="dutyListContainer">
+            <!-- Бүгүнкү кезметчилер динамикалык чыгат -->
+        </ul>
+    </div>
+
+    <!-- АДМИН ПАНЕЛЬ (Мугалим үчүн гана) -->
+    <div class="admin-section" id="adminPanel" style="display: none;">
+        <div class="admin-title"><i class="fas fa-user-gear"></i> <span data-i18n="adminTitle">Панель Администратора</span></div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="adminDesc">Запросы учеников на подтверждение доступа:</p>
+        <div id="requestsList">
+            <!-- Күтүүдөгү суранычтар -->
         </div>
-
-        <!-- БҮГҮНКҮ КЕЗМЕТЧИЛЕР -->
-        <div class="duty-box">
-            <div class="duty-title">
-                <i class="fas fa-calendar-day"></i> Бүгүнкү кезметчилер (<span id="todayDateStr">--</span>):
-            </div>
-            <div id="dutyListContainer">
-                <i class="fas fa-spinner fa-spin"></i> Базадан алынууда...
-            </div>
-        </div>
-
-        <!-- КЕЗМЕТТИ КАБЫЛ АЛУУ БАСКЫЧЫ -->
-        <button class="btn-claim" id="btnClaimDuty">
-            <i class="fas fa-check-double"></i> Кезметти кабыл алдым
-        </button>
-
-        <div id="msgBox"></div>
     </div>
 </div>
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+<script>
+    // 1. АДМИН ЭЛЕКТРОНДУК ПОЧТАСЫ ЖАНА FIREBASE
+    const ADMIN_EMAIL = "mirzatestebesov51@gmail.com"; 
 
+    // Firebase Конфигурациясы
     const firebaseConfig = {
-        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-        authDomain: "bilimal-org.firebaseapp.com",
-        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "bilimal-org",
-        storageBucket: "bilimal-org.firebasestorage.app",
-        messagingSenderId: "241750360816",
-        appId: "1:241750360816:web:a991434eb5afbc470d7835"
+        databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
+    };
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // 2. БАЗАЛЫК ОКУУЧУЛАРДЫН ТИЗМЕСИ (31 окуучу)
+    const MASTER_STUDENTS = [
+        "Адылбекова Гүлжан Асхатовна",
+        "Алымжанова Асия Радылбековна",
+        "Анарбаев Адилет Рустемович",
+        "Асанбеков Изатбек Алмазович",
+        "Аскарова Элмина Расуловна",
+        "Байтакова Айбийке Керезбековна",
+        "Бактыбекова Бегимай Бактыбековна",
+        "Бакытбекова Айпери Батухановна",
+        "Джакыпова Азиза Максатовна",
+        "Жамгырчиева Шахноза Зарлыковна",
+        "Каакыев Барсбек Алтынбекович",
+        "Кубаналиева Алия Манасовна",
+        "Кудакеева Таттыбүбү Мирболотовна",
+        "Кыязбеков Усман Нурсеитович",
+        "Лимбекова Акылай Жусупбековна",
+        "Максатова Амина Максатовна",
+        "Муратбекова Нургиза Таалайбековна",
+        "Мүсүрбеков Жаныбек Сыргакович",
+        "Нурдоолотов Байэл Аскатович",
+        "Нуркулова Арууке Расуловна",
+        "Нурханов Мухаммад Нурханович",
+        "Оболбекова Айдай Амановна",
+        "Өмүрбекова Аяна Умаровна",
+        "Раишева Уулкелсин Таалайбековна",
+        "Сулпукоров Эмир Даниярович",
+        "Таштанбеков Бексултан Бакытович",
+        "Тургунбеков Байэл Эсенбекович",
+        "Турдубаева Элиза Нурланбековна",
+        "Чолпонкулова Жанайым Сталбековна",
+        "Шекербекова Аделина Шайлообековна",
+        "Эсенжанова Асема Фархатовна"
+    ];
+
+    // 3. ТИЛДЕР (KY, RU, EN)
+    const translations = {
+        ky: {
+            docTitle: "Дежурство Порталы - Bilimal",
+            backBtn: "Артка",
+            dutyTitle: "Кезмет порталы",
+            regTitle: "Графикке катталуу",
+            regDesc: "Тизмеден аты-жөнүңүздү тандап, мугалимге сураныч жөнөтүңүз:",
+            selectName: "Аты-жөнүңүздү тандаңыз:",
+            sendReq: "Сураныч жөнөтүү",
+            adminTitle: "Администратор Панели",
+            adminDesc: "Окуучулардын ырастоо суранычтары:",
+            statusPending: "Күтүүдө",
+            statusApproved: "Тастыкталды",
+            markedBy: "Белгиледи:",
+            approveBtn: "Макул",
+            rejectBtn: "Каршы"
+        },
+        ru: {
+            docTitle: "Портал Дежурств - Bilimal",
+            backBtn: "Назад",
+            dutyTitle: "Портал дежурств",
+            regTitle: "Регистрация в графике",
+            regDesc: "Выберите ваше ФИО из списка и отправьте запрос учителю для подтверждения доступа:",
+            selectName: "Выберите ваше имя:",
+            sendReq: "Отправить запрос",
+            adminTitle: "Панель Администратора",
+            adminDesc: "Запросы учеников на подтверждение доступа:",
+            statusPending: "Ожидание",
+            statusApproved: "Одобрено",
+            markedBy: "Отметил:",
+            approveBtn: "Одобрить",
+            rejectBtn: "Отклонить"
+        },
+        en: {
+            docTitle: "Duty Portal - Bilimal",
+            backBtn: "Back",
+            dutyTitle: "Duty Portal",
+            regTitle: "Registration in schedule",
+            regDesc: "Select your full name from the list and send a request to the teacher:",
+            selectName: "Select your name:",
+            sendReq: "Send request",
+            adminTitle: "Admin Panel",
+            adminDesc: "Student access confirmation requests:",
+            statusPending: "Pending",
+            statusApproved: "Approved",
+            markedBy: "Marked by:",
+            approveBtn: "Approve",
+            rejectBtn: "Reject"
+        }
     };
 
-    const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+    let currentUserEmail = localStorage.getItem('bilimal_student_email') || '';
+    let currentLang = localStorage.getItem('site_lang') || 'ru';
 
-    const studentEmail = (localStorage.getItem('bilimal_student_email') || '').trim().toLowerCase();
-    const todayStr = new Date().toISOString().split('T')[0];
-    document.getElementById('todayDateStr').innerText = todayStr;
-    document.getElementById('studentEmailDisplay').innerText = studentEmail || 'Почта көрсөтүлгөн эмес';
+    function switchLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('site_lang', lang);
+        document.documentElement.lang = lang;
 
-    let currentStudentName = studentEmail.split('@')[0];
-    let matchedStudentId = null;
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.toLowerCase() === lang);
+        });
 
-    // 1. БАЗАДАН ОКУУЧУНУН АТЫ-ЖӨНҮН АНУКТОО
-    async function loadStudentProfile() {
-        if (!studentEmail) {
-            document.getElementById('studentDisplayName').innerText = "Белгисиз окуучу";
-            return;
-        }
-
-        const studentsSnap = await get(ref(database, 'students'));
-        if (studentsSnap.exists()) {
-            const allStudents = studentsSnap.val();
-            for (const [id, sData] of Object.entries(allStudents)) {
-                if (sData.email && sData.email.toLowerCase().trim() === studentEmail) {
-                    currentStudentName = sData.name || currentStudentName;
-                    matchedStudentId = id;
-                    break;
-                }
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang][key]) {
+                if (key === 'docTitle') document.title = translations[lang][key];
+                else el.textContent = translations[lang][key];
             }
-        }
-        document.getElementById('studentDisplayName').innerText = currentStudentName;
+        });
+        renderDutyList();
     }
 
-    // 2. БҮГҮНКҮ КЕЗМЕТЧИЛЕРДИ РЕАЛЬНЫЙ УБАКЫТТА АЛУУ (Класс жетекчинин панелинде өзгөрсө дароо чыгат)
-    function listenTodayDuty() {
-        const dutyRef = ref(database, `duty_schedule/${todayStr}`);
-        onValue(dutyRef, (snapshot) => {
-            const container = document.getElementById('dutyListContainer');
+    // 4. ИНИЦИАЛИЗАЦИЯ ЖАНА АВТОМАТТЫК ГРАФИК ЛОГИКАСЫ
+    document.addEventListener('DOMContentLoaded', () => {
+        switchLanguage(currentLang);
+        setupStudentSelect();
+        checkUserStatus();
+
+        if (currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAdminRequests();
+        }
+
+        // Рендеринг дат
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDateText').innerText = today.toLocaleDateString(currentLang === 'ky' ? 'kg-KG' : currentLang, options);
+
+        listenToDutyData();
+    });
+
+    function setupStudentSelect() {
+        const select = document.getElementById('studentSelect');
+        select.innerHTML = '';
+        MASTER_STUDENTS.forEach((name, index) => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = `${index + 1}. ${name}`;
+            select.appendChild(opt);
+        });
+    }
+
+    // Колдонуучунун статусун текшерүү
+    function checkUserStatus() {
+        if (!currentUserEmail) return;
+
+        db.ref('duty_users').orderByChild('email').equalTo(currentUserEmail).on('value', snapshot => {
+            const badge = document.getElementById('userStatusBadge');
+            const regBlock = document.getElementById('registrationBlock');
+
             if (snapshot.exists()) {
-                const data = snapshot.val();
-                let html = '<ul class="duty-list">';
-                
-                // Эгер график массив же объект болсо:
-                let list = Array.isArray(data) ? data : Object.values(data);
-                if (data.students) list = data.students;
-
-                list.forEach(item => {
-                    const name = item.name || item.studentName || item;
-                    const status = item.status || 'Дайындалды';
-                    const isClaimed = status === 'Кабыл алынды' || status === 'ACCEPTED';
-
-                    html += `
-                        <li class="duty-item">
-                            <div>
-                                <i class="fas fa-user" style="color:var(--accent-blue); margin-right:6px;"></i>
-                                <strong>${name}</strong>
-                            </div>
-                            <span style="font-size:12px; padding:3px 8px; border-radius:6px; background:${isClaimed ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color:${isClaimed ? 'var(--accent-green)' : 'var(--accent-yellow)'};">
-                                ${status}
-                            </span>
-                        </li>
-                    `;
-                });
-                html += '</ul>';
-                container.innerHTML = html;
+                const data = Object.values(snapshot.val())[0];
+                if (data.status === 'approved') {
+                    badge.className = 'status-badge status-approved';
+                    badge.innerText = translations[currentLang].statusApproved;
+                    regBlock.style.display = 'none';
+                } else {
+                    badge.className = 'status-badge status-pending';
+                    badge.innerText = translations[currentLang].statusPending;
+                    regBlock.style.display = 'none';
+                }
             } else {
-                container.innerHTML = `<p style="color:var(--text-muted); font-size:13px;"><i class="fas fa-info-circle"></i> Бүгүнгө класс жетекчи тарабынан кезметчи дайындала элек.</p>`;
+                if (currentUserEmail.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+                    regBlock.style.display = 'block';
+                }
             }
         });
     }
 
-    // 3. КЕЗМЕТТИ КАБЫЛ АЛУУ
-    document.getElementById('btnClaimDuty').addEventListener('click', async () => {
-        const btn = document.getElementById('btnClaimDuty');
-        const msg = document.getElementById('msgBox');
-        btn.disabled = true;
+    // Сураныч жөнөтүү
+    function submitRegistration() {
+        const selectedName = document.getElementById('studentSelect').value;
+        const reqRef = db.ref('duty_requests').push();
+        reqRef.set({
+            name: selectedName,
+            email: currentUserEmail,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        }).then(() => {
+            alert(currentLang === 'ky' ? 'Сураныч жөнөтүлдү!' : 'Запрос отправлен!');
+            location.reload();
+        });
+    }
 
-        try {
-            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            // Базадагы бүгүнкү кезмет статусун жаңылоо
-            const updateData = {};
-            updateData[`duty_schedule/${todayStr}/claims/${studentEmail.replace(/[^a-zA-Z0-9]/g, '')}`] = {
-                studentName: currentStudentName,
-                email: studentEmail,
-                claimedAt: nowTime,
-                status: 'Кабыл алынды'
-            };
+    // Админ суранычтарын жүктөө
+    function loadAdminRequests() {
+        db.ref('duty_requests').on('value', snapshot => {
+            const list = document.getElementById('requestsList');
+            list.innerHTML = '';
+            if (!snapshot.exists()) {
+                list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Суранычтар жок</p>`;
+                return;
+            }
 
-            await update(ref(database), updateData);
+            snapshot.forEach(child => {
+                const req = child.val();
+                const key = child.key;
 
-            msg.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i> Саат ${nowTime} боюнча кезметти ийгиликтүү кабыл алдыңыз!
+                const div = document.createElement('div');
+                div.className = 'req-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>${req.name}</strong><br>
+                        <small style="color: var(--accent-blue);">${req.email}</small>
+                    </div>
+                    <div>
+                        <button class="btn-action btn-approve" onclick="approveUser('${key}', '${req.name}', '${req.email}')">${translations[currentLang].approveBtn}</button>
+                        <button class="btn-action btn-reject" onclick="rejectUser('${key}')">${translations[currentLang].rejectBtn}</button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        });
+    }
+
+    function approveUser(key, name, email) {
+        db.ref('duty_users').push({ name, email, status: 'approved' });
+        db.ref(`duty_requests/${key}`).remove();
+    }
+
+    function rejectUser(key) {
+        db.ref(`duty_requests/${key}`).remove();
+    }
+
+    // 5. ДЕЖУРСТВО ТИЗМЕСИН АВТОМАТТЫК ИРЕТТӨӨ
+    let currentDutyState = {};
+
+    function listenToDutyData() {
+        db.ref('duty_state').on('value', snapshot => {
+            currentDutyState = snapshot.val() || {};
+            renderDutyList();
+        });
+    }
+
+    function renderDutyList() {
+        const container = document.getElementById('dutyListContainer');
+        container.innerHTML = '';
+
+        // Күндүн индекси боюнча эсептөө (Күнүнө 2 окуучу)
+        const todayStr = new Date().toISOString().split('T')[0];
+        let activePairIndex = currentDutyState.shift_offset || 0;
+
+        // Бугунку 2 окуучуну аныктоо
+        const index1 = (activePairIndex * 2) % MASTER_STUDENTS.length;
+        const index2 = (activePairIndex * 2 + 1) % MASTER_STUDENTS.length;
+
+        const todaysStudents = [
+            { id: index1, name: MASTER_STUDENTS[index1] },
+            { id: index2, name: MASTER_STUDENTS[index2] }
+        ];
+
+        todaysStudents.forEach(st => {
+            const isChecked = currentDutyState[todayStr] && currentDutyState[todayStr][st.id];
+            const metaInfo = isChecked ? `${translations[currentLang].markedBy} ${isChecked.by} (${isChecked.time})` : '';
+
+            const li = document.createElement('li');
+            li.className = 'duty-item';
+            li.innerHTML = `
+                <div class="duty-info">
+                    <div class="student-num">${st.id + 1}</div>
+                    <div>
+                        <div class="student-name">${st.name}</div>
+                        <div class="duty-meta">${metaInfo}</div>
+                    </div>
                 </div>
+                <label class="checkbox-container">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleDutyCheck(${st.id}, this.checked)">
+                    <span class="checkmark"><i class="fas fa-check"></i></span>
+                </label>
             `;
-        } catch (e) {
-            btn.disabled = false;
-            alert("Ката чыкты: " + e.message);
-        }
-    });
+            container.appendChild(li);
+        });
+    }
 
-    // Ишке киргизүү
-    loadStudentProfile();
-    listenTodayDuty();
+    function toggleDutyCheck(studentId, isChecked) {
+        if (!currentUserEmail) {
+            alert(currentLang === 'ky' ? 'Адегенде кириңиз!' : 'Сначала войдите!');
+            return;
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (isChecked) {
+            db.ref(`duty_state/${todayStr}/${studentId}`).set({
+                by: currentUserEmail,
+                time: nowTime
+            });
+        } else {
+            db.ref(`duty_state/${todayStr}/${studentId}`).remove();
+        }
+    }
 </script>
 </body>
 </html>
