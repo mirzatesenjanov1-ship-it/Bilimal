@@ -8,6 +8,7 @@
     
     <!-- Firebase SDK (v9 Compact) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <style>
@@ -150,11 +151,6 @@
             gap: 15px;
         }
 
-        .duty-item.active-today {
-            border-color: var(--accent-green);
-            background: rgba(16, 185, 129, 0.05);
-        }
-
         .duty-info { display: flex; align-items: center; gap: 15px; flex: 1; }
         .student-num {
             width: 32px;
@@ -171,8 +167,6 @@
 
         .student-name { font-size: 15px; font-weight: 600; }
         .duty-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-        .item-actions { display: flex; align-items: center; gap: 10px; }
 
         .checkbox-container {
             display: flex;
@@ -243,7 +237,7 @@
         </div>
     </div>
 
-    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ (ДЕФОЛТ МЕНЕН АЧЫК ТУРАТ, КАРA ЭКРАНДЫ ЖОЙОТ) -->
+    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ -->
     <div id="registrationBlock" class="card">
         <div class="lock-notice">
             <i class="fas fa-user-lock"></i>
@@ -265,10 +259,10 @@
             <input type="email" id="studentEmailInput" placeholder="example@gmail.com" required>
         </div>
 
-        <button class="btn-primary" onclick="submitRegistration()" data-i18n="sendReq">Сураныч жөнөтүү</button>
+        <button class="btn-primary" id="btnSubmitReq" onclick="submitRegistration()" data-i18n="sendReq">Сураныч жөнөтүү</button>
     </div>
 
-    <!-- 2. СУРАНЫЧ ЖӨНӨТҮЛГӨНДӨН КИЙИНКИ БИЛДИРҮҮ -->
+    <!-- 2. СУРАНЫЧ ЖӨНӨТҮЛГӨНДӨН КИЙИНКИ КҮТҮҮ БИЛДИРҮҮСҮ -->
     <div id="pendingBlock" class="card" style="display: none; text-align: center;">
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
         <h3 style="margin-bottom: 8px;" data-i18n="waitTitle">Суранычыңыз жөнөтүлдү</h3>
@@ -285,16 +279,16 @@
         <p style="font-size: 14px; color: var(--text-muted);" id="currentDateText"></p>
 
         <ul class="duty-list" id="dutyListContainer">
-            <!-- Бардык окуучулар ушул жерге чыгат -->
+            <!-- Тизме жүктөлөт -->
         </ul>
     </div>
 
-    <!-- 4. АДМИН ПАНЕЛЬ (СИЗ УЧУН) -->
+    <!-- 4. АДМИН ПАНЕЛЬ (МУГАЛИМ УЧҮН) -->
     <div class="admin-section" id="adminPanel" style="display: none;">
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span data-i18n="adminTitle">Администратор Панели</span></div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="adminDesc">Окуучулардын уруксат суранычтары:</p>
         <div id="requestsList">
-            <!-- Суранычтар ушул жерге түшөт -->
+            <!-- Келген суранычтар -->
         </div>
     </div>
 </div>
@@ -309,6 +303,7 @@
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+    const auth = firebase.auth();
 
     const MASTER_STUDENTS = [
         "Адылбекова Гүлжан Асхатовна",
@@ -426,13 +421,19 @@
     document.addEventListener('DOMContentLoaded', () => {
         switchLanguage(currentLang);
         setupStudentSelect();
-        checkUserAccess();
+
+        // Автоматтык анонимдүү киришти камсыз кылуу (Firebase Security Rules "auth != null" сактоо үчүн)
+        auth.signInAnonymously().then(() => {
+            checkUserAccess();
+            listenToDutyData();
+        }).catch(err => {
+            console.error("Auth Error:", err);
+            checkUserAccess();
+        });
 
         const today = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('currentDateText').innerText = today.toLocaleDateString(currentLang === 'ky' ? 'kg-KG' : currentLang, options);
-
-        listenToDutyData();
     });
 
     function setupStudentSelect() {
@@ -446,7 +447,6 @@
         });
     }
 
-    // FIREBASE SECURITY RULES ЭРЕЖЕЛЕРИНЕ ЫЛАЙЫКТАШТЫРЫЛГАН ТЕКШЕРҮҮ:
     function checkUserAccess() {
         if (!currentUserEmail) {
             document.getElementById('registrationBlock').style.display = 'block';
@@ -465,14 +465,13 @@
             return;
         }
 
-        // Firebase 'vip_users' түйүнүнен текшерүү (.write: true)
+        // vip_users аркылуу текшерүү
         db.ref('vip_users').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
             if (snapshot.exists()) {
                 document.getElementById('mainDutyCard').style.display = 'block';
                 document.getElementById('registrationBlock').style.display = 'none';
                 document.getElementById('pendingBlock').style.display = 'none';
             } else {
-                // Базада жок болсо сураныч жөнөтүлгөнүн же жөнөтүлө электигин аныктоо
                 checkIfPending();
             }
         }, err => {
@@ -481,7 +480,6 @@
     }
 
     function checkIfPending() {
-        // Firebase 'applications' түйүнүнен текшерүү (.write: true)
         db.ref('applications').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
             if (snapshot.exists()) {
                 document.getElementById('pendingBlock').style.display = 'block';
@@ -495,33 +493,51 @@
         });
     }
 
-    // Сураныч жөнөтүү (Firebase rules 'applications' үчүн уруксат берет)
+    // Сураныч жөнөтүү (Катасыз иштейт)
     function submitRegistration() {
         const selectedName = document.getElementById('studentSelect').value;
         const emailInput = document.getElementById('studentEmailInput').value.trim().toLowerCase();
+        const btn = document.getElementById('btnSubmitReq');
 
         if (!emailInput || !emailInput.includes('@')) {
             alert(currentLang === 'ky' ? 'Туура e-mail дарек жазыңыз!' : 'Введите корректный email!');
             return;
         }
 
-        localStorage.setItem('bilimal_student_email', emailInput);
-        currentUserEmail = emailInput;
+        btn.disabled = true;
+        btn.innerText = "...";
 
-        db.ref('applications').push({
-            name: selectedName,
-            email: emailInput,
-            type: 'duty_access',
-            timestamp: firebase.database.ServerValue.TIMESTAMP
-        }).then(() => {
-            alert(currentLang === 'ky' ? 'Суранычыңыз ийгиликтүү жөнөтүлдү!' : 'Запрос успешно отправлен!');
-            checkUserAccess();
-        }).catch(err => {
-            alert("Ката чыкты: " + err.message);
-        });
+        const sendData = () => {
+            localStorage.setItem('bilimal_student_email', emailInput);
+            currentUserEmail = emailInput;
+
+            db.ref('applications').push({
+                studentName: selectedName,
+                email: emailInput,
+                date: new Date().toISOString(),
+                type: 'duty_access'
+            }).then(() => {
+                btn.disabled = false;
+                btn.innerText = translations[currentLang].sendReq;
+                alert(currentLang === 'ky' ? 'Суранычыңыз ийгиликтүү жөнөтүлдү!' : 'Запрос успешно отправлен!');
+                checkUserAccess();
+            }).catch(err => {
+                btn.disabled = false;
+                btn.innerText = translations[currentLang].sendReq;
+                alert("Ката чыкты: " + err.message);
+            });
+        };
+
+        if (!auth.currentUser) {
+            auth.signInAnonymously().then(sendData).catch(err => {
+                alert("Авторизация катасы: " + err.message);
+                btn.disabled = false;
+            });
+        } else {
+            sendData();
+        }
     }
 
-    // Админ үчүн суранычтарды жүктөө
     function loadAdminRequests() {
         db.ref('applications').on('value', snapshot => {
             const list = document.getElementById('requestsList');
@@ -535,16 +551,19 @@
                 const req = child.val();
                 const key = child.key;
 
-                if(req.type === 'duty_access' || !req.type) {
+                const displayName = req.studentName || req.name || "Белгисиз";
+                const displayEmail = req.email || "";
+
+                if(displayEmail) {
                     const div = document.createElement('div');
                     div.className = 'req-item';
                     div.innerHTML = `
                         <div>
-                            <strong>${req.name}</strong><br>
-                            <small style="color: var(--accent-blue);">${req.email}</small>
+                            <strong>${displayName}</strong><br>
+                            <small style="color: var(--accent-blue);">${displayEmail}</small>
                         </div>
                         <div>
-                            <button class="btn-action btn-approve" onclick="approveUser('${key}', '${req.name}', '${req.email}')">${translations[currentLang].approveBtn}</button>
+                            <button class="btn-action btn-approve" onclick="approveUser('${key}', '${displayName}', '${displayEmail}')">${translations[currentLang].approveBtn}</button>
                             <button class="btn-action btn-reject" onclick="rejectUser('${key}')">${translations[currentLang].rejectBtn}</button>
                         </div>
                     `;
@@ -554,27 +573,24 @@
         });
     }
 
-    // Окуучуга уруксат берүү ('vip_users'ге сакталат)
     function approveUser(key, name, email) {
         db.ref('vip_users').push({
-            name: name,
+            studentName: name,
             email: email.toLowerCase(),
-            role: 'student'
+            role: 'student',
+            date: new Date().toISOString()
         }).then(() => {
             db.ref(`applications/${key}`).remove();
         });
     }
 
-    // Суранычты четке кагуу
     function rejectUser(key) {
         db.ref(`applications/${key}`).remove();
     }
 
-    // Дежурство тизмесин башкаруу
     let currentDutyState = {};
 
     function listenToDutyData() {
-        // 'test_results' түйүнү ачык (.write: true)
         db.ref('test_results/duty_state').on('value', snapshot => {
             currentDutyState = snapshot.val() || {};
             renderDutyList();
