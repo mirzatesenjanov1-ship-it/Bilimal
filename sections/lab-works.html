@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Виртуалдык Лаборатория - Көлөмдү өлчөө</title>
-  <!-- Three.js жана OrbitControls / DragControls -->
+  <!-- Three.js, OrbitControls жана DragControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
@@ -194,7 +194,7 @@
     <div id="canvas-container">
       <div class="canvas-hint">
         🖱️ Айландыруу: Чычкандын сол баскычы<br>
-        📏 Сызгычты жылдыруу: Сызгычты басып чоюңуз
+        📏 Сызгычты жылдыруу: Чычкан менен кармап чоюңуз
       </div>
     </div>
 
@@ -263,10 +263,10 @@
       container.appendChild(renderer.domElement);
 
       // 4. Жарык
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       scene.add(ambientLight);
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
       dirLight.position.set(10, 20, 15);
       scene.add(dirLight);
 
@@ -279,47 +279,102 @@
       grid.position.y = -2;
       scene.add(grid);
 
-      // Сызгычты түзүү
+      // Жүктөлгөн Сызгычты түзүү
       rulerGroup = new THREE.Group();
-      createRuler();
+      createRulerWithNumbers();
       scene.add(rulerGroup);
 
-      // Сызгычты жылдыруу (DragControls)
+      // DragControls (Сызгычты жылдыруу)
       dragControls = new THREE.DragControls([rulerGroup], camera, renderer.domElement);
-      
-      dragControls.addEventListener('dragstart', function () {
-        orbitControls.enabled = false; // Жылдырып жатканда сахна айланбайт
-      });
-      
-      dragControls.addEventListener('dragend', function () {
-        orbitControls.enabled = true;
-      });
+      dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
+      dragControls.addEventListener('dragend', () => orbitControls.enabled = true);
 
-      // Алгачкы объектти жүктөө
+      // Алгачкы объект
       loadBox();
 
       animate();
     }
 
-    // Сызгыч түзүү (Масштабы туура 1 см = 1 бирдик)
-    function createRuler() {
-      rulerGroup.clear();
-      
-      // Негизги жыгач сызгыч
-      const geometry = new THREE.BoxGeometry(8, 0.2, 0.8);
-      const material = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 });
-      const rulerMesh = new THREE.Mesh(geometry, material);
-      rulerGroup.add(rulerMesh);
+    // Сызгычтын бетине Сандарды жана Сандык Штрихтерди тартуучу Функция (Canvas Texture)
+    function createRulerTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
 
-      // Штрихтер жана Сандар
-      for (let i = -3.5; i <= 3.5; i += 0.5) {
-        const isCm = (i % 1 === 0);
-        const markGeo = new THREE.BoxGeometry(0.04, 0.21, isCm ? 0.4 : 0.2);
-        const markMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-        const mark = new THREE.Mesh(markGeo, markMat);
-        mark.position.set(i, 0.01, isCm ? 0.2 : 0.3);
-        rulerGroup.add(mark);
+      // Жыгач / Сары фон
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Алдыңкы чектер
+      ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 28px Poppins, sans-serif';
+      ctx.textAlign = 'center';
+
+      const totalCm = 8;
+      const startX = 64; 
+      const stepCm = (canvas.width - 128) / totalCm; // 1 см аралыгы
+
+      // Миллиметрлик жана сантиметрлик сызыктар, сандар
+      for (let i = 0; i <= totalCm; i++) {
+        const x = startX + i * stepCm;
+
+        // Сантиметрлик чоң штрих
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 45);
+        ctx.stroke();
+
+        // Санжазуулар (0, 1, 2, 3, 4, 5, 6, 7, 8 см)
+        ctx.fillText(i.toString(), x, 85);
+
+        // Жарым сантиметрдик жана мм штрихтер
+        if (i < totalCm) {
+          for (let mm = 1; mm < 10; mm++) {
+            const mmX = x + (mm * stepCm / 10);
+            ctx.lineWidth = (mm === 5) ? 3 : 1.5;
+            const h = (mm === 5) ? 32 : 20;
+
+            ctx.beginPath();
+            ctx.moveTo(mmX, 0);
+            ctx.lineTo(mmX, h);
+            ctx.stroke();
+          }
+        }
       }
+
+      // "см" жазуусу
+      ctx.font = 'italic bold 22px Poppins';
+      ctx.fillText('см', canvas.width - 35, 80);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      return texture;
+    }
+
+    // 3D Сызгычты туура материалдар менен куруу
+    function createRulerWithNumbers() {
+      rulerGroup.clear();
+
+      const texture = createRulerTexture();
+      
+      // Сызгычтын капталдарына материалдар (үстүнкү бетине текстура)
+      const sideMaterial = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
+      const topMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.3 });
+
+      const materials = [
+        sideMaterial, // оң
+        sideMaterial, // сол
+        topMaterial,  // үстүнкү бети (Жазуулар ушул жерде)
+        sideMaterial, // асты
+        sideMaterial, // алды
+        sideMaterial  // арты
+      ];
+
+      const geometry = new THREE.BoxGeometry(8.8, 0.2, 1.2);
+      const rulerMesh = new THREE.Mesh(geometry, materials);
+      rulerGroup.add(rulerMesh);
 
       resetRuler();
     }
@@ -339,7 +394,7 @@
       if (axis === 'z') rulerGroup.rotation.z += Math.PI / 2;
     }
 
-    // Объектти алмаштыруу функциялары
+    // Объекттерди жүктөө
     function changeObject() {
       const type = document.getElementById('object-select').value;
       const subBtn = document.getElementById('submerge-btn');
@@ -358,7 +413,6 @@
       }
     }
 
-    // 1. Параллелепипед
     function loadBox() {
       const geo = new THREE.BoxGeometry(4, 3, 6);
       const mat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.1, roughness: 0.2 });
@@ -375,7 +429,6 @@
       `;
     }
 
-    // 2. Куб
     function loadCube() {
       const geo = new THREE.BoxGeometry(4, 4, 4);
       const mat = new THREE.MeshStandardMaterial({ color: 0xa855f7, metalness: 0.1, roughness: 0.2 });
@@ -390,7 +443,6 @@
       `;
     }
 
-    // 3. Цилиндр
     function loadCylinder() {
       const geo = new THREE.CylinderGeometry(2, 2, 5, 32);
       const mat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, metalness: 0.1, roughness: 0.2 });
@@ -406,17 +458,12 @@
       `;
     }
 
-    // 4. Мензурка жана Таш
     function loadIrregular() {
       currentMesh = new THREE.Group();
 
       const glassGeo = new THREE.CylinderGeometry(2, 2, 7, 32, 1, true);
       const glassMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.3,
-        roughness: 0.1,
-        transmission: 0.9
+        color: 0xffffff, transparent: true, opacity: 0.3, roughness: 0.1, transmission: 0.9
       });
       const glass = new THREE.Mesh(glassGeo, glassMat);
       currentMesh.add(glass);
@@ -442,7 +489,6 @@
       currentMesh.add(stone);
 
       scene.add(currentMesh);
-
       updateWaterInfo(false);
     }
 
