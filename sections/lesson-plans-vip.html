@@ -15,6 +15,9 @@
       margin: 0;
       padding: 0;
       font-family: 'Poppins', sans-serif;
+      /* Текстти көчүрүүгө бөгөт коюу */
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     body {
@@ -117,6 +120,8 @@
       color: #fff;
       font-size: 0.9rem;
       outline: none;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     .search-input:focus {
@@ -304,6 +309,8 @@
       color: #fff;
       font-size: 0.9rem;
       outline: none;
+      user-select: text;
+      -webkit-user-select: text;
     }
 
     .submit-btn {
@@ -475,30 +482,30 @@
 
   <script>
     // ===============================================
-    // 1. КОДДУН ӨЗҮНӨ КАТУУ БЕКИТИЛГЕН АДМИН ЛОГИН/ПАРОЛЬ
-    // (Эми башка эч ким өзүнөн-өзү админ боло албайт!)
+    // F12 ЖАНА КОДДУ ИНСПЕКТИРОВАНИЕ КЫЛУУГА БӨГӨТ
+    // ===============================================
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    document.addEventListener('keydown', function(e) {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
+      if (
+        e.keyCode === 123 || 
+        (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
+        (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))
+      ) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // ===============================================
+    // АДМИН ЛОГИН/ПАРОЛЬ
     // ===============================================
     const ADMIN_LOGIN = "admin";
-    const ADMIN_PASS = "bilimal2026"; // Каалаган паролуңузга өзгөртүп алсаңыз болот
+    const ADMIN_PASS = "bilimal2026";
 
-    // ===============================================
-    // 2. БАРДЫК КОЛДОНУУЧУЛАРГА КӨРҮНҮҮЧҮ ТУРУКТУУ БАЗА
-    // (Бош же иштебеген карточкалар таптакыр жок)
-    // ===============================================
-    const defaultPlans = [
-      {
-        id: "plan_10_01",
-        grade: "10",
-        title: "Түз сызыктуу бир калыптагы кыймыл",
-        previewUrl: "https://drive.google.com/file/d/13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x/preview",
-        downloadUrl: "https://drive.google.com/uc?export=download&id=13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x",
-        price: 10
-      }
-    ];
-
-    // Браузерден эски/ката пландарды тазалоо жана жүктөөнү тууралоо
-    let savedPlans = JSON.parse(localStorage.getItem('bilimal_plans_v2'));
-    let lessonPlans = savedPlans && savedPlans.length > 0 ? savedPlans : defaultPlans;
+    // База азыр ПУСТОЙ (Тазаланды)
+    let lessonPlans = JSON.parse(localStorage.getItem('bilimal_plans_clean')) || [];
 
     // Сөздүк
     const translations = {
@@ -518,7 +525,7 @@
         lblTitle: 'Тема урока:',
         lblUrl: 'Ссылка Google Drive:',
         btnSavePlan: 'Добавить в базу',
-        emptyMsg: 'Планы уроков не найдены.',
+        emptyMsg: 'Планы уроков пока не добавлены.',
         paySuccess: 'Оплата принята! Начинается скачивание файла...',
         urlError: 'Пожалуйста, введите корректную ссылку Google Drive!'
       },
@@ -538,7 +545,7 @@
         lblTitle: 'Сабактын темасы:',
         lblUrl: 'Google Drive Шилтемеси:',
         btnSavePlan: 'Базага кошуу',
-        emptyMsg: 'Сабак пландары табылган жок.',
+        emptyMsg: 'Сабак пландары азырынча кошула элек.',
         paySuccess: 'Төлөм кабыл алынды! Файлды жүктөө башталууда...',
         urlError: 'Сураныч, туура Google Drive шилтемесин киргизиңиз!'
       },
@@ -558,7 +565,7 @@
         lblTitle: 'Lesson Topic:',
         lblUrl: 'Google Drive Link:',
         btnSavePlan: 'Add to Database',
-        emptyMsg: 'No lesson plans found.',
+        emptyMsg: 'No lesson plans added yet.',
         paySuccess: 'Payment accepted! Downloading file...',
         urlError: 'Please enter a valid Google Drive URL!'
       }
@@ -588,7 +595,6 @@
       filterPlans();
     }
 
-    // Пландарды экранга чыгаруу
     function renderPlans(plans) {
       const container = document.getElementById('plansContainer');
       const t = translations[currentLang];
@@ -656,9 +662,6 @@
       document.getElementById(id).style.display = 'none';
     }
 
-    // ===============================================
-    // АДМИН АВТОРИЗАЦИЯСЫН АТАЙЫН ТЕКШЕРҮҮ
-    // ===============================================
     function openAuthModal() {
       document.getElementById('authStatusMsg').innerText = '';
       document.getElementById('authEmail').value = '';
@@ -672,7 +675,6 @@
       const userPass = document.getElementById('authPassword').value.trim();
       const statusMsg = document.getElementById('authStatusMsg');
 
-      // Туура бекитилген Логин жана Паролду текшерүү
       if (userLogin === ADMIN_LOGIN && userPass === ADMIN_PASS) {
         closeModal('authModal');
         document.getElementById('adminModal').style.display = 'flex';
@@ -709,7 +711,7 @@
       };
 
       lessonPlans.unshift(newPlan);
-      localStorage.setItem('bilimal_plans_v2', JSON.stringify(lessonPlans));
+      localStorage.setItem('bilimal_plans_clean', JSON.stringify(lessonPlans));
 
       renderPlans(lessonPlans);
       closeModal('adminModal');
