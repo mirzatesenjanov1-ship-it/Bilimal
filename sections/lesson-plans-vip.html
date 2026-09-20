@@ -362,7 +362,7 @@
         <option value="en">English</option>
       </select>
 
-      <button class="admin-btn" onclick="handleAdminAuthClick()">
+      <button class="admin-btn" onclick="openAuthModal()">
         <i class="fa-solid fa-user-shield"></i> <span id="txtAdminBtn">Админ Панель</span>
       </button>
     </div>
@@ -414,31 +414,31 @@
     </div>
   </div>
 
-  <!-- Админ Кирүү / Катталуу Модалы (1 адамдан ашык сакталбайт) -->
+  <!-- АДМИН КИРҮҮ МОДАЛЫ -->
   <div class="modal-overlay" id="authModal">
     <div class="modal-content">
       <i class="fa-solid fa-xmark close-modal" onclick="closeModal('authModal')"></i>
-      <h3 style="color: #f59e0b; margin-bottom: 15px;" id="authTitle"><i class="fa-solid fa-lock"></i> Вход для Администратора</h3>
+      <h3 style="color: #f59e0b; margin-bottom: 15px;"><i class="fa-solid fa-lock"></i> Вход для Администратора</h3>
       
       <form onsubmit="handleAuthSubmit(event)">
         <div class="form-group">
-          <label>Логин / Email:</label>
-          <input type="text" id="authEmail" required placeholder="Ваш логин">
+          <label>Логин:</label>
+          <input type="text" id="authEmail" required placeholder="Введите логин">
         </div>
 
         <div class="form-group">
           <label>Пароль:</label>
-          <input type="password" id="authPassword" required placeholder="Ваш пароль">
+          <input type="password" id="authPassword" required placeholder="Введите пароль">
         </div>
 
-        <div id="authStatusMsg" style="font-size: 0.8rem; color: #ef4444; margin-bottom: 10px;"></div>
+        <div id="authStatusMsg" style="font-size: 0.85rem; color: #ef4444; margin-bottom: 10px;"></div>
 
-        <button type="submit" class="submit-btn" id="btnAuthSubmit">Войти</button>
+        <button type="submit" class="submit-btn">Войти в панель</button>
       </form>
     </div>
   </div>
 
-  <!-- Эксклюзивдүү Админ Башкаруу Модалы -->
+  <!-- АДМИН БАШКАРУУ МОДАЛЫ -->
   <div class="modal-overlay" id="adminModal">
     <div class="modal-content">
       <i class="fa-solid fa-xmark close-modal" onclick="closeModal('adminModal')"></i>
@@ -474,7 +474,33 @@
   </div>
 
   <script>
-    // 3 тилдеги котормо сөздүк
+    // ===============================================
+    // 1. КОДДУН ӨЗҮНӨ КАТУУ БЕКИТИЛГЕН АДМИН ЛОГИН/ПАРОЛЬ
+    // (Эми башка эч ким өзүнөн-өзү админ боло албайт!)
+    // ===============================================
+    const ADMIN_LOGIN = "admin";
+    const ADMIN_PASS = "bilimal2026"; // Каалаган паролуңузга өзгөртүп алсаңыз болот
+
+    // ===============================================
+    // 2. БАРДЫК КОЛДОНУУЧУЛАРГА КӨРҮНҮҮЧҮ ТУРУКТУУ БАЗА
+    // (Бош же иштебеген карточкалар таптакыр жок)
+    // ===============================================
+    const defaultPlans = [
+      {
+        id: "plan_10_01",
+        grade: "10",
+        title: "Түз сызыктуу бир калыптагы кыймыл",
+        previewUrl: "https://drive.google.com/file/d/13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x/preview",
+        downloadUrl: "https://drive.google.com/uc?export=download&id=13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x",
+        price: 10
+      }
+    ];
+
+    // Браузерден эски/ката пландарды тазалоо жана жүктөөнү тууралоо
+    let savedPlans = JSON.parse(localStorage.getItem('bilimal_plans_v2'));
+    let lessonPlans = savedPlans && savedPlans.length > 0 ? savedPlans : defaultPlans;
+
+    // Сөздүк
     const translations = {
       ru: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Открытая база',
@@ -539,23 +565,8 @@
     };
 
     let currentLang = 'ru';
-
-    // 1 ГАНА туура иштеген баштапкы файл (Ката жана бош карточкалар биротоло өчүрүлдү)
-    let defaultPlans = [
-      {
-        id: "plan_10_01",
-        grade: "10",
-        title: "Түз сызыктуу бир калыптагы кыймыл",
-        previewUrl: "https://drive.google.com/file/d/13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x/preview",
-        downloadUrl: "https://drive.google.com/uc?export=download&id=13a0Ivd-v_A-PIn4B8mN2oP4eCgErmR_x",
-        price: 10
-      }
-    ];
-
-    let lessonPlans = JSON.parse(localStorage.getItem('bilimal_plans')) || defaultPlans;
     let selectedPlanForPay = null;
 
-    // Тилди өзгөртүү
     function changeLanguage(lang) {
       currentLang = lang;
       const t = translations[lang];
@@ -577,13 +588,13 @@
       filterPlans();
     }
 
-    // Тек гана ачык карточкаларды тартуу
+    // Пландарды экранга чыгаруу
     function renderPlans(plans) {
       const container = document.getElementById('plansContainer');
       const t = translations[currentLang];
       container.innerHTML = '';
 
-      if (plans.length === 0) {
+      if (!plans || plans.length === 0) {
         container.innerHTML = `<div class="empty-msg"><i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 10px;"></i><br>${t.emptyMsg}</div>`;
         return;
       }
@@ -646,50 +657,27 @@
     }
 
     // ===============================================
-    // АДМИН ПАНЕЛЬ ЖАНА 1 АДАМГА АТАЙЫН БӨГӨТ (AUTH)
+    // АДМИН АВТОРИЗАЦИЯСЫН АТАЙЫН ТЕКШЕРҮҮ
     // ===============================================
-    function handleAdminAuthClick() {
-      const registeredAdmin = JSON.parse(localStorage.getItem('bilimal_single_admin'));
-      const statusMsg = document.getElementById('authStatusMsg');
-      statusMsg.innerText = '';
-
-      if (!registeredAdmin) {
-        // Биринчи жолу ачылганда Катталуу режими
-        document.getElementById('authTitle').innerHTML = '<i class="fa-solid fa-user-plus"></i> Регистрация Единственного Админа';
-        document.getElementById('btnAuthSubmit').innerText = 'Зарегистрироваться (1 человек)';
-      } else {
-        // Мурда катталган болсо Кирүү режими
-        document.getElementById('authTitle').innerHTML = '<i class="fa-solid fa-lock"></i> Вход для Администратора';
-        document.getElementById('btnAuthSubmit').innerText = 'Войти в панель';
-      }
-
+    function openAuthModal() {
+      document.getElementById('authStatusMsg').innerText = '';
+      document.getElementById('authEmail').value = '';
+      document.getElementById('authPassword').value = '';
       document.getElementById('authModal').style.display = 'flex';
     }
 
     function handleAuthSubmit(e) {
       e.preventDefault();
-      const emailInput = document.getElementById('authEmail').value.trim();
-      const passInput = document.getElementById('authPassword').value.trim();
+      const userLogin = document.getElementById('authEmail').value.trim();
+      const userPass = document.getElementById('authPassword').value.trim();
       const statusMsg = document.getElementById('authStatusMsg');
 
-      let registeredAdmin = JSON.parse(localStorage.getItem('bilimal_single_admin'));
-
-      if (!registeredAdmin) {
-        // 1-ЖОЛУ КАТТАЛУУ: Браузерге бир гана сиздин аккаунт жазылат
-        registeredAdmin = { email: emailInput, pass: passInput };
-        localStorage.setItem('bilimal_single_admin', JSON.stringify(registeredAdmin));
-
-        alert("Вы успешно зарегистрированы как ЭДИНОЧНЫЙ администратор! Вход открыт.");
+      // Туура бекитилген Логин жана Паролду текшерүү
+      if (userLogin === ADMIN_LOGIN && userPass === ADMIN_PASS) {
         closeModal('authModal');
         document.getElementById('adminModal').style.display = 'flex';
       } else {
-        // КИЙИНКИ КИРҮҮЛӨРДӨ ТЕКШЕРҮҮ
-        if (registeredAdmin.email === emailInput && registeredAdmin.pass === passInput) {
-          closeModal('authModal');
-          document.getElementById('adminModal').style.display = 'flex';
-        } else {
-          statusMsg.innerText = "Ошибка: Данные не совпадают! Вход ограничен 1 администратором.";
-        }
+        statusMsg.innerText = "Неверный логин или пароль! Доступ запрещен.";
       }
     }
 
@@ -721,7 +709,7 @@
       };
 
       lessonPlans.unshift(newPlan);
-      localStorage.setItem('bilimal_plans', JSON.stringify(lessonPlans));
+      localStorage.setItem('bilimal_plans_v2', JSON.stringify(lessonPlans));
 
       renderPlans(lessonPlans);
       closeModal('adminModal');
