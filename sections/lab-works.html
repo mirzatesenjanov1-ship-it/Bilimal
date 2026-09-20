@@ -4,9 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Виртуалдык Лаборатория - Көлөмдү өлчөө</title>
-  <!-- Three.js жана OrbitControls -->
+  <!-- Three.js жана OrbitControls / DragControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/DragControls.js"></script>
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   
@@ -41,16 +42,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      animation: pulseGlow 3s infinite alternate;
-    }
-
-    @keyframes pulseGlow {
-      0% { box-shadow: 0 0 15px rgba(168, 85, 247, 0.3); }
-      100% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.7); }
     }
 
     .vip-banner h2 {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 700;
       background: linear-gradient(90deg, #38bdf8, #c084fc, #f43f5e);
       -webkit-background-clip: text;
@@ -67,19 +62,11 @@
       border-radius: 30px;
       text-decoration: none;
       font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
-      transition: all 0.3s ease;
-      border: none;
-      cursor: pointer;
     }
 
-    .vip-btn:hover {
-      transform: translateY(-2px) scale(1.05);
-      box-shadow: 0 6px 20px rgba(225, 29, 72, 0.6);
-    }
-
-    /* Лабораториянын Негизги Контейнери */
+    /* Лабораториянын Контейнери */
     .lab-container {
       width: 100%;
       max-width: 1000px;
@@ -97,10 +84,9 @@
       .vip-banner { flex-direction: column; gap: 12px; text-align: center; }
     }
 
-    /* 3D Визуалдаштыруу терезеси */
     #canvas-container {
       width: 100%;
-      height: 450px;
+      height: 480px;
       background: radial-gradient(circle at center, #1f2937 0%, #0f172a 100%);
       border-radius: 14px;
       position: relative;
@@ -112,15 +98,15 @@
       position: absolute;
       top: 12px;
       left: 12px;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 6px 12px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 14px;
       border-radius: 8px;
       font-size: 0.8rem;
-      color: #9ca3af;
+      color: #38bdf8;
       pointer-events: none;
+      line-height: 1.4;
     }
 
-    /* Башкаруу Панели */
     .control-panel {
       display: flex;
       flex-direction: column;
@@ -135,7 +121,7 @@
     }
 
     .panel-card h3 {
-      font-size: 1rem;
+      font-size: 0.95rem;
       color: #38bdf8;
       margin-bottom: 10px;
     }
@@ -147,30 +133,42 @@
       border: 1px solid #475569;
       background: #0f172a;
       color: #fff;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       cursor: pointer;
       margin-bottom: 8px;
-    }
-
-    select:focus, button:focus {
-      outline: 2px solid #a855f7;
     }
 
     .btn-action {
       background: #2563eb;
       font-weight: 600;
       border: none;
-      transition: background 0.2s;
     }
 
     .btn-action:hover {
       background: #1d4ed8;
     }
 
+    .rotate-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
+    }
+
+    .rotate-btn {
+      background: #374151;
+      padding: 6px;
+      font-size: 0.75rem;
+      margin-bottom: 0;
+    }
+
+    .rotate-btn:hover {
+      background: #4b5563;
+    }
+
     .measure-info {
       font-size: 0.88rem;
       color: #cbd5e1;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     .measure-info span {
@@ -181,7 +179,7 @@
 </head>
 <body>
 
-  <!-- Жеке кабинетке чакыруу бөлүгү -->
+  <!-- Жеке кабинетке чакыруу банери -->
   <div class="vip-banner">
     <h2>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -190,15 +188,17 @@
     <a href="#" class="vip-btn">Кабинетке кирүү 🚀</a>
   </div>
 
-  <!-- Лаборатория Интерфейси -->
   <div class="lab-container">
     
-    <!-- 3D Сахна -->
+    <!-- 3D Визуалдаштыруу терезеси -->
     <div id="canvas-container">
-      <div class="canvas-hint">🖱️ Нерсени айландыруу үчүн чычканды чоюңуз</div>
+      <div class="canvas-hint">
+        🖱️ Айландыруу: Чычкандын сол баскычы<br>
+        📏 Сызгычты жылдыруу: Сызгычты басып чоюңуз
+      </div>
     </div>
 
-    <!-- Башкаруу панели -->
+    <!-- Башкаруу Панели -->
     <div class="control-panel">
       
       <div class="panel-card">
@@ -212,20 +212,29 @@
       </div>
 
       <div class="panel-card">
-        <h3>2. Өлчөө куралдары</h3>
-        <button class="btn-action" onclick="toggleRuler()">📏 Виртуалдык сызгычты күйгүзүү / өчүрүү</button>
-        <button id="submerge-btn" class="btn-action" style="display:none; background:#059669;" onclick="toggleSubmerge()">💧 Ташты сууга салуу</button>
+        <h3>2. Сызгычты башкаруу</h3>
+        <button class="btn-action" onclick="toggleRuler()">📏 Сызгычты күйгүзүү / өчүрүү</button>
+        <button class="btn-action" style="background: #475569;" onclick="resetRuler()">🔄 Сызгычты ордуна кайтаруу</button>
+        
+        <p style="font-size: 0.8rem; color: #9ca3af; margin: 8px 0 4px 0;">Сызгычты айландыруу (90°):</p>
+        <div class="rotate-grid">
+          <button class="rotate-btn" onclick="rotateRuler('x')">X огу</button>
+          <button class="rotate-btn" onclick="rotateRuler('y')">Y огу</button>
+          <button class="rotate-btn" onclick="rotateRuler('z')">Z огу</button>
+        </div>
+
+        <button id="submerge-btn" class="btn-action" style="display:none; background:#059669; margin-top: 10px;" onclick="toggleSubmerge()">💧 Ташты сууга салуу</button>
       </div>
 
       <div class="panel-card">
         <h3>3. Өлчөө жыйынтыгы</h3>
         <div id="info-display" class="measure-info">
           Параметри: <br>
-          • Эни ($a$): <span>4.0 см</span><br>
-          • Узундугу ($b$): <span>6.0 см</span><br>
-          • Бийиктиги ($c$): <span>3.0 см</span><br><br>
-          Формула: $V = a \cdot b \cdot c$<br>
-          Көлөмү ($V$): <span>72.0 см³</span>
+          • Эни (a): <span>4.0 см</span><br>
+          • Узундугу (b): <span>6.0 см</span><br>
+          • Бийиктиги (c): <span>3.0 см</span><br><br>
+          Формула: V = a × b × c<br>
+          Көлөмү (V): <span>72.0 см³</span>
         </div>
       </div>
 
@@ -233,15 +242,14 @@
   </div>
 
   <script>
-    // Three.js Негизги өзгөрмөлөр
-    let scene, camera, renderer, controls;
+    let scene, camera, renderer, orbitControls, dragControls;
     let currentMesh, rulerGroup, waterMesh;
     let isSubmerged = false;
 
     const container = document.getElementById('canvas-container');
 
     function init() {
-      // 1. Сахна (Scene)
+      // 1. Сахна
       scene = new THREE.Scene();
 
       // 2. Камера
@@ -262,55 +270,80 @@
       dirLight.position.set(10, 20, 15);
       scene.add(dirLight);
 
-      // 5. OrbitControls (3D айландыруу)
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
+      // 5. Башкаруу (OrbitControls)
+      orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
+      orbitControls.enableDamping = true;
 
       // Торчо (Grid)
       const grid = new THREE.GridHelper(20, 20, 0x475569, 0x1e293b);
       grid.position.y = -2;
       scene.add(grid);
 
-      // Алгачкы объектти жүктөө
-      loadBox();
-
-      // Сызгыч тобу
+      // Сызгычты түзүү
       rulerGroup = new THREE.Group();
       createRuler();
       scene.add(rulerGroup);
 
+      // Сызгычты жылдыруу (DragControls)
+      dragControls = new THREE.DragControls([rulerGroup], camera, renderer.domElement);
+      
+      dragControls.addEventListener('dragstart', function () {
+        orbitControls.enabled = false; // Жылдырып жатканда сахна айланбайт
+      });
+      
+      dragControls.addEventListener('dragend', function () {
+        orbitControls.enabled = true;
+      });
+
+      // Алгачкы объектти жүктөө
+      loadBox();
+
       animate();
     }
 
-    // Сызгыч түзүү
+    // Сызгыч түзүү (Масштабы туура 1 см = 1 бирдик)
     function createRuler() {
       rulerGroup.clear();
+      
+      // Негизги жыгач сызгыч
       const geometry = new THREE.BoxGeometry(8, 0.2, 0.8);
       const material = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 });
-      const ruler = new THREE.Mesh(geometry, material);
-      ruler.position.set(0, -1.8, 4);
-      rulerGroup.add(ruler);
+      const rulerMesh = new THREE.Mesh(geometry, material);
+      rulerGroup.add(rulerMesh);
 
-      // Сызгычтын бөлүнүштөрү (штрихтер)
+      // Штрихтер жана Сандар
       for (let i = -3.5; i <= 3.5; i += 0.5) {
-        const markGeo = new THREE.BoxGeometry(0.04, 0.21, 0.3);
+        const isCm = (i % 1 === 0);
+        const markGeo = new THREE.BoxGeometry(0.04, 0.21, isCm ? 0.4 : 0.2);
         const markMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
         const mark = new THREE.Mesh(markGeo, markMat);
-        mark.position.set(i, -1.79, 4.2);
+        mark.position.set(i, 0.01, isCm ? 0.2 : 0.3);
         rulerGroup.add(mark);
       }
+
+      resetRuler();
+    }
+
+    function resetRuler() {
+      rulerGroup.position.set(0, -1.8, 4);
+      rulerGroup.rotation.set(0, 0, 0);
     }
 
     function toggleRuler() {
       rulerGroup.visible = !rulerGroup.visible;
     }
 
-    // Объекттерди алмаштыруу
+    function rotateRuler(axis) {
+      if (axis === 'x') rulerGroup.rotation.x += Math.PI / 2;
+      if (axis === 'y') rulerGroup.rotation.y += Math.PI / 2;
+      if (axis === 'z') rulerGroup.rotation.z += Math.PI / 2;
+    }
+
+    // Объектти алмаштыруу функциялары
     function changeObject() {
       const type = document.getElementById('object-select').value;
       const subBtn = document.getElementById('submerge-btn');
       
-      // Тазалоо
       if (currentMesh) scene.remove(currentMesh);
       if (waterMesh) scene.remove(waterMesh);
       subBtn.style.display = 'none';
@@ -334,11 +367,11 @@
 
       document.getElementById('info-display').innerHTML = `
         Параметри:<br>
-        • Эни ($a$): <span>4.0 см</span><br>
-        • Узундугу ($b$): <span>6.0 см</span><br>
-        • Бийиктиги ($c$): <span>3.0 см</span><br><br>
-        Формула: $V = a \\cdot b \\cdot c$<br>
-        Көлөмү ($V$): <span>72.0 см³</span>
+        • Эни (a): <span>4.0 см</span><br>
+        • Узундугу (b): <span>6.0 см</span><br>
+        • Бийиктиги (c): <span>3.0 см</span><br><br>
+        Формула: V = a × b × c<br>
+        Көлөмү (V): <span>72.0 см³</span>
       `;
     }
 
@@ -351,9 +384,9 @@
 
       document.getElementById('info-display').innerHTML = `
         Параметри:<br>
-        • Кырлары ($a$): <span>4.0 см</span><br><br>
-        Формула: $V = a³$<br>
-        Көлөмү ($V$): <span>64.0 см³</span>
+        • Кырлары (a): <span>4.0 см</span><br><br>
+        Формула: V = a³<br>
+        Көлөмү (V): <span>64.0 см³</span>
       `;
     }
 
@@ -366,18 +399,17 @@
 
       document.getElementById('info-display').innerHTML = `
         Параметри:<br>
-        • Радиусу ($r$): <span>2.0 см</span><br>
-        • Бийиктиги ($h$): <span>5.0 см</span><br><br>
-        Формула: $V = \\pi \\cdot r² \\cdot h$<br>
-        Көлөмү ($V$): <span>62.8 см³</span>
+        • Радиусу (r): <span>2.0 см</span><br>
+        • Бийиктиги (h): <span>5.0 см</span><br><br>
+        Формула: V = π × r² × h<br>
+        Көлөмү (V): <span>62.8 см³</span>
       `;
     }
 
-    // 4. Туура эмес форма (Мензурка + Таш)
+    // 4. Мензурка жана Таш
     function loadIrregular() {
       currentMesh = new THREE.Group();
 
-      // Мензурка (Айнек цилиндр)
       const glassGeo = new THREE.CylinderGeometry(2, 2, 7, 32, 1, true);
       const glassMat = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
@@ -389,16 +421,13 @@
       const glass = new THREE.Mesh(glassGeo, glassMat);
       currentMesh.add(glass);
 
-      // Суу
       const waterGeo = new THREE.CylinderGeometry(1.9, 1.9, 3, 32);
       const waterMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, transparent: true, opacity: 0.6 });
       waterMesh = new THREE.Mesh(waterGeo, waterMat);
       waterMesh.position.y = -1.5;
       scene.add(waterMesh);
 
-      // Таш (Туура эмес форма)
       const stoneGeo = new THREE.DodecahedronGeometry(1, 1);
-      // Формасын бузуу (туура эмес кылуу)
       const pos = stoneGeo.attributes.position;
       for (let i = 0; i < pos.count; i++) {
         pos.setX(i, pos.getX(i) + (Math.random() - 0.5) * 0.3);
@@ -409,7 +438,7 @@
       const stoneMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 });
       const stone = new THREE.Mesh(stoneGeo, stoneMat);
       stone.name = "stone";
-      stone.position.set(4, -1, 0); // Сыртта турат
+      stone.position.set(4, -1, 0);
       currentMesh.add(stone);
 
       scene.add(currentMesh);
@@ -417,7 +446,6 @@
       updateWaterInfo(false);
     }
 
-    // Ташты сууга салуу/чыгаруу
     function toggleSubmerge() {
       const stone = currentMesh.getObjectByName("stone");
       if (!stone) return;
@@ -425,8 +453,8 @@
       isSubmerged = !isSubmerged;
 
       if (isSubmerged) {
-        stone.position.set(0, -2.2, 0); // Мензурканын түбүнө түшөт
-        waterMesh.scale.set(1, 1.4, 1); // Суу жогорулайт
+        stone.position.set(0, -2.2, 0);
+        waterMesh.scale.set(1, 1.4, 1);
         waterMesh.position.y = -0.9;
       } else {
         stone.position.set(4, -1, 0);
@@ -440,21 +468,19 @@
     function updateWaterInfo(submerged) {
       document.getElementById('info-display').innerHTML = `
         Өлчөө ыкмасы (Мензурка):<br>
-        • Суунун баштапкы көлөмү ($V_1$): <span>50 мл (см³)</span><br>
-        ${submerged ? `• Таш салынгандан кийинки көлөм ($V_2$): <span>70 мл (см³)</span><br><br>
-        Формула: $V_x = V_2 - V_1$<br>
-        Таштын көлөмү ($V$): <span>20.0 см³</span>` : '<br><i>Ташты сууга салуу баскычын басыңыз.</i>'}
+        • Баштапкы көлөм (V1): <span>50 мл (см³)</span><br>
+        ${submerged ? `• Кийинки көлөм (V2): <span>70 мл (см³)</span><br><br>
+        Формула: Vx = V2 - V1<br>
+        Таштын көлөмү (V): <span>20.0 см³</span>` : '<br><i>Ташты сууга салуу баскычын басыңыз.</i>'}
       `;
     }
 
-    // Анимация цикли
     function animate() {
       requestAnimationFrame(animate);
-      controls.update();
+      orbitControls.update();
       renderer.render(scene, camera);
     }
 
-    // Экран өлчөмү өзгөргөндө адаптация
     window.addEventListener('resize', () => {
       camera.aspect = container.clientWidth / container.clientHeight;
       camera.updateProjectionMatrix();
