@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ky">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Виртуалдык Лаборатория - Көлөмдү өлчөө</title>
+  <title>3D Виртуальная Лаборатория - Измерение объема</title>
   <!-- Three.js, OrbitControls жана DragControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -29,7 +29,7 @@
       padding: 20px;
     }
 
-    /* Чакыруу Banner Стили */
+    /* Банер */
     .vip-banner {
       width: 100%;
       max-width: 1000px;
@@ -38,14 +38,14 @@
       box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
       border-radius: 16px;
       padding: 18px 25px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
 
     .vip-banner h2 {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: 700;
       background: linear-gradient(90deg, #38bdf8, #c084fc, #f43f5e);
       -webkit-background-clip: text;
@@ -62,11 +62,12 @@
       border-radius: 30px;
       text-decoration: none;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4);
+      white-space: nowrap;
     }
 
-    /* Лабораториянын Контейнери */
+    /* Лаборатория контейнери */
     .lab-container {
       width: 100%;
       max-width: 1000px;
@@ -98,44 +99,50 @@
       position: absolute;
       top: 12px;
       left: 12px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 10px 14px;
       border-radius: 8px;
       font-size: 0.8rem;
       color: #38bdf8;
       pointer-events: none;
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
     .control-panel {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
     }
 
     .panel-card {
       background: #1e293b;
-      padding: 16px;
+      padding: 14px;
       border-radius: 12px;
       border: 1px solid #334155;
     }
 
     .panel-card h3 {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: #38bdf8;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     select, button {
       width: 100%;
-      padding: 10px;
+      padding: 9px;
       border-radius: 8px;
       border: 1px solid #475569;
       background: #0f172a;
       color: #fff;
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       cursor: pointer;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+    }
+
+    .lang-select {
+      background: #312e81;
+      border-color: #6366f1;
+      font-weight: 600;
     }
 
     .btn-action {
@@ -166,7 +173,7 @@
     }
 
     .measure-info {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       color: #cbd5e1;
       line-height: 1.6;
     }
@@ -179,69 +186,157 @@
 </head>
 <body>
 
-  <!-- Жеке кабинетке чакыруу банери -->
+  <!-- Банер -->
   <div class="vip-banner">
-    <h2>
+    <h2 id="banner-title">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      Лабораториялык иштердин топтому жеке кабинетте
+      Коллекция лабораторных работ в личном кабинете
     </h2>
-    <a href="#" class="vip-btn">Кабинетке кирүү 🚀</a>
+    <a href="#" class="vip-btn" id="banner-btn">Войти в кабинет 🚀</a>
   </div>
 
   <div class="lab-container">
     
-    <!-- 3D Визуалдаштыруу терезеси -->
+    <!-- 3D Визуализация -->
     <div id="canvas-container">
-      <div class="canvas-hint">
-        🖱️ Айландыруу: Чычкандын сол баскычы<br>
-        📏 Сызгычты жылдыруу: Чычкан менен кармап чоюңуз
+      <div class="canvas-hint" id="canvas-hint">
+        🖱️ Вращение: Левая кнопка мыши<br>
+        📏 Перемещение линейки: Зажмите и перетащите
       </div>
     </div>
 
-    <!-- Башкаруу Панели -->
+    <!-- Панель управления -->
     <div class="control-panel">
       
-      <div class="panel-card">
-        <h3>1. Объектти тандоо</h3>
-        <select id="object-select" onchange="changeObject()">
-          <option value="box">Туура форма: Параллелепипед</option>
-          <option value="cube">Туура форма: Куб</option>
-          <option value="cylinder">Туура форма: Цилиндр</option>
-          <option value="irregular">Туура эмес форма: Таш (Суу менен)</option>
+      <!-- Тил таңдоо -->
+      <div class="panel-card" style="padding: 10px;">
+        <select id="lang-select" class="lang-select" onchange="changeLanguage()">
+          <option value="ru" selected>🇷🇺 Русский</option>
+          <option value="ky">🇰🇬 Кыргызча</option>
+          <option value="en">🇬🇧 English</option>
         </select>
       </div>
 
       <div class="panel-card">
-        <h3>2. Сызгычты башкаруу</h3>
-        <button class="btn-action" onclick="toggleRuler()">📏 Сызгычты күйгүзүү / өчүрүү</button>
-        <button class="btn-action" style="background: #475569;" onclick="resetRuler()">🔄 Сызгычты ордуна кайтаруу</button>
-        
-        <p style="font-size: 0.8rem; color: #9ca3af; margin: 8px 0 4px 0;">Сызгычты айландыруу (90°):</p>
-        <div class="rotate-grid">
-          <button class="rotate-btn" onclick="rotateRuler('x')">X огу</button>
-          <button class="rotate-btn" onclick="rotateRuler('y')">Y огу</button>
-          <button class="rotate-btn" onclick="rotateRuler('z')">Z огу</button>
-        </div>
-
-        <button id="submerge-btn" class="btn-action" style="display:none; background:#059669; margin-top: 10px;" onclick="toggleSubmerge()">💧 Ташты сууга салуу</button>
+        <h3 id="label-select-obj">1. Выбор объекта</h3>
+        <select id="object-select" onchange="changeObject()">
+          <option value="box">Правильная форма: Параллелепипед</option>
+          <option value="cube">Правильная форма: Куб</option>
+          <option value="cylinder">Правильная форма: Цилиндр</option>
+          <option value="irregular">Неправильная форма: Камень (с водой)</option>
+        </select>
       </div>
 
       <div class="panel-card">
-        <h3>3. Өлчөө жыйынтыгы</h3>
-        <div id="info-display" class="measure-info">
-          Параметри: <br>
-          • Эни (a): <span>4.0 см</span><br>
-          • Узундугу (b): <span>6.0 см</span><br>
-          • Бийиктиги (c): <span>3.0 см</span><br><br>
-          Формула: V = a × b × c<br>
-          Көлөмү (V): <span>72.0 см³</span>
+        <h3 id="label-ruler-ctrl">2. Управление линейкой</h3>
+        <button class="btn-action" id="btn-toggle-ruler" onclick="toggleRuler()">📏 Включить / выключить линейку</button>
+        <button class="btn-action" id="btn-reset-ruler" style="background: #475569;" onclick="resetRuler()">🔄 Сбросить положение</button>
+        
+        <p id="label-rotate-ruler" style="font-size: 0.78rem; color: #9ca3af; margin: 6px 0 4px 0;">Вращение линейки (90°):</p>
+        <div class="rotate-grid">
+          <button class="rotate-btn" onclick="rotateRuler('x')">Ось X</button>
+          <button class="rotate-btn" onclick="rotateRuler('y')">Ось Y</button>
+          <button class="rotate-btn" onclick="rotateRuler('z')">Ось Z</button>
         </div>
+
+        <button id="submerge-btn" class="btn-action" style="display:none; background:#059669; margin-top: 10px;" onclick="toggleSubmerge()">💧 Опустить камень в воду</button>
+      </div>
+
+      <div class="panel-card">
+        <h3 id="label-result">3. Результат измерений</h3>
+        <div id="info-display" class="measure-info"></div>
       </div>
 
     </div>
   </div>
 
   <script>
+    // Тилдердин сөздүгү (Translations)
+    const i18n = {
+      ru: {
+        bannerTitle: "Коллекция лабораторных работ в личном кабинете",
+        bannerBtn: "Войти в кабинет 🚀",
+        hint: "🖱️ Вращение: Левая кнопка мыши<br>📏 Перемещение линейки: Зажмите и перетащите",
+        selectObj: "1. Выбор объекта",
+        rulerCtrl: "2. Управление линейкой",
+        toggleRuler: "📏 Включить / выключить линейку",
+        resetRuler: "🔄 Сбросить положение",
+        rotateRuler: "Вращение линейки (90°):",
+        axisX: "Ось X", axisY: "Ось Y", axisZ: "Ось Z",
+        resultTitle: "3. Результат измерений",
+        submergeBtnIn: "💧 Опустить камень в воду",
+        submergeBtnOut: "🪨 Вытащить камень",
+        optBox: "Правильная форма: Параллелепипед",
+        optCube: "Правильная форма: Куб",
+        optCylinder: "Правильная форма: Цилиндр",
+        optIrregular: "Неправильная форма: Камень (с водой)",
+        unitCm: "см", unitCm3: "см³", unitMl: "мл (см³)",
+        boxInfo: `Параметры:<br>• Ширина (a): <span>4.0 см</span><br>• Длина (b): <span>6.0 см</span><br>• Высота (c): <span>3.0 см</span><br><br>Формула: V = a × b × c<br>Объем (V): <span>72.0 см³</span>`,
+        cubeInfo: `Параметры:<br>• Ребро (a): <span>4.0 см</span><br><br>Формула: V = a³<br>Объем (V): <span>64.0 см³</span>`,
+        cylinderInfo: `Параметры:<br>• Радиус (r): <span>2.0 см</span><br>• Высота (h): <span>5.0 см</span><br><br>Формула: V = π × r² × h<br>Объем (V): <span>62.8 см³</span>`,
+        menzurkaTitle: "Метод измерения (Мензурка):",
+        v1Text: "• Начальный объем (V1):",
+        v2Text: "• Конечный объем (V2):",
+        stoneVolText: "Объем камня (V):",
+        submergeHint: "<br><i>Нажмите кнопку погружения камня.</i>"
+      },
+      ky: {
+        bannerTitle: "Лабораториялык иштердин топтому жеке кабинетте",
+        bannerBtn: "Кабинетке кирүү 🚀",
+        hint: "🖱️ Айландыруу: Чычкандын сол баскычы<br>📏 Сызгычты жылдыруу: Чычкан менен кармап чоюңуз",
+        selectObj: "1. Объектти тандоо",
+        rulerCtrl: "2. Сызгычты башкаруу",
+        toggleRuler: "📏 Сызгычты күйгүзүү / өчүрүү",
+        resetRuler: "🔄 Ордуна кайтаруу",
+        rotateRuler: "Сызгычты айландыруу (90°):",
+        axisX: "X огу", axisY: "Y огу", axisZ: "Z огу",
+        resultTitle: "3. Өлчөө жыйынтыгы",
+        submergeBtnIn: "💧 Ташты сууга салуу",
+        submergeBtnOut: "🪨 Ташты суудан чыгаруу",
+        optBox: "Туура форма: Параллелепипед",
+        optCube: "Туура форма: Куб",
+        optCylinder: "Туура форма: Цилиндр",
+        optIrregular: "Туура эмес форма: Таш (Суу менен)",
+        unitCm: "см", unitCm3: "см³", unitMl: "мл (см³)",
+        boxInfo: `Параметри:<br>• Эни (a): <span>4.0 см</span><br>• Узундугу (b): <span>6.0 см</span><br>• Бийиктиги (c): <span>3.0 см</span><br><br>Формула: V = a × b × c<br>Көлөмү (V): <span>72.0 см³</span>`,
+        cubeInfo: `Параметри:<br>• Кырлары (a): <span>4.0 см</span><br><br>Формула: V = a³<br>Көлөмү (V): <span>64.0 см³</span>`,
+        cylinderInfo: `Параметри:<br>• Радиусу (r): <span>2.0 см</span><br>• Бийиктиги (h): <span>5.0 см</span><br><br>Формула: V = π × r² × h<br>Көлөмү (V): <span>62.8 см³</span>`,
+        menzurkaTitle: "Өлчөө ыкмасы (Мензурка):",
+        v1Text: "• Баштапкы көлөм (V1):",
+        v2Text: "• Кийинки көлөм (V2):",
+        stoneVolText: "Таштын көлөмү (V):",
+        submergeHint: "<br><i>Ташты сууга салуу баскычын басыңыз.</i>"
+      },
+      en: {
+        bannerTitle: "Collection of lab works in your account",
+        bannerBtn: "Login to account 🚀",
+        hint: "🖱️ Rotate: Left mouse button<br>📏 Move Ruler: Click and drag",
+        selectObj: "1. Select Object",
+        rulerCtrl: "2. Ruler Controls",
+        toggleRuler: "📏 Toggle Ruler",
+        resetRuler: "🔄 Reset Position",
+        rotateRuler: "Rotate Ruler (90°):",
+        axisX: "X Axis", axisY: "Y Axis", axisZ: "Z Axis",
+        resultTitle: "3. Measurement Result",
+        submergeBtnIn: "💧 Submerge stone in water",
+        submergeBtnOut: "🪨 Remove stone",
+        optBox: "Regular Shape: Parallelepiped",
+        optCube: "Regular Shape: Cube",
+        optCylinder: "Regular Shape: Cylinder",
+        optIrregular: "Irregular Shape: Stone (with water)",
+        unitCm: "cm", unitCm3: "cm³", unitMl: "ml (cm³)",
+        boxInfo: `Parameters:<br>• Width (a): <span>4.0 cm</span><br>• Length (b): <span>6.0 cm</span><br>• Height (c): <span>3.0 cm</span><br><br>Formula: V = a × b × c<br>Volume (V): <span>72.0 cm³</span>`,
+        cubeInfo: `Parameters:<br>• Edge (a): <span>4.0 cm</span><br><br>Formula: V = a³<br>Volume (V): <span>64.0 cm³</span>`,
+        cylinderInfo: `Parameters:<br>• Radius (r): <span>2.0 cm</span><br>• Height (h): <span>5.0 cm</span><br><br>Formula: V = π × r² × h<br>Volume (V): <span>62.8 cm³</span>`,
+        menzurkaTitle: "Measurement Method (Beaker):",
+        v1Text: "• Initial Volume (V1):",
+        v2Text: "• Final Volume (V2):",
+        stoneVolText: "Stone Volume (V):",
+        submergeHint: "<br><i>Click the submerge button.</i>"
+      }
+    };
+
+    let currentLang = 'ru'; // Дефолттук тил: Орус тили
     let scene, camera, renderer, orbitControls, dragControls;
     let currentMesh, rulerGroup, waterMesh;
     let isSubmerged = false;
@@ -279,34 +374,77 @@
       grid.position.y = -2;
       scene.add(grid);
 
-      // Жүктөлгөн Сызгычты түзүү
+      // Сызгыч
       rulerGroup = new THREE.Group();
       createRulerWithNumbers();
       scene.add(rulerGroup);
 
-      // DragControls (Сызгычты жылдыруу)
+      // DragControls
       dragControls = new THREE.DragControls([rulerGroup], camera, renderer.domElement);
       dragControls.addEventListener('dragstart', () => orbitControls.enabled = false);
       dragControls.addEventListener('dragend', () => orbitControls.enabled = true);
 
-      // Алгачкы объект
+      // Интерфейсти орус тилинде баштоо
+      updateInterfaceLanguage();
       loadBox();
 
       animate();
     }
 
-    // Сызгычтын бетине Сандарды жана Сандык Штрихтерди тартуучу Функция (Canvas Texture)
+    // Тилди өзгөртүү
+    function changeLanguage() {
+      currentLang = document.getElementById('lang-select').value;
+      updateInterfaceLanguage();
+      
+      // Тандалган объектке жараша маалыматты которуу
+      const type = document.getElementById('object-select').value;
+      if (type === 'box') loadBox();
+      else if (type === 'cube') loadCube();
+      else if (type === 'cylinder') loadCylinder();
+      else if (type === 'irregular') updateWaterInfo(isSubmerged);
+
+      // Сызгычтын "см" жазуусун да тилге жараша жаңылоо
+      createRulerWithNumbers();
+    }
+
+    function updateInterfaceLanguage() {
+      const t = i18n[currentLang];
+      
+      document.getElementById('banner-title').childNodes[2].nodeValue = " " + t.bannerTitle;
+      document.getElementById('banner-btn').innerText = t.bannerBtn;
+      document.getElementById('canvas-hint').innerHTML = t.hint;
+      document.getElementById('label-select-obj').innerText = t.selectObj;
+      document.getElementById('label-ruler-ctrl').innerText = t.rulerCtrl;
+      document.getElementById('btn-toggle-ruler').innerText = t.toggleRuler;
+      document.getElementById('btn-reset-ruler').innerText = t.resetRuler;
+      document.getElementById('label-rotate-ruler').innerText = t.rotateRuler;
+      document.getElementById('label-result').innerText = t.resultTitle;
+
+      const objSelect = document.getElementById('object-select');
+      objSelect.options[0].text = t.optBox;
+      objSelect.options[1].text = t.optCube;
+      objSelect.options[2].text = t.optCylinder;
+      objSelect.options[3].text = t.optIrregular;
+
+      const rotateBtns = document.querySelectorAll('.rotate-btn');
+      rotateBtns[0].innerText = t.axisX;
+      rotateBtns[1].innerText = t.axisY;
+      rotateBtns[2].innerText = t.axisZ;
+
+      const subBtn = document.getElementById('submerge-btn');
+      subBtn.innerText = isSubmerged ? t.submergeBtnOut : t.submergeBtnIn;
+    }
+
+    // Сызгыч текстурасы
     function createRulerTexture() {
       const canvas = document.createElement('canvas');
       canvas.width = 1024;
       canvas.height = 128;
       const ctx = canvas.getContext('2d');
 
-      // Жыгач / Сары фон
       ctx.fillStyle = '#f59e0b';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Алдыңкы чектер
       ctx.strokeStyle = '#000000';
       ctx.fillStyle = '#000000';
       ctx.font = 'bold 28px Poppins, sans-serif';
@@ -314,23 +452,18 @@
 
       const totalCm = 8;
       const startX = 64; 
-      const stepCm = (canvas.width - 128) / totalCm; // 1 см аралыгы
+      const stepCm = (canvas.width - 128) / totalCm;
 
-      // Миллиметрлик жана сантиметрлик сызыктар, сандар
       for (let i = 0; i <= totalCm; i++) {
         const x = startX + i * stepCm;
-
-        // Сантиметрлик чоң штрих
         ctx.lineWidth = 4;
         ctx.beginPath();
         ctx.moveTo(x, 0);
         ctx.lineTo(x, 45);
         ctx.stroke();
 
-        // Санжазуулар (0, 1, 2, 3, 4, 5, 6, 7, 8 см)
         ctx.fillText(i.toString(), x, 85);
 
-        // Жарым сантиметрдик жана мм штрихтер
         if (i < totalCm) {
           for (let mm = 1; mm < 10; mm++) {
             const mmX = x + (mm * stepCm / 10);
@@ -345,31 +478,21 @@
         }
       }
 
-      // "см" жазуусу
       ctx.font = 'italic bold 22px Poppins';
-      ctx.fillText('см', canvas.width - 35, 80);
+      ctx.fillText(i18n[currentLang].unitCm, canvas.width - 35, 80);
 
-      const texture = new THREE.CanvasTexture(canvas);
-      return texture;
+      return new THREE.CanvasTexture(canvas);
     }
 
-    // 3D Сызгычты туура материалдар менен куруу
     function createRulerWithNumbers() {
       rulerGroup.clear();
 
       const texture = createRulerTexture();
-      
-      // Сызгычтын капталдарына материалдар (үстүнкү бетине текстура)
       const sideMaterial = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 });
       const topMaterial = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.3 });
 
       const materials = [
-        sideMaterial, // оң
-        sideMaterial, // сол
-        topMaterial,  // үстүнкү бети (Жазуулар ушул жерде)
-        sideMaterial, // асты
-        sideMaterial, // алды
-        sideMaterial  // арты
+        sideMaterial, sideMaterial, topMaterial, sideMaterial, sideMaterial, sideMaterial
       ];
 
       const geometry = new THREE.BoxGeometry(8.8, 0.2, 1.2);
@@ -394,7 +517,6 @@
       if (axis === 'z') rulerGroup.rotation.z += Math.PI / 2;
     }
 
-    // Объекттерди жүктөө
     function changeObject() {
       const type = document.getElementById('object-select').value;
       const subBtn = document.getElementById('submerge-btn');
@@ -419,14 +541,7 @@
       currentMesh = new THREE.Mesh(geo, mat);
       scene.add(currentMesh);
 
-      document.getElementById('info-display').innerHTML = `
-        Параметри:<br>
-        • Эни (a): <span>4.0 см</span><br>
-        • Узундугу (b): <span>6.0 см</span><br>
-        • Бийиктиги (c): <span>3.0 см</span><br><br>
-        Формула: V = a × b × c<br>
-        Көлөмү (V): <span>72.0 см³</span>
-      `;
+      document.getElementById('info-display').innerHTML = i18n[currentLang].boxInfo;
     }
 
     function loadCube() {
@@ -435,12 +550,7 @@
       currentMesh = new THREE.Mesh(geo, mat);
       scene.add(currentMesh);
 
-      document.getElementById('info-display').innerHTML = `
-        Параметри:<br>
-        • Кырлары (a): <span>4.0 см</span><br><br>
-        Формула: V = a³<br>
-        Көлөмү (V): <span>64.0 см³</span>
-      `;
+      document.getElementById('info-display').innerHTML = i18n[currentLang].cubeInfo;
     }
 
     function loadCylinder() {
@@ -449,13 +559,7 @@
       currentMesh = new THREE.Mesh(geo, mat);
       scene.add(currentMesh);
 
-      document.getElementById('info-display').innerHTML = `
-        Параметри:<br>
-        • Радиусу (r): <span>2.0 см</span><br>
-        • Бийиктиги (h): <span>5.0 см</span><br><br>
-        Формула: V = π × r² × h<br>
-        Көлөмү (V): <span>62.8 см³</span>
-      `;
+      document.getElementById('info-display').innerHTML = i18n[currentLang].cylinderInfo;
     }
 
     function loadIrregular() {
@@ -508,16 +612,18 @@
         waterMesh.position.y = -1.5;
       }
 
+      document.getElementById('submerge-btn').innerText = isSubmerged ? i18n[currentLang].submergeBtnOut : i18n[currentLang].submergeBtnIn;
       updateWaterInfo(isSubmerged);
     }
 
     function updateWaterInfo(submerged) {
+      const t = i18n[currentLang];
       document.getElementById('info-display').innerHTML = `
-        Өлчөө ыкмасы (Мензурка):<br>
-        • Баштапкы көлөм (V1): <span>50 мл (см³)</span><br>
-        ${submerged ? `• Кийинки көлөм (V2): <span>70 мл (см³)</span><br><br>
+        ${t.menzurkaTitle}<br>
+        ${t.v1Text} <span>50 ${t.unitMl}</span><br>
+        ${submerged ? `${t.v2Text} <span>70${t.unitMl}</span><br><br>
         Формула: Vx = V2 - V1<br>
-        Таштын көлөмү (V): <span>20.0 см³</span>` : '<br><i>Ташты сууга салуу баскычын басыңыз.</i>'}
+        ${t.stoneVolText} <span>20.0${t.unitCm3}</span>` : t.submergeHint}
       `;
     }
 
@@ -529,7 +635,7 @@
 
     window.addEventListener('resize', () => {
       camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
+      camera.updatePriorityMatrix ? camera.updatePriorityMatrix() : camera.updateMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
     });
 
