@@ -304,7 +304,7 @@
             <button type="submit" class="btn-primary">Кирүү</button>
         </form>
 
-        <!-- КАТТАЛУУ ФОРМАСЫ -->
+        <!-- КАТТАЛУУ ФОРМАСЫ (ОКУУЧУЛАР ҮЧҮН) -->
         <form id="registerForm" onsubmit="handleRegister(event)" style="display: none;">
             <div class="input-group" id="studentSelectGroup">
                 <label>Тизмеден аты-жөнүңүздү тандаңыз:</label>
@@ -325,12 +325,12 @@
         </form>
     </div>
 
-    <!-- КҮТҮҮ БИЛДИРҮҮСҮ -->
+    <!-- КҮТҮҮ БИЛДИРҮҮСҮ (ОКУУЧУГА КӨРҮНӨТ) -->
     <div id="pendingBlock" class="card" style="display: none; text-align: center;">
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
-        <h3 style="margin-bottom: 8px;">Суранычыңыз каралууда</h3>
-        <p style="font-size: 14px; color: var(--text-muted);">Администратор суранычыңызды карап чыгып уруксат бергенден кийин кирүү мүмкүн болот.</p>
-        <button class="btn-logout" style="margin-top: 15px;" onclick="logout()">Кайрадан кирүү</button>
+        <h3 style="margin-bottom: 8px;">Суранычыңыз Администраторго жөнөтүлдү!</h3>
+        <p style="font-size: 14px; color: var(--text-muted);">Администратор суранычыңызды карап чыгып макулдугун бергенден кийин гана кирүү мүмкүн болот.</p>
+        <button class="btn-logout" style="margin-top: 15px;" onclick="logout()">Башкы бетке кайтуу</button>
     </div>
 
     <!-- ДЕЖУРСТВО ТИЗМЕСИ -->
@@ -350,16 +350,16 @@
         <ul class="duty-list" id="dutyListContainer"></ul>
     </div>
 
-    <!-- АДМИН ПАНЕЛЬ -->
+    <!-- АДМИН ПАНЕЛЬ (АДМИНГЕ ГАНА КӨРҮНӨТ) -->
     <div class="admin-section" id="adminPanel">
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span>Администратор Панели</span></div>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Окуучулардын уруксат суранычтары:</p>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Окуучулардын кирүү суранычтары:</p>
         <div id="requestsList"></div>
     </div>
 </div>
 
 <script>
-    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ ЖАҢЫ НАСТРОЙКАЛАР МЕНЕН
+    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -435,13 +435,14 @@
         const btnSubmit = document.getElementById('btnRegSubmit');
         if (val.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             selectGroup.style.display = 'none';
-            btnSubmit.innerText = "Администратор катары кирүү / каттоо";
+            btnSubmit.innerText = "Администратор катары кирүү";
         } else {
             selectGroup.style.display = 'block';
             btnSubmit.innerText = "Катталуу суранычын жөнөтүү";
         }
     }
 
+    // КИРҮҮ ТЕКШЕРҮҮСҮ
     async function handleLogin(e) {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -451,18 +452,18 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             checkUserPermission(userCredential.user);
         } catch (err) {
-            alert("Кирүүдө ката: " + err.message);
+            alert("Кирүүдө ката: Email же Пароль туура эмес же сизге али уруксат бериле элек!");
         }
     }
 
+    // КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
     async function handleRegister(e) {
         e.preventDefault();
         const email = document.getElementById('regEmail').value.trim().toLowerCase();
         const pass = document.getElementById('regPassword').value.trim();
 
         try {
-            if (auth.currentUser) await auth.signOut();
-
+            // ЭГЕР АДМИН КИРИП ЖАТСА
             if (email === ADMIN_EMAIL.toLowerCase()) {
                 try {
                     await auth.createUserWithEmailAndPassword(email, pass);
@@ -477,36 +478,52 @@
                 return;
             }
 
+            // ОКУУЧУ КАТТАЛГАНДА: Аккаунт түзүлөт, бирок дароо Logout кылынат!
             const selectedName = document.getElementById('studentSelect').value;
 
-            await db.ref('applications').push({
+            const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+            
+            // Суранычты маалымат базасына жазуу
+            await db.ref('applications').child(userCred.user.uid).set({
                 studentName: selectedName,
                 email: email,
-                passwordTemp: pass,
+                uid: userCred.user.uid,
                 date: new Date().toISOString()
             });
 
+            // АВТОМАТТЫК КИРБӨӨСҮ ҮЧҮН ДАРОО ЧЫГАРЫП САЛАБЫЗ
+            await auth.signOut();
+
             document.getElementById('authBlock').style.display = 'none';
             document.getElementById('pendingBlock').style.display = 'block';
+
         } catch(err) {
-            alert("Катталууда ката: " + err.message);
+            if (err.code === 'auth/email-already-in-use') {
+                alert("Бул email мурда катталган. Кирүү (Логин) бөлүмүнөн кирип көрүңүз.");
+            } else {
+                alert("Катталууда ката: " + err.message);
+            }
         }
     }
 
+    // УРУКСАТТЫ ТЕКШЕРҮҮ (СИСТЕМАГА КИРГЕНДЕ)
     function checkUserPermission(user) {
         if (!user) return;
 
+        // Эгер Админ болсо
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
-        db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value', snapshot => {
+        // Эгер Окуучу болсо - VIP (Уруксат берилген) колдонуучулардын тизмесинен издейбиз
+        db.ref('vip_users').child(user.uid).once('value', snapshot => {
             if (snapshot.exists()) {
-                let name = user.email;
-                snapshot.forEach(child => { name = child.val().studentName || name; });
-                showUserPortal(name);
+                const userData = snapshot.val();
+                showUserPortal(userData.studentName || user.email);
             } else {
+                // Эгер админ али уруксат бере элек болсо - сессияны жаап, күтүү барагын көрсөтөбүз
+                auth.signOut();
                 document.getElementById('authBlock').style.display = 'none';
                 document.getElementById('pendingBlock').style.display = 'block';
             }
@@ -536,60 +553,63 @@
         document.getElementById('currentUserLabel').innerText = name;
     }
 
+    // АДМИН ҮЧҮН СУРАНЫЧТАРДЫ ЖҮКТӨӨ
     function loadAdminRequests() {
         db.ref('applications').on('value', snapshot => {
             const list = document.getElementById('requestsList');
             if (!list) return;
             list.innerHTML = '';
+            
             if (!snapshot.exists()) {
-                list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Жаңы суранычтар жок</p>`;
+                list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Жаңы кирүү суранычтары жок</p>`;
                 return;
             }
 
             snapshot.forEach(child => {
                 const req = child.val();
-                const key = child.key;
+                const uid = child.key;
                 const displayName = req.studentName || "Белгисиз";
                 const displayEmail = req.email || "";
 
-                if(displayEmail) {
-                    const div = document.createElement('div');
-                    div.className = 'req-item';
-                    div.innerHTML = `
-                        <div>
-                            <strong>${displayName}</strong><br>
-                            <small style="color: var(--accent-blue);">${displayEmail}</small>
-                        </div>
-                        <div>
-                            <button class="btn-action btn-approve" onclick="approveUser('${key}', '${displayName}', '${displayEmail}')">Уруксат берүү</button>
-                            <button class="btn-action btn-reject" onclick="rejectUser('${key}')">Баш тартуу</button>
-                        </div>
-                    `;
-                    list.appendChild(div);
-                }
+                const div = document.createElement('div');
+                div.className = 'req-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>${displayName}</strong><br>
+                        <small style="color: var(--accent-blue);">${displayEmail}</small>
+                    </div>
+                    <div>
+                        <button class="btn-action btn-approve" onclick="approveUser('${uid}', '${displayName}', '${displayEmail}')">Макул (Уруксат берүү)</button>
+                        <button class="btn-action btn-reject" onclick="rejectUser('${uid}')">Каршы (Баш тартуу)</button>
+                    </div>
+                `;
+                list.appendChild(div);
             });
         });
     }
 
-    async function approveUser(key, name, email) {
+    // АДМИН МАКУЛ ДЕСЕ:
+    async function approveUser(uid, name, email) {
         try {
-            await db.ref('vip_users').push({
+            await db.ref(`vip_users/${uid}`).set({
                 studentName: name,
                 email: email.toLowerCase(),
                 role: 'student',
-                date: new Date().toISOString()
+                approvedAt: new Date().toISOString()
             });
 
-            await db.ref(`applications/${key}`).remove();
-            alert(`${name} ийгиликтүү кошулду!`);
+            await db.ref(`applications/${uid}`).remove();
+            alert(`${name} үчүн порталга кирүүгө уруксат берилди!`);
         } catch(e) {
             alert("Ката: " + e.message);
         }
     }
 
-    async function rejectUser(key) {
+    // АДМИН КАРШЫ БОЛСО:
+    async function rejectUser(uid) {
         try {
-            await db.ref(`applications/${key}`).remove();
+            await db.ref(`applications/${uid}`).remove();
+            alert("Сураныч четке кагылды.");
         } catch(e) {
             alert("Ката: " + e.message);
         }
@@ -639,11 +659,11 @@
     function toggleDutyCheck(studentId, isChecked) {
         const todayStr = new Date().toISOString().split('T')[0];
         const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const userEmail = auth.currentUser ? auth.currentUser.email : "Аноним";
+        const userLabel = document.getElementById('currentUserLabel').innerText || "Колдонуучу";
 
         if (isChecked) {
             db.ref(`student_duty/${todayStr}/${studentId}`).set({
-                by: userEmail,
+                by: userLabel,
                 time: nowTime
             });
         } else {
