@@ -229,7 +229,7 @@
         </div>
     </div>
 
-    <!-- 1. СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ -->
+    <!-- СУРАНЫЧ ЖӨНӨТҮҮ БЛОГУ -->
     <div id="registrationBlock" class="card">
         <div class="lock-notice">
             <i class="fas fa-user-lock"></i>
@@ -252,14 +252,14 @@
         <button class="btn-primary" id="btnSubmitReq" onclick="submitRegistration()" data-i18n="sendReq">Сураныч жөнөтүү</button>
     </div>
 
-    <!-- 2. КҮТҮҮ БИЛДИРҮҮСҮ -->
+    <!-- КҮТҮҮ БИЛДИРҮҮСҮ -->
     <div id="pendingBlock" class="card" style="display: none; text-align: center;">
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
         <h3 style="margin-bottom: 8px;" data-i18n="waitTitle">Суранычыңыз жөнөтүлдү</h3>
         <p style="font-size: 14px; color: var(--text-muted);" data-i18n="waitDesc">Мугалим суранычыңызды карап чыгып, уруксат бергенде портал ачылат.</p>
     </div>
 
-    <!-- 3. ДЕЖУРСТВО ТИЗМЕСИ -->
+    <!-- ДЕЖУРСТВО ТИЗМЕСИ -->
     <div class="card" id="mainDutyCard" style="display: none;">
         <div class="card-header">
             <div class="card-title"><i class="fas fa-user-shield"></i> <span data-i18n="dutyTitle">Кезмет Порталы</span></div>
@@ -271,7 +271,7 @@
         <ul class="duty-list" id="dutyListContainer"></ul>
     </div>
 
-    <!-- 4. АДМИН ПАНЕЛЬ -->
+    <!-- АДМИН ПАНЕЛЬ -->
     <div class="admin-section" id="adminPanel">
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span data-i18n="adminTitle">Администратор Панели</span></div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;" data-i18n="adminDesc">Окуучулардын уруксат суранычтары:</p>
@@ -280,7 +280,6 @@
 </div>
 
 <script>
-    // 1. АЛДЫ МЕНЕН БАРДЫК ӨЗГӨРМӨЛӨРДҮ ЖАШОО СИСТЕМАСЫНА ДАРОО ЖАШОО (Инициализация)
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentUserEmail = localStorage.getItem('bilimal_student_email') || '';
     var currentDutyState = {};
@@ -329,7 +328,7 @@
         }
     };
 
-    // 2. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ (Базага түз туташуу)
+    // FIREBASE ТҮЗ ТУТАШУУ
     const firebaseConfig = {
         databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
     };
@@ -337,8 +336,21 @@
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+    const auth = firebase.auth();
 
-    // 3. ФУНКЦИЯЛАР
+    // Firebase авторизация аткарылганын кепилдикке алуучу функция (rules: auth != null үчүн керек)
+    function ensureAuth() {
+        return new Promise((resolve, reject) => {
+            if (auth.currentUser) {
+                resolve(auth.currentUser);
+            } else {
+                auth.signInAnonymously()
+                    .then(userCredential => resolve(userCredential.user))
+                    .catch(error => reject(error));
+            }
+        });
+    }
+
     function switchLanguage(lang) {
         currentLang = lang;
         localStorage.setItem('site_lang', lang);
@@ -371,7 +383,7 @@
         });
     }
 
-    function checkUserAccess() {
+    async function checkUserAccess() {
         if (!currentUserEmail) {
             document.getElementById('registrationBlock').style.display = 'block';
             document.getElementById('mainDutyCard').style.display = 'none';
@@ -380,32 +392,47 @@
             return;
         }
 
-        db.ref('vip_users').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
-            if (snapshot.exists()) {
-                document.getElementById('mainDutyCard').style.display = 'block';
-                document.getElementById('registrationBlock').style.display = 'none';
-                document.getElementById('pendingBlock').style.display = 'none';
-            } else {
+        try {
+            await ensureAuth(); // Auth авторизация болгонун күтөбүз
+            db.ref('vip_users').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
+                if (snapshot.exists()) {
+                    document.getElementById('mainDutyCard').style.display = 'block';
+                    document.getElementById('registrationBlock').style.display = 'none';
+                    document.getElementById('pendingBlock').style.display = 'none';
+                } else {
+                    checkIfPending();
+                }
+            }, err => {
+                console.error("vip_users катасы:", err);
                 checkIfPending();
-            }
-        });
+            });
+        } catch(e) {
+            console.error("Auth катасы:", e);
+        }
     }
 
-    function checkIfPending() {
-        db.ref('applications').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
-            if (snapshot.exists()) {
-                document.getElementById('pendingBlock').style.display = 'block';
-                document.getElementById('registrationBlock').style.display = 'none';
-                document.getElementById('mainDutyCard').style.display = 'none';
-            } else {
-                document.getElementById('registrationBlock').style.display = 'block';
-                document.getElementById('mainDutyCard').style.display = 'none';
-                document.getElementById('pendingBlock').style.display = 'none';
-            }
-        });
+    async function checkIfPending() {
+        try {
+            await ensureAuth();
+            db.ref('applications').orderByChild('email').equalTo(currentUserEmail.toLowerCase()).on('value', snapshot => {
+                if (snapshot.exists()) {
+                    document.getElementById('pendingBlock').style.display = 'block';
+                    document.getElementById('registrationBlock').style.display = 'none';
+                    document.getElementById('mainDutyCard').style.display = 'none';
+                } else {
+                    document.getElementById('registrationBlock').style.display = 'block';
+                    document.getElementById('mainDutyCard').style.display = 'none';
+                    document.getElementById('pendingBlock').style.display = 'none';
+                }
+            }, err => {
+                console.error("applications катасы:", err);
+            });
+        } catch(e) {
+            console.error(e);
+        }
     }
 
-    function submitRegistration() {
+    async function submitRegistration() {
         const selectedName = document.getElementById('studentSelect').value;
         const emailInput = document.getElementById('studentEmailInput').value.trim().toLowerCase();
         const btn = document.getElementById('btnSubmitReq');
@@ -421,69 +448,93 @@
         localStorage.setItem('bilimal_student_email', emailInput);
         currentUserEmail = emailInput;
 
-        db.ref('applications').push({
-            studentName: selectedName,
-            email: emailInput,
-            date: new Date().toISOString(),
-            type: 'duty_access'
-        }).then(() => {
+        try {
+            await ensureAuth(); // auth != null шарты аткарылат
+
+            db.ref('applications').push({
+                studentName: selectedName,
+                email: emailInput,
+                date: new Date().toISOString(),
+                type: 'duty_access'
+            }).then(() => {
+                btn.disabled = false;
+                btn.innerText = translations[currentLang] ? translations[currentLang].sendReq : "Сураныч жөнөтүү";
+                checkUserAccess();
+            }).catch(err => {
+                btn.disabled = false;
+                btn.innerText = translations[currentLang] ? translations[currentLang].sendReq : "Сураныч жөнөтүү";
+                alert("Ката чыкты: " + err.message);
+            });
+        } catch(err) {
             btn.disabled = false;
             btn.innerText = translations[currentLang] ? translations[currentLang].sendReq : "Сураныч жөнөтүү";
-            checkUserAccess();
-        }).catch(err => {
-            btn.disabled = false;
-            alert("Ката чыкты: " + err.message);
-        });
+            alert("Авторизация катасы: " + err.message);
+        }
     }
 
-    function loadAdminRequests() {
-        db.ref('applications').on('value', snapshot => {
-            const list = document.getElementById('requestsList');
-            if (!list) return;
-            list.innerHTML = '';
-            if (!snapshot.exists()) {
-                list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Жаңы суранычтар жок</p>`;
-                return;
-            }
-
-            snapshot.forEach(child => {
-                const req = child.val();
-                const key = child.key;
-                const displayName = req.studentName || "Белгисиз";
-                const displayEmail = req.email || "";
-
-                if(displayEmail) {
-                    const div = document.createElement('div');
-                    div.className = 'req-item';
-                    div.innerHTML = `
-                        <div>
-                            <strong>${displayName}</strong><br>
-                            <small style="color: var(--accent-blue);">${displayEmail}</small>
-                        </div>
-                        <div>
-                            <button class="btn-action btn-approve" onclick="approveUser('${key}', '${displayName}', '${displayEmail}')">${translations[currentLang].approveBtn}</button>
-                            <button class="btn-action btn-reject" onclick="rejectUser('${key}')">${translations[currentLang].rejectBtn}</button>
-                        </div>
-                    `;
-                    list.appendChild(div);
+    async function loadAdminRequests() {
+        try {
+            await ensureAuth();
+            db.ref('applications').on('value', snapshot => {
+                const list = document.getElementById('requestsList');
+                if (!list) return;
+                list.innerHTML = '';
+                if (!snapshot.exists()) {
+                    list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Жаңы суранычтар жок</p>`;
+                    return;
                 }
+
+                snapshot.forEach(child => {
+                    const req = child.val();
+                    const key = child.key;
+                    const displayName = req.studentName || "Белгисиз";
+                    const displayEmail = req.email || "";
+
+                    if(displayEmail) {
+                        const div = document.createElement('div');
+                        div.className = 'req-item';
+                        div.innerHTML = `
+                            <div>
+                                <strong>${displayName}</strong><br>
+                                <small style="color: var(--accent-blue);">${displayEmail}</small>
+                            </div>
+                            <div>
+                                <button class="btn-action btn-approve" onclick="approveUser('${key}', '${displayName}', '${displayEmail}')">${translations[currentLang].approveBtn}</button>
+                                <button class="btn-action btn-reject" onclick="rejectUser('${key}')">${translations[currentLang].rejectBtn}</button>
+                            </div>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
             });
-        });
+        } catch(e) {
+            console.error("Admin дайындарды алууда ката:", e);
+        }
     }
 
-    function approveUser(key, name, email) {
-        db.ref('vip_users').push({
-            studentName: name,
-            email: email.toLowerCase(),
-            role: 'student',
-            date: new Date().toISOString()
-        }).then(() => {
+    async function approveUser(key, name, email) {
+        try {
+            await ensureAuth();
+            db.ref('vip_users').push({
+                studentName: name,
+                email: email.toLowerCase(),
+                role: 'student',
+                date: new Date().toISOString()
+            }).then(() => {
+                db.ref(`applications/${key}`).remove();
+            });
+        } catch(e) {
+            alert("Ката: " + e.message);
+        }
+    }
+
+    async function rejectUser(key) {
+        try {
+            await ensureAuth();
             db.ref(`applications/${key}`).remove();
-        });
-    }
-
-    function rejectUser(key) {
-        db.ref(`applications/${key}`).remove();
+        } catch(e) {
+            alert("Ката: " + e.message);
+        }
     }
 
     function listenToDutyData() {
@@ -533,7 +584,7 @@
 
         if (isChecked) {
             db.ref(`student_duty/${todayStr}/${studentId}`).set({
-                by: currentUserEmail,
+                by: currentUserEmail || "Аноним",
                 time: nowTime
             });
         } else {
@@ -541,31 +592,37 @@
         }
     }
 
-    // 4. БАРАКЧА ТОЛУК ЖҮКТӨЛГӨНДӨ ИШКЕ КИРГИЗҮҮ
     document.addEventListener('DOMContentLoaded', () => {
         setupStudentSelect();
         switchLanguage(currentLang);
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const hasAdminKey = urlParams.get('admin_key') === ADMIN_SECRET_KEY;
-        const isSavedAdmin = localStorage.getItem('bilimal_is_admin') === 'true';
+        // Адегенде Анонимдүү кирип алып, анан калган функцияларды чакырабыз
+        ensureAuth().then(() => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasAdminKey = urlParams.get('admin_key') === ADMIN_SECRET_KEY;
+            const isSavedAdmin = localStorage.getItem('bilimal_is_admin') === 'true';
 
-        if (hasAdminKey || isSavedAdmin) {
-            localStorage.setItem('bilimal_is_admin', 'true');
-            localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
-            currentUserEmail = ADMIN_EMAIL;
-            
-            document.getElementById('mainDutyCard').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'block';
-            document.getElementById('registrationBlock').style.display = 'none';
-            document.getElementById('pendingBlock').style.display = 'none';
+            if (hasAdminKey || isSavedAdmin) {
+                localStorage.setItem('bilimal_is_admin', 'true');
+                localStorage.setItem('bilimal_student_email', ADMIN_EMAIL);
+                currentUserEmail = ADMIN_EMAIL;
+                
+                document.getElementById('mainDutyCard').style.display = 'block';
+                document.getElementById('adminPanel').style.display = 'block';
+                document.getElementById('registrationBlock').style.display = 'none';
+                document.getElementById('pendingBlock').style.display = 'none';
 
-            loadAdminRequests();
-        } else {
-            checkUserAccess();
-        }
+                loadAdminRequests();
+            } else {
+                checkUserAccess();
+            }
 
-        listenToDutyData();
+            listenToDutyData();
+        }).catch(err => {
+            console.error("Firebase авторизациядан өтпөй калды:", err);
+            // Бирок student_duty баары бир ачык болгондуктан аны жүктөй беребиз
+            listenToDutyData();
+        });
 
         const today = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
