@@ -21,7 +21,7 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- Универсалдуу MathJax 3 Конфигурациясы -->
+    <!-- ТОЛУК УНИВЕРСАЛДУУ MATHJAX 3 КОНФИГУРАЦИЯСЫ -->
     <script>
         window.MathJax = {
             tex: { 
@@ -175,10 +175,10 @@
             margin: 15px 0;
         }
 
-        /* MathJax туура жайгашуусун камсыз кылуучу CSS */
+        /* MathJax китеп стилине ылайык туура форматтоо */
         mjx-container {
             display: inline-block !important;
-            margin: 0 2px !important;
+            margin: 0 3px !important;
             vertical-align: middle !important;
             outline: none !important;
             font-size: 105% !important;
@@ -410,7 +410,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- УНИВЕРСАЛДУУ MATHJAX & СҮРӨТ ОҢДОО АЛГОРИТМИ -->
+    <!-- КОМПЛЕКСТҮҮ MATHJAX РЕНДЕРДӨӨ ВА СҮРӨТ АЛГОРИТМИ -->
     <script>
         function convertDriveUrl(url) {
             if (!url || typeof url !== 'string') return url;
@@ -445,122 +445,105 @@
         }
 
         /**
-         * ЭҢ ЖОГОРКУ ДЕНГЭЭЛДЕГИ УНИВЕРСАЛДУУ LATEX ОҢДОГУЧ
-         * Ал базадан келе турган каалагандай бузулган синтаксисти тааныйт.
+         * БҮТКҮЛ ФОРМУЛАЛАРДЫ БИРОТОЛО ОҢДООЧУ АЛГОРИТМ
+         * Сүрөттөгү бардык ката калыптарды ($\vec{r}$, $\vec{v}=const$, $\vert{}\Delta\vec{r}\vert{}=S$) туура MathJax форматына коопсуз өзгөртөт.
          */
-        function sanitizeAndNormalizeLatex(htmlString) {
-            if (!htmlString) return '';
+        function repairLatexSyntaxInHtml(str) {
+            if (!str) return '';
 
-            let str = htmlString;
+            let text = str;
 
-            // 1. Ашыкча escaped бакслаштарды бириктирүү: \\ -> \
-            str = str.replace(/\\\\/g, '\\');
+            // 1. Ашыкча эскейптерди тазалоо (\\ -> \)
+            text = text.replace(/\\\\/g, '\\');
 
-            // 2. MathJax кашааларын стандартизациялоо: \(...\) жана \[...\] -> $...$ же $$...$$
-            str = str.replace(/\\\((.*?)\\\)/g, '$$$1$$');
-            str = str.replace(/\\\[(.*?)\\\]/g, '$$$$$1$$$$');
+            // 2. Стандарттуу эмес (\vec{r}) же (\vec{v}) түрүндөгү кашаалуу векторлорду $...$ форматына айландыруу
+            text = text.replace(/\(\\vec\{([^\}]+)\}\)/g, '($$\\vec{$1}$$)');
 
-            // 3. Сүрөттөгү конкреттүү бузулган синтаксистерди оңдоо:
-            // (\vec{r}) -> ($\vec{r}$)
-            str = str.replace(/(?<!\$)\(\\vec\{([^\}]+)\}\)(?!\$)/g, '($$\\vec{$1}$$)');
-            
-            // Жалгыз турган \vec{v}, \vec{r} -> $\vec{v}$, $\vec{r}$
-            str = str.replace(/(?<!\$)\\vec\{([^\}]+)\}(?!\$)/g, '$\\vec{$1}$');
+            // 3. Кашаасыз жалгыз калган \vec{v}, \vec{r} сыяктууларды долларга ороо
+            text = text.replace(/(?<!\$)\\vec\{([^\}]+)\}(?!\$)/g, '$\\vec{$1}$');
 
-            // \vec{v}=const -> $\vec{v}=\text{const}$
-            str = str.replace(/(?<!\$)\\vec\{([^\}]+)\}\s*=\s*const(?!\$)/gi, '$\\vec{$1}=\\text{const}$');
+            // 4. \vec{v}=const, \vec{a}=const теңдемелерин түзөө
+            text = text.replace(/(?<!\$)\\vec\{([^\}]+)\}\s*=\s*const(?!\$)/gi, '$\\vec{$1}=\\text{const}$');
 
-            // \vert{}\Delta\vec{r}\vert=S же ушуга окшош чоңдуктар:
-            str = str.replace(/(?<!\$)\\vert\{\}\\Delta\\vec\{([^\}]+)\}\\vert\s*=\s*([a-zA-Z0-9]+)(?!\$)/g, '$\\vert\\Delta\\vec{$1}\\vert=$2$');
-            str = str.replace(/(?<!\$)\\vert\{\}\\Delta\\vec\{([^\}]+)\}\\vert(?!\$)/g, '$\\vert\\Delta\\vec{$1}\\vert$');
-            str = str.replace(/(?<!\$)\\vert(.*?)\\vert(?!\$)/g, '$\\vert$1\\vert$');
+            // 5. \vert{}\Delta\vec{r}\vert=S же ушуга окшош модуль туюнтумдарын оңдоо
+            text = text.replace(/\\vert\{\}\\Delta\\vec\{([^\}]+)\}\\vert/g, '$\\vert\\Delta\\vec{$1}\\vert$');
+            text = text.replace(/\\vert\{\}\\Delta\\vec\{([^\}]+)\}\\vert\s*=\s*([a-zA-Z0-9]+)/g, '$\\vert\\Delta\\vec{$1}\\vert=$2$');
+            text = text.replace(/(?<!\$)\\vert(.*?)\\vert(?!\$)/g, '$\\vert$1\\vert$');
 
-            // \Delta жалгыз калса -> $\Delta$
-            str = str.replace(/(?<!\$)\\Delta(?!\$)/g, '$\\Delta$');
+            // 6. Жалгыз калган \Delta символун таануу
+            text = text.replace(/(?<!\$)\\Delta(?!\$)/g, '$\\Delta$');
 
-            return str;
+            return text;
         }
 
-        // DOM улуттук түйүнүнө коопсуз колдонуу
-        function applyLatexFixToElement(element) {
-            if (!element) return;
+        // DOM түйүндөрүн катар менен кыдырып, радио-баскыч ж.б. элементтерди бузбай текстти оңдоо
+        function processNodeFormatting(node) {
+            if (!node) return;
 
-            // Эгер элементтин ичинде HTML бар болсо
-            if (element.children.length === 0) {
-                const rawText = element.textContent;
-                const fixed = sanitizeAndNormalizeLatex(rawText);
-                if (rawText !== fixed) {
-                    element.innerHTML = fixed;
-                }
-            } else {
-                // Ички тексти бар түйүндөрдү рекурсивдүү айланып чыгуу
-                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
-                let node;
-                const nodesToFix = [];
-                while (node = walker.nextNode()) {
-                    if (node.nodeValue && node.nodeValue.trim().length > 0) {
-                        nodesToFix.push(node);
-                    }
-                }
-                nodesToFix.forEach(n => {
-                    const parent = n.parentNode;
-                    if (parent && parent.tagName !== 'SCRIPT' && parent.tagName !== 'STYLE' && !parent.tagName.startsWith('MJX-')) {
-                        const fixedText = sanitizeAndNormalizeLatex(n.nodeValue);
-                        if (n.nodeValue !== fixedText) {
-                            const tempSpan = document.createElement('span');
-                            tempSpan.innerHTML = fixedText;
-                            parent.replaceChild(tempSpan, n);
+            if (node.nodeType === Node.TEXT_NODE) {
+                const originalVal = node.nodeValue;
+                if (originalVal && originalVal.trim().length > 0) {
+                    const repaired = repairLatexSyntaxInHtml(originalVal);
+                    if (originalVal !== repaired) {
+                        const span = document.createElement('span');
+                        span.innerHTML = repaired;
+                        if (node.parentNode) {
+                            node.parentNode.replaceChild(span, node);
                         }
                     }
-                });
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                // Атайын MathJax же скрипт тегдери болсо тийбөө
+                if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && !node.tagName.startsWith('MJX-') && !node.classList.contains('MathJax')) {
+                    const children = Array.from(node.childNodes);
+                    children.forEach(child => processNodeFormatting(child));
+                }
             }
         }
 
-        // Баракчага суроо жүктөлгөндө чакырылуучу универсалдуу функция
-        function executeUniversalMathRender() {
-            const container = document.getElementById('runningScreen');
-            if (!container || container.style.display === 'none') return;
+        // MathJax рендерин ишке ашыруучу негизги функция
+        function triggerMathRender() {
+            const runningScreen = document.getElementById('runningScreen');
+            if (!runningScreen || runningScreen.style.display === 'none') return;
 
-            // 1. Google Drive сүрөттөрүн оңдоо
-            processImages(container);
+            // 1. Сүрөттөрдү Drive линкинен LH3ке айландыруу
+            processImages(runningScreen);
 
-            // 2. Тексттеги формулаларды нормализациялоо
-            const qText = document.getElementById('qText');
-            if (qText) applyLatexFixToElement(qText);
+            // 2. Тексттердин ичиндеги LaTeX калыптарын оңдоо
+            processNodeFormatting(runningScreen);
 
-            const options = document.querySelectorAll('.q-option');
-            options.forEach(opt => applyLatexFixToElement(opt));
-
-            const pisaBox = document.getElementById('pisaBox');
-            if (pisaBox) applyLatexFixToElement(pisaBox);
-
-            // 3. MathJax аркылуу рендерлөө
+            // 3. MathJax 3тү тазалап, кайра жаңыдан рендерлөө
             if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetClear([container]);
-                window.MathJax.typesetPromise([container]).catch(err => console.log('MathJax Error:', err));
+                try {
+                    if (window.MathJax.typesetClear) {
+                        window.MathJax.typesetClear([runningScreen]);
+                    }
+                    window.MathJax.typesetPromise([runningScreen]).catch(e => console.log('MathJax error:', e));
+                } catch (err) {
+                    console.log('Typeset executing error:', err);
+                }
             }
         }
 
-        // Суроолор ачылганда автоматтык түрдө иштетүү (MutationObserver)
-        const observerTarget = document.getElementById('runningScreen');
-        if (observerTarget) {
-            let renderTimer;
+        // Суроолор dynamic түрдө алмашканын угуу (MutationObserver)
+        const targetContainer = document.getElementById('runningScreen');
+        if (targetContainer) {
+            let renderDebounce;
             const observer = new MutationObserver((mutations) => {
-                const hasNewContent = mutations.some(m => 
-                    Array.from(m.addedNodes).some(n => 
-                        n.nodeType === Node.ELEMENT_NODE && 
-                        !n.tagName.startsWith('MJX-') && 
-                        !n.classList.contains('MathJax')
+                // Эгер өзгөрүү MathJax генерация кылган элемент болсо улантуунун кереги жок
+                const isMjxChange = mutations.every(m => 
+                    Array.from(m.addedNodes).every(n => 
+                        n.nodeType === Node.ELEMENT_NODE && (n.tagName.startsWith('MJX-') || n.classList.contains('MathJax'))
                     )
                 );
 
-                if (hasNewContent) {
-                    clearTimeout(renderTimer);
-                    renderTimer = setTimeout(executeUniversalMathRender, 50);
+                if (!isMjxChange) {
+                    clearTimeout(renderDebounce);
+                    renderDebounce = setTimeout(triggerMathRender, 80);
                 }
             });
 
-            observer.observe(observerTarget, { childList: true, subtree: true });
+            observer.observe(targetContainer, { childList: true, subtree: true });
         }
     </script>
 </body>
