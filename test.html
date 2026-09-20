@@ -21,7 +21,7 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- MathJax 3 Конфигурациясы (Формулаларды китептегидей иреттеп чагылдыруу) -->
+    <!-- MathJax 3 Конфигурациясы -->
     <script>
         window.MathJax = {
             tex: { 
@@ -31,10 +31,13 @@
                 processEnvironments: true
             },
             options: {
-                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
             },
             chtml: {
-                matchFontHeight: false
+                matchFontHeight: false,
+                displayAlign: 'center'
             }
         };
     </script>
@@ -166,12 +169,13 @@
             margin: 15px 0;
         }
 
-        /* MathJax Формулалары үчүн китеп стилиндеги туура жөндөөлөр */
+        /* MathJax китеп стилин камсыз кылуучу CSS */
         mjx-container {
             display: inline-block !important;
-            margin: 0 3px !important;
+            margin: 0 2px !important;
             vertical-align: middle !important;
             outline: none !important;
+            font-size: 105% !important;
         }
         mjx-container[jax="CHTML"][display="true"] {
             display: block !important;
@@ -400,7 +404,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Google Drive сүрөттөрүн жана Тексттеги формулаларды коопсуз иштетүү -->
+    <!-- Тексттеги формулаларды жана сүрөттөрдү оңдоо алгоритми -->
     <script>
         let isMathJaxRendering = false;
 
@@ -436,8 +440,10 @@
             });
         }
 
-        // Формула текстиндеги экранирование маселесин оңдоо
-        function prepareMathText(container) {
+        /* 
+         * БАШКЫ ОҢДОО: Тексттеги каалаган LaTeX форматын MathJax тааныгандай $...$ арасына коопсуз оройт.
+         */
+        function fixLatexSyntax(container) {
             if (!container) return;
 
             const processNode = (node) => {
@@ -445,17 +451,21 @@
                     let text = node.nodeValue;
                     if (!text || !text.trim()) return;
 
-                    // 1. Ашыкча эскейп слэштерди оңдоо (\\\\vec -> \vec)
+                    // 1. Ашыкча эскейптерди тазалоо
                     text = text.replace(/\\\\/g, '\\');
 
-                    // 2. Тегерек кашаадагы качып калган LaTeX синтаксистерди ($...$) долларга ороо
+                    // 2. (\vec{r}) сыяктуу кашаа ичиндеги же жалгыз турган LaTeX синтаксистерди $...$ долларга ороо
                     text = text.replace(/\\\((.*?)\\\)/g, '$$$1$$');
                     text = text.replace(/\\\[(.*?)\\\]/g, '$$$$$1$$$$');
 
-                    // 3. Эгер кашаада (\vec{v}) сыяктуу жазылса, аны $\vec{v}$ айландыруу
-                    text = text.replace(/\((\\vec\{[^}]+\})\)/g, '($$$1$$)');
+                    // 3. Долларсыз калган векторлорду жана чоңдуктарды табуу: \vec{...}, \vert...\vert, \Delta
+                    text = text.replace(/(?<!\$)\(\\vec\{([^}]+)\}\)(?!\$)/g, '($$\\vec{$1}$$)');
                     text = text.replace(/(?<!\$)\\vec\{([^}]+)\}(?!\$)/g, '$\\vec{$1}$');
                     text = text.replace(/(?<!\$)\\vert(.*?)\\vert(?!\$)/g, '$\\vert$1\\vert$');
+                    text = text.replace(/(?<!\$)\\Delta(?!\$)/g, '$\\Delta$');
+                    
+                    // 4. \vec{v}=const же башка туюнтумдар долларсыз калса, аларды $...$ арасына алуу
+                    text = text.replace(/(?<!\$)\\vec\{([^}]+)\}=([a-zA-Z0-9_]+)(?!\$)/g, '$\\vec{$1}=$2$');
 
                     node.nodeValue = text;
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
@@ -478,7 +488,7 @@
             isMathJaxRendering = true;
 
             processImages(target);
-            prepareMathText(target);
+            fixLatexSyntax(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
                 if (window.MathJax.typesetClear) {
@@ -495,6 +505,7 @@
             }
         }
 
+        // Баракта суроолор алмашканда MutationObserver аркылуу MathJax чакыруу
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
             let renderTimeout;
@@ -510,7 +521,7 @@
                 if (isMathJaxChange) return;
 
                 clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(renderMath, 100);
+                renderTimeout = setTimeout(renderMath, 120);
             });
             
             observer.observe(targetNode, { childList: true, subtree: true });
