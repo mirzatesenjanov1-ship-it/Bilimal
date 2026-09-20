@@ -47,6 +47,26 @@
       gap: 10px;
     }
 
+    .user-controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .admin-btn {
+      background: linear-gradient(90deg, #f59e0b, #d97706);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      display: none; /* Дефолт боюнча жашыруун, админ киргенде ачылат */
+      align-items: center;
+      gap: 8px;
+    }
+
     /* Издөө жана Чыпкалоо Панели */
     .controls-container {
       max-width: 1200px;
@@ -100,7 +120,7 @@
       cursor: pointer;
     }
 
-    /* Витрина Карточкаларынын Сеткасы */
+    /* Сетка */
     .plans-grid {
       max-width: 1200px;
       margin: 0 auto;
@@ -145,7 +165,6 @@
       line-height: 1.4;
     }
 
-    /* Google Drive Preview Фрейми (көчүрүү бөгөттөлгөн) */
     .preview-container {
       width: 100%;
       height: 280px;
@@ -154,7 +173,6 @@
       overflow: hidden;
       border: 1px solid #374151;
       margin-bottom: 15px;
-      position: relative;
     }
 
     .preview-iframe {
@@ -163,7 +181,6 @@
       border: none;
     }
 
-    /* Жүктөө Баскычы */
     .download-btn {
       width: 100%;
       background: linear-gradient(90deg, #10b981, #059669);
@@ -192,7 +209,7 @@
       font-size: 0.85rem;
     }
 
-    /* Модалдык Төлөм Терезеси */
+    /* Модалдар (Төлөм жана Админ Панель) */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -211,10 +228,9 @@
       background: #1f2937;
       border: 1px solid #374151;
       border-radius: 16px;
-      max-width: 420px;
+      max-width: 450px;
       width: 100%;
       padding: 25px;
-      text-align: center;
       position: relative;
     }
 
@@ -229,39 +245,51 @@
 
     .qr-box {
       background: #ffffff;
-      padding: 15px;
+      padding: 12px;
       border-radius: 12px;
       display: inline-block;
       margin: 15px 0;
     }
 
     .qr-box img {
-      width: 180px;
-      height: 180px;
+      width: 200px;
+      height: 200px;
+      object-fit: contain;
     }
 
-    .pay-status {
-      margin-top: 15px;
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-bottom: 5px;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      color: #fff;
       font-size: 0.9rem;
-      color: #38bdf8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
+      outline: none;
     }
 
-    .spinner {
-      border: 3px solid rgba(255,255,255,0.1);
-      border-left-color: #38bdf8;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    .submit-btn {
+      width: 100%;
+      background: #f59e0b;
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
     }
 
     .empty-msg {
@@ -279,8 +307,15 @@
     <a href="/" class="brand-logo">
       <i class="fa-solid fa-graduation-cap"></i> Bilimal.org
     </a>
-    <div style="font-size: 0.9rem; color: #10b981; font-weight: 500;">
-      <i class="fa-solid fa-lock-open"></i> Ачык база (Витрина)
+    
+    <div class="user-controls">
+      <div style="font-size: 0.9rem; color: #10b981; font-weight: 500;">
+        <i class="fa-solid fa-lock-open"></i> Ачык база
+      </div>
+      <!-- Тек гана mirzatestebesov51@gmail.com үчүн ачылуучу баскыч -->
+      <button id="adminPanelBtn" class="admin-btn" onclick="openAdminModal()">
+        <i class="fa-solid fa-gear"></i> Админ Панель
+      </button>
     </div>
   </header>
 
@@ -304,70 +339,87 @@
   </div>
 
   <!-- Пландардын сеткасы -->
-  <main class="plans-grid" id="plansContainer">
-    <!-- Данныйлар JS аркылуу автоматтык жүктөлөт -->
-  </main>
+  <main class="plans-grid" id="plansContainer"></main>
 
   <!-- Төлөм жүргүзүү Модалдык терезеси -->
   <div class="modal-overlay" id="payModal">
-    <div class="modal-content">
+    <div class="modal-content" style="text-align: center;">
       <i class="fa-solid fa-xmark close-modal" onclick="closePaymentModal()"></i>
       <h3 style="color: #fff; margin-bottom: 8px;">Сабак планын жүктөө</h3>
       <p style="font-size: 0.85rem; color: #9ca3af;" id="modalPlanTitle">Темасы...</p>
       
+      <!-- MBANK QR Сүрөтү -->
       <div class="qr-box">
-        <!-- Динамикалык QR код же банктык QR -->
-        <img id="qrImage" src="" alt="Төлөм QR коду">
+        <img src="/qrmbank.png" alt="MBANK QR Коду">
       </div>
 
       <div style="font-size: 1.1rem; font-weight: bold; color: #10b981;">
         Төлөнүүчү сумма: 10 сом
       </div>
       <p style="font-size: 0.8rem; color: #9ca3af; margin-top: 5px;">
-        MBANK же каалаган банк колдонмосу менен QR-кодду сканерлеңиз.
+        MBANK колдонмосу аркылуу QR-кодду сканерлеп 10 сом которуңуз.
       </p>
 
-      <div class="pay-status" id="payStatus">
-        <div class="spinner"></div> Төлөм автоматтык текшерилүүдө...
-      </div>
+      <button class="submit-btn" style="background: #10b981; color: #fff; margin-top: 15px;" onclick="confirmPayment()">
+        <i class="fa-solid fa-download"></i> Төлөдүм, файлды жүктөө
+      </button>
+    </div>
+  </div>
+
+  <!-- Эксклюзивдүү Админ Модалдык Панели -->
+  <div class="modal-overlay" id="adminModal">
+    <div class="modal-content">
+      <i class="fa-solid fa-xmark close-modal" onclick="closeAdminModal()"></i>
+      <h3 style="color: #f59e0b; margin-bottom: 15px;"><i class="fa-solid fa-plus-circle"></i> Жаңы сабак планын кошуу</h3>
+      
+      <form onsubmit="addNewPlan(event)">
+        <div class="form-group">
+          <label>Классты тандаңыз:</label>
+          <select id="newGrade" required>
+            <option value="5">5-класс</option>
+            <option value="6">6-класс</option>
+            <option value="7">7-класс</option>
+            <option value="8">8-класс</option>
+            <option value="9">9-класс</option>
+            <option value="10">10-класс</option>
+            <option value="11">11-класс</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Сабактын темасы:</label>
+          <input type="text" id="newTitle" placeholder="Мисалы: Ньютондун экинчи закону" required>
+        </div>
+
+        <div class="form-group">
+          <label>Google Drive Шилтемеси (Ссылка):</label>
+          <input type="url" id="newDriveUrl" placeholder="https://drive.google.com/file/d/..." required>
+        </div>
+
+        <button type="submit" class="submit-btn">Базага кошуу</button>
+      </form>
     </div>
   </div>
 
   <script>
-    // 1. Сабак пландарынын маалымат базасы (Бул жерге Google Drive ID жана Жүктөө шилтемелерин саласыз)
-    const lessonPlans = [
+    // Админдик почта
+    const ADMIN_EMAIL = "mirzatestebesov51@gmail.com";
+
+    // Дефолттук маалымат базасы
+    let lessonPlans = JSON.parse(localStorage.getItem('bilimal_plans')) || [
       {
         id: "plan_10_01",
         grade: "10",
         title: "Түз сызыктуу бир калыптагы кыймыл",
-        // Google Drive /preview шилтемеси (Көчүрүү жана басып чыгаруу жабылган)
-        previewUrl: "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/preview",
-        // Төлөгөндөн кийин жүктөлүүчү Word файлдын түздөн-түз шилтемеси
-        downloadUrl: "https://drive.google.com/uc?export=download&id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs",
-        price: 10
-      },
-      {
-        id: "plan_8_01",
-        grade: "8",
-        title: "Заттын түзүлүшү. Молекулалар жана атомдор",
-        previewUrl: "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/preview",
-        downloadUrl: "https://drive.google.com/uc?export=download&id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs",
-        price: 10
-      },
-      {
-        id: "plan_7_01",
-        grade: "7",
-        title: "Физикалык кубулуштар жана байкоолор",
         previewUrl: "https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs/preview",
         downloadUrl: "https://drive.google.com/uc?export=download&id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs",
         price: 10
       }
     ];
 
-    let currentCheckingPlan = null;
-    let paymentCheckInterval = null;
+    let selectedPlanForPay = null;
 
-    // 2. Витринаны экранга чыгаруу
+    // 1. Экрандагы сабактарды чагылдыруу
     function renderPlans(plans) {
       const container = document.getElementById('plansContainer');
       container.innerHTML = '';
@@ -385,9 +437,8 @@
             <span class="card-badge">${plan.grade}-класс</span>
             <h3 class="card-title">${plan.title}</h3>
             
-            <!-- Google Drive Документти көрүү (Копирование блокировкада) -->
             <div class="preview-container">
-              <iframe class="preview-iframe" src="${plan.previewUrl}" allow="autoplay"></iframe>
+              <iframe class="preview-iframe" src="${plan.previewUrl}"></iframe>
             </div>
           </div>
 
@@ -400,7 +451,7 @@
       });
     }
 
-    // 3. Издөө жана Фильтрлоо функциясы
+    // 2. Издөө жана фильтр
     function filterPlans() {
       const searchValue = document.getElementById('searchInput').value.toLowerCase();
       const selectedGrade = document.getElementById('gradeFilter').value;
@@ -414,61 +465,95 @@
       renderPlans(filtered);
     }
 
-    // 4. Төлөм Модалын ачуу жана QR түзүү (Б-Вариант)
+    // 3. Төлөм модалын ачуу
     function openPaymentModal(planId) {
-      const plan = lessonPlans.find(p => p.id === planId);
-      if (!plan) return;
+      selectedPlanForPay = lessonPlans.find(p => p.id === planId);
+      if (!selectedPlanForPay) return;
 
-      currentCheckingPlan = plan;
-      document.getElementById('modalPlanTitle').innerText = `${plan.grade}-класс: ${plan.title}`;
-      
-      // Динамикалык QR кодду жаратуу (MBANK же Pay24 QR API шилтемеси)
-      // Мисал катары QuickChart API аркылуу QR генерециялоо
-      const paymentPayload = `https://bilimal.org/pay?plan_id=${plan.id}&amount=${plan.price}`;
-      document.getElementById('qrImage').src = `https://quickchart.io/qr?text=${encodeURIComponent(paymentPayload)}&size=180`;
-
+      document.getElementById('modalPlanTitle').innerText = `${selectedPlanForPay.grade}-класс: ${selectedPlanForPay.title}`;
       document.getElementById('payModal').style.display = 'flex';
-
-      // 5. Төлөм аткарылганын серверден автоматтык сурап туруу (Polling)
-      startPaymentCheck(plan.id);
     }
 
-    // 5. Төлөмдүн статусун аткаруу / текшерүү
-    function startPaymentCheck(planId) {
-      clearInterval(paymentCheckInterval);
-      
-      // Б-Вариант: Бул жерде ар 3 секунд сайын серверден (Webhook) төлөм түштүбү же жокпу текшерип турат
-      paymentCheckInterval = setInterval(() => {
-        /* 
-           Иш жүзүндө Backendге суроо жиберилет:
-           fetch('/api/check-payment?plan_id=' + planId)...
-        */
-        
-        // Демонстрация үчүн: 6 секунддан кийин төлөм ийгиликтүү өттү деп файлды автоматтык жүктөп берет
-      }, 3000);
-    }
-
-    // Имитация: Төлөм ийгиликтүү өткөндө чакырылуучу функция
-    function paymentSuccess(plan) {
-      clearInterval(paymentCheckInterval);
-      document.getElementById('payStatus').innerHTML = `<span style="color: #10b981;"><i class="fa-solid fa-circle-check"></i> Төлөм кабыл алынды! Жүктөлүп жатат...</span>`;
-      
-      setTimeout(() => {
-        closePaymentModal();
-        // Word файлды түз автоматтык түрдө жүктөп алуу
-        window.location.href = plan.downloadUrl;
-      }, 1500);
-    }
-
-    // Модалды жабуу
     function closePaymentModal() {
       document.getElementById('payModal').style.display = 'none';
-      clearInterval(paymentCheckInterval);
     }
 
-    // Алгачкы баракча жүктөлгөндө чакыруу
+    function confirmPayment() {
+      if (selectedPlanForPay) {
+        alert("Төлөм кабыл алынды! Файлды жүктөө башталууда...");
+        window.open(selectedPlanForPay.downloadUrl, '_blank');
+        closePaymentModal();
+      }
+    }
+
+    // 4. Тек гана mirzatestebesov51@gmail.com почтасын текшерүү
+    function checkAdminAccess(userEmail) {
+      const adminBtn = document.getElementById('adminPanelBtn');
+      if (userEmail && userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        adminBtn.style.display = 'inline-flex';
+      } else {
+        adminBtn.style.display = 'none';
+      }
+    }
+
+    // Админ модалын ачуу/жабуу
+    function openAdminModal() {
+      document.getElementById('adminModal').style.display = 'flex';
+    }
+
+    function closeAdminModal() {
+      document.getElementById('adminModal').style.display = 'none';
+    }
+
+    // 5. Админ Панели аркылуу жаңы план кошуу
+    function addNewPlan(e) {
+      e.preventDefault();
+
+      const grade = document.getElementById('newGrade').value;
+      const title = document.getElementById('newTitle').value;
+      const rawUrl = document.getElementById('newDriveUrl').value;
+
+      // Google Drive IDсин ажыратып алуу
+      const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (!match) {
+        alert("Сураныч, туура Google Drive шилтемесин киргизиңиз!");
+        return;
+      }
+
+      const fileId = match[1];
+      const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+      const newPlan = {
+        id: "plan_" + Date.now(),
+        grade: grade,
+        title: title,
+        previewUrl: previewUrl,
+        downloadUrl: downloadUrl,
+        price: 10
+      };
+
+      lessonPlans.unshift(newPlan);
+      localStorage.setItem('bilimal_plans', JSON.stringify(lessonPlans));
+
+      renderPlans(lessonPlans);
+      closeAdminModal();
+
+      // Форманы тазалоо
+      document.getElementById('newTitle').value = '';
+      document.getElementById('newDriveUrl').value = '';
+
+      alert("Жаңы сабак планы ийгиликтүү кошулду!");
+    }
+
+    // Баракча жүктөлгөндө
     window.onload = () => {
       renderPlans(lessonPlans);
+
+      // Сайттагы авторизацияланган почтаны текшерүү (Firebase Auth ж.б.)
+      // Үлгү катары жергиликтүү сакталган аккаунтту же ушул логиканы текшерет:
+      const currentUserEmail = localStorage.getItem('user_email') || "mirzatestebesov51@gmail.com"; 
+      checkAdminAccess(currentUserEmail);
     };
   </script>
 </body>
