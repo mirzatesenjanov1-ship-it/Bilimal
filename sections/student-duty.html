@@ -359,17 +359,18 @@
 </div>
 
 <script>
-    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ ЭҢ ЖОГОРУ ЖАКТА ДАРОО АТКАРЫЛАТ
+    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ ЖАНА API KEY ТЕКШЕРҮҮ
     const firebaseConfig = {
+        apiKey: "YOUR_FIREBASE_API_KEY", // <-- УШУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН FIREBASE API KEY'ДИ ЖАЗЫҢЫЗ
         databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
     };
+
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // 2. БАШКА ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ЖАНА ИНФОРМАЦИЯЛАР
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
 
@@ -424,7 +425,6 @@
         });
     }
 
-    // КИРҮҮ БӨЛҮМҮ
     async function handleLogin(e) {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -434,11 +434,14 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             checkUserPermission(userCredential.user);
         } catch (err) {
-            alert("Кирүүдө ката: Email же Пароль туура эмес!");
+            if (err.code === 'auth/invalid-api-key') {
+                alert("Ката: Firebase API Key киргизиле элек же туура эмес!");
+            } else {
+                alert("Кирүүдө ката: Email же Пароль туура эмес!");
+            }
         }
     }
 
-    // КАТТАЛУУ ЖАНА АВТО-АДМИН ЛОГИКАСЫ
     async function handleRegister(e) {
         e.preventDefault();
         const selectedName = document.getElementById('studentSelect').value;
@@ -448,7 +451,6 @@
         try {
             if (auth.currentUser) await auth.signOut();
 
-            // ЭГЕР КАТТАЛЫП ЖАТКАН EMAIL ЖАНА ПАРОЛЬ АДМИНДИКИ БОЛСО
             if (email === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
                 try {
                     await auth.createUserWithEmailAndPassword(email, pass);
@@ -457,6 +459,8 @@
                     if (authErr.code === 'auth/email-already-in-use') {
                         await auth.signInWithEmailAndPassword(email, pass);
                         showAdminPortal();
+                    } else if (authErr.code === 'auth/invalid-api-key') {
+                        alert("Ката: Firebase API Key кодунда жазыла элек!");
                     } else {
                         alert("Админ эсебин түзүүдө ката: " + authErr.message);
                     }
@@ -464,7 +468,6 @@
                 return;
             }
 
-            // ЖОНЕКЕЙ ОКУУЧУ КАТТАЛСА
             await db.ref('applications').push({
                 studentName: selectedName,
                 email: email,
