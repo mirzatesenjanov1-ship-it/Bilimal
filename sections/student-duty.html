@@ -359,6 +359,17 @@
 </div>
 
 <script>
+    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ ЭҢ ЖОГОРУ ЖАКТА ДАРОО АТКАРЫЛАТ
+    const firebaseConfig = {
+        databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
+    };
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    // 2. БАШКА ГЛОБАЛДЫК ӨЗГӨРМӨЛӨР ЖАНА ИНФОРМАЦИЯЛАР
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
 
@@ -384,16 +395,6 @@
         ru: { docTitle: "Портал Дежурств - Bilimal", backBtn: "Назад", dutyTitle: "Портал дежурств", statusApproved: "Доступ разрешен", markedBy: "Отметил:" },
         en: { docTitle: "Duty Portal - Bilimal", backBtn: "Back", dutyTitle: "Duty Portal", statusApproved: "Access Granted", markedBy: "Marked by:" }
     };
-
-    // FIREBASE ТҮЗ ТУТАШУУ
-    const firebaseConfig = {
-        databaseURL: "https://bilimal-default-rtdb.firebaseio.com"
-    };
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
-    const auth = firebase.auth();
 
     function switchTab(type) {
         document.getElementById('tabLogin').classList.toggle('active', type === 'login');
@@ -423,7 +424,7 @@
         });
     }
 
-    // FIREBASE AUTHENTICATION АРКЫЛУУ КИРҮҮ
+    // КИРҮҮ БӨЛҮМҮ
     async function handleLogin(e) {
         e.preventDefault();
         const email = document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -437,7 +438,7 @@
         }
     }
 
-    // РЕГИСТРАЦИЯЖАНА АВТО-АДМИН ЛОГИКАСЫ
+    // КАТТАЛУУ ЖАНА АВТО-АДМИН ЛОГИКАСЫ
     async function handleRegister(e) {
         e.preventDefault();
         const selectedName = document.getElementById('studentSelect').value;
@@ -447,14 +448,12 @@
         try {
             if (auth.currentUser) await auth.signOut();
 
-            // 1. ЭГЕР КАТТАЛЫП ЖАТКАН EMAIL ЖАНА ПАРОЛЬ АДМИНДИКИ БОЛСО
+            // ЭГЕР КАТТАЛЫП ЖАТКАН EMAIL ЖАНА ПАРОЛЬ АДМИНДИКИ БОЛСО
             if (email === ADMIN_EMAIL.toLowerCase() && pass === ADMIN_PASS) {
                 try {
-                    // Firebase Auth'до жаңы Админ аккаунтун ачабыз
                     await auth.createUserWithEmailAndPassword(email, pass);
                     showAdminPortal();
                 } catch (authErr) {
-                    // Мурда катталган болсо, автоматтык түрдө кирет
                     if (authErr.code === 'auth/email-already-in-use') {
                         await auth.signInWithEmailAndPassword(email, pass);
                         showAdminPortal();
@@ -465,7 +464,7 @@
                 return;
             }
 
-            // 2. ЭГЕР КӨНҮКҮ ОКУУЧУ БОЛСО (Күтүү тизмесине түшөт)
+            // ЖОНЕКЕЙ ОКУУЧУ КАТТАЛСА
             await db.ref('applications').push({
                 studentName: selectedName,
                 email: email,
@@ -483,13 +482,11 @@
     function checkUserPermission(user) {
         if (!user) return;
 
-        // 1. АДМИН ТЕКШЕРҮҮ
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
-        // 2. ОКУУЧУ VIP_USERS ТИЗМЕСИНДЕ БАРБЫ ТЕКШЕРҮҮ
         db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value', snapshot => {
             if (snapshot.exists()) {
                 let name = user.email;
@@ -561,7 +558,6 @@
         });
     }
 
-    // АДМИН УРУКСАТ БЕРГЕНДЕ FIREBASE AUTHENTICATION'ДЕ АКТИВАЦИЯЛОО
     async function approveUser(key, name, email, pass) {
         try {
             await db.ref('vip_users').push({
