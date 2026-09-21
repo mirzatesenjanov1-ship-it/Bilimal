@@ -297,7 +297,7 @@
         </div>
 
         <!-- КИРҮҮ ФОРМАСЫ -->
-        <form id="loginForm" onsubmit="handleLogin(event)">
+        <form id="loginForm" onsubmit="return handleLogin(event)">
             <div class="input-group">
                 <label>Электрондук почтаңыз (Email):</label>
                 <input type="email" id="loginEmail" placeholder="example@gmail.com" required autocomplete="username">
@@ -310,7 +310,7 @@
         </form>
 
         <!-- КАТТАЛУУ ФОРМАСЫ (ОКУУЧУЛАР ҮЧҮН) -->
-        <form id="registerForm" onsubmit="handleRegister(event)" style="display: none;">
+        <form id="registerForm" onsubmit="return handleRegister(event)" style="display: none;">
             <div class="input-group" id="studentSelectGroup">
                 <label>Тизмеден аты-жөнүңүздү тандаңыз:</label>
                 <select id="studentSelect"></select>
@@ -335,7 +335,7 @@
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
         <h3 style="margin-bottom: 8px;">Суранычыңыз Администраторго жөнөтүлдү!</h3>
         <p style="font-size: 14px; color: var(--text-muted);">Администратор суранычыңызды карап чыгып макулдугун бергенден кийин гана кирүү мүмкүн болот.</p>
-        <button class="btn-logout" style="margin-top: 15px;" onclick="logout()">Башкы бетке кайтуу</button>
+        <button class="btn-logout" style="margin-top: 15px; padding: 10px 20px;" onclick="resetAuthAndBack()">Кайра кирүү формасына кайтуу</button>
     </div>
 
     <!-- ДЕЖУРСТВО ТИЗМЕСИ -->
@@ -440,14 +440,14 @@
         const btnSubmit = document.getElementById('btnRegSubmit');
         if (val.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             selectGroup.style.display = 'none';
-            btnSubmit.innerText = "Администратор катары катталуу/кирүү";
+            btnSubmit.innerText = "Администратор катары кирүү";
         } else {
             selectGroup.style.display = 'block';
             btnSubmit.innerText = "Катталуу суранычын жөнөтүү";
         }
     }
 
-    // КИРҮҮ ТЕКШЕРҮҮСҮ (ОҢДОЛДО)
+    // КИРҮҮ ТЕКШЕРҮҮСҮ
     async function handleLogin(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -456,7 +456,7 @@
         const pass = document.getElementById('loginPassword').value.trim();
 
         if (!email || !pass) {
-            alert("Сураныч, бардык талааларды толтуруңуз!");
+            alert("Сураныч, Email жана Паролду толтуруңуз!");
             return false;
         }
 
@@ -467,7 +467,7 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             await checkUserPermission(userCredential.user);
         } catch (err) {
-            alert("Кирүүдө ката: Email же Пароль туура эмес!");
+            alert("Кирүүдө ката: Электрондук почта же сырсөз туура эмес!");
             console.error(err);
         } finally {
             btn.disabled = false;
@@ -511,13 +511,15 @@
             const selectedName = document.getElementById('studentSelect').value;
             const userCred = await auth.createUserWithEmailAndPassword(email, pass);
             
-            await db.ref('applications').child(userCred.user.uid).set({
+            // Суранычты маалымат базасына жазуу
+            await db.ref('applications/' + userCred.user.uid).set({
                 studentName: selectedName,
                 email: email,
                 uid: userCred.user.uid,
                 date: new Date().toISOString()
             });
 
+            // Маанилүү: Колдонуучу катып калбашы үчүн чыгуу жасап, эстутумду тазалайбыз
             await auth.signOut();
 
             document.getElementById('authBlock').style.display = 'none';
@@ -525,7 +527,7 @@
 
         } catch(err) {
             if (err.code === 'auth/email-already-in-use') {
-                alert("Бул email мурда катталган. Кирүү (Логин) бөлүмүнөн кирип көрүңүз.");
+                alert("Бул email системага катталган! 'Кирүү' баракчасынан почтаңыз жана паролуңуз менен кириңиз.");
                 switchTab('login');
                 document.getElementById('loginEmail').value = email;
             } else {
@@ -538,42 +540,87 @@
         return false;
     }
 
-    // УРУКСАТТЫ ТЕКШЕРҮҮ
+    // УРУКСАТТЫ ТЕКШЕРҮҮ (НЕГИЗГИ ЛОГИКА ОҢДОЛДУ)
     async function checkUserPermission(user) {
-        if (!user) return;
+        if (!user) {
+            showAuthBlock();
+            return;
+        }
 
+        // 1. Админ болсо
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
         try {
+            // 2. UID боюнча VIP тизмеден издөө
             const snapshot = await db.ref('vip_users/' + user.uid).once('value');
             if (snapshot.exists()) {
                 const userData = snapshot.val();
                 showUserPortal(userData.studentName || user.email);
-            } else {
-                const emailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
-                if (emailSnap.exists()) {
-                    let name = user.email;
-                    emailSnap.forEach(c => { name = c.val().studentName; });
-                    showUserPortal(name);
-                } else {
-                    await auth.signOut();
-                    document.getElementById('authBlock').style.display = 'none';
-                    document.getElementById('pendingBlock').style.display = 'block';
-                }
+                return;
             }
+
+            // 3. Эгер UID табылбаса, EMAIL боюнча VIP тизмеден издөө
+            const emailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
+            if (emailSnap.exists()) {
+                let name = user.email;
+                let foundUid = null;
+                emailSnap.forEach(c => { 
+                    name = c.val().studentName || name; 
+                    foundUid = c.key;
+                });
+
+                // Келечекте UID аркылуу дароо табылышы үчүн базаны жаңылап коёбуз
+                if (foundUid && foundUid !== user.uid) {
+                    await db.ref('vip_users/' + user.uid).set({
+                        studentName: name,
+                        email: user.email.toLowerCase(),
+                        role: 'student',
+                        approvedAt: new Date().toISOString()
+                    });
+                }
+
+                showUserPortal(name);
+                return;
+            }
+
+            // 4. Эгер Уруксат бериле элек болсо (Ушул жерде мурда катып жаткан)
+            await auth.signOut(); // Браузердин авторизациясын толук ажыратабыз
+            showPendingBlock();
+
         } catch (err) {
             console.error("Уруксат текшерүүдө ката:", err);
-            alert("Маалымат базасы менен байланышууда ката чыкты.");
+            await auth.signOut();
+            showAuthBlock();
         }
+    }
+
+    function resetAuthAndBack() {
+        auth.signOut().then(() => {
+            showAuthBlock();
+        });
     }
 
     function logout() {
         auth.signOut().then(() => {
             location.reload();
         });
+    }
+
+    function showAuthBlock() {
+        document.getElementById('authBlock').style.display = 'block';
+        document.getElementById('mainDutyCard').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'none';
+    }
+
+    function showPendingBlock() {
+        document.getElementById('authBlock').style.display = 'none';
+        document.getElementById('mainDutyCard').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'block';
+        document.getElementById('adminPanel').style.display = 'none';
     }
 
     function showAdminPortal() {
@@ -628,25 +675,27 @@
         });
     }
 
+    // АДМИН МАКУЛ ДЕСЕ:
     async function approveUser(uid, name, email) {
         try {
-            await db.ref(`vip_users/${uid}`).set({
+            await db.ref('vip_users/' + uid).set({
                 studentName: name,
                 email: email.toLowerCase(),
                 role: 'student',
                 approvedAt: new Date().toISOString()
             });
 
-            await db.ref(`applications/${uid}`).remove();
+            await db.ref('applications/' + uid).remove();
             alert(`${name} үчүн порталга кирүүгө уруксат берилди!`);
         } catch(e) {
             alert("Ката: " + e.message);
         }
     }
 
+    // АДМИН КАРШЫ БОЛСО:
     async function rejectUser(uid) {
         try {
-            await db.ref(`applications/${uid}`).remove();
+            await db.ref('applications/' + uid).remove();
             alert("Сураныч четке кагылды.");
         } catch(e) {
             alert("Ката: " + e.message);
@@ -737,9 +786,7 @@
             if (user && !user.isAnonymous) {
                 checkUserPermission(user);
             } else {
-                document.getElementById('authBlock').style.display = 'block';
-                document.getElementById('mainDutyCard').style.display = 'none';
-                document.getElementById('pendingBlock').style.display = 'none';
+                showAuthBlock();
             }
         });
 
