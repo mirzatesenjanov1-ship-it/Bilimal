@@ -452,7 +452,7 @@
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
             checkUserPermission(userCredential.user);
         } catch (err) {
-            alert("Кирүүдө ката: Email же Пароль туура эмес же сизге али уруксат бериле элек!");
+            alert("Кирүүдө ката: Email же Пароль туура эмес!");
         }
     }
 
@@ -463,7 +463,6 @@
         const pass = document.getElementById('regPassword').value.trim();
 
         try {
-            // ЭГЕР АДМИН КИРИП ЖАТСА
             if (email === ADMIN_EMAIL.toLowerCase()) {
                 try {
                     await auth.createUserWithEmailAndPassword(email, pass);
@@ -478,9 +477,7 @@
                 return;
             }
 
-            // ОКУУЧУ КАТТАЛГАНДА: Аккаунт түзүлөт, бирок дароо Logout кылынат!
             const selectedName = document.getElementById('studentSelect').value;
-
             const userCred = await auth.createUserWithEmailAndPassword(email, pass);
             
             // Суранычты маалымат базасына жазуу
@@ -491,7 +488,6 @@
                 date: new Date().toISOString()
             });
 
-            // АВТОМАТТЫК КИРБӨӨСҮ ҮЧҮН ДАРОО ЧЫГАРЫП САЛАБЫЗ
             await auth.signOut();
 
             document.getElementById('authBlock').style.display = 'none';
@@ -510,22 +506,29 @@
     function checkUserPermission(user) {
         if (!user) return;
 
-        // Эгер Админ болсо
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
-        // Эгер Окуучу болсо - VIP (Уруксат берилген) колдонуучулардын тизмесинен издейбиз
+        // Колдонуучунун UID аркылуу текшерүү
         db.ref('vip_users').child(user.uid).once('value', snapshot => {
             if (snapshot.exists()) {
                 const userData = snapshot.val();
                 showUserPortal(userData.studentName || user.email);
             } else {
-                // Эгер админ али уруксат бере элек болсо - сессияны жаап, күтүү барагын көрсөтөбүз
-                auth.signOut();
-                document.getElementById('authBlock').style.display = 'none';
-                document.getElementById('pendingBlock').style.display = 'block';
+                // Email аркылуу дагы бир жолу сактануу текшерүүсү
+                db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value', emailSnapshot => {
+                    if (emailSnapshot.exists()) {
+                        let name = user.email;
+                        emailSnapshot.forEach(c => { name = c.val().studentName; });
+                        showUserPortal(name);
+                    } else {
+                        auth.signOut();
+                        document.getElementById('authBlock').style.display = 'none';
+                        document.getElementById('pendingBlock').style.display = 'block';
+                    }
+                });
             }
         });
     }
