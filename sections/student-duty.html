@@ -366,7 +366,7 @@
         
         <div style="display: flex; flex-direction: column; gap: 10px; align-items: center;">
             <button class="btn-resend" onclick="reSendRequest()" data-i18n="btnResend">
-                <i class="fas fa-paper-plane"></i> Кире албай жатсаңыз: Кайра уруксат суроо
+                <i class="fas fa-paper-plane"></i> Админге сураныч жөнөтүү / Кайра суроо
             </button>
             <button class="btn-logout" style="padding: 10px 20px;" onclick="resetAuthAndBack()" data-i18n="btnBackAuth">Кайра кирүү формасына кайтуу</button>
         </div>
@@ -457,10 +457,10 @@
             btnLogin: "Кирүү",
             btnReg: "Катталуу суранычын жөнөтүү",
             btnAdminLogin: "Администратор катары кирүү",
-            pendingTitle: "Суранычыңыз Администраторго жөнөтүлдү!",
-            pendingDesc: "Администратор суранычыңызды карап чыгып макулдугун бергенден кийин гана кирүү мүмкүн болот.",
+            pendingTitle: "Админдин макулдугу талап кылынат!",
+            pendingDesc: "Ар бир жолу порталга кирерде Администратор уруксат бериши керек.",
             btnBackAuth: "Кайра кирүү формасына кайтуу",
-            btnResend: "Кире албай жатсаңыз: Кайра уруксат суроо",
+            btnResend: "Админге сураныч жөнөтүү / Кайра суроо",
             loggedInAs: "Кирген колдонуучу:",
             btnLogout: "Чыгуу",
             adminTitle: "Администратор Панели",
@@ -492,10 +492,10 @@
             btnLogin: "Войти",
             btnReg: "Отправить запрос на регистрацию",
             btnAdminLogin: "Войти как администратор",
-            pendingTitle: "Запрос отправлен Администратору!",
-            pendingDesc: "Доступ будет открыт только после одобрения Администратором.",
+            pendingTitle: "Требуется одобрение Администратора!",
+            pendingDesc: "Для входа в портал необходимо разрешение Администратора.",
             btnBackAuth: "Вернуться к форме входа",
-            btnResend: "Не можете войти? Запросить доступ повторно",
+            btnResend: "Отправить запрос Админу / Запросить повторно",
             loggedInAs: "Вы вошли как:",
             btnLogout: "Выйти",
             adminTitle: "Панель Администратора",
@@ -527,10 +527,10 @@
             btnLogin: "Login",
             btnReg: "Submit Access Request",
             btnAdminLogin: "Login as Administrator",
-            pendingTitle: "Request sent to Administrator!",
-            pendingDesc: "Access will be granted once approved by the Administrator.",
+            pendingTitle: "Admin Approval Required!",
+            pendingDesc: "Admin permission is required every time you attempt to enter the portal.",
             btnBackAuth: "Back to Login Form",
-            btnResend: "Cannot access? Request permission again",
+            btnResend: "Send Request to Admin / Re-apply",
             loggedInAs: "Logged in as:",
             btnLogout: "Logout",
             adminTitle: "Admin Panel",
@@ -681,7 +681,7 @@
         return false;
     }
 
-    // ТЕКШЕРҮҮ ЖАНА УРУКСАТТАРДЫ ДАЛ КЕЛТИРҮҮ (UID & Email боюнча кош текшерүү)
+    // ТЕКШЕРҮҮ ЖАНА УРУКСАТТАРДЫ ДАЛ КЕЛТИРҮҮ
     async function checkUserPermission(user) {
         if (!user) {
             showAuthBlock();
@@ -696,7 +696,7 @@
         }
 
         try {
-            // 1-текшерүү: UID боюнча
+            // UID боюнча жигердүү уруксат бар-жогун текшерүү
             const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
             if (vipUidSnap.exists()) {
                 const approvedData = vipUidSnap.val();
@@ -704,31 +704,8 @@
                 return;
             }
 
-            // 2-текшерүү: Эгер мурда UID эмес Email менен бекитилсе (Dual check)
-            const vipAllSnap = await db.ref('vip_users').once('value');
-            let foundUser = null;
-
-            if (vipAllSnap.exists()) {
-                vipAllSnap.forEach(child => {
-                    const data = child.val();
-                    if (data && data.email && data.email.toLowerCase() === userEmail) {
-                        foundUser = data;
-                    }
-                });
-            }
-
-            if (foundUser) {
-                // Эски уруксатты жаңы UID'ге байланыштырып сактоо
-                await db.ref('vip_users/' + user.uid).set({
-                    studentName: foundUser.studentName || user.email,
-                    email: userEmail,
-                    role: 'student',
-                    updatedAt: new Date().toISOString()
-                });
-                showUserPortal(foundUser.studentName || user.email);
-            } else {
-                showPendingBlock();
-            }
+            // Уруксаты жок болсо Pending барагын ачуу
+            showPendingBlock();
 
         } catch (err) {
             console.error("Уруксат текшерүү катасы:", err);
@@ -736,7 +713,7 @@
         }
     }
 
-    // КИРЕ АЛБАЙ ЖАТКАНДА КАЙРА СУРАНЫЧ ЖӨНӨТҮҮ (МУРУНКУСУН ТАЗАЛАП)
+    // КИРЕ АЛБАЙ ЖАТКАНДА ЖЕ КАЙРА КИРГЕНДЕ УРУКСАТ СУРОО
     async function reSendRequest() {
         const currentUser = auth.currentUser;
         if (!currentUser) {
@@ -749,7 +726,7 @@
         showLoader();
 
         try {
-            // Эгер ушул окуучунун эски суранычтары бар болсо тазалоо
+            // Мурдагы эски суранычын тазалоо
             const appSnap = await db.ref('applications').once('value');
             if (appSnap.exists()) {
                 appSnap.forEach(child => {
@@ -760,14 +737,13 @@
                 });
             }
 
-            // Жүктөлүүчү аты-жөнүн аныктоо
             let studentName = userEmail;
             const selectElem = document.getElementById('studentSelect');
             if (selectElem && selectElem.value) {
                 studentName = selectElem.value;
             }
 
-            // Жаңы сураныч түзүү
+            // Админдин панелине сураныч катары түшүрүү
             await db.ref('applications/' + currentUser.uid).set({
                 studentName: studentName,
                 email: userEmail,
@@ -776,7 +752,7 @@
                 isReSent: true
             });
 
-            alert(currentLang === 'ru' ? "Запрос успешно обновлен и повторно отправлен Администратору!" : (currentLang === 'en' ? "Request updated and resent to Admin!" : "Суранычыңыз жаңыланып, Админге кайра жөнөтүлдү!"));
+            alert(currentLang === 'ru' ? "Запрос успешно отправлен Администратору!" : (currentLang === 'en' ? "Request sent to Admin!" : "Суранычыңыз Админге жөнөтүлдү!"));
             showPendingBlock();
 
         } catch(e) {
@@ -797,9 +773,24 @@
         });
     }
 
-    function logout() {
+    // ЧЫГУУ БАСКЫЧЫН БАСКАНДА УРУКСАТТЫ АВТОМАТТЫК ТҮРДӨ ЖОК КЫЛУУ (ОКУУЧУ ЧЫКСА КАЙРА СУРАШЫ КЕРЕК)
+    async function logout() {
+        const user = auth.currentUser;
         isProcessingAuth = true;
         showLoader();
+
+        if (user && user.email && user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+            try {
+                // Базадан беррилген уруксатты (vip_users) тазалап салабыз
+                await db.ref('vip_users/' + user.uid).remove();
+                
+                // Суранычын да тазалайбыз
+                await db.ref('applications/' + user.uid).remove();
+            } catch(e) {
+                console.error("Уруксатты өчүрүүдө каталык:", e);
+            }
+        }
+
         auth.signOut().then(() => {
             isProcessingAuth = false;
             location.reload();
@@ -864,7 +855,7 @@
                 div.className = 'req-item';
                 div.innerHTML = `
                     <div>
-                        <strong>${displayName}</strong> ${req.isReSent ? '<span style="color:var(--accent-yellow); font-size:11px;">(Кайра жөнөтүлгөн)</span>' : ''}<br>
+                        <strong>${displayName}</strong> ${req.isReSent ? '<span style="color:var(--accent-yellow); font-size:11px;">(Кайра суралган)</span>' : ''}<br>
                         <small style="color: var(--accent-blue);">${displayEmail}</small>
                     </div>
                     <div>
@@ -877,12 +868,11 @@
         });
     }
 
-    // АДМИН УРУКСАТ БЕРГЕНДЕ ЭСКИ СУРАНЫЧТАРДЫ ДА ТАЗАЛОО
     async function approveUser(reqKey, name, email) {
         try {
             const cleanEmail = email.toLowerCase();
             
-            // 1. VIP Колдонуучуларга кошобуз (UID боюнча)
+            // VIP уруксат берүү
             await db.ref('vip_users/' + reqKey).set({
                 studentName: name,
                 email: cleanEmail,
@@ -890,7 +880,7 @@
                 approvedAt: new Date().toISOString()
             });
 
-            // 2. Бардык эски суранычтардын арасынан ушул email/UIDге тиешелүүлөрүн тазалайбыз
+            // Суранычтар тизмесинен тазалоо
             const appSnap = await db.ref('applications').once('value');
             if (appSnap.exists()) {
                 appSnap.forEach(child => {
