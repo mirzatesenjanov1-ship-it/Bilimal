@@ -361,7 +361,7 @@
 </div>
 
 <script>
-    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ
+    // FIREBASE ИНИЦИАЛИЗАЦИЯСЫ
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -447,7 +447,7 @@
         }
     }
 
-    // 2. КИРҮҮ ТЕКШЕРҮҮСҮ
+    // КИРҮҮ ТЕКШЕРҮҮСҮ
     async function handleLogin(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -479,7 +479,7 @@
         return false;
     }
 
-    // 3. КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
+    // КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
     async function handleRegister(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -542,35 +542,24 @@
         return false;
     }
 
-    // 4. ТЕКШЕРҮҮ ЖАНА АКТИВДЕШТИРҮҮ ЛОГИКАСЫ
+    // ТЕКШЕРҮҮ ЖАНА АКТИВДЕШТИРҮҮ ЛОГИКАСЫ (ЭРЕЖЕЛЕРГЕ ЫЛАЙЫКТАЛДЫ)
     async function checkUserPermission(user) {
         if (!user) {
             showAuthBlock();
             return;
         }
 
-        if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        if (user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
         try {
+            // Эрежеде .indexOn болбогондуктан, түздөн-түз ушул колдонуучунун UID боюнча текшеребиз
             const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
-            let approvedData = null;
 
             if (vipUidSnap.exists()) {
-                approvedData = vipUidSnap.val();
-            } else {
-                const vipEmailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
-                if (vipEmailSnap.exists()) {
-                    vipEmailSnap.forEach(c => {
-                        approvedData = c.val();
-                    });
-                    await db.ref('vip_users/' + user.uid).set(approvedData);
-                }
-            }
-
-            if (approvedData) {
+                const approvedData = vipUidSnap.val();
                 showUserPortal(approvedData.studentName || user.email);
             } else {
                 await auth.signOut();
