@@ -415,8 +415,8 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // Браузерди/сессияны жапканда сессия автоматтык түрдө өчөт
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    // Браузерге сессияны туруктуу сактабоо
+    auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
@@ -546,6 +546,19 @@
         }
     };
 
+    // БРАУЗЕРДЕГИ КЭШ ЖАНА ФАЙЛДАРДЫ ТОЛУК СҮРҮП ӨЧҮРҮҮ
+    async function purgeAuthData() {
+        try {
+            await auth.signOut();
+        } catch(e){}
+        try {
+            window.indexedDB.deleteDatabase('firebaseLocalStorageDb');
+        } catch(e){}
+        try {
+            sessionStorage.clear();
+        } catch(e){}
+    }
+
     function showLoader() {
         document.getElementById('loaderBlock').style.display = 'block';
         document.getElementById('authBlock').style.display = 'none';
@@ -617,6 +630,7 @@
         } catch (err) {
             alert(currentLang === 'ru' ? "Ошибка входа: Неверный email или пароль!" : (currentLang === 'en' ? "Login error: Invalid email or password!" : "Кирүүдө ката: Электрондук почта же сырсөз туура эмес!"));
             console.error(err);
+            await purgeAuthData();
             showAuthBlock();
         } finally {
             isProcessingAuth = false;
@@ -657,7 +671,7 @@
             const selectedName = document.getElementById('studentSelect').value;
             const userCred = await auth.createUserWithEmailAndPassword(email, pass);
             
-            // Админге уруксат суранычын базага түшүрүү
+            // Админге сураныч калтыруу
             await db.ref('applications/' + userCred.user.uid).set({
                 studentName: selectedName,
                 email: email,
@@ -665,18 +679,20 @@
                 date: new Date().toISOString()
             });
 
-            // Сессияны туруктуу сактабоо үчүн ошо замат чыгарып жиберебиз
-            await auth.signOut();
+            // Катталгандан кийин колдонуучуну дароо чыгарп салуу
+            await purgeAuthData();
             showPendingBlock();
 
         } catch(err) {
             if (err.code === 'auth/email-already-in-use') {
                 alert(currentLang === 'ru' ? "Этот email уже зарегистрирован! Войдите через форму 'Вход'." : (currentLang === 'en' ? "This email is already registered! Please log in." : "Бул email системага катталган! 'Кирүү' баракчасынан почтаңыз жана паролуңуз менен кириңиз."));
+                await purgeAuthData();
                 showAuthBlock();
                 switchTab('login');
                 document.getElementById('loginEmail').value = email;
             } else {
                 alert((currentLang === 'ru' ? "Ошибка регистрации: " : (currentLang === 'en' ? "Registration error: " : "Катталууда ката: ")) + err.message);
+                await purgeAuthData();
                 showAuthBlock();
             }
         } finally {
@@ -688,20 +704,21 @@
     // АДМИН УРУКСАТ БЕРГЕНБИ ЖЕ ЖОК БУ ТЕКШЕРҮҮ
     async function checkUserPermission(user) {
         if (!user) {
+            await purgeAuthData();
             showAuthBlock();
             return;
         }
 
         const userEmail = user.email ? user.email.toLowerCase() : "";
 
-        // Эгерде АДМИН болсо дароо коё берүү
+        // Эгерде АДМИН болсо дароо киргизүү
         if (userEmail === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
         try {
-            // АДМИН уруксат берген окуучулардын тизмесинен текшерүү
+            // АДМИН уруксат бергендердин (VIP) базасынан издейбиз
             const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
             if (vipUidSnap.exists()) {
                 const approvedData = vipUidSnap.val();
@@ -709,13 +726,13 @@
                 return;
             }
 
-            // Уруксаты ЖОК окуучуларды дароо auth'дон чыгарып жиберебиз (Сессия сакталбашы үчүн!)
-            await auth.signOut();
+            // УРУКСАТЫ ЖОК болсо сессияны өчүрүп, күтүү барагына токтотобуз
+            await purgeAuthData();
             showPendingBlock();
 
         } catch (err) {
             console.error("Уруксат текшерүү катасы:", err);
-            await auth.signOut();
+            await purgeAuthData();
             showPendingBlock();
         }
     }
@@ -744,25 +761,20 @@
         }
     }
 
-    function resetAuthAndBack() {
+    async function resetAuthAndBack() {
         isProcessingAuth = true;
         showLoader();
-        auth.signOut().then(() => {
-            isProcessingAuth = false;
-            showAuthBlock();
-        }).catch(() => {
-            isProcessingAuth = false;
-            showAuthBlock();
-        });
+        await purgeAuthData();
+        isProcessingAuth = false;
+        showAuthBlock();
     }
 
-    function logout() {
+    async function logout() {
         isProcessingAuth = true;
         showLoader();
-        auth.signOut().then(() => {
-            isProcessingAuth = false;
-            location.reload();
-        });
+        await purgeAuthData();
+        isProcessingAuth = false;
+        location.reload();
     }
 
     function showAuthBlock() {
@@ -842,7 +854,7 @@
         try {
             const cleanEmail = email.toLowerCase();
             
-            // 1. VIP (уруксаты барлар) тизмесине кошуу (reqKey аркылуу сактайбыз)
+            // 1. VIP (уруксаты барлар) тизмесине кошуу
             await db.ref('vip_users/' + reqKey).set({
                 studentName: name,
                 email: cleanEmail,
