@@ -3,307 +3,792 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Интерактивдүү Оюн</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <title data-i18n="docTitle">Дежурство Порталы - Bilimal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #111622;
+            --border-color: #1e2640;
+            --accent-blue: #00d2ff;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
         }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
         body {
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .container {
-            background: #fff;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 500px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container { max-width: 850px; width: 100%; }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+        .btn-back:hover { background: rgba(0, 210, 255, 0.1); color: var(--accent-blue); }
+
+        .lang-switcher { display: flex; gap: 6px; }
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .lang-btn.active { background: var(--accent-blue); color: #000; border-color: var(--accent-blue); }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            transition: 0.3s;
             text-align: center;
         }
-        .hidden {
-            display: none !important;
+        .auth-tab.active {
+            background: var(--accent-blue);
+            color: #0b0e14;
+            border-color: var(--accent-blue);
         }
-        input, button {
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title { font-size: 20px; font-weight: bold; color: var(--accent-green); display: flex; align-items: center; gap: 10px; }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-approved { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+
+        .lock-notice {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .lock-notice i { font-size: 40px; color: var(--accent-blue); margin-bottom: 8px; }
+
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+        .input-group input, .input-group select {
             width: 100%;
             padding: 12px;
-            margin: 8px 0;
+            background: #0b0e14;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
+            color: #fff;
+            outline: none;
+            font-size: 14px;
         }
-        button {
-            background-color: #007bff;
-            color: white;
+
+        .user-info-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #0b0e14;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+            border: 1px solid var(--accent-red);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .duty-list { list-style: none; margin-top: 15px; }
+        .duty-item {
+            background: #0b0e14;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .duty-info { display: flex; align-items: center; gap: 15px; flex: 1; }
+        .student-num {
+            width: 32px;
+            height: 32px;
+            background: rgba(0, 210, 255, 0.1);
+            color: var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .student-name { font-size: 15px; font-weight: 600; }
+        .duty-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        .checkbox-container { display: flex; align-items: center; cursor: pointer; user-select: none; }
+        .checkbox-container input { display: none; }
+        .checkmark {
+            width: 28px;
+            height: 28px;
+            background: #111622;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.3s;
+        }
+        .checkbox-container input:checked ~ .checkmark { background: var(--accent-green); border-color: var(--accent-green); }
+        .checkmark i { color: #fff; display: none; font-size: 16px; }
+        .checkbox-container input:checked ~ .checkmark i { display: block; }
+
+        .admin-section {
+            background: rgba(0, 210, 255, 0.05);
+            border: 1px dashed var(--accent-blue);
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 25px;
+            display: none;
+        }
+        .admin-title { color: var(--accent-blue); font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        .req-item {
+            background: #111622;
+            padding: 12px 16px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .btn-action {
+            padding: 6px 12px;
+            border-radius: 6px;
             border: none;
             cursor: pointer;
             font-weight: bold;
+            font-size: 12px;
         }
-        button:hover {
-            background-color: #0056b3;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        .timer-bar {
-            width: 100%;
-            height: 10px;
-            background-color: #e0e0e0;
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 15px 0;
-        }
-        .timer-progress {
-            height: 100%;
-            width: 100%;
-            background-color: #28a745;
-            transition: width 0.2s linear;
-        }
-        .loading-spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #007bff;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .btn-approve { background: var(--accent-green); color: #fff; }
+        .btn-reject { background: var(--accent-red); color: #fff; margin-left: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Кирүү экраны -->
-    <div id="loginSection">
-        <h2>Оюнга кошулуу</h2>
-        <input type="text" id="playerName" placeholder="Атыңызды жазыңыз" autocomplete="off">
-        <input type="text" id="roomCode" placeholder="Бөлмө коду" autocomplete="off">
-        <button id="joinBtn" onclick="joinGame()">Кирүү</button>
-    </div>
-
-    <!-- Жүктөлүү экраны (Катууну алдын алуу үчүн) -->
-    <div id="loadingSection" class="hidden">
-        <div class="loading-spinner"></div>
-        <p id="loadingText">Бөлмөгө туташууда, күтө туруңуз...</p>
-    </div>
-
-    <!-- Күтүү экраны -->
-    <div id="lobbySection" class="hidden">
-        <h2>Күтүү бөлмөсү</h2>
-        <p>Оюндун башталышын күтүңүз...</p>
-        <p>Сиздин атыңыз: <b id="displayName"></b></p>
-    </div>
-
-    <!-- Оюн экраны -->
-    <div id="gameSection" class="hidden">
-        <div class="timer-bar">
-            <div id="timerProgress" class="timer-progress"></div>
+    <div class="top-bar">
+        <a href="/sections/student-portal.html" class="btn-back">
+            <i class="fas fa-arrow-left"></i> <span data-i18n="backBtn">Артка</span>
+        </a>
+        <div class="lang-switcher">
+            <button class="lang-btn active" onclick="switchLanguage('ky')">KY</button>
+            <button class="lang-btn" onclick="switchLanguage('ru')">RU</button>
+            <button class="lang-btn" onclick="switchLanguage('en')">EN</button>
         </div>
-        <h3 id="questionText">Суроо жүктөлүүдө...</h3>
-        <div id="optionsContainer"></div>
+    </div>
+
+    <!-- АВТОРИЗАЦИЯ ЖАНА КАТТАЛУУ БЛОГУ -->
+    <div id="authBlock" class="card">
+        <div class="auth-tabs">
+            <button type="button" class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Кирүү</button>
+            <button type="button" class="auth-tab" id="tabRegister" onclick="switchTab('register')">Катталуу</button>
+        </div>
+
+        <div class="lock-notice">
+            <i class="fas fa-user-shield"></i>
+            <h3 style="color: #fff; margin-bottom: 6px;" id="authNoticeTitle">Порталга кирүү</h3>
+            <p style="font-size: 13px; color: var(--text-muted);" id="authNoticeDesc">
+                Дежурство порталын көрүү үчүн системага кириңиз же сураныч жөнөтүү үчүн катталыңыз.
+            </p>
+        </div>
+
+        <!-- КИРҮҮ ФОРМАСЫ -->
+        <form id="loginForm" onsubmit="return handleLogin(event)">
+            <div class="input-group">
+                <label>Электрондук почтаңыз (Email):</label>
+                <input type="email" id="loginEmail" placeholder="example@gmail.com" required autocomplete="username">
+            </div>
+            <div class="input-group">
+                <label>Пароль (Сырсөз):</label>
+                <input type="password" id="loginPassword" placeholder="******" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn-primary" id="btnLoginSubmit">Кирүү</button>
+        </form>
+
+        <!-- КАТТАЛУУ ФОРМАСЫ -->
+        <form id="registerForm" onsubmit="return handleRegister(event)" style="display: none;">
+            <div class="input-group" id="studentSelectGroup">
+                <label>Тизмеден аты-жөнүңүздү тандаңыз:</label>
+                <select id="studentSelect"></select>
+            </div>
+
+            <div class="input-group">
+                <label>Электрондук почтаңыз (Email):</label>
+                <input type="email" id="regEmail" placeholder="example@gmail.com" oninput="checkAdminEmail(this.value)" required autocomplete="username">
+            </div>
+
+            <div class="input-group">
+                <label>Пароль ойлоп табыңыз:</label>
+                <input type="password" id="regPassword" placeholder="******" required minlength="6" autocomplete="new-password">
+            </div>
+
+            <button type="submit" class="btn-primary" id="btnRegSubmit">Катталуу суранычын жөнөтүү</button>
+        </form>
+    </div>
+
+    <!-- КҮТҮҮ БИЛДИРҮҮСҮ -->
+    <div id="pendingBlock" class="card" style="display: none; text-align: center;">
+        <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
+        <h3 style="margin-bottom: 8px;">Суранычыңыз Администраторго жөнөтүлдү!</h3>
+        <p style="font-size: 14px; color: var(--text-muted);">Администратор суранычыңызды карап чыгып макулдугун бергенден кийин гана кирүү мүмкүн болот.</p>
+        <button class="btn-logout" style="margin-top: 15px; padding: 10px 20px;" onclick="resetAuthAndBack()">Кайра кирүү формасына кайтуу</button>
+    </div>
+
+    <!-- ДЕЖУРСТВО ТИЗМЕСИ -->
+    <div class="card" id="mainDutyCard" style="display: none;">
+        <div class="user-info-bar">
+            <span>Кирген колдонуучу: <strong id="currentUserLabel" style="color: var(--accent-blue);"></strong></span>
+            <button class="btn-logout" onclick="logout()">Чыгуу</button>
+        </div>
+
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-user-shield"></i> <span data-i18n="dutyTitle">Кезмет Порталы</span></div>
+            <div id="userStatusBadge" class="status-badge status-approved" data-i18n="statusApproved">Уруксат берилди</div>
+        </div>
+
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 10px;" id="currentDateText"></p>
+
+        <ul class="duty-list" id="dutyListContainer"></ul>
+    </div>
+
+    <!-- АДМИН ПАНЕЛЬ -->
+    <div class="admin-section" id="adminPanel">
+        <div class="admin-title"><i class="fas fa-user-gear"></i> <span>Администратор Панели</span></div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Окуучулардын кирүү суранычтары:</p>
+        <div id="requestsList"></div>
     </div>
 </div>
 
 <script>
-    // Firebase Конфигурациясы
+    // 1. FIREBASE ИНИЦИАЛИЗАЦИЯСЫ
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        databaseURL: "YOUR_DATABASE_URL",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+        authDomain: "bilimal-org.firebaseapp.com",
+        databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "bilimal-org",
+        storageBucket: "bilimal-org.firebasestorage.app",
+        messagingSenderId: "241750360816",
+        appId: "1:241750360816:web:a991434eb5afbc470d7835",
+        measurementId: "G-9GSQV60QV0"
     };
 
     if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
+    const auth = firebase.auth();
 
-    let currentRoom = null;
-    let playerId = null;
-    let localTimerInterval = null;
-    let lastRenderedState = "";
-    let serverTimeOffset = 0;
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
-    // Сервер убактысы менен жергиликтүү убакыттын айырмасын эсептөө
-    db.ref(".info/serverTimeOffset").on("value", function(snap) {
-        serverTimeOffset = snap.val() || 0;
-    });
+    var currentLang = localStorage.getItem('site_lang') || 'ky';
+    var currentDutyState = {};
+    var isProcessingAuth = false;
 
-    function joinGame() {
-        const name = document.getElementById('playerName').value.trim();
-        const room = document.getElementById('roomCode').value.trim();
+    const ADMIN_EMAIL = "mirzatestebesov51@gmail.com"; 
 
-        if (!name || !room) {
-            alert("Сураныч, атыңызды жана бөлмө кодун толук киргизиңиз!");
+    const MASTER_STUDENTS = [
+        "Адылбекова Гүлжан Асхатовна", "Алымжанова Асия Радылбековна", "Анарбаев Адилет Рустемович",
+        "Асанбеков Изатбек Алмазович", "Аскарова Элмина Расуловна", "Байтакова Айбийке Керезбековна",
+        "Бактыбекова Бегимай Бактыбековна", "Бакытбекова Айпери Батухановна", "Джакыпова Азиза Максатовна",
+        "Жамгырчиева Шахноза Зарлыковна", "Каакыев Барсбек Алтынбекович", "Кубаналиева Алия Манасовна",
+        "Кудакеева Таттыбүбү Мирболотовна", "Кыязбеков Усман Нурсеитович", "Лимбекова Акылай Жусупбековна",
+        "Максатова Амина Максатовна", "Муратбекова Нургиза Таалайбековна", "Мүсүрбеков Жаныбек Сыргакович",
+        "Нурдоолотов Байэл Аскатович", "Нуркулова Арууке Расуловна", "Нурханов Мухаммад Нурханович",
+        "Оболбекова Айдай Амановна", "Өмүрбекова Аяна Умаровна", "Раишева Уулкелсин Таалайбековна",
+        "Сулпукоров Эмир Даниярович", "Таштанбеков Бексултан Бакытович", "Тургунбеков Байэл Эсенбекович",
+        "Турдубаева Элиза Нурланбековна", "Чолпонкулова Жанайым Сталбековна", "Шекербекова Аделина Шайлообековна",
+        "Эсенжанова Асема Фархатовна"
+    ];
+
+    const translations = {
+        ky: { docTitle: "Кезмет Порталы - Bilimal", backBtn: "Артка", dutyTitle: "Кезмет порталы", statusApproved: "Уруксат берилди", markedBy: "Белгиледи:" },
+        ru: { docTitle: "Портал Дежурств - Bilimal", backBtn: "Назад", dutyTitle: "Портал дежурств", statusApproved: "Доступ разрешен", markedBy: "Отметил:" },
+        en: { docTitle: "Duty Portal - Bilimal", backBtn: "Back", dutyTitle: "Duty Portal", statusApproved: "Access Granted", markedBy: "Marked by:" }
+    };
+
+    function switchTab(type) {
+        document.getElementById('tabLogin').classList.toggle('active', type === 'login');
+        document.getElementById('tabRegister').classList.toggle('active', type === 'register');
+        
+        document.getElementById('loginForm').style.display = type === 'login' ? 'block' : 'none';
+        document.getElementById('registerForm').style.display = type === 'register' ? 'block' : 'none';
+        
+        if (type === 'login') {
+            document.getElementById('authNoticeTitle').innerText = "Порталга кирүү";
+            document.getElementById('authNoticeDesc').innerText = "Почтаңызды жана паролуңузду жазып кириңиз.";
+        } else {
+            document.getElementById('authNoticeTitle').innerText = "Катталуу / Сураныч жөнөтүү";
+            document.getElementById('authNoticeDesc').innerText = "Аты-жөнүңүздү, почтаңызды жана пароль жазып катталыңыз.";
+        }
+    }
+
+    function setupStudentSelect() {
+        const select = document.getElementById('studentSelect');
+        if (!select) return;
+        select.innerHTML = '';
+        MASTER_STUDENTS.forEach((name, index) => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = `${index + 1}. ${name}`;
+            select.appendChild(opt);
+        });
+    }
+
+    function checkAdminEmail(val) {
+        const selectGroup = document.getElementById('studentSelectGroup');
+        const btnSubmit = document.getElementById('btnRegSubmit');
+        if (val.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            selectGroup.style.display = 'none';
+            btnSubmit.innerText = "Администратор катары кирүү";
+        } else {
+            selectGroup.style.display = 'block';
+            btnSubmit.innerText = "Катталуу суранычын жөнөтүү";
+        }
+    }
+
+    // 2. КИРҮҮ ТЕКШЕРҮҮСҮ
+    async function handleLogin(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        
+        const btn = document.getElementById('btnLoginSubmit');
+        const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+        const pass = document.getElementById('loginPassword').value.trim();
+
+        if (!email || !pass) {
+            alert("Сураныч, Email жана Паролду толтуруңуз!");
+            return false;
+        }
+
+        isProcessingAuth = true;
+        btn.disabled = true;
+        btn.innerText = "Кирүү аткарылууда...";
+
+        try {
+            const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+            await checkUserPermission(userCredential.user);
+        } catch (err) {
+            alert("Кирүүдө ката: Электрондук почта же сырсөз туура эмес!");
+            console.error(err);
+            showAuthBlock();
+        } finally {
+            isProcessingAuth = false;
+            btn.disabled = false;
+            btn.innerText = "Кирүү";
+        }
+        return false;
+    }
+
+    // 3. КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
+    async function handleRegister(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        
+        const btn = document.getElementById('btnRegSubmit');
+        const email = document.getElementById('regEmail').value.trim().toLowerCase();
+        const pass = document.getElementById('regPassword').value.trim();
+
+        if (!email || !pass) {
+            alert("Сураныч, бардык талааларды толтуруңуз!");
+            return false;
+        }
+
+        isProcessingAuth = true;
+        btn.disabled = true;
+        btn.innerText = "Жөнөтүлүүдө...";
+
+        try {
+            if (email === ADMIN_EMAIL.toLowerCase()) {
+                let userCred;
+                try {
+                    userCred = await auth.createUserWithEmailAndPassword(email, pass);
+                } catch (authErr) {
+                    if (authErr.code === 'auth/email-already-in-use') {
+                        userCred = await auth.signInWithEmailAndPassword(email, pass);
+                    } else {
+                        throw authErr;
+                    }
+                }
+                showAdminPortal();
+                return false;
+            }
+
+            const selectedName = document.getElementById('studentSelect').value;
+            const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+            
+            await db.ref('applications/' + userCred.user.uid).set({
+                studentName: selectedName,
+                email: email,
+                uid: userCred.user.uid,
+                date: new Date().toISOString()
+            });
+
+            await auth.signOut();
+            showPendingBlock();
+
+        } catch(err) {
+            if (err.code === 'auth/email-already-in-use') {
+                alert("Бул email системага катталган! 'Кирүү' баракчасынан почтаңыз жана паролуңуз менен кириңиз.");
+                switchTab('login');
+                document.getElementById('loginEmail').value = email;
+            } else {
+                alert("Катталууда ката: " + err.message);
+            }
+            showAuthBlock();
+        } finally {
+            isProcessingAuth = false;
+            btn.disabled = false;
+            btn.innerText = "Катталуу суранычын жөнөтүү";
+        }
+        return false;
+    }
+
+    // 4. ТЕКШЕРҮҮ ЖАНА АКТИВДЕШТИРҮҮ ЛОГИКАСЫ
+    async function checkUserPermission(user) {
+        if (!user) {
+            showAuthBlock();
             return;
         }
 
-        showSection('loadingSection');
-        document.getElementById('joinBtn').disabled = true;
+        if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            showAdminPortal();
+            return;
+        }
 
-        const roomRef = db.ref('rooms/' + room);
+        try {
+            const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
+            let approvedData = null;
 
-        roomRef.once('value').then((snapshot) => {
+            if (vipUidSnap.exists()) {
+                approvedData = vipUidSnap.val();
+            } else {
+                const vipEmailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
+                if (vipEmailSnap.exists()) {
+                    vipEmailSnap.forEach(c => {
+                        approvedData = c.val();
+                    });
+                    await db.ref('vip_users/' + user.uid).set(approvedData);
+                }
+            }
+
+            if (approvedData) {
+                showUserPortal(approvedData.studentName || user.email);
+            } else {
+                await auth.signOut();
+                showPendingBlock();
+            }
+
+        } catch (err) {
+            console.error("Уруксат текшерүү катасы:", err);
+            await auth.signOut();
+            showAuthBlock();
+        }
+    }
+
+    function resetAuthAndBack() {
+        isProcessingAuth = true;
+        auth.signOut().then(() => {
+            isProcessingAuth = false;
+            showAuthBlock();
+        }).catch(() => {
+            isProcessingAuth = false;
+            showAuthBlock();
+        });
+    }
+
+    function logout() {
+        isProcessingAuth = true;
+        auth.signOut().then(() => {
+            isProcessingAuth = false;
+            location.reload();
+        });
+    }
+
+    function showAuthBlock() {
+        document.getElementById('authBlock').style.display = 'block';
+        document.getElementById('mainDutyCard').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'none';
+    }
+
+    function showPendingBlock() {
+        document.getElementById('authBlock').style.display = 'none';
+        document.getElementById('mainDutyCard').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'block';
+        document.getElementById('adminPanel').style.display = 'none';
+    }
+
+    function showAdminPortal() {
+        document.getElementById('authBlock').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'none';
+        document.getElementById('mainDutyCard').style.display = 'block';
+        document.getElementById('adminPanel').style.display = 'block';
+        document.getElementById('currentUserLabel').innerText = "Администратор";
+        loadAdminRequests();
+    }
+
+    function showUserPortal(name) {
+        document.getElementById('authBlock').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'none';
+        document.getElementById('mainDutyCard').style.display = 'block';
+        document.getElementById('currentUserLabel').innerText = name;
+    }
+
+    function loadAdminRequests() {
+        db.ref('applications').on('value', snapshot => {
+            const list = document.getElementById('requestsList');
+            if (!list) return;
+            list.innerHTML = '';
+            
             if (!snapshot.exists()) {
-                alert("Мындай бөлмө табылган жок!");
-                showSection('loginSection');
-                document.getElementById('joinBtn').disabled = false;
+                list.innerHTML = `<p style="font-size: 13px; color: var(--text-muted);">Жаңы кирүү суранычтары жок</p>`;
                 return;
             }
 
-            playerId = localStorage.getItem('player_id');
-            if (!playerId) {
-                playerId = 'player_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('player_id', playerId);
-            }
+            snapshot.forEach(child => {
+                const req = child.val();
+                const uid = child.key;
+                const displayName = req.studentName || "Белгисиз";
+                const displayEmail = req.email || "";
 
-            currentRoom = room;
-            document.getElementById('displayName').innerText = name;
-
-            return db.ref(`rooms/${room}/players/${playerId}`).set({
-                name: name,
-                score: 0,
-                joinedAt: firebase.database.ServerValue.TIMESTAMP
+                const div = document.createElement('div');
+                div.className = 'req-item';
+                div.innerHTML = `
+                    <div>
+                        <strong>${displayName}</strong><br>
+                        <small style="color: var(--accent-blue);">${displayEmail}</small>
+                    </div>
+                    <div>
+                        <button class="btn-action btn-approve" onclick="approveUser('${uid}', '${displayName}', '${displayEmail}')">Макул (Уруксат берүү)</button>
+                        <button class="btn-action btn-reject" onclick="rejectUser('${uid}')">Каршы (Баш тартуу)</button>
+                    </div>
+                `;
+                list.appendChild(div);
             });
-        }).then(() => {
-            listenToRoomUpdates();
-        }).catch((error) => {
-            console.error("Туташуу катасы:", error);
-            alert("Туташууда ката чыкты. Кайрадан аракет кылыңыз.");
-            showSection('loginSection');
-            document.getElementById('joinBtn').disabled = false;
         });
     }
 
-    function listenToRoomUpdates() {
-        const roomRef = db.ref('rooms/' + currentRoom);
-
-        roomRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-
-            // Кайра-кайра рендер болуп катуунун алдын алуу
-            const currentStateString = JSON.stringify({
-                status: data.status,
-                question: data.currentQuestion,
-                startTime: data.questionStartTime
+    async function approveUser(uid, name, email) {
+        try {
+            await db.ref('vip_users/' + uid).set({
+                studentName: name,
+                email: email.toLowerCase(),
+                role: 'student',
+                approvedAt: new Date().toISOString()
             });
 
-            if (currentStateString === lastRenderedState) {
-                return;
-            }
-            lastRenderedState = currentStateString;
+            await db.ref('applications/' + uid).remove();
+            alert(`${name} үчүн порталга кирүүгө уруксат берилди!`);
+        } catch(e) {
+            alert("Ката: " + e.message);
+        }
+    }
 
-            handleGameState(data);
+    async function rejectUser(uid) {
+        try {
+            await db.ref('applications/' + uid).remove();
+            alert("Сураныч четке кагылды.");
+        } catch(e) {
+            alert("Ката: " + e.message);
+        }
+    }
+
+    function listenToDutyData() {
+        db.ref('student_duty').on('value', snapshot => {
+            currentDutyState = snapshot.val() || {};
+            renderDutyList();
         });
     }
 
-    function handleGameState(roomData) {
-        const status = roomData.status || 'lobby';
+    function renderDutyList() {
+        const container = document.getElementById('dutyListContainer');
+        if (!container) return;
+        container.innerHTML = '';
 
-        if (status === 'lobby') {
-            showSection('lobbySection');
-        } else if (status === 'active') {
-            showSection('gameSection');
-            renderQuestion(roomData.currentQuestion, roomData.questionDuration || 30, roomData.questionStartTime);
-        } else if (status === 'finished') {
-            alert('Оюн аяктады!');
-            showSection('lobbySection');
-        }
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        MASTER_STUDENTS.forEach((name, index) => {
+            const isChecked = currentDutyState[todayStr] && currentDutyState[todayStr][index];
+            const metaInfo = isChecked ? `${translations[currentLang].markedBy} ${isChecked.by} (${isChecked.time})` : '';
+
+            const li = document.createElement('li');
+            li.className = 'duty-item';
+            
+            li.innerHTML = `
+                <div class="duty-info">
+                    <div class="student-num">${index + 1}</div>
+                    <div>
+                        <div class="student-name">${name}</div>
+                        <div class="duty-meta">${metaInfo}</div>
+                    </div>
+                </div>
+
+                <div class="item-actions">
+                    <label class="checkbox-container">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleDutyCheck(${index}, this.checked)">
+                        <span class="checkmark"><i class="fas fa-check"></i></span>
+                    </label>
+                </div>
+            `;
+            container.appendChild(li);
+        });
     }
 
-    function renderQuestion(question, duration, startTime) {
-        if (!question) return;
+    function toggleDutyCheck(studentId, isChecked) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const userLabel = document.getElementById('currentUserLabel').innerText || "Колдонуучу";
 
-        document.getElementById('questionText').innerText = question.text || "Суроо";
-        const optionsContainer = document.getElementById('optionsContainer');
-        optionsContainer.innerHTML = '';
-
-        if (question.options && Array.isArray(question.options)) {
-            question.options.forEach((opt, index) => {
-                const btn = document.createElement('button');
-                btn.innerText = opt;
-                btn.onclick = () => submitAnswer(index);
-                optionsContainer.appendChild(btn);
+        if (isChecked) {
+            db.ref(`student_duty/${todayStr}/${studentId}`).set({
+                by: userLabel,
+                time: nowTime
             });
+        } else {
+            db.ref(`student_duty/${todayStr}/${studentId}`).remove();
         }
-
-        syncTimer(duration, startTime);
     }
 
-    function syncTimer(durationInSeconds, startTime) {
-        if (localTimerInterval) clearInterval(localTimerInterval);
+    function switchLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('site_lang', lang);
+        document.documentElement.lang = lang;
+        
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.textContent.toLowerCase() === lang);
+        });
 
-        const progressBar = document.getElementById('timerProgress');
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (translations[lang] && translations[lang][key]) {
+                if (key === 'docTitle') document.title = translations[lang][key];
+                else el.textContent = translations[lang][key];
+            }
+        });
 
-        function updateProgress() {
-            // Сервердеги убакытка тууралоо
-            const now = Date.now() + serverTimeOffset;
-            const elapsed = startTime ? (now - startTime) / 1000 : 0;
-            const remaining = durationInSeconds - elapsed;
+        renderDutyList();
+    }
 
-            if (remaining <= 0) {
-                progressBar.style.width = '0%';
-                clearInterval(localTimerInterval);
-                disableOptionButtons();
+    document.addEventListener('DOMContentLoaded', () => {
+        setupStudentSelect();
+        switchLanguage(currentLang);
+
+        auth.onAuthStateChanged(user => {
+            if (isProcessingAuth) return;
+
+            if (user && !user.isAnonymous) {
+                checkUserPermission(user);
             } else {
-                const percentage = (remaining / durationInSeconds) * 100;
-                progressBar.style.width = `${Math.max(0, percentage)}%`;
-            }
-        }
-
-        updateProgress();
-        localTimerInterval = setInterval(updateProgress, 100);
-    }
-
-    function disableOptionButtons() {
-        const buttons = document.querySelectorAll('#optionsContainer button');
-        buttons.forEach(btn => btn.disabled = true);
-    }
-
-    function submitAnswer(optionIndex) {
-        if (!currentRoom || !playerId) return;
-
-        disableOptionButtons();
-
-        db.ref(`rooms/${currentRoom}/answers/${playerId}`).set({
-            answer: optionIndex,
-            submittedAt: firebase.database.ServerValue.TIMESTAMP
-        }).catch((err) => {
-            console.error("Жоопту жөнөтүүдө ката:", err);
-            const buttons = document.querySelectorAll('#optionsContainer button');
-            buttons.forEach(btn => btn.disabled = false);
-        });
-    }
-
-    function showSection(sectionId) {
-        const sections = ['loginSection', 'loadingSection', 'lobbySection', 'gameSection'];
-        sections.forEach(id => {
-            const el = document.getElementById(id);
-            if (id === sectionId) {
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
+                showAuthBlock();
             }
         });
-    }
+
+        listenToDutyData();
+
+        const today = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDateText').innerText = today.toLocaleDateString(currentLang === 'ky' ? 'ky-KG' : currentLang, options);
+    });
 </script>
 </body>
 </html>
