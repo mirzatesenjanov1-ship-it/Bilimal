@@ -415,7 +415,8 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    // Браузерди/сессияны жапканда сессия автоматтык түрдө өчөт
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
@@ -664,6 +665,8 @@
                 date: new Date().toISOString()
             });
 
+            // Сессияны туруктуу сактабоо үчүн ошо замат чыгарып жиберебиз
+            await auth.signOut();
             showPendingBlock();
 
         } catch(err) {
@@ -706,38 +709,28 @@
                 return;
             }
 
-            // Эгер уруксаты жок болсо - "Күтүү" барагына өткөрүү
+            // Уруксаты ЖОК окуучуларды дароо auth'дон чыгарып жиберебиз (Сессия сакталбашы үчүн!)
+            await auth.signOut();
             showPendingBlock();
 
         } catch (err) {
             console.error("Уруксат текшерүү катасы:", err);
+            await auth.signOut();
             showPendingBlock();
         }
     }
 
     // КИРЕ АЛБАЙ ЖАТСА АДМИНГЕ СУРАНЫЧТЫ КАЙРА ЖӨНӨТҮҮ
     async function reSendRequest() {
-        const currentUser = auth.currentUser;
-        if (!currentUser) {
-            alert(currentLang === 'ru' ? "Пожалуйста, авторизуйтесь!" : "Сураныч, адегенде кириңиз!");
-            showAuthBlock();
-            return;
-        }
+        const emailInput = prompt(currentLang === 'ru' ? "Укажите ваш Email:" : "Электрондук почтаңызды жазыңыз:");
+        if (!emailInput) return;
 
-        const userEmail = currentUser.email ? currentUser.email.toLowerCase() : "";
         showLoader();
 
         try {
-            let studentName = userEmail;
-            const selectElem = document.getElementById('studentSelect');
-            if (selectElem && selectElem.value) {
-                studentName = selectElem.value;
-            }
-
-            await db.ref('applications/' + currentUser.uid).set({
-                studentName: studentName,
-                email: userEmail,
-                uid: currentUser.uid,
+            await db.ref('applications').push({
+                studentName: emailInput,
+                email: emailInput.toLowerCase(),
                 date: new Date().toISOString(),
                 isReSent: true
             });
@@ -849,7 +842,7 @@
         try {
             const cleanEmail = email.toLowerCase();
             
-            // 1. VIP (уруксаты барлар) тизмесине кошуу
+            // 1. VIP (уруксаты барлар) тизмесине кошуу (reqKey аркылуу сактайбыз)
             await db.ref('vip_users/' + reqKey).set({
                 studentName: name,
                 email: cleanEmail,
