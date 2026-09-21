@@ -174,10 +174,7 @@
             transition: 0.3s;
         }
 
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .btn-logout {
             background: rgba(239, 68, 68, 0.2);
@@ -309,7 +306,7 @@
             <button type="submit" class="btn-primary" id="btnLoginSubmit">Кирүү</button>
         </form>
 
-        <!-- КАТТАЛУУ ФОРМАСЫ (ОКУУЧУЛАР ҮЧҮН) -->
+        <!-- КАТТАЛУУ ФОРМАСЫ -->
         <form id="registerForm" onsubmit="return handleRegister(event)" style="display: none;">
             <div class="input-group" id="studentSelectGroup">
                 <label>Тизмеден аты-жөнүңүздү тандаңыз:</label>
@@ -330,7 +327,7 @@
         </form>
     </div>
 
-    <!-- КҮТҮҮ БИЛДИРҮҮСҮ (ОКУУЧУГА КӨРҮНӨТ) -->
+    <!-- КҮТҮҮ БИЛДИРҮҮСҮ -->
     <div id="pendingBlock" class="card" style="display: none; text-align: center;">
         <i class="fas fa-hourglass-half" style="font-size: 45px; color: var(--accent-yellow); margin-bottom: 12px;"></i>
         <h3 style="margin-bottom: 8px;">Суранычыңыз Администраторго жөнөтүлдү!</h3>
@@ -355,7 +352,7 @@
         <ul class="duty-list" id="dutyListContainer"></ul>
     </div>
 
-    <!-- АДМИН ПАНЕЛЬ (АДМИНГЕ ГАНА КӨРҮНӨТ) -->
+    <!-- АДМИН ПАНЕЛЬ -->
     <div class="admin-section" id="adminPanel">
         <div class="admin-title"><i class="fas fa-user-gear"></i> <span>Администратор Панели</span></div>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">Окуучулардын кирүү суранычтары:</p>
@@ -382,8 +379,12 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
+    // Браузердин туюк катып калуусун чечүү үчүн persistence туураланды
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
+    var isProcessingAuth = false; // Автоматикага тоскоол болбошу үчүн желекче
 
     const ADMIN_EMAIL = "mirzatestebesov51@gmail.com"; 
 
@@ -447,7 +448,7 @@
         }
     }
 
-    // КИРҮҮ ТЕКШЕРҮҮСҮ
+    // 2. КИРҮҮ ТЕКШЕРҮҮСҮ (МАCЕЛЕ УШУЛ ЖЕРДЕ ЧЕЧИЛДИ)
     async function handleLogin(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -460,6 +461,7 @@
             return false;
         }
 
+        isProcessingAuth = true;
         btn.disabled = true;
         btn.innerText = "Кирүү аткарылууда...";
 
@@ -469,14 +471,16 @@
         } catch (err) {
             alert("Кирүүдө ката: Электрондук почта же сырсөз туура эмес!");
             console.error(err);
+            showAuthBlock();
         } finally {
+            isProcessingAuth = false;
             btn.disabled = false;
             btn.innerText = "Кирүү";
         }
         return false;
     }
 
-    // КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
+    // 3. КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
     async function handleRegister(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -489,6 +493,7 @@
             return false;
         }
 
+        isProcessingAuth = true;
         btn.disabled = true;
         btn.innerText = "Жөнөтүлүүдө...";
 
@@ -511,7 +516,7 @@
             const selectedName = document.getElementById('studentSelect').value;
             const userCred = await auth.createUserWithEmailAndPassword(email, pass);
             
-            // Суранычты маалымат базасына жазуу
+            // Суранычты базага жазуу
             await db.ref('applications/' + userCred.user.uid).set({
                 studentName: selectedName,
                 email: email,
@@ -519,11 +524,9 @@
                 date: new Date().toISOString()
             });
 
-            // Маанилүү: Колдонуучу катып калбашы үчүн чыгуу жасап, эстутумду тазалайбыз
+            // Дароо авторизациядан чыгарабыз
             await auth.signOut();
-
-            document.getElementById('authBlock').style.display = 'none';
-            document.getElementById('pendingBlock').style.display = 'block';
+            showPendingBlock();
 
         } catch(err) {
             if (err.code === 'auth/email-already-in-use') {
@@ -533,78 +536,78 @@
             } else {
                 alert("Катталууда ката: " + err.message);
             }
+            showAuthBlock();
         } finally {
+            isProcessingAuth = false;
             btn.disabled = false;
             btn.innerText = "Катталуу суранычын жөнөтүү";
         }
         return false;
     }
 
-    // УРУКСАТТЫ ТЕКШЕРҮҮ (НЕГИЗГИ ЛОГИКА ОҢДОЛДУ)
+    // 4. ТЕКШЕРҮҮ ЖАНА АКТИВДЕШТИРҮҮ ЛОГИКАСЫ (ЭҢ НЕГИЗГИ ЧЕЧИМ)
     async function checkUserPermission(user) {
         if (!user) {
             showAuthBlock();
             return;
         }
 
-        // 1. Админ болсо
+        // Админ
         if (user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
         try {
-            // 2. UID боюнча VIP тизмеден издөө
-            const snapshot = await db.ref('vip_users/' + user.uid).once('value');
-            if (snapshot.exists()) {
-                const userData = snapshot.val();
-                showUserPortal(userData.studentName || user.email);
-                return;
-            }
+            // UID же Email боюнча текшерүү
+            const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
+            let approvedData = null;
 
-            // 3. Эгер UID табылбаса, EMAIL боюнча VIP тизмеден издөө
-            const emailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
-            if (emailSnap.exists()) {
-                let name = user.email;
-                let foundUid = null;
-                emailSnap.forEach(c => { 
-                    name = c.val().studentName || name; 
-                    foundUid = c.key;
-                });
-
-                // Келечекте UID аркылуу дароо табылышы үчүн базаны жаңылап коёбуз
-                if (foundUid && foundUid !== user.uid) {
-                    await db.ref('vip_users/' + user.uid).set({
-                        studentName: name,
-                        email: user.email.toLowerCase(),
-                        role: 'student',
-                        approvedAt: new Date().toISOString()
+            if (vipUidSnap.exists()) {
+                approvedData = vipUidSnap.val();
+            } else {
+                // Email аркылуу кайра текшеребиз
+                const vipEmailSnap = await db.ref('vip_users').orderByChild('email').equalTo(user.email.toLowerCase()).once('value');
+                if (vipEmailSnap.exists()) {
+                    vipEmailSnap.forEach(c => {
+                        approvedData = c.val();
                     });
+                    // UID шилтемесин синхрондоп коёбуз
+                    await db.ref('vip_users/' + user.uid).set(approvedData);
                 }
-
-                showUserPortal(name);
-                return;
             }
 
-            // 4. Эгер Уруксат бериле элек болсо (Ушул жерде мурда катып жаткан)
-            await auth.signOut(); // Браузердин авторизациясын толук ажыратабыз
-            showPendingBlock();
+            // УРУКСАТ БЕРИЛГЕН БОЛСО:
+            if (approvedData) {
+                showUserPortal(approvedData.studentName || user.email);
+            } else {
+                // УРУКСАТ ЖОК БОЛСО -> СЕССИЯНЫ ЧЫГАРЫП, КҮТҮҮ БАРАГЫН КӨРСӨТҮҮ
+                await auth.signOut();
+                showPendingBlock();
+            }
 
         } catch (err) {
-            console.error("Уруксат текшерүүдө ката:", err);
+            console.error("Уруксат текшерүү катасы:", err);
             await auth.signOut();
             showAuthBlock();
         }
     }
 
     function resetAuthAndBack() {
+        isProcessingAuth = true;
         auth.signOut().then(() => {
+            isProcessingAuth = false;
+            showAuthBlock();
+        }).catch(() => {
+            isProcessingAuth = false;
             showAuthBlock();
         });
     }
 
     function logout() {
+        isProcessingAuth = true;
         auth.signOut().then(() => {
+            isProcessingAuth = false;
             location.reload();
         });
     }
@@ -640,7 +643,7 @@
         document.getElementById('currentUserLabel').innerText = name;
     }
 
-    // АДМИН ҮЧҮН СУРАНЫЧТАРДЫ ЖҮКТӨӨ
+    // АДМИН СУРАНЫЧТАРЫН ЖҮКТӨӨ
     function loadAdminRequests() {
         db.ref('applications').on('value', snapshot => {
             const list = document.getElementById('requestsList');
@@ -675,9 +678,10 @@
         });
     }
 
-    // АДМИН МАКУЛ ДЕСЕ:
+    // АДМИН УРУКСАТ БЕРГЕНДЕ:
     async function approveUser(uid, name, email) {
         try {
+            // 1. VIP тизмеге жазуу
             await db.ref('vip_users/' + uid).set({
                 studentName: name,
                 email: email.toLowerCase(),
@@ -685,6 +689,7 @@
                 approvedAt: new Date().toISOString()
             });
 
+            // 2. Өчүрүү
             await db.ref('applications/' + uid).remove();
             alert(`${name} үчүн порталга кирүүгө уруксат берилди!`);
         } catch(e) {
@@ -692,7 +697,6 @@
         }
     }
 
-    // АДМИН КАРШЫ БОЛСО:
     async function rejectUser(uid) {
         try {
             await db.ref('applications/' + uid).remove();
@@ -782,7 +786,10 @@
         setupStudentSelect();
         switchLanguage(currentLang);
 
+        // ФОНДУК АКТИВДҮҮЛҮКТҮ ТЕКШЕРҮҮ
         auth.onAuthStateChanged(user => {
+            if (isProcessingAuth) return; // Форма иштеп жаткан учурда автоматтык кодду токтотуп турабыз
+
             if (user && !user.isAnonymous) {
                 checkUserPermission(user);
             } else {
