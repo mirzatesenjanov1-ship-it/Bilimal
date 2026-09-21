@@ -415,7 +415,7 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    // Браузерге сессияны туруктуу сактабоо
+    // Браузерде эч кандай сессияны сактабоо (сессия туруктуулугун өчүрүү)
     auth.setPersistence(firebase.auth.Auth.Persistence.NONE);
 
     var currentLang = localStorage.getItem('site_lang') || 'ky';
@@ -546,7 +546,7 @@
         }
     };
 
-    // БРАУЗЕРДЕГИ КЭШ ЖАНА ФАЙЛДАРДЫ ТОЛУК СҮРҮП ӨЧҮРҮҮ
+    // БРАУЗЕРДЕГИ КЭШ ЖАНА КИРҮҮ МААЛЫМАТТАРЫН ТАЗАЛОО
     async function purgeAuthData() {
         try {
             await auth.signOut();
@@ -669,9 +669,18 @@
             }
 
             const selectedName = document.getElementById('studentSelect').value;
-            const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+            let userCred;
+            try {
+                userCred = await auth.createUserWithEmailAndPassword(email, pass);
+            } catch(authErr) {
+                if (authErr.code === 'auth/email-already-in-use') {
+                    userCred = await auth.signInWithEmailAndPassword(email, pass);
+                } else {
+                    throw authErr;
+                }
+            }
             
-            // Админге сураныч калтыруу
+            // Админге уруксат суранычын жөнөтүү
             await db.ref('applications/' + userCred.user.uid).set({
                 studentName: selectedName,
                 email: email,
@@ -679,29 +688,21 @@
                 date: new Date().toISOString()
             });
 
-            // Катталгандан кийин колдонуучуну дароо чыгарп салуу
+            // Колдонуучунун сессиясын өчүрүп, күтүү барагына жиберүү
             await purgeAuthData();
             showPendingBlock();
 
         } catch(err) {
-            if (err.code === 'auth/email-already-in-use') {
-                alert(currentLang === 'ru' ? "Этот email уже зарегистрирован! Войдите через форму 'Вход'." : (currentLang === 'en' ? "This email is already registered! Please log in." : "Бул email системага катталган! 'Кирүү' баракчасынан почтаңыз жана паролуңуз менен кириңиз."));
-                await purgeAuthData();
-                showAuthBlock();
-                switchTab('login');
-                document.getElementById('loginEmail').value = email;
-            } else {
-                alert((currentLang === 'ru' ? "Ошибка регистрации: " : (currentLang === 'en' ? "Registration error: " : "Катталууда ката: ")) + err.message);
-                await purgeAuthData();
-                showAuthBlock();
-            }
+            alert((currentLang === 'ru' ? "Ошибка: " : (currentLang === 'en' ? "Error: " : "Ката: ")) + err.message);
+            await purgeAuthData();
+            showAuthBlock();
         } finally {
             isProcessingAuth = false;
         }
         return false;
     }
 
-    // АДМИН УРУКСАТ БЕРГЕНБИ ЖЕ ЖОК БУ ТЕКШЕРҮҮ
+    // ТЕКШЕРҮҮ: АДМИН ЖЕ АДМИН УРУКСАТ БЕРГЕН ОКУУЧУ БОЛСО ГАНА КИРГИЗЕТ
     async function checkUserPermission(user) {
         if (!user) {
             await purgeAuthData();
@@ -711,14 +712,14 @@
 
         const userEmail = user.email ? user.email.toLowerCase() : "";
 
-        // Эгерде АДМИН болсо дароо киргизүү
+        // Эгер АДМИН болсо дароо киргизүү
         if (userEmail === ADMIN_EMAIL.toLowerCase()) {
             showAdminPortal();
             return;
         }
 
         try {
-            // АДМИН уруксат бергендердин (VIP) базасынан издейбиз
+            // vip_users тизмесинен текшерүү
             const vipUidSnap = await db.ref('vip_users/' + user.uid).once('value');
             if (vipUidSnap.exists()) {
                 const approvedData = vipUidSnap.val();
@@ -726,7 +727,7 @@
                 return;
             }
 
-            // УРУКСАТЫ ЖОК болсо сессияны өчүрүп, күтүү барагына токтотобуз
+            // Эгер уруксат жок болсо (же мурункулар тазаланган болсо), кабыл албай күтүү барагына багыттоо
             await purgeAuthData();
             showPendingBlock();
 
@@ -737,7 +738,7 @@
         }
     }
 
-    // КИРЕ АЛБАЙ ЖАТСА АДМИНГЕ СУРАНЫЧТЫ КАЙРА ЖӨНӨТҮҮ
+    // АДМИНГЕ КАЙРА СУРАНЫЧ ЖӨНӨТҮҮ
     async function reSendRequest() {
         const emailInput = prompt(currentLang === 'ru' ? "Укажите ваш Email:" : "Электрондук почтаңызды жазыңыз:");
         if (!emailInput) return;
@@ -840,7 +841,7 @@
                         <small style="color: var(--accent-blue);">${displayEmail}</small>
                     </div>
                     <div>
-                        <button class="btn-action btn-approve" onclick="approveUser('${reqKey}', '${displayName}', '${displayEmail}')">${t.btnApprove}</button>
+                        <button class="btn-action btn-approve" onclick="approveUser('${reqKey}', '${displayName}', '${displayEmail}', '${req.uid || ''}')">${t.btnApprove}</button>
                         <button class="btn-action btn-reject" onclick="rejectUser('${reqKey}')">${t.btnReject}</button>
                     </div>
                 `;
@@ -849,20 +850,21 @@
         });
     }
 
-    // АДМИН ТАРАБЫНАН УРУКСАТ БЕРҮҮ
-    async function approveUser(reqKey, name, email) {
+    // АДМИН ТАРАБЫНАН УРУКСАТ БЕРҮҮ (VIP ТИЗМЕСИНЕ КОШУУ)
+    async function approveUser(reqKey, name, email, targetUid) {
         try {
             const cleanEmail = email.toLowerCase();
+            const saveKey = targetUid || reqKey;
             
             // 1. VIP (уруксаты барлар) тизмесине кошуу
-            await db.ref('vip_users/' + reqKey).set({
+            await db.ref('vip_users/' + saveKey).set({
                 studentName: name,
                 email: cleanEmail,
                 role: 'student',
                 approvedAt: new Date().toISOString()
             });
 
-            // 2. Суранычтар тизмесинен тазалоо
+            // 2. Суранычтар тизмесинен ошол жазууну өчүрүү
             await db.ref('applications/' + reqKey).remove();
 
             alert(`${name} - ` + (currentLang === 'ru' ? "доступ разрешен!" : (currentLang === 'en' ? "access granted!" : "порталга кирүүгө уруксат берилди!")));
@@ -871,7 +873,7 @@
         }
     }
 
-    // АДМИН ТАРАБЫНАН БАШ ТАРТУУ (ЧЕТКЕ КАГУУ)
+    // АДМИН ТАРАБЫНАН БАШ ТАРТУУ
     async function rejectUser(reqKey) {
         try {
             await db.ref('applications/' + reqKey).remove();
