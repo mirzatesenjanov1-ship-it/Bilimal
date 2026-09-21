@@ -262,6 +262,18 @@
         }
         .btn-approve { background: var(--accent-green); color: #fff; }
         .btn-reject { background: var(--accent-red); color: #fff; margin-left: 5px; }
+
+        /* Loader Style */
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: var(--accent-blue);
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -278,8 +290,14 @@
         </div>
     </div>
 
+    <!-- ЖҮКТӨӨ БЛОГУ (LOADER) -->
+    <div id="loaderBlock" class="card" style="text-align: center; padding: 40px 20px;">
+        <div class="spinner"></div>
+        <p style="color: var(--text-muted); font-size: 14px;" data-i18n="loadingText">Маалыматтар текшерилүүдө...</p>
+    </div>
+
     <!-- АВТОРИЗАЦИЯ ЖАНА КАТТАЛУУ БЛОГУ -->
-    <div id="authBlock" class="card">
+    <div id="authBlock" class="card" style="display: none;">
         <div class="auth-tabs">
             <button type="button" class="auth-tab active" id="tabLogin" onclick="switchTab('login')" data-i18n="tabLogin">Кирүү</button>
             <button type="button" class="auth-tab" id="tabRegister" onclick="switchTab('register')" data-i18n="tabRegister">Катталуу</button>
@@ -361,7 +379,6 @@
 </div>
 
 <script>
-    // FIREBASE ИНИЦИАЛИЗАЦИЯСЫ
     const firebaseConfig = {
         apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
         authDomain: "bilimal-org.firebaseapp.com",
@@ -379,7 +396,7 @@
     const db = firebase.database();
     const auth = firebase.auth();
 
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
     var currentLang = localStorage.getItem('site_lang') || 'ky';
     var currentDutyState = {};
@@ -433,7 +450,8 @@
             btnReject: "Каршы (Баш тартуу)",
             unknownUser: "Белгисиз",
             userDefault: "Колдонуучу",
-            adminLabel: "Администратор"
+            adminLabel: "Администратор",
+            loadingText: "Маалыматтар текшерилүүдө..."
         },
         ru: {
             docTitle: "Портал Дежурств - Bilimal",
@@ -466,7 +484,8 @@
             btnReject: "Отклонить",
             unknownUser: "Неизвестный",
             userDefault: "Пользователь",
-            adminLabel: "Администратор"
+            adminLabel: "Администратор",
+            loadingText: "Проверка данных..."
         },
         en: {
             docTitle: "Duty Portal - Bilimal",
@@ -499,9 +518,18 @@
             btnReject: "Reject",
             unknownUser: "Unknown",
             userDefault: "User",
-            adminLabel: "Administrator"
+            adminLabel: "Administrator",
+            loadingText: "Checking credentials..."
         }
     };
+
+    function showLoader() {
+        document.getElementById('loaderBlock').style.display = 'block';
+        document.getElementById('authBlock').style.display = 'none';
+        document.getElementById('mainDutyCard').style.display = 'none';
+        document.getElementById('pendingBlock').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'none';
+    }
 
     function switchTab(type) {
         document.getElementById('tabLogin').classList.toggle('active', type === 'login');
@@ -546,7 +574,6 @@
         }
     }
 
-    // КИРҮҮ ТЕКШЕРҮҮСҮ
     async function handleLogin(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -560,9 +587,7 @@
         }
 
         isProcessingAuth = true;
-        btn.disabled = true;
-        const origText = btn.innerText;
-        btn.innerText = currentLang === 'ru' ? "Вход..." : (currentLang === 'en' ? "Logging in..." : "Кирүү аткарылууда...");
+        showLoader();
 
         try {
             const userCredential = await auth.signInWithEmailAndPassword(email, pass);
@@ -573,13 +598,10 @@
             showAuthBlock();
         } finally {
             isProcessingAuth = false;
-            btn.disabled = false;
-            btn.innerText = origText;
         }
         return false;
     }
 
-    // КАТТАЛУУ ЖАНА СУРАНЫЧ ЖӨНӨТҮҮ
     async function handleRegister(e) {
         if (e && e.preventDefault) e.preventDefault();
         
@@ -593,9 +615,7 @@
         }
 
         isProcessingAuth = true;
-        btn.disabled = true;
-        const origText = btn.innerText;
-        btn.innerText = currentLang === 'ru' ? "Отправка..." : (currentLang === 'en' ? "Submitting..." : "Жөнөтүлүүдө...");
+        showLoader();
 
         try {
             if (email === ADMIN_EMAIL.toLowerCase()) {
@@ -623,27 +643,24 @@
                 date: new Date().toISOString()
             });
 
-            await auth.signOut();
             showPendingBlock();
 
         } catch(err) {
             if (err.code === 'auth/email-already-in-use') {
                 alert(currentLang === 'ru' ? "Этот email уже зарегистрирован! Войдите через форму 'Вход'." : (currentLang === 'en' ? "This email is already registered! Please log in." : "Бул email системага катталган! 'Кирүү' баракчасынан почтаңыз жана паролуңуз менен кириңиз."));
+                showAuthBlock();
                 switchTab('login');
                 document.getElementById('loginEmail').value = email;
             } else {
                 alert((currentLang === 'ru' ? "Ошибка регистрации: " : (currentLang === 'en' ? "Registration error: " : "Катталууда ката: ")) + err.message);
+                showAuthBlock();
             }
-            showAuthBlock();
         } finally {
             isProcessingAuth = false;
-            btn.disabled = false;
-            btn.innerText = origText;
         }
         return false;
     }
 
-    // ТЕКШЕРҮҮ ЖАНА АКТИВДЕШТИРҮҮ ЛОГИКАСЫ
     async function checkUserPermission(user) {
         if (!user) {
             showAuthBlock();
@@ -662,19 +679,19 @@
                 const approvedData = vipUidSnap.val();
                 showUserPortal(approvedData.studentName || user.email);
             } else {
-                await auth.signOut();
                 showPendingBlock();
             }
 
         } catch (err) {
             console.error("Уруксат текшерүү катасы:", err);
-            await auth.signOut();
-            showAuthBlock();
+            // Базага укук жетпей жатса же ката болсо:
+            showPendingBlock();
         }
     }
 
     function resetAuthAndBack() {
         isProcessingAuth = true;
+        showLoader();
         auth.signOut().then(() => {
             isProcessingAuth = false;
             showAuthBlock();
@@ -686,6 +703,7 @@
 
     function logout() {
         isProcessingAuth = true;
+        showLoader();
         auth.signOut().then(() => {
             isProcessingAuth = false;
             location.reload();
@@ -693,6 +711,7 @@
     }
 
     function showAuthBlock() {
+        document.getElementById('loaderBlock').style.display = 'none';
         document.getElementById('authBlock').style.display = 'block';
         document.getElementById('mainDutyCard').style.display = 'none';
         document.getElementById('pendingBlock').style.display = 'none';
@@ -700,6 +719,7 @@
     }
 
     function showPendingBlock() {
+        document.getElementById('loaderBlock').style.display = 'none';
         document.getElementById('authBlock').style.display = 'none';
         document.getElementById('mainDutyCard').style.display = 'none';
         document.getElementById('pendingBlock').style.display = 'block';
@@ -708,6 +728,7 @@
 
     function showAdminPortal() {
         const t = translations[currentLang] || translations.ky;
+        document.getElementById('loaderBlock').style.display = 'none';
         document.getElementById('authBlock').style.display = 'none';
         document.getElementById('pendingBlock').style.display = 'none';
         document.getElementById('mainDutyCard').style.display = 'block';
@@ -717,6 +738,7 @@
     }
 
     function showUserPortal(name) {
+        document.getElementById('loaderBlock').style.display = 'none';
         document.getElementById('authBlock').style.display = 'none';
         document.getElementById('pendingBlock').style.display = 'none';
         document.getElementById('adminPanel').style.display = 'none';
@@ -861,14 +883,12 @@
             }
         });
 
-        // Форма ичиндеги динамикалык тексттерди жаңыртуу
         const activeTabIsLogin = document.getElementById('tabLogin').classList.contains('active');
         switchTab(activeTabIsLogin ? 'login' : 'register');
         
         const regEmailInput = document.getElementById('regEmail');
         if (regEmailInput) checkAdminEmail(regEmailInput.value);
 
-        // Дата форматын жаңыртуу
         const today = new Date();
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('currentDateText').innerText = today.toLocaleDateString(lang === 'ky' ? 'ky-KG' : (lang === 'ru' ? 'ru-RU' : 'en-US'), options);
@@ -879,6 +899,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         setupStudentSelect();
         switchLanguage(currentLang);
+        showLoader();
 
         auth.onAuthStateChanged(user => {
             if (isProcessingAuth) return;
