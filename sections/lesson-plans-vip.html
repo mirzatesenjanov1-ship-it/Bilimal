@@ -11,6 +11,7 @@
 
   <!-- Firebase SDK (v9 Compatibility Mode) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <style>
@@ -546,6 +547,7 @@
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
+    const auth = firebase.auth();
     const database = firebase.database();
     const plansRef = database.ref('global_lesson_plans');
 
@@ -789,23 +791,36 @@
       document.getElementById('authModal').style.display = 'flex';
     }
 
-    function handleAuthSubmit(e) {
+    async function handleAuthSubmit(e) {
       e.preventDefault();
       const userLogin = document.getElementById('authEmail').value.trim();
       const userPass = document.getElementById('authPassword').value.trim();
       const statusMsg = document.getElementById('authStatusMsg');
 
       if (userLogin === ADMIN_LOGIN && userPass === ADMIN_PASS) {
-        isAdminLoggedIn = true;
-        closeModal('authModal');
-        document.getElementById('adminModal').style.display = 'flex';
-        filterPlans();
+        try {
+          // Firebase Анонимдүү Auth аркылуу колдонуучу катары туташуу
+          if (!auth.currentUser) {
+            await auth.signInAnonymously();
+          }
+          isAdminLoggedIn = true;
+          closeModal('authModal');
+          document.getElementById('adminModal').style.display = 'flex';
+          filterPlans();
+        } catch (authError) {
+          console.error("Firebase Auth Error:", authError);
+          // Эгер анонимдүү Auth иштебесе, жөн гана сессияны улантуу
+          isAdminLoggedIn = true;
+          closeModal('authModal');
+          document.getElementById('adminModal').style.display = 'flex';
+          filterPlans();
+        }
       } else {
         statusMsg.innerText = "Неверный логин или пароль! Доступ запрещен.";
       }
     }
 
-    // БУЛУТТУК САКТОО ФУНКЦИЯСЫ
+    // БУЛУТТУК САКТОО ФУНКЦИЯСЫ (УБАКЫТТЫ СИНХРОНДОШТУРУУ ЖАНА КАБЫЛ АЛУУ)
     async function addNewPlan(e) {
       if (e) e.preventDefault();
 
@@ -831,11 +846,18 @@
         previewUrl: processed.previewUrl,
         downloadUrl: processed.downloadUrl,
         price: 10,
-        timestamp: Date.now()
+        timestamp: firebase.database.ServerValue.TIMESTAMP
       };
 
       try {
+        // Firebase Auth сессиясын текшерүү (керек болсо анонимдүү кирет)
+        if (!auth.currentUser) {
+          await auth.signInAnonymously();
+        }
+
+        // План кошуу
         await plansRef.push(newPlanData);
+
         btnSave.disabled = false;
         btnSave.innerText = translations[currentLang].btnSavePlan;
         document.getElementById('newTitle').value = '';
@@ -846,7 +868,7 @@
         btnSave.disabled = false;
         btnSave.innerText = translations[currentLang].btnSavePlan;
         console.error("Firebase Push Error:", err);
-        alert("Ката чыкты: " + err.message + "\nFirebase Rules ачык экенин текшериңиз!");
+        alert("Ката чыкты: " + err.message);
       }
 
       return false;
