@@ -188,7 +188,7 @@
     .preview-container {
       width: 100%;
       height: 260px;
-      background: #000;
+      background: #0f172a;
       border-radius: 10px;
       overflow: hidden;
       border: 1px solid #374151;
@@ -210,6 +210,25 @@
       height: 55px;
       background: transparent;
       z-index: 10;
+    }
+
+    .doc-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      background: #1e293b;
+      color: #94a3b8;
+    }
+
+    .doc-placeholder i {
+      font-size: 3rem;
+      color: #38bdf8;
+      margin-bottom: 12px;
     }
 
     .download-btn {
@@ -471,7 +490,7 @@
         </div>
 
         <div class="form-group">
-          <label id="lblUrl">Ссылка Google Drive:</label>
+          <label id="lblUrl">Ссылка Google Drive / Docs:</label>
           <input type="url" id="newDriveUrl" placeholder="https://drive.google.com/file/d/..." required>
         </div>
 
@@ -487,7 +506,6 @@
     document.addEventListener('contextmenu', e => e.preventDefault());
 
     document.addEventListener('keydown', function(e) {
-      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
       if (
         e.keyCode === 123 || 
         (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
@@ -504,29 +522,37 @@
     const ADMIN_LOGIN = "admin";
     const ADMIN_PASS = "bilimal2026";
 
-    // Google Drive URL аркылуу ID ажыратуу функциясы
+    // Google Drive / Docs URL туура иштетүүчү функция
     function processDriveUrl(rawUrl) {
-      const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/id=([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        const id = match[1];
+      if (!rawUrl) return { previewUrl: "", downloadUrl: "" };
+
+      // Google Drive File / Doc ID табуу
+      const driveMatch = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      
+      if (driveMatch && driveMatch[1]) {
+        const fileId = driveMatch[1];
         return {
-          previewUrl: `https://drive.google.com/file/d/${id}/preview`,
-          downloadUrl: `https://drive.google.com/uc?export=download&id=${id}`
+          fileId: fileId,
+          previewUrl: `https://drive.google.com/file/d/${fileId}/preview`,
+          downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`
         };
       }
+
       return {
+        fileId: null,
         previewUrl: rawUrl,
         downloadUrl: rawUrl
       };
     }
 
-    // Баштапкы стандарттуу сабак пландары (Бардык колдонуучуларга ачыла турган даяр база)
+    // Алдын ала даярдалган баштапкы база
     const initialLessonPlans = [
       {
         id: "plan_10_1",
         grade: "10",
         title: "Векторлор. Векторлорду кошуу жана кемитүү",
-        previewUrl: "https://docs.google.com/document/d/e/2PACX-1vR8gX_sample1/pub?embedded=true",
+        fileId: null,
+        previewUrl: "",
         downloadUrl: "#",
         price: 10
       },
@@ -534,7 +560,8 @@
         id: "plan_10_2",
         grade: "10",
         title: "Түз сызыктуу бир калыптагы ылдамдатылган кыймыл. Ылдамдануу",
-        previewUrl: "https://docs.google.com/document/d/e/2PACX-1vR8gX_sample2/pub?embedded=true",
+        fileId: null,
+        previewUrl: "",
         downloadUrl: "#",
         price: 10
       },
@@ -542,7 +569,8 @@
         id: "plan_10_3",
         grade: "10",
         title: "Түз сызыктуу бир калыпта эмес кыймыл",
-        previewUrl: "https://docs.google.com/document/d/e/2PACX-1vR8gX_sample3/pub?embedded=true",
+        fileId: null,
+        previewUrl: "",
         downloadUrl: "#",
         price: 10
       },
@@ -550,15 +578,40 @@
         id: "plan_10_4",
         grade: "10",
         title: "Түз сызыктуу бир калыптагы кыймыл",
-        previewUrl: "https://docs.google.com/document/d/e/2PACX-1vR8gX_sample4/pub?embedded=true",
+        fileId: null,
+        previewUrl: "",
         downloadUrl: "#",
         price: 10
       }
     ];
 
-    // Браузердин туура эмес эски сакталгандарды тазалоо жана жүктөөнү камсыздоо
-    let storedPlans = JSON.parse(localStorage.getItem('bilimal_plans_v2'));
-    let lessonPlans = storedPlans || initialLessonPlans;
+    // LocalStorage валидациясы жана эски ката маалыматтардан тазалоо
+    let lessonPlans = [];
+    const STORAGE_KEY = 'bilimal_plans_v3';
+
+    function initDataStorage() {
+      try {
+        const localData = localStorage.getItem(STORAGE_KEY);
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          // Эски "1_EX_ID_HERE" же "2PACX" камтыган жараксыз файлдарды тазалоо
+          const cleanData = parsed.filter(item => 
+            !item.previewUrl.includes('1_EX_ID_HERE') && 
+            !item.previewUrl.includes('2PACX')
+          );
+
+          if (cleanData.length > 0) {
+            lessonPlans = cleanData;
+            return;
+          }
+        }
+      } catch (e) {
+        console.error("Storage parse error:", e);
+      }
+      
+      lessonPlans = initialLessonPlans;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lessonPlans));
+    }
 
     // Сөздүк
     const translations = {
@@ -580,7 +633,9 @@
         btnSavePlan: 'Добавить в базу',
         emptyMsg: 'Планы уроков пока не добавлены.',
         paySuccess: 'Оплата принята! Начинается скачивание файла...',
-        urlError: 'Пожалуйста, введите корректную ссылку Google Drive!'
+        urlError: 'Пожалуйста, введите корректную ссылку Google Drive!',
+        previewUnavailable: 'Предпросмотр файла временно недоступен',
+        adminInstruction: 'Добавьте реальную ссылку Google Drive через Админ-Панель'
       },
       ky: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Ачык база',
@@ -600,7 +655,9 @@
         btnSavePlan: 'Базага кошуу',
         emptyMsg: 'Сабак пландары азырынча кошула элек.',
         paySuccess: 'Төлөм кабыл алынды! Файлды жүктөө башталууда...',
-        urlError: 'Сураныч, туура Google Drive шилтемесин киргизиңиз!'
+        urlError: 'Сураныч, туура Google Drive шилтемесин киргизиңиз!',
+        previewUnavailable: 'Файлды алдын ала көрүү убактылуу жеткиликсиз',
+        adminInstruction: 'Админ-панель аркылуу чыныгы Google Drive шилтемесин кошуңуз'
       },
       en: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Public Database',
@@ -620,7 +677,9 @@
         btnSavePlan: 'Add to Database',
         emptyMsg: 'No lesson plans added yet.',
         paySuccess: 'Payment accepted! Downloading file...',
-        urlError: 'Please enter a valid Google Drive URL!'
+        urlError: 'Please enter a valid Google Drive URL!',
+        previewUnavailable: 'File preview is temporarily unavailable',
+        adminInstruction: 'Add a valid Google Drive link via Admin Panel'
       }
     };
 
@@ -661,15 +720,31 @@
       plans.forEach(plan => {
         const card = document.createElement('div');
         card.className = 'plan-card';
+
+        // Эгерде туура previewUrl болсо iframe көрсөтөбүз, болбосо сулуу Fallback UI
+        let previewHtml = '';
+        if (plan.previewUrl && plan.previewUrl.length > 10) {
+          previewHtml = `
+            <div class="preview-container">
+              <div class="iframe-overlay-blocker"></div>
+              <iframe class="preview-iframe" src="${plan.previewUrl}" loading="lazy"></iframe>
+            </div>`;
+        } else {
+          previewHtml = `
+            <div class="preview-container">
+              <div class="doc-placeholder">
+                <i class="fa-solid fa-file-lines"></i>
+                <p style="font-size: 0.8rem; font-weight: 500; color: #cbd5e1;">${t.previewUnavailable}</p>
+                <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">${t.adminInstruction}</p>
+              </div>
+            </div>`;
+        }
+
         card.innerHTML = `
           <div>
             <span class="card-badge">${plan.grade}-${t.gradeSuffix}</span>
             <h3 class="card-title">${plan.title}</h3>
-            
-            <div class="preview-container">
-              <div class="iframe-overlay-blocker"></div>
-              <iframe class="preview-iframe" src="${plan.previewUrl}"></iframe>
-            </div>
+            ${previewHtml}
           </div>
 
           <button class="download-btn" onclick="openPaymentModal('${plan.id}')">
@@ -708,6 +783,8 @@
         alert(translations[currentLang].paySuccess);
         if (selectedPlanForPay.downloadUrl && selectedPlanForPay.downloadUrl !== '#') {
           window.open(selectedPlanForPay.downloadUrl, '_blank');
+        } else {
+          alert("Файл шилтемеси азырынча жүктөлө элек!");
         }
         closeModal('payModal');
       }
@@ -748,17 +825,23 @@
 
       const processed = processDriveUrl(rawUrl);
 
+      if (!processed.fileId && !rawUrl.startsWith('http')) {
+        alert(translations[currentLang].urlError);
+        return;
+      }
+
       const newPlan = {
         id: "plan_" + Date.now(),
         grade: grade,
         title: title,
+        fileId: processed.fileId,
         previewUrl: processed.previewUrl,
         downloadUrl: processed.downloadUrl,
         price: 10
       };
 
       lessonPlans.unshift(newPlan);
-      localStorage.setItem('bilimal_plans_v2', JSON.stringify(lessonPlans));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lessonPlans));
 
       renderPlans(lessonPlans);
       closeModal('adminModal');
@@ -769,6 +852,7 @@
     }
 
     window.onload = () => {
+      initDataStorage();
       changeLanguage('ru');
     };
   </script>
