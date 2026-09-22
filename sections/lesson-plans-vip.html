@@ -472,7 +472,7 @@
 
         <div class="form-group">
           <label id="lblUrl">Ссылка Google Drive:</label>
-          <input type="url" id="newDriveUrl" placeholder="https://drive.google.com/file/d/..." required>
+          <input type="url" id="newDriveUrl" placeholder="https://drive.google.com/file/d/... же папка шилтемеси" required>
         </div>
 
         <button type="submit" class="submit-btn" id="btnSavePlan">Добавить в базу</button>
@@ -503,6 +503,46 @@
     // ===============================================
     const ADMIN_LOGIN = "admin";
     const ADMIN_PASS = "bilimal2026";
+
+    // Google Drive шилтемесин универсалдуу иштетүүчү функция (файл болсо да, папка болсо да)
+    function parseGoogleDriveUrl(url) {
+      if (!url) return { previewUrl: '', downloadUrl: '#' };
+
+      // Файл ID алуу (/d/ID_HERE)
+      let fileMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileMatch && fileMatch[1]) {
+        const fileId = fileMatch[1];
+        return {
+          previewUrl: `https://drive.google.com/file/d/${fileId}/preview`,
+          downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`
+        };
+      }
+
+      // Папка ID алуу (/folders/ID_HERE)
+      let folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (folderMatch && folderMatch[1]) {
+        const folderId = folderMatch[1];
+        return {
+          previewUrl: `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`,
+          downloadUrl: `https://drive.google.com/drive/folders/${folderId}`
+        };
+      }
+
+      // Эгер id= параметр катары келсе
+      let idParamMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (idParamMatch && idParamMatch[1]) {
+        const id = idParamMatch[1];
+        return {
+          previewUrl: `https://drive.google.com/file/d/${id}/preview`,
+          downloadUrl: `https://drive.google.com/uc?export=download&id=${id}`
+        };
+      }
+
+      return {
+        previewUrl: url,
+        downloadUrl: url
+      };
+    }
 
     // Бардык колдонуучуларга көрүнө турган дефолттук сабак пландары
     const initialLessonPlans = [
@@ -540,8 +580,8 @@
       }
     ];
 
-    // LocalStorage бош же туура эмес болсо, дефолттук тизмени жүктөө
-    let storedPlans = JSON.parse(localStorage.getItem('bilimal_plans_clean'));
+    // LocalStorage маалыматтарын туура жуктоо
+    let storedPlans = JSON.parse(localStorage.getItem('bilimal_plans_v2'));
     let lessonPlans = (storedPlans && storedPlans.length > 0) ? storedPlans : initialLessonPlans;
 
     // Сөздүк
@@ -652,7 +692,7 @@
             
             <div class="preview-container">
               <div class="iframe-overlay-blocker"></div>
-              <iframe class="preview-iframe" src="${plan.previewUrl}"></iframe>
+              <iframe class="preview-iframe" src="${plan.previewUrl}" loading="lazy"></iframe>
             </div>
           </div>
 
@@ -728,27 +768,24 @@
       const title = document.getElementById('newTitle').value;
       const rawUrl = document.getElementById('newDriveUrl').value;
 
-      const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (!match) {
+      const parsedDrive = parseGoogleDriveUrl(rawUrl);
+
+      if (!parsedDrive.previewUrl || parsedDrive.previewUrl === rawUrl && !rawUrl.includes('drive.google.com')) {
         alert(translations[currentLang].urlError);
         return;
       }
-
-      const fileId = match[1];
-      const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
       const newPlan = {
         id: "plan_" + Date.now(),
         grade: grade,
         title: title,
-        previewUrl: previewUrl,
-        downloadUrl: downloadUrl,
+        previewUrl: parsedDrive.previewUrl,
+        downloadUrl: parsedDrive.downloadUrl,
         price: 10
       };
 
       lessonPlans.unshift(newPlan);
-      localStorage.setItem('bilimal_plans_clean', JSON.stringify(lessonPlans));
+      localStorage.setItem('bilimal_plans_v2', JSON.stringify(lessonPlans));
 
       renderPlans(lessonPlans);
       closeModal('adminModal');
