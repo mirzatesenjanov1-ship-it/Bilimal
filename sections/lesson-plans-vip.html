@@ -584,7 +584,7 @@
       }
     }
 
-    // БАРДЫК КОЛДОНУУЧУЛАРГА БИРДЕЙ СИНХРОНДОШТУРУУ
+    // REALTIME GLOBAL LISTENER
     function listenGlobalPlans() {
       plansRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -596,6 +596,8 @@
           lessonPlans.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         }
         filterPlans();
+      }, (error) => {
+        console.error("Firebase Read Error:", error);
       });
     }
 
@@ -803,8 +805,8 @@
       }
     }
 
-    // ОҢДОЛГОН БУЛУТТУК САКТОО ФУНКЦИЯСЫ (КАТЫП КАЛБАРЫ ҮЧҮН)
-    function addNewPlan(e) {
+    // БУЛУТТУК САКТОО ФУНКЦИЯСЫ
+    async function addNewPlan(e) {
       if (e) e.preventDefault();
 
       const btnSave = document.getElementById('btnSavePlan');
@@ -832,32 +834,20 @@
         timestamp: Date.now()
       };
 
-      // 5 секунддук таймаут (катып калбоосу үчүн)
-      let isTimeout = false;
-      const saveTimeout = setTimeout(() => {
-        isTimeout = true;
+      try {
+        await plansRef.push(newPlanData);
         btnSave.disabled = false;
         btnSave.innerText = translations[currentLang].btnSavePlan;
-        alert("Байланыш убактысы ашып кетти же Firebase Rules жабык! Firebase эрежелерин текшериңиз.");
-      }, 5000);
-
-      plansRef.push(newPlanData)
-        .then(() => {
-          if (isTimeout) return;
-          clearTimeout(saveTimeout);
-          btnSave.disabled = false;
-          btnSave.innerText = translations[currentLang].btnSavePlan;
-          document.getElementById('newTitle').value = '';
-          document.getElementById('newDriveUrl').value = '';
-          closeModal('adminModal');
-          alert("План базага ийгиликтүү кошулду!");
-        })
-        .catch((err) => {
-          clearTimeout(saveTimeout);
-          btnSave.disabled = false;
-          btnSave.innerText = translations[currentLang].btnSavePlan;
-          alert("Ката чыкты: " + err.message);
-        });
+        document.getElementById('newTitle').value = '';
+        document.getElementById('newDriveUrl').value = '';
+        closeModal('adminModal');
+        alert("План базага ийгиликтүү кошулду!");
+      } catch (err) {
+        btnSave.disabled = false;
+        btnSave.innerText = translations[currentLang].btnSavePlan;
+        console.error("Firebase Push Error:", err);
+        alert("Ката чыкты: " + err.message + "\nFirebase Rules ачык экенин текшериңиз!");
+      }
 
       return false;
     }
