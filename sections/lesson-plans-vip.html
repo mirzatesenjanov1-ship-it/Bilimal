@@ -525,7 +525,7 @@
   </div>
 
   <script>
-    // Context Menu & Inspector Protection
+    // Context Menu Protection
     document.addEventListener('contextmenu', e => e.preventDefault());
     document.addEventListener('keydown', function(e) {
       if (
@@ -618,7 +618,6 @@
         btnSavePlan: 'Добавить в базу',
         emptyMsg: 'Планы уроков пока не добавлены в глобальную базу.',
         paySuccess: 'Оплата принята! Начинается скачивание файла...',
-        urlError: 'Пожалуйста, введите корректную ссылку Google Drive или Docs!',
         previewUnavailable: 'Предпросмотр файла временно недоступен',
         adminInstruction: 'Убедитесь, что доступ к файлу открыт для всех'
       },
@@ -640,7 +639,6 @@
         btnSavePlan: 'Базага кошуу',
         emptyMsg: 'Глобалдык базага сабак пландары азырынча кошула элек.',
         paySuccess: 'Төлөм кабыл алынды! Файлды жүктөө башталууда...',
-        urlError: 'Сураныч, туура Google Drive же Docs шилтемесин киргизиңиз!',
         previewUnavailable: 'Файлды алдын ала көрүү убактылуу жеткиликсиз',
         adminInstruction: 'Google Диск же Docs файласына ачык мүмкүндүк берилгенин текшериңиз'
       },
@@ -662,7 +660,6 @@
         btnSavePlan: 'Add to Database',
         emptyMsg: 'No lesson plans added to global database yet.',
         paySuccess: 'Payment accepted! Downloading file...',
-        urlError: 'Please enter a valid Google Drive or Docs URL!',
         previewUnavailable: 'File preview is temporarily unavailable',
         adminInstruction: 'Ensure Google file access is set to Public'
       }
@@ -806,7 +803,7 @@
       }
     }
 
-    // БУЛУТТУК БАЗАГА САКТОО ФУНКЦИЯСЫ
+    // ОҢДОЛГОН БУЛУТТУК САКТОО ФУНКЦИЯСЫ (КАТЫП КАЛБАРЫ ҮЧҮН)
     function addNewPlan(e) {
       if (e) e.preventDefault();
 
@@ -835,9 +832,19 @@
         timestamp: Date.now()
       };
 
-      // Firebase Realtime Database'ге түз push кылуу
+      // 5 секунддук таймаут (катып калбоосу үчүн)
+      let isTimeout = false;
+      const saveTimeout = setTimeout(() => {
+        isTimeout = true;
+        btnSave.disabled = false;
+        btnSave.innerText = translations[currentLang].btnSavePlan;
+        alert("Байланыш убактысы ашып кетти же Firebase Rules жабык! Firebase эрежелерин текшериңиз.");
+      }, 5000);
+
       plansRef.push(newPlanData)
         .then(() => {
+          if (isTimeout) return;
+          clearTimeout(saveTimeout);
           btnSave.disabled = false;
           btnSave.innerText = translations[currentLang].btnSavePlan;
           document.getElementById('newTitle').value = '';
@@ -846,6 +853,7 @@
           alert("План базага ийгиликтүү кошулду!");
         })
         .catch((err) => {
+          clearTimeout(saveTimeout);
           btnSave.disabled = false;
           btnSave.innerText = translations[currentLang].btnSavePlan;
           alert("Ката чыкты: " + err.message);
