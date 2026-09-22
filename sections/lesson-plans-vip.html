@@ -205,6 +205,12 @@
       -webkit-user-select: text;
     }
 
+    .preview-box iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
     .download-btn {
       width: 100%;
       background: linear-gradient(90deg, #10b981, #059669);
@@ -217,8 +223,7 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
+      justify-content: space-between;
       transition: opacity 0.2s;
     }
 
@@ -270,7 +275,7 @@
       background: #1f2937;
       border: 1px solid #374151;
       border-radius: 16px;
-      max-width: 460px;
+      max-width: 480px;
       width: 100%;
       padding: 22px;
       position: relative;
@@ -483,8 +488,13 @@
         </div>
 
         <div class="form-group">
-          <label id="lblContent">Сабактын планынын мазмуну (Конспект):</label>
-          <textarea id="newContent" rows="6" placeholder="Сабактын максаты, тиби, жүрүшү жана тапшырмаларды бул жерге жазыңыз..." required></textarea>
+          <label id="lblDocUrl">Google Drive / Docs шилтемеси:</label>
+          <input type="url" id="newDocUrl" placeholder="https://docs.google.com/document/d/... же Drive шилтемеси" required>
+        </div>
+
+        <div class="form-group">
+          <label id="lblContent">Сабактын планынын мазмуну (Кыскача конспект):</label>
+          <textarea id="newContent" rows="4" placeholder="Сабактын максаты, тиби же кыскача мазмунун киргизиңиз..." required></textarea>
         </div>
 
         <button type="submit" class="submit-btn" id="btnSavePlan">Базага жарыялоо</button>
@@ -547,18 +557,19 @@
         searchPlaceholder: 'Сабактын темасы боюнча издөө...',
         allGrades: 'Бардык класстар',
         gradeSuffix: '-класс',
-        downloadWord: 'Пландарды көрүү / Төлөө',
+        downloadWord: 'Word көчүрүү',
         modalHeader: 'Сабак планын жүктөө',
         modalPrice: 'Төлөнүүчү сумма: 10 сом',
         modalDesc: 'MBANK колдонмосу аркылуу QR-кодду сканерлеп 10 сом которуңуз.',
-        confirmPay: 'Төлөдүм, планды ачуу',
+        confirmPay: 'Төлөдүм, сабак планын алуу',
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Жаңы сабак планын кошуу',
         lblGrade: 'Классты тандаңыз:',
         lblTitle: 'Сабактын темасы:',
-        lblContent: 'Сабактын планынын мазмуну (Конспект):',
+        lblDocUrl: 'Google Drive / Docs шилтемеси:',
+        lblContent: 'Сабактын планынын мазмуну (Кыскача конспект):',
         btnSavePlan: 'Базага жарыялоо',
         emptyMsg: 'Сабак пландары азырынча кошула элек.',
-        paySuccess: 'Төлөм кабыл алынды! Сабактын планы толук ачылды.'
+        paySuccess: 'Төлөм кабыл алынды! Сабактын документи ачылууда...'
       },
       ru: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Открытая база',
@@ -566,18 +577,19 @@
         searchPlaceholder: 'Поиск по теме урока...',
         allGrades: 'Все классы',
         gradeSuffix: ' класс',
-        downloadWord: 'Открыть план / Оплатить',
+        downloadWord: 'Скачать Word',
         modalHeader: 'Скачать план урока',
         modalPrice: 'Сумма к оплате: 10 сом',
         modalDesc: 'Отсканируйте QR-код через приложение MBANK и переведите 10 сом.',
-        confirmPay: 'Оплачено, открыть план',
+        confirmPay: 'Оплачено, получить документ',
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Добавить новый план',
         lblGrade: 'Выберите класс:',
         lblTitle: 'Тема урока:',
+        lblDocUrl: 'Ссылка на Google Drive / Docs:',
         lblContent: 'Содержание плана урока (Конспект):',
         btnSavePlan: 'Опубликовать в базу',
         emptyMsg: 'Планы уроков пока не добавлены.',
-        paySuccess: 'Оплата принята! План урока открыт.'
+        paySuccess: 'Оплата принята! Документ открывается...'
       },
       en: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Public Database',
@@ -585,18 +597,19 @@
         searchPlaceholder: 'Search lesson topic...',
         allGrades: 'All grades',
         gradeSuffix: ' grade',
-        downloadWord: 'View Plan / Pay',
+        downloadWord: 'Download Word',
         modalHeader: 'Download Lesson Plan',
         modalPrice: 'Amount due: 10 SOM',
         modalDesc: 'Scan QR code via MBANK app and transfer 10 SOM.',
-        confirmPay: 'Paid, open plan',
+        confirmPay: 'Paid, get document',
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Add New Plan',
         lblGrade: 'Select Grade:',
         lblTitle: 'Lesson Topic:',
+        lblDocUrl: 'Google Drive / Docs Link:',
         lblContent: 'Lesson Plan Content:',
         btnSavePlan: 'Publish to Database',
         emptyMsg: 'No lesson plans added yet.',
-        paySuccess: 'Payment accepted! Lesson plan opened.'
+        paySuccess: 'Payment accepted! Opening document...'
       }
     };
 
@@ -618,10 +631,18 @@
       document.getElementById('txtAdminTitle').innerHTML = t.adminTitle;
       document.getElementById('lblGrade').innerText = t.lblGrade;
       document.getElementById('lblTitle').innerText = t.lblTitle;
+      document.getElementById('lblDocUrl').innerText = t.lblDocUrl;
       document.getElementById('lblContent').innerText = t.lblContent;
       document.getElementById('btnSavePlan').innerText = t.btnSavePlan;
 
       filterPlans();
+    }
+
+    // Extract Google Doc ID for iframe preview
+    function extractGoogleDocId(url) {
+      if (!url) return null;
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : null;
     }
 
     function renderPlans(plans) {
@@ -639,6 +660,14 @@
         card.className = 'plan-card';
         
         const deleteBtnDisplay = isAdminLoggedIn ? 'flex' : 'none';
+        const docId = extractGoogleDocId(plan.docUrl);
+
+        let previewHTML = '';
+        if (docId) {
+          previewHTML = `<iframe src="https://docs.google.com/document/d/${docId}/preview"></iframe>`;
+        } else {
+          previewHTML = plan.content ? plan.content.replace(/\n/g, '<br>') : 'Сабактын планы кошулган.';
+        }
 
         card.innerHTML = `
           <button class="delete-card-btn" style="display: ${deleteBtnDisplay}" onclick="deletePlan('${plan.id}')" title="Өчүрүү">
@@ -649,12 +678,12 @@
             <h3 class="card-title">${plan.title}</h3>
             
             <div class="preview-box">
-              ${plan.content ? plan.content.replace(/\n/g, '<br>') : 'Сабактын планы кошулган.'}
+              ${previewHTML}
             </div>
           </div>
 
           <button class="download-btn" onclick="openPaymentModal('${plan.id}')">
-            <i class="fa-solid fa-file-invoice"></i> ${t.downloadWord} 
+            <span><i class="fa-solid fa-file-word"></i> ${t.downloadWord}</span>
             <span class="price-tag">${plan.price || 10} сом</span>
           </button>
         `;
@@ -689,25 +718,28 @@
       if (selectedPlanForPay) {
         alert(translations[currentLang].paySuccess);
         
-        // Төлөгөндөн кийин сабактын текстин модалдык терезеге толук чыгарып берүү
-        const newWin = window.open("", "_blank");
-        newWin.document.write(`
-          <html>
-            <head>
-              <title>${selectedPlanForPay.title}</title>
-              <style>
-                body { font-family: Arial, sans-serif; padding: 30px; line-height: 1.6; color: #111; }
-                h2 { color: #d97706; }
-                .content { background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; white-space: pre-wrap; }
-              </style>
-            </head>
-            <body>
-              <h2>${selectedPlanForPay.grade}-класс: ${selectedPlanForPay.title}</h2>
-              <hr><br>
-              <div class="content">${selectedPlanForPay.content}</div>
-            </body>
-          </html>
-        `);
+        if (selectedPlanForPay.docUrl) {
+          window.open(selectedPlanForPay.docUrl, '_blank');
+        } else {
+          const newWin = window.open("", "_blank");
+          newWin.document.write(`
+            <html>
+              <head>
+                <title>${selectedPlanForPay.title}</title>
+                <style>
+                  body { font-family: Arial, sans-serif; padding: 30px; line-height: 1.6; color: #111; }
+                  h2 { color: #d97706; }
+                  .content { background: #f9fafb; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; white-space: pre-wrap; }
+                </style>
+              </head>
+              <body>
+                <h2>${selectedPlanForPay.grade}-класс: ${selectedPlanForPay.title}</h2>
+                <hr><br>
+                <div class="content">${selectedPlanForPay.content}</div>
+              </body>
+            </html>
+          `);
+        }
         closeModal('payModal');
       }
     }
@@ -748,10 +780,11 @@
 
       const grade = document.getElementById('newGrade').value;
       const title = document.getElementById('newTitle').value.trim();
+      const docUrl = document.getElementById('newDocUrl').value.trim();
       const content = document.getElementById('newContent').value.trim();
 
-      if (!title || !content) {
-        alert("Сураныч, сабактын темасын жана мазмунун киргизиңиз!");
+      if (!title || !docUrl || !content) {
+        alert("Сураныч, бардык талааларды толтуруңуз!");
         return;
       }
 
@@ -761,17 +794,18 @@
       const newPlanData = {
         grade: grade,
         title: title,
+        docUrl: docUrl,
         content: content,
         price: 10,
         timestamp: firebase.database.ServerValue.TIMESTAMP
       };
 
       try {
-        // Firebase'ге сактоо
         await plansRef.push(newPlanData);
         alert("Сабактын планы глобалдуу базага ийгиликтүү кошулду!");
         closeModal('adminModal');
         document.getElementById('newTitle').value = '';
+        document.getElementById('newDocUrl').value = '';
         document.getElementById('newContent').value = '';
       } catch (err) {
         console.error("Firebase Error:", err);
