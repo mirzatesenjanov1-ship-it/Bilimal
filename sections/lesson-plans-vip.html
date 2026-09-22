@@ -538,8 +538,9 @@
       }
     });
 
-    // FIREBASE INITIALIZATION
-    const DB_BASE_URL = "https://bilimal-default-rtdb.firebaseio.com";
+    // FIREBASE INITIALIZATION & EXACT REST ENDPOINT FIX
+    const DB_HOST = "bilimal-default-rtdb.firebaseio.com";
+    const DB_BASE_URL = `https://${DB_HOST}`;
     const firebaseConfig = { databaseURL: DB_BASE_URL };
     
     if (!firebase.apps.length) {
@@ -585,7 +586,7 @@
 
     let lessonPlans = [];
 
-    // Global Sync with REST Fallback
+    // Global Sync with Direct REST Fallback
     function listenGlobalPlans() {
       plansRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -598,21 +599,28 @@
         }
         filterPlans();
       }, (error) => {
-        console.warn("Realtime sync failed, trying REST fallback...", error);
-        fetch(`${DB_BASE_URL}/global_lesson_plans.json`)
-          .then(res => res.json())
-          .then(data => {
-            lessonPlans = [];
-            if (data) {
-              Object.keys(data).forEach(key => {
-                lessonPlans.push({ id: key, ...data[key] });
-              });
-              lessonPlans.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-            }
-            filterPlans();
-          })
-          .catch(e => console.error("REST Fetch error:", e));
+        console.warn("Realtime sync fallback execute...", error);
+        fetchPlansViaREST();
       });
+    }
+
+    function fetchPlansViaREST() {
+      fetch(`${DB_BASE_URL}/global_lesson_plans.json`)
+        .then(res => {
+          if (!res.ok) throw new Error("REST HTTP " + res.status);
+          return res.json();
+        })
+        .then(data => {
+          lessonPlans = [];
+          if (data) {
+            Object.keys(data).forEach(key => {
+              lessonPlans.push({ id: key, ...data[key] });
+            });
+            lessonPlans.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          }
+          filterPlans();
+        })
+        .catch(e => console.error("REST Fetch Error:", e));
     }
 
     const translations = {
@@ -822,7 +830,7 @@
       }
     }
 
-    // ТҮПТҮҮ КӨЙГӨЙДҮ ОҢДОГОН САКТОО ФУНКЦИЯСЫ (TIMEOUT & REST FALLBACK)
+    // 404 КАТАСЫЗ ЖАНА БӨГӨТТӨӨСҮЗ САКТОО ФУНКЦИЯСЫ
     async function addNewPlan(e) {
       if (e) e.preventDefault();
 
@@ -856,49 +864,40 @@
         btnSave.innerText = translations[currentLang].btnSavePlan;
       };
 
-      // 1-ПАДА: Firebase Realtime SDK аркылуу сактоо аракети (Timeout менен)
-      const saveWithSDK = new Promise((resolve, reject) => {
-        plansRef.push(newPlanData)
-          .then(res => resolve(res))
-          .catch(err => reject(err));
-      });
-
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Timeout")), 5000);
-      });
+      // ПРАКТИКАЛЫК ДҮЙНӨДӨ ЭҢ ТҮШҮНҮКТҮҮ ЖАНА КЕПИЛДЕНГЕН САКТОО АДРЕСИ (REST ENDPOINT)
+      const targetEndpoint = `${DB_BASE_URL}/global_lesson_plans.json`;
 
       try {
-        await Promise.race([saveWithSDK, timeoutPromise]);
-        resetBtn();
-        closeModal('adminModal');
-        document.getElementById('newTitle').value = '';
-        document.getElementById('newDriveUrl').value = '';
-        alert("План базага ийгиликтүү кошулду!");
-      } catch (err) {
-        console.warn("SDK Push же Таймаут катасы, REST API менен кайра сактоодо...", err);
-        
-        // 2-ПАДА: SDK жооп бербей калса, кепилденген REST REST API fallback
-        try {
-          const res = await fetch(`${DB_BASE_URL}/global_lesson_plans.json`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newPlanData)
-          });
+        const response = await fetch(targetEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newPlanData)
+        });
 
-          if (res.ok) {
-            resetBtn();
-            closeModal('adminModal');
-            document.getElementById('newTitle').value = '';
-            document.getElementById('newDriveUrl').value = '';
-            alert("План глобалдык базага ийгиликтүү кошулду!");
-            listenGlobalPlans(); // Тизмени мажбурлап жаңылоо
-          } else {
-            throw new Error("REST API status: " + res.status);
-          }
-        } catch (restErr) {
+        if (response.ok) {
           resetBtn();
-          console.error("Кепилденген сактоодо ката:", restErr);
-          alert("Ката чыкты. База туташуусун текшериңиз: " + restErr.message);
+          closeModal('adminModal');
+          document.getElementById('newTitle').value = '';
+          document.getElementById('newDriveUrl').value = '';
+          alert("План базага ийгиликтүү кошулду!");
+          fetchPlansViaREST();
+        } else {
+          throw new Error("HTTP Status: " + response.status);
+        }
+      } catch (err) {
+        console.warn("Direct REST fail, attempting fallback SDK push...", err);
+        
+        try {
+          await plansRef.push(newPlanData);
+          resetBtn();
+          closeModal('adminModal');
+          document.getElementById('newTitle').value = '';
+          document.getElementById('newDriveUrl').value = '';
+          alert("План базага кошулду!");
+        } catch (sdkErr) {
+          resetBtn();
+          console.error("Сактоо катасы:", sdkErr);
+          alert("Ката чыкты: " + err.message);
         }
       }
 
@@ -908,8 +907,15 @@
     function deletePlan(planId) {
       if (!isAdminLoggedIn) return;
       if (confirm("Чын эле бул сабактын планын базадан өчүргүңүз келеби?")) {
-        plansRef.child(planId).remove()
-          .then(() => alert("План базадан өчүрүлдү!"))
+        fetch(`${DB_BASE_URL}/global_lesson_plans/${planId}.json`, { method: 'DELETE' })
+          .then(res => {
+            if (res.ok) {
+              alert("План базадан өчүрүлдү!");
+              fetchPlansViaREST();
+            } else {
+              throw new Error("HTTP " + res.status);
+            }
+          })
           .catch(err => alert("Өчүрүүдө ката: " + err.message));
       }
     }
