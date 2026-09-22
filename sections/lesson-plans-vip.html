@@ -538,27 +538,21 @@
       }
     });
 
+    // FIREBASE INITIALIZATION
+    const firebaseConfig = { 
+      databaseURL: "https://bilimal-default-rtdb.firebaseio.com" 
+    };
+    
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const database = firebase.database();
+    const plansRef = database.ref('global_lesson_plans');
+
     const ADMIN_LOGIN = "admin";
     const ADMIN_PASS = "bilimal2026";
     let isAdminLoggedIn = false;
     let lessonPlans = [];
-
-    // LocalStorage Sync for Offline/Instant Guaranteed Operation
-    function loadLocalPlans() {
-      const stored = localStorage.getItem('bilimal_plans_local');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch (e) {
-          return [];
-        }
-      }
-      return [];
-    }
-
-    function saveLocalPlans(plans) {
-      localStorage.setItem('bilimal_plans_local', JSON.stringify(plans));
-    }
 
     // Google Drive/Docs Safe Parser
     function processDriveUrl(rawUrl) {
@@ -588,6 +582,21 @@
       } catch (err) {
         return { fileId: null, previewUrl: rawUrl, downloadUrl: rawUrl };
       }
+    }
+
+    // БАРДЫК КОЛДОНУУЧУЛАРГА БИРДЕЙ СИНХРОНДОШТУРУУ
+    function listenGlobalPlans() {
+      plansRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        lessonPlans = [];
+        if (data) {
+          Object.keys(data).forEach(key => {
+            lessonPlans.push({ id: key, ...data[key] });
+          });
+          lessonPlans.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        }
+        filterPlans();
+      });
     }
 
     const translations = {
@@ -797,7 +806,7 @@
       }
     }
 
-    // ТАПТАК САКТОО ЖАНА БӨГӨТТӨЛБӨӨЧҮ ЛОГИКА
+    // БУЛУТТУК БАЗАГА САКТОО ФУНКЦИЯСЫ
     function addNewPlan(e) {
       if (e) e.preventDefault();
 
@@ -813,10 +822,10 @@
 
       const processed = processDriveUrl(rawUrl);
 
-      // Заматта ID жаратуу
-      const newId = 'plan_' + Date.now();
+      btnSave.disabled = true;
+      btnSave.innerText = "Сохранение...";
+
       const newPlanData = {
-        id: newId,
         grade: grade,
         title: title,
         fileId: processed.fileId || "",
@@ -826,17 +835,21 @@
         timestamp: Date.now()
       };
 
-      // 1. Жергиликтүү сактоо жана UI ошол замат жаңыртуу
-      lessonPlans.unshift(newPlanData);
-      saveLocalPlans(lessonPlans);
-      filterPlans();
-
-      // Form тазалоо жана UI калыбына келтирүү
-      document.getElementById('newTitle').value = '';
-      document.getElementById('newDriveUrl').value = '';
-      closeModal('adminModal');
-
-      alert("План ийгиликтүү кошулду!");
+      // Firebase Realtime Database'ге түз push кылуу
+      plansRef.push(newPlanData)
+        .then(() => {
+          btnSave.disabled = false;
+          btnSave.innerText = translations[currentLang].btnSavePlan;
+          document.getElementById('newTitle').value = '';
+          document.getElementById('newDriveUrl').value = '';
+          closeModal('adminModal');
+          alert("План базага ийгиликтүү кошулду!");
+        })
+        .catch((err) => {
+          btnSave.disabled = false;
+          btnSave.innerText = translations[currentLang].btnSavePlan;
+          alert("Ката чыкты: " + err.message);
+        });
 
       return false;
     }
@@ -844,15 +857,14 @@
     function deletePlan(planId) {
       if (!isAdminLoggedIn) return;
       if (confirm("Чын эле бул сабактын планын базадан өчүргүңүз келеби?")) {
-        lessonPlans = lessonPlans.filter(p => p.id !== planId);
-        saveLocalPlans(lessonPlans);
-        filterPlans();
-        alert("План өчүрүлдү!");
+        plansRef.child(planId).remove()
+          .then(() => alert("План өчүрүлдү!"))
+          .catch(err => alert("Өчүрүүдө ката: " + err.message));
       }
     }
 
     window.onload = () => {
-      lessonPlans = loadLocalPlans();
+      listenGlobalPlans();
       changeLanguage('ru');
     };
   </script>
