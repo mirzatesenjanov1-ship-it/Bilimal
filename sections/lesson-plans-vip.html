@@ -19,6 +19,7 @@
       margin: 0;
       padding: 0;
       font-family: 'Poppins', sans-serif;
+      /* Текстти көчүрүүгө бөгөт коюу */
       user-select: none;
       -webkit-user-select: none;
     }
@@ -87,7 +88,7 @@
       gap: 8px;
     }
 
-    /* Controls */
+    /* Издөө жана Фильтр */
     .controls-container {
       max-width: 1200px;
       margin: 0 auto 20px auto;
@@ -143,7 +144,7 @@
       width: auto;
     }
 
-    /* Grid Layout */
+    /* Grid layout */
     .plans-grid {
       max-width: 1200px;
       margin: 0 auto;
@@ -192,7 +193,7 @@
     .preview-container {
       width: 100%;
       height: 260px;
-      background: #0f172a;
+      background: #000;
       border-radius: 10px;
       overflow: hidden;
       border: 1px solid #374151;
@@ -216,25 +217,6 @@
       z-index: 10;
     }
 
-    .doc-placeholder {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      text-align: center;
-      background: #1e293b;
-      color: #94a3b8;
-    }
-
-    .doc-placeholder i {
-      font-size: 3rem;
-      color: #38bdf8;
-      margin-bottom: 12px;
-    }
-
     .download-btn {
       width: 100%;
       background: linear-gradient(90deg, #10b981, #059669);
@@ -256,6 +238,13 @@
       opacity: 0.9;
     }
 
+    .price-tag {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
     .delete-card-btn {
       position: absolute;
       top: 15px;
@@ -270,13 +259,6 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    .price-tag {
-      background: rgba(0, 0, 0, 0.2);
-      padding: 2px 8px;
-      border-radius: 4px;
       font-size: 0.8rem;
     }
 
@@ -407,6 +389,7 @@
         <i class="fa-solid fa-lock-open"></i> Открытая база
       </div>
 
+      <!-- Тил которуу -->
       <select id="langSelect" class="lang-select" onchange="changeLanguage(this.value)">
         <option value="ru" selected>Русский</option>
         <option value="ky">Кыргызча</option>
@@ -419,7 +402,7 @@
     </div>
   </header>
 
-  <!-- Controls -->
+  <!-- Издөө жана Фильтр -->
   <div class="controls-container">
     <div class="search-box">
       <i class="fa-solid fa-magnifying-glass"></i>
@@ -438,10 +421,10 @@
     </select>
   </div>
 
-  <!-- Plans Grid -->
+  <!-- Пландардын сеткасы -->
   <main class="plans-grid" id="plansContainer"></main>
 
-  <!-- Payment Modal -->
+  <!-- Төлөм Модалы -->
   <div class="modal-overlay" id="payModal">
     <div class="modal-content" style="text-align: center;">
       <i class="fa-solid fa-xmark close-modal" onclick="closeModal('payModal')"></i>
@@ -465,7 +448,7 @@
     </div>
   </div>
 
-  <!-- Admin Login Modal -->
+  <!-- АДМИН КИРҮҮ МОДАЛЫ -->
   <div class="modal-overlay" id="authModal">
     <div class="modal-content">
       <i class="fa-solid fa-xmark close-modal" onclick="closeModal('authModal')"></i>
@@ -489,13 +472,13 @@
     </div>
   </div>
 
-  <!-- Admin Panel Modal -->
+  <!-- АДМИН БАШКАРУУ МОДАЛЫ -->
   <div class="modal-overlay" id="adminModal">
     <div class="modal-content">
       <i class="fa-solid fa-xmark close-modal" onclick="closeModal('adminModal')"></i>
       <h3 style="color: #f59e0b; margin-bottom: 15px;" id="txtAdminTitle"><i class="fa-solid fa-plus-circle"></i> Добавить новый план</h3>
       
-      <form id="addPlanForm" onsubmit="addNewPlan(event)">
+      <form onsubmit="addNewPlan(event)">
         <div class="form-group">
           <label id="lblGrade">Выберите класс:</label>
           <select id="newGrade" required>
@@ -515,8 +498,8 @@
         </div>
 
         <div class="form-group">
-          <label id="lblUrl">Ссылка Google Drive / Docs:</label>
-          <input type="url" id="newDriveUrl" placeholder="https://docs.google.com/document/d/..." required>
+          <label id="lblUrl">Ссылка Google Drive:</label>
+          <input type="url" id="newDriveUrl" placeholder="https://drive.google.com/file/d/..." required>
         </div>
 
         <button type="submit" class="submit-btn" id="btnSavePlan">Добавить в базу</button>
@@ -525,9 +508,13 @@
   </div>
 
   <script>
-    // Context Menu Protection
+    // ===============================================
+    // F12 ЖАНА КОДДУ ИНСПЕКТИРОВАНИЕ КЫЛУУГА БӨГӨТ
+    // ===============================================
     document.addEventListener('contextmenu', e => e.preventDefault());
+
     document.addEventListener('keydown', function(e) {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+S
       if (
         e.keyCode === 123 || 
         (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || 
@@ -538,7 +525,9 @@
       }
     });
 
-    // FIREBASE INITIALIZATION
+    // ===============================================
+    // FIREBASE INITIALIZATION & REALTIME SYNC
+    // ===============================================
     const firebaseConfig = { 
       databaseURL: "https://bilimal-default-rtdb.firebaseio.com" 
     };
@@ -549,42 +538,15 @@
     const database = firebase.database();
     const plansRef = database.ref('global_lesson_plans');
 
+    // ===============================================
+    // АДМИН ЛОГИН/ПАРОЛЬ ЖАНА ӨЗГӨРМӨЛӨР
+    // ===============================================
     const ADMIN_LOGIN = "admin";
     const ADMIN_PASS = "bilimal2026";
     let isAdminLoggedIn = false;
     let lessonPlans = [];
 
-    // Google Drive/Docs Link Parser
-    function processDriveUrl(rawUrl) {
-      try {
-        if (!rawUrl) return { previewUrl: "", downloadUrl: "" };
-
-        const idMatch = rawUrl.match(/\/(?:file|document|spreadsheets|presentation)\/d\/([a-zA-Z0-9_-]+)/) || 
-                        rawUrl.match(/id=([a-zA-Z0-9_-]+)/);
-        
-        if (idMatch && idMatch[1]) {
-          const fileId = idMatch[1];
-          if (rawUrl.includes('/document/d/')) {
-            return {
-              fileId: fileId,
-              previewUrl: `https://docs.google.com/document/d/${fileId}/preview`,
-              downloadUrl: `https://docs.google.com/document/d/${fileId}/export?format=docx`
-            };
-          } else {
-            return {
-              fileId: fileId,
-              previewUrl: `https://drive.google.com/file/d/${fileId}/preview`,
-              downloadUrl: `https://drive.google.com/uc?export=download&id=${fileId}`
-            };
-          }
-        }
-        return { fileId: null, previewUrl: rawUrl, downloadUrl: rawUrl };
-      } catch (err) {
-        return { fileId: null, previewUrl: rawUrl, downloadUrl: rawUrl };
-      }
-    }
-
-    // REALTIME GLOBAL LISTENER
+    // Базадан реалдуу убакытта пландарды алуу
     function listenGlobalPlans() {
       plansRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -593,14 +555,16 @@
           Object.keys(data).forEach(key => {
             lessonPlans.push({ id: key, ...data[key] });
           });
+          // Базадан акыркы кошулганын эң өйдөгө чыгаруу
           lessonPlans.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
         }
         filterPlans();
       }, (error) => {
-        console.error("Firebase Read Error:", error);
+        console.error("Firebase маалымат алууда ката:", error);
       });
     }
 
+    // Сөздүк
     const translations = {
       ru: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Открытая база',
@@ -616,12 +580,11 @@
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Добавить новый план',
         lblGrade: 'Выберите класс:',
         lblTitle: 'Тема урока:',
-        lblUrl: 'Ссылка Google Drive / Docs:',
+        lblUrl: 'Ссылка Google Drive:',
         btnSavePlan: 'Добавить в базу',
-        emptyMsg: 'Планы уроков пока не добавлены в глобальную базу.',
+        emptyMsg: 'Планы уроков пока не добавлены.',
         paySuccess: 'Оплата принята! Начинается скачивание файла...',
-        previewUnavailable: 'Предпросмотр файла временно недоступен',
-        adminInstruction: 'Убедитесь, что доступ к файлу открыт для всех'
+        urlError: 'Пожалуйста, введите корректную ссылку Google Drive!'
       },
       ky: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Ачык база',
@@ -637,12 +600,11 @@
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Жаңы сабак планын кошуу',
         lblGrade: 'Классты тандаңыз:',
         lblTitle: 'Сабактын темасы:',
-        lblUrl: 'Google Drive / Docs Шилтемеси:',
+        lblUrl: 'Google Drive Шилтемеси:',
         btnSavePlan: 'Базага кошуу',
-        emptyMsg: 'Глобалдык базага сабак пландары азырынча кошула элек.',
+        emptyMsg: 'Сабак пландары азырынча кошула элек.',
         paySuccess: 'Төлөм кабыл алынды! Файлды жүктөө башталууда...',
-        previewUnavailable: 'Файлды алдын ала көрүү убактылуу жеткиликсиз',
-        adminInstruction: 'Google Диск же Docs файласына ачык мүмкүндүк берилгенин текшериңиз'
+        urlError: 'Сураныч, туура Google Drive шилтемесин киргизиңиз!'
       },
       en: {
         openBase: '<i class="fa-solid fa-lock-open"></i> Public Database',
@@ -658,12 +620,11 @@
         adminTitle: '<i class="fa-solid fa-plus-circle"></i> Add New Plan',
         lblGrade: 'Select Grade:',
         lblTitle: 'Lesson Topic:',
-        lblUrl: 'Google Drive / Docs Link:',
+        lblUrl: 'Google Drive Link:',
         btnSavePlan: 'Add to Database',
-        emptyMsg: 'No lesson plans added to global database yet.',
+        emptyMsg: 'No lesson plans added yet.',
         paySuccess: 'Payment accepted! Downloading file...',
-        previewUnavailable: 'File preview is temporarily unavailable',
-        adminInstruction: 'Ensure Google file access is set to Public'
+        urlError: 'Please enter a valid Google Drive URL!'
       }
     };
 
@@ -704,25 +665,7 @@
       plans.forEach(plan => {
         const card = document.createElement('div');
         card.className = 'plan-card';
-
-        let previewHtml = '';
-        if (plan.previewUrl && plan.previewUrl.length > 10) {
-          previewHtml = `
-            <div class="preview-container">
-              <div class="iframe-overlay-blocker"></div>
-              <iframe class="preview-iframe" src="${plan.previewUrl}" loading="lazy"></iframe>
-            </div>`;
-        } else {
-          previewHtml = `
-            <div class="preview-container">
-              <div class="doc-placeholder">
-                <i class="fa-solid fa-file-lines"></i>
-                <p style="font-size: 0.8rem; font-weight: 500; color: #cbd5e1;">${t.previewUnavailable}</p>
-                <p style="font-size: 0.7rem; color: #64748b; margin-top: 4px;">${t.adminInstruction}</p>
-              </div>
-            </div>`;
-        }
-
+        
         const deleteBtnDisplay = isAdminLoggedIn ? 'flex' : 'none';
 
         card.innerHTML = `
@@ -732,7 +675,11 @@
           <div>
             <span class="card-badge">${plan.grade}-${t.gradeSuffix}</span>
             <h3 class="card-title">${plan.title}</h3>
-            ${previewHtml}
+            
+            <div class="preview-container">
+              <div class="iframe-overlay-blocker"></div>
+              <iframe class="preview-iframe" src="${plan.previewUrl}" loading="lazy"></iframe>
+            </div>
           </div>
 
           <button class="download-btn" onclick="openPaymentModal('${plan.id}')">
@@ -769,11 +716,7 @@
     function confirmPayment() {
       if (selectedPlanForPay) {
         alert(translations[currentLang].paySuccess);
-        if (selectedPlanForPay.downloadUrl && selectedPlanForPay.downloadUrl !== '#') {
-          window.open(selectedPlanForPay.downloadUrl, '_blank');
-        } else {
-          alert("Файл шилтемеси туура эмес же киргизилген эмес!");
-        }
+        window.open(selectedPlanForPay.downloadUrl, '_blank');
         closeModal('payModal');
       }
     }
@@ -801,64 +744,62 @@
         document.getElementById('adminModal').style.display = 'flex';
         filterPlans();
       } else {
-        statusMsg.innerText = "Неверный логин или пароль!";
+        statusMsg.innerText = "Неверный логин или пароль! Доступ запрещен.";
       }
     }
 
-    // ТҮЗ БАЗАГА САКТОО ФУНКЦИЯСЫ (Auth талап кылынбайт)
+    // Жаңы сабак планын ГЛОБАЛДЫК Базага кошуу
     function addNewPlan(e) {
-      if (e) e.preventDefault();
+      e.preventDefault();
 
       const btnSave = document.getElementById('btnSavePlan');
       const grade = document.getElementById('newGrade').value;
       const title = document.getElementById('newTitle').value.trim();
       const rawUrl = document.getElementById('newDriveUrl').value.trim();
 
-      if (!title || !rawUrl) {
-        alert("Сураныч, бардык талааларды толтуруңуз!");
-        return false;
+      const match = rawUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (!match) {
+        alert(translations[currentLang].urlError);
+        return;
       }
 
-      const processed = processDriveUrl(rawUrl);
+      const fileId = match[1];
+      const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+      const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
       btnSave.disabled = true;
-      btnSave.innerText = "Сохранение...";
 
       const newPlanData = {
         grade: grade,
         title: title,
-        fileId: processed.fileId || "",
-        previewUrl: processed.previewUrl,
-        downloadUrl: processed.downloadUrl,
+        previewUrl: previewUrl,
+        downloadUrl: downloadUrl,
         price: 10,
         timestamp: firebase.database.ServerValue.TIMESTAMP
       };
 
-      // План кошуу
+      // Базага сактоо (онлайн)
       plansRef.push(newPlanData)
         .then(() => {
           btnSave.disabled = false;
-          btnSave.innerText = translations[currentLang].btnSavePlan;
+          closeModal('adminModal');
           document.getElementById('newTitle').value = '';
           document.getElementById('newDriveUrl').value = '';
-          closeModal('adminModal');
-          alert("План базага ийгиликтүү кошулду!");
+          alert("План базага ийгиликтүү кошулду жана бардык колдонуучуларга көрүнөт!");
         })
         .catch((err) => {
           btnSave.disabled = false;
-          btnSave.innerText = translations[currentLang].btnSavePlan;
-          console.error("Firebase Push Error:", err);
+          console.error("Firebase Error:", err);
           alert("Ката чыкты: " + err.message);
         });
-
-      return false;
     }
 
+    // Базадан планды өчүрүү (Админ үчүн)
     function deletePlan(planId) {
       if (!isAdminLoggedIn) return;
       if (confirm("Чын эле бул сабактын планын базадан өчүргүңүз келеби?")) {
         plansRef.child(planId).remove()
-          .then(() => alert("План өчүрүлдү!"))
+          .then(() => alert("План базадан өчүрүлдү!"))
           .catch(err => alert("Өчүрүүдө ката: " + err.message));
       }
     }
