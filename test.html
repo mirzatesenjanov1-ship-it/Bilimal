@@ -61,6 +61,7 @@
             user-select: none;
             overflow-x: hidden;
             width: 100%;
+            transform: translateZ(0); /* GPU acceleration */
         }
         .adsterra-banner-container {
             width: 100%;
@@ -70,6 +71,7 @@
             justify-content: center;
             align-items: center;
             min-height: 90px;
+            contain: layout style;
         }
         .test-box { 
             background:rgba(15,23,42,0.9); 
@@ -80,12 +82,14 @@
             max-width:700px; 
             box-shadow:0 0 30px rgba(0,0,0,0.8); 
             backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
             box-sizing: border-box;
             overflow: hidden;
+            contain: content;
         }
         
         .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .back-nav { display: inline-flex; align-items: center; gap: 8px; color: #00f0ff; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: 0.3s; }
+        .back-nav { display: inline-flex; align-items: center; gap: 8px; color: #00f0ff; text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: color 0.2s ease; }
         .back-nav:hover { color: #fff; text-shadow: 0 0 10px #00f0ff; }
 
         .lang-selector { display: flex; gap: 6px; }
@@ -99,6 +103,7 @@
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s ease;
+            will-change: transform, background-color;
         }
         .lang-btn:hover, .lang-btn.active {
             background: #00f0ff;
@@ -107,10 +112,35 @@
             box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
-        .btn-start { background:linear-gradient(45deg, #00f0ff, #7000ff); color:#fff; border:none; width:100%; padding:14px; border-radius:8px; font-weight:800; font-size:1.1rem; cursor:pointer; margin-top:15px; transition: 0.3s; }
+        .btn-start { 
+            background:linear-gradient(45deg, #00f0ff, #7000ff); 
+            color:#fff; 
+            border:none; 
+            width:100%; 
+            padding:14px; 
+            border-radius:8px; 
+            font-weight:800; 
+            font-size:1.1rem; 
+            cursor:pointer; 
+            margin-top:15px; 
+            transition: transform 0.2s ease, box-shadow 0.2s ease; 
+            will-change: transform;
+        }
         .btn-start:hover { box-shadow: 0 0 20px rgba(0,240,255,0.5); transform: translateY(-2px); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-        .input-field { width:100%; padding:12px; margin-top:8px; background:#020208; border:1px solid rgba(0,240,255,0.3); border-radius:6px; color:#fff; font-size: 1rem; outline: none; transition: 0.3s; }
+        
+        .input-field { 
+            width:100%; 
+            padding:12px; 
+            margin-top:8px; 
+            background:#020208; 
+            border:1px solid rgba(0,240,255,0.3); 
+            border-radius:6px; 
+            color:#fff; 
+            font-size: 1rem; 
+            outline: none; 
+            transition: border-color 0.2s ease, box-shadow 0.2s ease; 
+        }
         .input-field:focus { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
         
         .q-option { 
@@ -120,7 +150,7 @@
             border-radius:8px; 
             margin-bottom:12px; 
             cursor:pointer; 
-            transition:0.2s; 
+            transition: background 0.2s ease, border-color 0.2s ease; 
             font-size: 1rem; 
             display: flex; 
             align-items: center; 
@@ -151,7 +181,7 @@
         .matching-row select { background: #020208; border: 1px solid rgba(0,240,255,0.3); color: #fff; padding: 10px; border-radius: 6px; outline: none; width: 100%; }
 
         .timer-badge { background:rgba(255,0,85,0.2); color:#ff0055; border:1px solid #ff0055; padding:6px 14px; border-radius:20px; font-weight:800; float:right; font-size: 0.95rem; }
-        .ads-slot { margin:15px 0; text-align:center; min-height:90px; }
+        .ads-slot { margin:15px 0; text-align:center; min-height:90px; contain: layout style; }
 
         #qText {
             white-space: normal !important;
@@ -435,42 +465,42 @@
         }
 
         /**
-         * Тексттеги чийки LaTeX формулаларды таап, MathJax үчүн $ белгилерине алуу
+         * Тексттеги чийки LaTeX формулаларды таап, MathJax үчүн $ белгилерине алуу (Оптималдаштырылган)
          */
         function formatMathExpressions(container) {
             if (!container) return;
 
+            const latexKeywordRegex = /\\(vec|vert|Delta|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|frac|sqrt|text)/;
+            const fullLatexPattern = /(\\([a-zA-Z]+)(\{[^{}]*\}|\[[^\[\]]*\]|[\=\+\-\*\/\_\^0-9a-zA-Z\s])+)*/g;
+            const subscriptPattern = /(?<!\$)\b([a-zA-Z]+)_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g;
+
             const processNode = (node) => {
                 if (node.nodeType === Node.TEXT_NODE) {
                     let text = node.nodeValue;
-                    if (!text || !text.trim()) return;
+                    if (!text || !text.trim() || text.includes('$')) return;
+
+                    let changed = false;
 
                     // 1. Негизги LaTeX командаларын бөлгүчтөргө ($) алуу
-                    // \vec, \vert, \Delta, \frac, \sqrt, \alpha, \omega, \text ж.б.
-                    const latexPattern = /(\\([a-zA-Z]+)(\{[^{}]*\}|\[[^\[\]]*\]|[\=\+\-\*\/\_\^0-9a-zA-Z\s])+)*/g;
-
-                    if (/\\(vec|vert|Delta|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|frac|sqrt|text)/.test(text) && !text.includes('$')) {
-                        text = text.replace(latexPattern, function(match) {
+                    if (latexKeywordRegex.test(text)) {
+                        text = text.replace(fullLatexPattern, function(match) {
                             if (match.trim().length > 0 && match.includes('\\')) {
-                                return ' $' + match.trim() + '$ ';
-                            }
-                            return match;
-                        });
+                                return ' $' + match.trim() + '$ ';                             }                             return match;                         });                         changed = true;                     }                      // 2. Индекстер жана даражалар (мисалы: S_1, v_0, t^2)                     if (/(?<!\$)[a-zA-Z]_\{?[0-9a-zA-Z]+\}?(?!\$)/.test(text)) {                         text = text.replace(subscriptPattern, ' $$ $1_$2 $$ ');                         changed = true;                     }                      // 3. Температура жана градустар                     if (text.includes('°')) {                         text = text.replace(/(\d+)\s*°\s*C\b/g, ' $$ $1^\\circ\\text{C} $$ ');                         text = text.replace(/(\d+)\s*°\b/g, ' $$ $1^\\circ$$ ');
+                        changed = true;
                     }
 
-                    // 2. Индекстер жана даражалар (мисалы: S_1, v_0, t^2)
-                    if (/(?<!\$)[a-zA-Z]_\{?[0-9a-zA-Z]+\}?(?!\$)/.test(text) && !text.includes('$')) {                         text = text.replace(/(?<!\$)\b([a-zA-Z]+)_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g, ' $$ $1_$2 $$ ');                     }                      // 3. Температура жана градустар                     text = text.replace(/(\d+)\s*°\s*C\b/g, ' $$ $1^\\circ\\text{C} $$ ');                     text = text.replace(/(\d+)\s*°\b/g, ' $$ $1^\\circ$$ ');
-
-                    // 4. Кайталанган боштуктарды тазалоо
-                    text = text.replace(/\s+/g, ' ');
-
-                    node.nodeValue = text;
+                    if (changed) {
+                        node.nodeValue = text.replace(/\s+/g, ' ');
+                    }
                 } else if (node.nodeType === Node.ELEMENT_NODE && 
                            node.tagName !== 'SCRIPT' && 
                            node.tagName !== 'STYLE' && 
                            !node.classList.contains('MathJax') && 
                            !node.tagName.startsWith('MJX-')) {
-                    Array.from(node.childNodes).forEach(processNode);
+                    const children = Array.from(node.childNodes);
+                    for (let i = 0; i < children.length; i++) {
+                        processNode(children[i]);
+                    }
                 }
             };
 
@@ -495,7 +525,7 @@
                 window.MathJax.typesetPromise([target])
                     .catch((err) => console.error("MathJax render error:", err))
                     .finally(() => { 
-                        setTimeout(() => { isMathJaxRendering = false; }, 100);
+                        setTimeout(() => { isMathJaxRendering = false; }, 50);
                     });
             } else {
                 isMathJaxRendering = false;
@@ -504,7 +534,7 @@
 
         const targetNode = document.getElementById('runningScreen');
         if (targetNode) {
-            let renderTimeout;
+            let renderTimeout = null;
             const observer = new MutationObserver((mutations) => {
                 if (isMathJaxRendering) return;
 
@@ -516,11 +546,16 @@
                 );
                 if (isMathJaxChange) return;
 
-                clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(renderMath, 150);
+                if (renderTimeout) clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(renderMath, 200);
             });
             
             observer.observe(targetNode, { childList: true, subtree: true });
+
+            window.addEventListener('beforeunload', () => {
+                observer.disconnect();
+                if (renderTimeout) clearTimeout(renderTimeout);
+            });
         }
     </script>
 </body>
