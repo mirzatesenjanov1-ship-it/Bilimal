@@ -21,7 +21,7 @@
     <!-- AdSense Script -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1495571814896964" crossorigin="anonymous"></script>
 
-    <!-- MathJax Конфигурациясы -->
+    <!-- MathJax Конфигурациясы (Формулалар үчүн туураланган) -->
     <script>
         window.MathJax = {
             tex: { 
@@ -194,6 +194,7 @@
             margin: 15px 0;
         }
 
+        /* MathJax контейнерлерин туура стилдештирүү */
         mjx-container, mjx-math, .MathJax {
             white-space: normal !important;
             word-break: break-word !important;
@@ -325,7 +326,6 @@
             }
         };
 
-        // Демейки тил - дайыма орусча ('ru') болуп орнотулат
         let currentLang = 'ru';
         localStorage.setItem('site_lang', 'ru');
 
@@ -385,7 +385,6 @@
             const studentClassInput = document.getElementById('studentClass');
             const lblTitleText = document.getElementById('lblTitleText');
 
-            // Орус тилинде жүктөөнү камсыз кылуу
             setLanguage('ru');
 
             if (!testId) {
@@ -428,7 +427,7 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- Google Drive сүрөттөрүн жана Тексттеги формулаларды иштетүүчү оптималдаштырылган алгоритм -->
+    <!-- Сүрөттөрдү жана Формулаларды калыбына келтирүүчү оңдолгон скрипт -->
     <script>
         let isMathJaxRendering = false;
 
@@ -465,46 +464,50 @@
         }
 
         /**
-         * Тексттеги чийки LaTeX формулаларды таап, MathJax үчүн $ белгилерине алуу (Оптималдаштырылган)
+         * Формулалардын бузулушун оңдоочу такталган функция
          */
         function formatMathExpressions(container) {
             if (!container) return;
 
-            const latexKeywordRegex = /\\(vec|vert|Delta|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|frac|sqrt|text)/;
-            const fullLatexPattern = /(\\([a-zA-Z]+)(\{[^{}]*\}|\[[^\[\]]*\]|[\=\+\-\*\/\_\^0-9a-zA-Z\s])+)*/g;
-            const subscriptPattern = /(?<!\$)\b([a-zA-Z]+)_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g;
+            const processTextNode = (node) => {
+                let text = node.nodeValue;
+                if (!text || !text.trim()) return;
 
-            const processNode = (node) => {
-                if (node.nodeType === Node.TEXT_NODE) {
-                    let text = node.nodeValue;
-                    if (!text || !text.trim() || text.includes('$')) return;
+                // Эгер текстте $ белгиси мурда эле коюлган болсо, аны бузбайбыз
+                if (text.includes('$')) return;
 
-                    let changed = false;
+                let changed = false;
 
-                    // 1. Негизги LaTeX командаларын бөлгүчтөргө ($) алуу
-                    if (latexKeywordRegex.test(text)) {
-                        text = text.replace(fullLatexPattern, function(match) {
-                            if (match.trim().length > 0 && match.includes('\\')) {
-                                return ' $' + match.trim() + '$ ';                             }                             return match;                         });                         changed = true;                     }                      // 2. Индекстер жана даражалар (мисалы: S_1, v_0, t^2)                     if (/(?<!\$)[a-zA-Z]_\{?[0-9a-zA-Z]+\}?(?!\$)/.test(text)) {                         text = text.replace(subscriptPattern, ' $$ $1_$2 $$ ');                         changed = true;                     }                      // 3. Температура жана градустар                     if (text.includes('°')) {                         text = text.replace(/(\d+)\s*°\s*C\b/g, ' $$ $1^\\circ\\text{C} $$ ');                         text = text.replace(/(\d+)\s*°\b/g, ' $$ $1^\\circ$$ ');
-                        changed = true;
-                    }
+                // 1. LaTeX кошуу/бөлүү, фракция, вектор, уңгу ж.б. командалар болсо $ ичине алуу
+                if (/\\(vec|vert|Delta|alpha|beta|gamma|delta|epsilon|zeta|eta|theta|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega|frac|sqrt|text|cdot|times)/.test(text)) {
+                    text = text.replace(/(\\([a-zA-Z]+)(\{[^{}]*\}|\[[^\[\]]*\]|[\=\+\-\*\/\_\^0-9a-zA-Z\s])+)*/g, function(match) {
+                        if (match.trim().length > 0 && match.includes('\\')) {
+                            return ' $' + match.trim() + '$ ';                         }                         return match;                     });                     changed = true;                 }                  // 2. Индекстер жана даражалар (Мисалы: v_0, S_1, t^2)                 if (/(?<!\$)\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)(?!\$)/.test(text)) {                     text = text.replace(/(?<!\$)\b([a-zA-Z])_(\{?[0-9a-zA-Z]+\}?)(?!\$)/g, ' $$ $1_$2 $$ ');                     changed = true;                 }                  // 3. Градустар (°C)                 if (text.includes('°')) {                     text = text.replace(/(\d+)\s*°\s*C\b/g, ' $$ $1^\\circ\\text{C} $$ ');                     text = text.replace(/(\d+)\s*°\b/g, ' $$ $1^\\circ$$ ');
+                    changed = true;
+                }
 
-                    if (changed) {
-                        node.nodeValue = text.replace(/\s+/g, ' ');
-                    }
-                } else if (node.nodeType === Node.ELEMENT_NODE && 
-                           node.tagName !== 'SCRIPT' && 
-                           node.tagName !== 'STYLE' && 
-                           !node.classList.contains('MathJax') && 
-                           !node.tagName.startsWith('MJX-')) {
-                    const children = Array.from(node.childNodes);
-                    for (let i = 0; i < children.length; i++) {
-                        processNode(children[i]);
+                if (changed) {
+                    node.nodeValue = text;
+                }
+            };
+
+            const walkTree = (element) => {
+                const nodes = element.childNodes;
+                for (let i = 0; i < nodes.length; i++) {
+                    const node = nodes[i];
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        processTextNode(node);
+                    } else if (node.nodeType === Node.ELEMENT_NODE && 
+                               node.tagName !== 'SCRIPT' && 
+                               node.tagName !== 'STYLE' && 
+                               !node.classList.contains('MathJax') && 
+                               !node.tagName.startsWith('MJX-')) {
+                        walkTree(node);
                     }
                 }
             };
 
-            processNode(container);
+            walkTree(container);
         }
 
         function renderMath() {
@@ -518,14 +521,10 @@
             formatMathExpressions(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
-                if (window.MathJax.typesetClear) {
-                    window.MathJax.typesetClear([target]);
-                }
-
                 window.MathJax.typesetPromise([target])
                     .catch((err) => console.error("MathJax render error:", err))
                     .finally(() => { 
-                        setTimeout(() => { isMathJaxRendering = false; }, 50);
+                        isMathJaxRendering = false;
                     });
             } else {
                 isMathJaxRendering = false;
@@ -547,7 +546,7 @@
                 if (isMathJaxChange) return;
 
                 if (renderTimeout) clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(renderMath, 200);
+                renderTimeout = setTimeout(renderMath, 150);
             });
             
             observer.observe(targetNode, { childList: true, subtree: true });
