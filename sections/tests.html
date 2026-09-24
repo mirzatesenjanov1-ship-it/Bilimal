@@ -189,6 +189,7 @@
         th, td {
             padding: 12px;
             border-bottom: 1px solid #1e293b;
+            transition: all 0.2s ease;
         }
         th {
             background: #1e293b;
@@ -196,6 +197,26 @@
         }
         td {
             color: #cbd5e1;
+        }
+
+        /* Текшерилген окуучулардын саптары үчүн стилдер */
+        .check-student-cb {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #00f2fe;
+            vertical-align: middle;
+        }
+        tr.checked-row {
+            opacity: 0.5;
+        }
+        tr.checked-row td {
+            text-decoration: line-through;
+            color: #64748b;
+        }
+        tr.checked-row td:first-child,
+        tr.checked-row td:last-child {
+            text-decoration: none; /* Чекбокс жана аракет баскычтары чийилбейт */
         }
     </style>
 </head>
@@ -230,6 +251,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><i class="fa-regular fa-square-check"></i></th>
                             <th>#</th>
                             <th>Окуучу</th>
                             <th>Класс</th>
@@ -259,6 +281,50 @@
                 e.preventDefault();
                 e.stopPropagation();
                 return false;
+            }
+        });
+
+        // Чекбокстарды башкаруучу авто-скрипт (Observer аркылуу таблицага динамикалык түрдө чыккан саптарга чекбокс кошот)
+        document.addEventListener('DOMContentLoaded', () => {
+            const tbody = document.getElementById('resultsTableBody');
+
+            if (tbody) {
+                const observer = new MutationObserver(() => {
+                    const rows = tbody.querySelectorAll('tr');
+                    rows.forEach((row, idx) => {
+                        if (row.querySelector('.check-student-cb')) return; // Эгер чекбокс бар болсо кайра кошпойт
+
+                        const resultId = row.dataset.id || row.getAttribute('id') || `row_${idx}_${row.cells[1]?.innerText || idx}`;
+                        const isChecked = localStorage.getItem('checked_result_' + resultId) === 'true';
+
+                        const tdCheck = document.createElement('td');
+                        tdCheck.style.textAlign = 'center';
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.className = 'check-student-cb';
+                        checkbox.checked = isChecked;
+
+                        if (isChecked) {
+                            row.classList.add('checked-row');
+                        }
+
+                        checkbox.addEventListener('change', (e) => {
+                            if (e.target.checked) {
+                                row.classList.add('checked-row');
+                                localStorage.setItem('checked_result_' + resultId, 'true');
+                            } else {
+                                row.classList.remove('checked-row');
+                                localStorage.removeItem('checked_result_' + resultId);
+                            }
+                        });
+
+                        tdCheck.appendChild(checkbox);
+                        row.insertBefore(tdCheck, row.firstChild);
+                    });
+                });
+
+                observer.observe(tbody, { childList: true });
             }
         });
     </script>
