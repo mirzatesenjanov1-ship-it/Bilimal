@@ -177,8 +177,18 @@ function renderQuestion() {
         });
     }
 
-    if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
-        MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
+    // MATHJAX: Формулаларды китептегидей туура, сулуу рендерлөө
+    if (window.MathJax) {
+        if (typeof MathJax.typesetClear === 'function') {
+            MathJax.typesetClear();
+        }
+        if (typeof MathJax.typesetPromise === 'function') {
+            MathJax.typesetPromise([
+                document.getElementById('qText'),
+                document.getElementById('optionsContainer'),
+                document.getElementById('pisaBox')
+            ]).catch(err => console.error('MathJax рендерлөөдө ката:', err));
+        }
     }
 }
 
@@ -373,7 +383,7 @@ function activateTabSwitchProtection() {
     const triggerViolation = () => {
         if (isTestFinished || isViolationActive) return;
 
-        isViolationActive = true; // Кайталап эсептөөнү бөгөттөө
+        isViolationActive = true;
         warningCount++;
 
         let overlay = document.getElementById('ai-protection-overlay');
@@ -385,7 +395,7 @@ function activateTabSwitchProtection() {
             overlay.addEventListener('click', function() {
                 if (warningCount < MAX_WARNINGS && !isTestFinished) {
                     overlay.style.display = 'none';
-                    isViolationActive = false; // Терезе жабылганда кайра жигердүү кылуу
+                    isViolationActive = false;
                 }
             });
 
@@ -414,14 +424,12 @@ function activateTabSwitchProtection() {
         }
     };
 
-    // 1. Вкладканы алмаштырганда (Visibilitychange)
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             triggerViolation();
         }
     });
 
-    // 2. Edge Copilot / Башка колдонмого өткөндө (Blur)
     window.addEventListener('blur', () => {
         triggerViolation();
     });
