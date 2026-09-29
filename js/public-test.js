@@ -8,9 +8,9 @@ let timerInterval = null;
 
 // Анти-чит өзгөрмөлөрү
 let warningCount = 0;
-const MAX_WARNINGS = 3; // Лимит катары 3 эскертүү
+const MAX_WARNINGS = 3;
 let isTestFinished = false;
-let isViolationActive = false; // Эки эсе эскертүү кошулуп кетпөөсү үчүн желекче
+let isViolationActive = false;
 
 const urlParams = new URLSearchParams(window.location.search);
 const testId = urlParams.get('testId') || urlParams.get('id');
@@ -64,7 +64,6 @@ async function startTest() {
     startBtn.disabled = true;
     startBtn.innerText = "Текшерилүүдө...";
 
-    // 1. АРАКЕТТЕР САНЫН ТЕКШЕРҮҮ (maxAttempts)
     const maxAttempts = testData.maxAttempts !== undefined ? parseInt(testData.maxAttempts) : 0;
 
     if (maxAttempts > 0) {
@@ -119,6 +118,18 @@ function cleanName(str) {
     return str.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+// Формулалар эгер $ доллар белгисине салынбай калган болсо, аны тууралап берүүчү функция
+function prepareMathText(text) {
+    if (!text) return '';
+    let str = String(text);
+    
+    // Эгер кошумча LaTeX командалары бар болуп, $ белгиси жок болсо, автоматтык түрдө кошуу
+    if ((str.includes('\\text') || str.includes('\\frac') || str.includes('^')) && !str.includes('$')) {
+        return `$${str}$`;
+    }
+    return str;
+}
+
 function renderQuestion() {
     if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
 
@@ -127,13 +138,13 @@ function renderQuestion() {
 
     const pisaBox = document.getElementById('pisaBox');
     if (q.type === 'pisa' && q.context) {
-        pisaBox.innerHTML = `<strong>Контекст:</strong><br>${q.context}`;
+        pisaBox.innerHTML = `<strong>Контекст:</strong><br>${prepareMathText(q.context)}`;
         pisaBox.style.display = 'block';
     } else {
         pisaBox.style.display = 'none';
     }
 
-    document.getElementById('qText').innerHTML = q.text || '';
+    document.getElementById('qText').innerHTML = prepareMathText(q.text || '');
 
     const imgContainer = document.getElementById('imgContainer');
     if (q.imageUrl) {
@@ -153,10 +164,10 @@ function renderQuestion() {
             const row = document.createElement('div');
             row.className = 'matching-row';
             row.innerHTML = `
-                <div>${leftText}</div>
+                <div>${prepareMathText(leftText)}</div>
                 <select data-idx="${idx}">
                     <option value="">-- Тандаңыз --</option>
-                    ${rightOptions.map(r => `<option value="${r}">${r}</option>`).join('')}
+                    ${rightOptions.map(r => `<option value="${r}">${prepareMathText(r)}</option>`).join('')}
                 </select>
             `;
             optionsContainer.appendChild(row);
@@ -171,13 +182,13 @@ function renderQuestion() {
             label.className = 'q-option';
             label.innerHTML = `
                 <input type="${inputType}" name="q_opt" value="${idx}">
-                <span>${optText}</span>
+                <span>${prepareMathText(optText)}</span>
             `;
             optionsContainer.appendChild(label);
         });
     }
 
-    // MATHJAX: Формулаларды китептегидей туура, сулуу рендерлөө
+    // MATHJAX РЕНДЕРЛӨӨ: Суроолор чыккандан кийин MathJax аны китептегидей иштеп чыгат
     if (window.MathJax) {
         if (typeof MathJax.typesetClear === 'function') {
             MathJax.typesetClear();
@@ -187,7 +198,7 @@ function renderQuestion() {
                 document.getElementById('qText'),
                 document.getElementById('optionsContainer'),
                 document.getElementById('pisaBox')
-            ]).catch(err => console.error('MathJax рендерлөөдө ката:', err));
+            ]).catch(err => console.error('MathJax катасы:', err));
         }
     }
 }
@@ -246,7 +257,6 @@ async function finishTest(reason = 'normal') {
     if (isTestFinished) return;
     isTestFinished = true;
 
-    // Overlay болсо аны алып салуу
     const overlay = document.getElementById('ai-protection-overlay');
     if (overlay) overlay.style.display = 'none';
 
@@ -295,7 +305,6 @@ async function finishTest(reason = 'normal') {
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
 
-    // БАЗАГА САКТОО ЖАНА LOCALSTORAGE ЖАҢЫРТУУ
     try {
         const payload = {
             testId: testId,
@@ -378,7 +387,6 @@ function enableStrictProtection() {
     document.body.style.msUserSelect = 'none';
 }
 
-// АНТИ-ЧИТ / ЭКРАНДАН ЧЫГУУ ЖАНА BLUR КОРГООСУ
 function activateTabSwitchProtection() {
     const triggerViolation = () => {
         if (isTestFinished || isViolationActive) return;
