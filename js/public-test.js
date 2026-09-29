@@ -8,8 +8,9 @@ let timerInterval = null;
 
 // Анти-чит өзгөрмөлөрү
 let warningCount = 0;
-const MAX_WARNINGS = 3; // Лимит катары 3 эскертүү (кааласаңыз сан өзгөртсөңүз болот)
+const MAX_WARNINGS = 3; // Лимит катары 3 эскертүү
 let isTestFinished = false;
+let isViolationActive = false; // Эки эсе эскертүү кошулуп кетпөөсү үчүн желекче
 
 const urlParams = new URLSearchParams(window.location.search);
 const testId = urlParams.get('testId') || urlParams.get('id');
@@ -370,8 +371,9 @@ function enableStrictProtection() {
 // АНТИ-ЧИТ / ЭКРАНДАН ЧЫГУУ ЖАНА BLUR КОРГООСУ
 function activateTabSwitchProtection() {
     const triggerViolation = () => {
-        if (isTestFinished) return;
+        if (isTestFinished || isViolationActive) return;
 
+        isViolationActive = true; // Кайталап эсептөөнү бөгөттөө
         warningCount++;
 
         let overlay = document.getElementById('ai-protection-overlay');
@@ -383,6 +385,7 @@ function activateTabSwitchProtection() {
             overlay.addEventListener('click', function() {
                 if (warningCount < MAX_WARNINGS && !isTestFinished) {
                     overlay.style.display = 'none';
+                    isViolationActive = false; // Терезе жабылганда кайра жигердүү кылуу
                 }
             });
 
@@ -394,7 +397,7 @@ function activateTabSwitchProtection() {
                 <i class="fa-solid fa-ban" style="font-size:3.5rem; color:#ff0055; margin-bottom:15px;"></i>
                 <div style="color:#ff0055; font-size:1.6rem; margin-bottom:10px;">ТЕСТ БӨГӨТТӨЛДҮ!</div>
                 <div>Сиз башка терезеге өтүү эрежесин өтө көп буздуңуз (${warningCount}/${MAX_WARNINGS}).</div>
-                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жйынтыгыңыз мугалимге жөнөтүлдү.</div>
+                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жыйынтыгыңыз мугалимге жөнөтүлдү.</div>
             `;
             overlay.style.display = 'flex';
             finishTest('cheating');
