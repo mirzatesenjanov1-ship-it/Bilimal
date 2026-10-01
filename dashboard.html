@@ -1,659 +1,1692 @@
 <!DOCTYPE html>
+
 <html lang="ky">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - BilimAl</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <title>BilimAl.org - Башкаруу панели</title>
+
+
+
+    <!-- FontAwesome & CSS -->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --accent-color: #3498db;
-            --bg-color: #f8f9fa;
-            --text-color: #333;
-            --card-bg: #ffffff;
+
+        * {
+
+            margin: 0;
+
+            padding: 0;
+
+            box-sizing: border-box;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+            -webkit-user-select: none;
+
+            -moz-user-select: none;
+
+            -ms-user-select: none;
+
+            user-select: none;
+
         }
+
+
+
+        input {
+
+            -webkit-user-select: text;
+
+            -moz-user-select: text;
+
+            -ms-user-select: text;
+
+            user-select: text;
+
+        }
+
+
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            user-select: none;
+
+            background-color: #0b0e14;
+
+            color: #ffffff;
+
+            min-height: 100vh;
+
+            padding: 20px;
+
+            overflow-x: hidden;
+
         }
 
-        /* Loader Style */
+
+
+        /* Loader */
+
         #loader {
+
             position: fixed;
+
             top: 0;
+
             left: 0;
+
             width: 100%;
-            height: 100vh;
-            background-color: rgba(255, 255, 255, 0.95);
+
+            height: 100%;
+
+            background-color: #0b0e14;
+
             display: flex;
+
             flex-direction: column;
+
             justify-content: center;
+
             align-items: center;
-            z-index: 9999;
+
+            z-index: 99999;
+
+            color: #00d2ff;
+
+            font-size: 18px;
+
+            text-align: center;
+
+            padding: 20px;
+
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+
         }
-        #loader.hidden { display: none; }
+
+
+
+        #loader.hidden {
+
+            opacity: 0;
+
+            visibility: hidden;
+
+            pointer-events: none;
+
+        }
+
+
+
         .spinner {
+
+            border: 4px solid rgba(255, 255, 255, 0.1);
+
             width: 50px;
+
             height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--accent-color);
+
             border-radius: 50%;
+
+            border-left-color: #00d2ff;
+
             animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Auth Modal */
-        #auth-modal {
+            margin-bottom: 15px;
+
+            will-change: transform;
+
+        }
+
+
+
+        @keyframes spin {
+
+            0% { transform: rotate(0deg); }
+
+            100% { transform: rotate(360deg); }
+
+        }
+
+
+
+        /* Контент жана Модаль */
+
+        .container {
+
+            max-width: 1200px;
+
+            margin: 0 auto;
+
             display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            background-color: rgba(0,0,0,0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+
+            opacity: 0;
+
+            transition: opacity 0.4s ease-in-out;
+
         }
-        #auth-modal.visible { display: flex; }
-        .auth-card {
-            background: white;
-            padding: 30px;
+
+
+
+        .container.visible {
+
+            display: block;
+
+            opacity: 1;
+
+        }
+
+
+
+        .profile-card {
+
+            background-color: #111622;
+
+            border: 1px solid #1e2640;
+
             border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
-        .btn-submit { width: 100%; padding: 12px; background: var(--accent-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
-        .auth-error { color: #e74c3c; margin-top: 10px; display: none; font-size: 14px; }
-        .auth-switch { margin-top: 15px; text-align: center; font-size: 14px; }
-        .auth-switch span { color: var(--accent-color); cursor: pointer; font-weight: bold; }
 
-        /* Main Content */
-        #main-content { display: none; padding: 20px; max-width: 1200px; margin: 0 auto; }
-        #main-content.visible { display: block; }
+            padding: 24px;
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
             margin-bottom: 30px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            flex-wrap: wrap;
+
+            gap: 20px;
+
         }
 
-        .lang-switch button {
-            padding: 6px 12px;
-            margin-left: 5px;
-            border: 1px solid var(--accent-color);
-            background: white;
-            color: var(--accent-color);
-            border-radius: 4px;
+
+
+        .user-info h2 {
+
+            color: #00d2ff;
+
+            font-size: 22px;
+
+            word-break: break-all;
+
+        }
+
+
+
+        .header-actions {
+
+            display: flex;
+
+            gap: 10px;
+
+            flex-wrap: wrap;
+
+        }
+
+
+
+        .lang-selector button, .btn-action {
+
+            background-color: #1e2640;
+
+            color: #fff;
+
+            border: 1px solid #34495e;
+
+            padding: 8px 12px;
+
+            border-radius: 6px;
+
             cursor: pointer;
+
+            transition: background-color 0.2s, color 0.2s;
+
         }
-        .lang-switch button.active {
-            background: var(--accent-color);
+
+
+
+        .lang-selector button.active {
+
+            background-color: #00d2ff;
+
+            color: #0b0e14;
+
+            font-weight: bold;
+
+        }
+
+
+
+        .lang-selector button:hover, .btn-action:hover {
+
+            background-color: #00d2ff;
+
+            color: #0b0e14;
+
+        }
+
+
+
+        .btn-role {
+
+            background-color: #8e44ad;
+
             color: white;
+
+            border: none;
+
+            padding: 8px 16px;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+
+            font-weight: bold;
+
         }
+
+
+
+        .btn-logout {
+
+            background-color: #c0392b;
+
+            color: white;
+
+            border: none;
+
+            padding: 8px 16px;
+
+            border-radius: 6px;
+
+            cursor: pointer;
+
+            transition: background-color 0.2s;
+
+        }
+
+
+
+        .btn-logout:hover {
+
+            background-color: #e74c3c;
+
+        }
+
+
+
+        .section-title {
+
+            font-size: 20px;
+
+            margin-bottom: 20px;
+
+            color: #ffffff;
+
+            font-weight: 600;
+
+        }
+
+
 
         .grid-container {
+
             display: grid;
+
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+
             gap: 20px;
+
         }
+
+
 
         .grid-item {
-            background: var(--card-bg);
-            padding: 20px;
+
+            background-color: #111622;
+
+            border: 1px solid #1e2640;
+
             border-radius: 10px;
-            text-decoration: none;
-            color: var(--text-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
+
+            padding: 20px;
+
             display: flex;
+
             align-items: center;
+
             gap: 15px;
-        }
-        .grid-item:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        .grid-item i {
-            font-size: 32px;
-            color: var(--accent-color);
-        }
-        .vip-badge-tag {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #f1c40f;
-            color: #000;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
+
+            text-decoration: none;
+
+            color: white;
+
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+
+            cursor: pointer;
+
+            position: relative;
+
+            will-change: transform;
+
         }
 
-        .user-panel {
-            display: flex;
+
+
+        .grid-item:hover {
+
+            transform: translateY(-3px);
+
+            border-color: #00d2ff;
+
+            background-color: #161f33;
+
+        }
+
+
+
+        .grid-item i {
+
+            font-size: 32px;
+
+            color: #00d2ff;
+
+            width: 45px;
+
+            text-align: center;
+
+            flex-shrink: 0;
+
+        }
+
+
+
+        .vip-badge-tag {
+
+            position: absolute;
+
+            top: 10px;
+
+            right: 10px;
+
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+
+            color: #fff;
+
+            font-size: 10px;
+
+            font-weight: bold;
+
+            padding: 2px 8px;
+
+            border-radius: 12px;
+
+            text-transform: uppercase;
+
+            box-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
+
+        }
+
+
+
+        /* Авторизация Модалы */
+
+        .auth-modal-overlay {
+
+            position: fixed;
+
+            top: 0;
+
+            left: 0;
+
+            width: 100%;
+
+            height: 100%;
+
+            background: rgba(11, 14, 20, 0.95);
+
+            backdrop-filter: blur(8px);
+
+            display: none;
+
+            justify-content: center;
+
             align-items: center;
-            gap: 15px;
+
+            z-index: 10000;
+
+            padding: 20px;
+
+            opacity: 0;
+
+            transition: opacity 0.3s ease-in-out;
+
         }
-        .logout-btn {
-            background: #e74c3c;
+
+
+
+        .auth-modal-overlay.visible {
+
+            display: flex;
+
+            opacity: 1;
+
+        }
+
+
+
+        .auth-modal-box {
+
+            background: #111622;
+
+            border: 1px solid #00d2ff;
+
+            border-radius: 16px;
+
+            width: 100%;
+
+            max-width: 400px;
+
+            padding: 30px;
+
+            box-shadow: 0 0 25px rgba(0, 210, 255, 0.2);
+
+            text-align: center;
+
+        }
+
+
+
+        .auth-modal-box h3 {
+
+            color: #00d2ff;
+
+            font-size: 22px;
+
+            margin-bottom: 8px;
+
+        }
+
+
+
+        .auth-modal-box p {
+
+            color: #7f8c8d;
+
+            font-size: 14px;
+
+            margin-bottom: 20px;
+
+        }
+
+
+
+        .auth-input-group {
+
+            margin-bottom: 15px;
+
+            text-align: left;
+
+        }
+
+
+
+        .auth-input-group label {
+
+            display: block;
+
+            font-size: 13px;
+
+            margin-bottom: 5px;
+
+            color: #ccc;
+
+        }
+
+
+
+        .auth-input-group input {
+
+            width: 100%;
+
+            padding: 12px;
+
+            border-radius: 8px;
+
+            border: 1px solid #1e2640;
+
+            background: #0b0e14;
+
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
+
+            font-size: 15px;
+
+            outline: none;
+
         }
+
+
+
+        .auth-input-group input:focus {
+
+            border-color: #00d2ff;
+
+        }
+
+
+
+        .auth-btn-primary {
+
+            width: 100%;
+
+            padding: 12px;
+
+            background: #00d2ff;
+
+            color: #0b0e14;
+
+            border: none;
+
+            border-radius: 8px;
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            margin-top: 10px;
+
+            transition: background 0.2s;
+
+        }
+
+
+
+        .auth-btn-primary:hover {
+
+            background: #00a3cc;
+
+        }
+
+
+
+        .auth-switch-text {
+
+            margin-top: 15px;
+
+            font-size: 13px;
+
+            color: #aaa;
+
+        }
+
+
+
+        .auth-switch-text a {
+
+            color: #00d2ff;
+
+            text-decoration: none;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+        }
+
+
+
+        .auth-error-msg {
+
+            color: #ff5252;
+
+            font-size: 13px;
+
+            margin-top: 12px;
+
+            display: none;
+
+            background: rgba(255, 82, 82, 0.15);
+
+            padding: 10px;
+
+            border-radius: 6px;
+
+            border: 1px solid rgba(255, 82, 82, 0.3);
+
+            text-align: left;
+
+            word-break: break-word;
+
+        }
+
+
+
+        @media (max-width: 768px) {
+
+            body { padding: 10px; }
+
+            .profile-card { flex-direction: column; align-items: flex-start; }
+
+            .header-actions { width: 100%; justify-content: space-between; }
+
+            .grid-container { grid-template-columns: 1fr; }
+
+        }
+
     </style>
+
 </head>
+
 <body>
 
+
+
     <!-- Loader -->
+
     <div id="loader">
+
         <div class="spinner"></div>
-        <p id="loader-text" style="margin-top: 15px; font-weight: bold;">Система текшерилүүдө...</p>
+
+        <span id="loader-text">Система текшерилүүдө...</span>
+
     </div>
 
-    <!-- Auth Modal -->
-    <div id="auth-modal">
-        <div class="auth-card">
-            <h2 id="auth-title">Жеке кабинетке кирүү</h2>
-            <p id="auth-subtitle" style="font-size: 13px; color: #666;">Сайттын функцияларын колдонуу үчүн почтаңызды киргизиңиз</p>
-            
-            <div class="form-group">
-                <label id="lbl-email" for="auth-email">Электрондук почта (E-mail)</label>
-                <input type="email" id="auth-email" placeholder="example@mail.com">
-            </div>
-            
-            <div class="form-group">
-                <label id="lbl-password" for="auth-password">Сыр сөз (Пароль)</label>
-                <input type="password" id="auth-password" placeholder="******">
+
+
+    <!-- Авторизация модалы -->
+
+    <div class="auth-modal-overlay" id="auth-modal">
+
+        <div class="auth-modal-box">
+
+            <h3 id="auth-title">Жеке кабинетке кирүү</h3>
+
+            <p id="auth-subtitle">Сайттын функцияларын колдонуу үчүн почтаңызды киргизиңиз</p>
+
+
+
+            <form id="auth-form" onsubmit="return false;">
+
+                <div class="auth-input-group">
+
+                    <label id="lbl-email">Электрондук почта (E-mail)</label>
+
+                    <input type="email" id="auth-email" placeholder="example@gmail.com" required autocomplete="email">
+
+                </div>
+
+                <div class="auth-input-group">
+
+                    <label id="lbl-password">Сыр сөз (Пароль)</label>
+
+                    <input type="password" id="auth-password" placeholder="******" required minlength="6" autocomplete="current-password">
+
+                </div>
+
+
+
+                <button type="button" class="auth-btn-primary" id="auth-submit-btn">Кирүү</button>
+
+            </form>
+
+
+
+            <div class="auth-error-msg" id="auth-error"></div>
+
+
+
+            <div class="auth-switch-text">
+
+                <span id="auth-switch-prompt">Каттала элексизби?</span> 
+
+                <a id="auth-switch-btn">Катталуу</a>
+
             </div>
 
-            <button id="auth-submit-btn" class="btn-submit">Кирүү</button>
-            <div id="auth-error" class="auth-error"></div>
-
-            <div class="auth-switch">
-                <span id="auth-switch-prompt">Каттала элексизби?</span>
-                <span id="auth-switch-btn">Катталуу</span>
-            </div>
         </div>
+
     </div>
 
-    <!-- Main Content -->
-    <div id="main-content">
-        <header>
-            <div class="user-panel">
-                <span id="user-email-display" style="font-weight: bold;"></span>
-                <button id="btn-role" class="btn-submit" style="width: auto; padding: 6px 12px; font-size: 12px;">Окуучу / Мугалим</button>
-                <button id="logout-btn" class="logout-btn">Чыгуу</button>
-            </div>
-            <div class="lang-switch">
-                <button id="btn-lang-ky">KY</button>
-                <button id="btn-lang-ru">RU</button>
-                <button id="btn-lang-en">EN</button>
-            </div>
-        </header>
 
-        <h2 id="section-title">Ыкчам өтмөктөр:</h2>
+
+    <!-- Негизги Контент -->
+
+    <div class="container" id="main-content">
+
+        <div class="profile-card">
+
+            <div class="user-info">
+
+                <h2 id="user-email-display">Колдонуучу: ...</h2>
+
+            </div>
+
+            <div class="header-actions">
+
+                <div class="lang-selector">
+
+                    <button class="lang-btn active" id="btn-lang-ky">KG</button>
+
+                    <button class="lang-btn" id="btn-lang-ru">RU</button>
+
+                    <button class="lang-btn" id="btn-lang-en">EN</button>
+
+                </div>
+
+                <button class="btn-role" id="btn-role">Окуучу / Мугалим</button>
+
+                <button class="btn-logout" id="logout-btn">Чыгуу</button>
+
+            </div>
+
+        </div>
+
+
+
+        <h3 class="section-title" id="section-title">Ыкчам өтмөктөр:</h3>
+
+
 
         <div class="grid-container">
-            <a href="./sections/students.html" class="grid-item">
+
+            <a href="./sections/student-portal.html" class="grid-item">
+
                 <i class="fas fa-user-graduate"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-students-title">Окуучулар/Студенттер</h3>
+
                     <p id="item-students-desc">Окуу материалдары жана тапшырмалар</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/tests.html" class="grid-item">
-                <i class="fas fa-file-alt"></i>
+
+                <i class="fas fa-edit"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-tests-title">Мугалимдердин Тесттери</h3>
+
                     <p id="item-tests-desc">Корголгон сынактар</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/curators.html" class="grid-item">
-                <i class="fas fa-users-cog"></i>
+
+                <i class="fas fa-user-tie"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-curators-title">Класс жетекчилер/Кураторлор үчүн</h3>
+
                     <p id="item-curators-desc">Башкаруу жана отчеттор</p>
+
                 </div>
+
             </a>
 
-            <a href="./sections/kindergarten-admin.html" class="grid-item">
+
+
+            <a href="./sections/admin-library.html" class="grid-item">
+
                 <i class="fas fa-child"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-kindergarten-admin-title">Бала бакчага админ</h3>
+
                     <p id="item-kindergarten-admin-desc">Китепкана жана ресурстарды башкаруу</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/ebooks-admin.html" class="grid-item">
+
+                <span class="vip-badge-tag">VIP</span>
+
                 <i class="fas fa-book-reader"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-ebooks-admin-title">Электрондук китептер</h3>
+
                     <p id="item-ebooks-admin-desc">Санариптик китептер жана материалдар</p>
+
                 </div>
+                 <a href="./sections/kyrgyz-teacher.html" class="grid-item">
+
+                <i class="fas fa-book-open"></i>
+
+                <div class="item-text">
+
+                    <h3 id="item-kyrgyz-teacher-title">Кыргыз тили мугалими үчүн</h3>
+
+                    <p id="item-kyrgyz-teacher-desc">Окуу куралдары жана ресурстар</p>
+
+                </div>
+
             </a>
 
-            <a href="./sections/kyrgyz-teacher.html" class="grid-item">
-                <i class="fas fa-book-open"></i>
-                <div class="item-text">
-                    <h3 id="item-kyrgyz-teacher-title">Кыргыз тили мугалими үчүн</h3>
-                    <p id="item-kyrgyz-teacher-desc">Окуу куралдары жана ресурстар</p>
-                </div>
-            </a>
+
 
             <a href="./sections/kyrgyz-literature-teacher.html" class="grid-item">
+
                 <i class="fas fa-book"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-kyrgyz-lit-teacher-title">Кыргыз адабияты мугалими үчүн</h3>
+
                     <p id="item-kyrgyz-lit-teacher-desc">Адабий чыгармалар жана ресурстар</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/lesson-plans-vip.html" class="grid-item">
+
                 <span class="vip-badge-tag">VIP</span>
+
                 <i class="fas fa-scroll"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-lesson-plans-title">Сабактын пландары</h3>
+
                     <p id="item-lesson-plans-desc">Премиум план-конспекттер жана ресурстар</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/physics-astrophysics-admin.html" class="grid-item">
+
                 <i class="fas fa-atom"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-physics-astro-title">Физика жана астрофизика</h3>
+
                     <p id="item-physics-astro-desc">Тесттер, теория жана тапшырмалар</p>
+
                 </div>
+
             </a>
+
+
 
             <a href="./sections/lab-works-vip.html" class="grid-item">
+
                 <span class="vip-badge-tag">VIP</span>
+
                 <i class="fas fa-flask-vial"></i>
+
                 <div class="item-text">
+
                     <h3 id="item-lab-works-title">Лабораториялык иштер</h3>
+
                     <p id="item-lab-works-desc">Виртуалдык тажрыйбалар жана симуляциялар</p>
+
                 </div>
+
             </a>
+
         </div>
+
     </div>
 
+
+
     <!-- Коргоо скрипти -->
+
     <script>
+
         document.addEventListener('contextmenu', (e) => e.preventDefault());
+
         document.addEventListener('keydown', (e) => {
+
             if (
+
                 e.keyCode === 123 || 
+
                 (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) || 
+
                 (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83))
+
             ) {
+
                 e.preventDefault();
+
                 return false;
+
             }
+
         });
+
     </script>
 
+
+
     <!-- FIREBASE AUTH & LOGIC -->
+
     <script type="module">
+
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+
         import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
 
+
+
         const translations = {
+
             ky: {
+
                 loaderText: "Система текшерилүүдө...",
+
                 authLoginTitle: "Жеке кабинетке кирүү",
+
                 authLoginSub: "Сайттын функцияларын колдонуу үчүн почтаңызды киргизиңиз",
+
                 authRegTitle: "Системага Катталуу",
+
                 authRegSub: "Жаңы аккаунт түзүү үчүн почтаңызды жана сыр сөздү жазыңыз",
+
                 lblEmail: "Электрондук почта (E-mail)",
+
                 lblPassword: "Сыр сөз (Пароль)",
+
                 btnLogin: "Кирүү",
+
                 btnRegister: "Катталуу",
+
                 promptNotReg: "Каттала элексизби?",
+
                 promptAlreadyReg: "Мурда катталгансызбы?",
+
                 userLabel: "Колдонуучу: ",
+
                 btnRole: "Окуучу / Мугалим",
+
                 btnLogout: "Чыгуу",
+
                 sectionTitle: "Ыкчам өтмөктөр:",
+
                 studentsTitle: "Окуучулар/Студенттер",
+
                 studentsDesc: "Окуу материалдары жана тапшырмалар",
+
                 testsTitle: "Мугалимдердин Тесттери",
+
                 testsDesc: "Корголгон сынактар",
+
                 curatorsTitle: "Класс жетекчилер/Кураторлор үчүн",
+
                 curatorsDesc: "Башкаруу жана отчеттор",
+
                 kindergartenAdminTitle: "Бала бакчага админ",
+
                 kindergartenAdminDesc: "Китепкана жана ресурстарды башкаруу",
+
                 ebooksAdminTitle: "Электрондук китептер",
+
                 ebooksAdminDesc: "Санариптик китептер жана материалдар",
+
                 kyrgyzTeacherTitle: "Кыргыз тили мугалими үчүн",
+
                 kyrgyzTeacherDesc: "Окуу куралдары жана ресурстар",
+
                 kyrgyzLitTeacherTitle: "Кыргыз адабияты мугалими үчүн",
+
                 kyrgyzLitTeacherDesc: "Адабий чыгармалар жана ресурстар",
+
                 lessonPlansTitle: "Сабактын пландары",
+
                 lessonPlansDesc: "Премиум план-конспекттер жана ресурстар",
+
                 physicsAstroTitle: "Физика жана астрофизика",
+
                 physicsAstroDesc: "Тесттер, теория жана тапшырмалар",
+
                 labWorksTitle: "Лабораториялык иштер",
+
                 labWorksDesc: "Виртуалдык тажрыйбалар жана симуляциялар",
+
                 errWrongPass: "Почта же сыр сөз ката!",
+
                 errEmailInUse: "Бул почта мурда катталган! 'Кирүү' баскычын басыңыз.",
+
                 errWeakPass: "Сыр сөз кеминде 6 белгиден турушу керек!",
+
                 errGeneral: "Ката кетти: "
+
             },
+
             ru: {
+
                 loaderText: "Проверка системы...",
+
                 authLoginTitle: "Вход в личный кабинет",
+
                 authLoginSub: "Введите вашу почту для доступа к функциям сайта",
+
                 authRegTitle: "Регистрация в системе",
+
                 authRegSub: "Введите почту и пароль для создания нового аккаунта",
+
                 lblEmail: "Электронная почта (E-mail)",
+
                 lblPassword: "Пароль",
+
                 btnLogin: "Войти",
+
                 btnRegister: "Зарегистрироваться",
+
                 promptNotReg: "Еще не зарегистрированы?",
+
                 promptAlreadyReg: "Уже зарегистрированы?",
+
                 userLabel: "Пользователь: ",
+
                 btnRole: "Ученик / Учитель",
+
                 btnLogout: "Выйти",
+
                 sectionTitle: "Быстрые вкладки:",
+
                 studentsTitle: "Ученики/Студенты",
+
                 studentsDesc: "Учебные материалы и задания",
+
                 testsTitle: "Тесты учителей",
+
                 testsDesc: "Защищенные экзамены",
+
                 curatorsTitle: "Для классных руководителей/кураторов",
+
                 curatorsDesc: "Управление и отчеты",
+
                 kindergartenAdminTitle: "Админ детского сада",
+
                 kindergartenAdminDesc: "Управление библиотекой и ресурсами",
+
                 ebooksAdminTitle: "Электронные книги",
+
                 ebooksAdminDesc: "Цифровые книги и материалы",
+
                 kyrgyzTeacherTitle: "Для учителя кыргызского языка",
+
                 kyrgyzTeacherDesc: "Учебные пособия и ресурсы",
+
                 kyrgyzLitTeacherTitle: "Для учителя кыргызской литературы",
+
                 kyrgyzLitTeacherDesc: "Литературные произведения и ресурсы",
+
                 lessonPlansTitle: "Планы уроков",
+
                 lessonPlansDesc: "Премиум план-конспекты и ресурсы",
+
                 physicsAstroTitle: "Физика и астрофизика",
+
                 physicsAstroDesc: "Тесты, теория и задания",
+
                 labWorksTitle: "Лабораторные работы",
+
                 labWorksDesc: "Виртуальные опыты и симуляции",
+
                 errWrongPass: "Неверный email или пароль!",
+
                 errEmailInUse: "Этот email уже зарегистрирован! Нажмите 'Войти'.",
+
                 errWeakPass: "Пароль должен содержать минимум 6 символов!",
+
                 errGeneral: "Произошла ошибка: "
+
             },
+
             en: {
+
                 loaderText: "Checking system...",
+
                 authLoginTitle: "Login to Personal Account",
+
                 authLoginSub: "Enter your email to access site features",
+
                 authRegTitle: "System Registration",
+
                 authRegSub: "Enter email and password to create a new account",
+
                 lblEmail: "Email address",
+
                 lblPassword: "Password",
+
                 btnLogin: "Login",
+
                 btnRegister: "Register",
+
                 promptNotReg: "Not registered yet?",
+
                 promptAlreadyReg: "Already registered?",
+
                 userLabel: "User: ",
+
                 btnRole: "Student / Teacher",
+
                 btnLogout: "Logout",
+
                 sectionTitle: "Quick Navigation:",
+
                 studentsTitle: "Students",
+
                 studentsDesc: "Learning materials & assignments",
+
                 testsTitle: "Teacher Tests",
+
                 testsDesc: "Protected exams",
+
                 curatorsTitle: "For Class Teachers/Curators",
+
                 curatorsDesc: "Management & Reports",
+
                 kindergartenAdminTitle: "Kindergarten Admin",
+
                 kindergartenAdminDesc: "Manage library and resources",
+
                 ebooksAdminTitle: "E-Books",
+
                 ebooksAdminDesc: "Digital books and materials",
+
                 kyrgyzTeacherTitle: "For Kyrgyz Language Teacher",
+
                 kyrgyzTeacherDesc: "Educational materials & resources",
+
                 kyrgyzLitTeacherTitle: "For Kyrgyz Literature Teacher",
+
                 kyrgyzLitTeacherDesc: "Literary works & resources",
+
                 lessonPlansTitle: "Lesson Plans",
+
                 lessonPlansDesc: "Premium lesson plans & resources",
+
                 physicsAstroTitle: "Physics & Astrophysics",
+
                 physicsAstroDesc: "Tests, theory & assignments",
+
                 labWorksTitle: "Lab Works",
+
                 labWorksDesc: "Virtual experiments & simulations",
+
                 errWrongPass: "Incorrect email or password!",
+
                 errEmailInUse: "This email is already registered! Click 'Login'.",
+
                 errWeakPass: "Password must be at least 6 characters long!",
+
                 errGeneral: "An error occurred: "
+
             }
+
         };
 
+
+
         let currentLang = localStorage.getItem('site_lang') || 'ky';
+
         let isModeLogin = true;
+
         let currentUserEmail = null;
 
+
+
         function updateElementText(id, text) {
+
             const el = document.getElementById(id);
+
             if (el) el.textContent = text;
+
         }
 
+
+
         function setLanguage(lang) {
+
             currentLang = lang;
+
             localStorage.setItem('site_lang', lang);
 
+
+
             const buttons = {
+
                 ky: document.getElementById('btn-lang-ky'),
+
                 ru: document.getElementById('btn-lang-ru'),
+
                 en: document.getElementById('btn-lang-en')
+
             };
 
+
+
             Object.keys(buttons).forEach(key => {
+
                 if (buttons[key]) buttons[key].classList.toggle('active', key === lang);
+
             });
+
+
 
             const t = translations[lang] || translations['ky'];
 
+
+
             updateElementText('loader-text', t.loaderText);
+
             updateElementText('lbl-email', t.lblEmail);
+
             updateElementText('lbl-password', t.lblPassword);
+
             updateElementText('btn-role', t.btnRole);
+
             updateElementText('logout-btn', t.btnLogout);
+
             updateElementText('section-title', t.sectionTitle);
+
             updateElementText('item-students-title', t.studentsTitle);
+
             updateElementText('item-students-desc', t.studentsDesc);
+
             updateElementText('item-tests-title', t.testsTitle);
+
             updateElementText('item-tests-desc', t.testsDesc);
+
             updateElementText('item-curators-title', t.curatorsTitle);
+
             updateElementText('item-curators-desc', t.curatorsDesc);
+
             updateElementText('item-kindergarten-admin-title', t.kindergartenAdminTitle);
+
             updateElementText('item-kindergarten-admin-desc', t.kindergartenAdminDesc);
+
             updateElementText('item-ebooks-admin-title', t.ebooksAdminTitle);
+
             updateElementText('item-ebooks-admin-desc', t.ebooksAdminDesc);
+
             updateElementText('item-kyrgyz-teacher-title', t.kyrgyzTeacherTitle);
+
             updateElementText('item-kyrgyz-teacher-desc', t.kyrgyzTeacherDesc);
+
             updateElementText('item-kyrgyz-lit-teacher-title', t.kyrgyzLitTeacherTitle);
+
             updateElementText('item-kyrgyz-lit-teacher-desc', t.kyrgyzLitTeacherDesc);
+
             updateElementText('item-lesson-plans-title', t.lessonPlansTitle);
+
             updateElementText('item-lesson-plans-desc', t.lessonPlansDesc);
+
             updateElementText('item-physics-astro-title', t.physicsAstroTitle);
+
             updateElementText('item-physics-astro-desc', t.physicsAstroDesc);
+
             updateElementText('item-lab-works-title', t.labWorksTitle);
+
             updateElementText('item-lab-works-desc', t.labWorksDesc);
 
+
+
             const submitBtn = document.getElementById('auth-submit-btn');
+
             if (isModeLogin) {
+
                 updateElementText('auth-title', t.authLoginTitle);
+
                 updateElementText('auth-subtitle', t.authLoginSub);
+
                 if (submitBtn) submitBtn.textContent = t.btnLogin;
+
                 updateElementText('auth-switch-prompt', t.promptNotReg);
+
                 updateElementText('auth-switch-btn', t.btnRegister);
+
             } else {
+
                 updateElementText('auth-title', t.authRegTitle);
+
                 updateElementText('auth-subtitle', t.authRegSub);
+
                 if (submitBtn) submitBtn.textContent = t.btnRegister;
+
                 updateElementText('auth-switch-prompt', t.promptAlreadyReg);
+
                 updateElementText('auth-switch-btn', t.btnLogin);
+
             }
+
+
 
             if (currentUserEmail) {
+
                 updateElementText('user-email-display', t.userLabel + currentUserEmail);
+
             }
+
         }
 
+
+
         const btnKy = document.getElementById('btn-lang-ky');
+
         const btnRu = document.getElementById('btn-lang-ru');
+
         const btnEn = document.getElementById('btn-lang-en');
 
+
+
         if (btnKy) btnKy.addEventListener('click', () => setLanguage('ky'));
+
         if (btnRu) btnRu.addEventListener('click', () => setLanguage('ru'));
+
         if (btnEn) btnEn.addEventListener('click', () => setLanguage('en'));
 
+
+
         const firebaseConfig = {
+
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+
             authDomain: "bilimal-org.firebaseapp.com",
+
             databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+
             projectId: "bilimal-org",
+
             storageBucket: "bilimal-org.firebasestorage.app",
+
             messagingSenderId: "241750360816",
+
             appId: "1:241750360816:web:a991434eb5afbc470d7835",
+
             measurementId: "G-9GSQV60QV0"
+
         };
 
+
+
         const app = initializeApp(firebaseConfig);
+
         
+
         isSupported().then(supported => {
+
             if (supported) { getAnalytics(app); }
+
         }).catch(() => {});
 
+
+
         const auth = getAuth(app);
+
         setPersistence(auth, browserLocalPersistence).catch(() => {});
 
+
+
         const loader = document.getElementById('loader');
+
         const mainContent = document.getElementById('main-content');
+
         const authModal = document.getElementById('auth-modal');
+
         const logoutBtn = document.getElementById('logout-btn');
+
         const authSubmitBtn = document.getElementById('auth-submit-btn');
+
         const authSwitchBtn = document.getElementById('auth-switch-btn');
+
         const authError = document.getElementById('auth-error');
+
+
 
         setLanguage(currentLang);
 
+
+
         onAuthStateChanged(auth, (user) => {
+
             if (loader) loader.classList.add('hidden');
 
+
+
             if (user) {
+
                 currentUserEmail = user.email;
+
                 localStorage.setItem('duty_current_teacher_email', user.email);
+
                 
+
                 if (authModal) authModal.classList.remove('visible');
+
                 if (mainContent) mainContent.classList.add('visible');
+
             } else {
+
                 currentUserEmail = null;
+
                 localStorage.removeItem('duty_current_teacher_email');
+
                 
+
                 if (mainContent) mainContent.classList.remove('visible');
+
                 if (authModal) authModal.classList.add('visible');
+
             }
+
             setLanguage(currentLang);
+
         });
 
+
+
         if (authSwitchBtn) {
+
             authSwitchBtn.addEventListener('click', () => {
+
                 isModeLogin = !isModeLogin;
+
                 if (authError) authError.style.display = 'none';
+
                 setLanguage(currentLang);
+
             });
+
         }
+
+
 
         async function handleAuthAction() {
+
             if (authError) {
+
                 authError.style.display = 'none';
+
                 authError.textContent = '';
+
             }
+
+
 
             const emailInput = document.getElementById('auth-email');
+
             const passwordInput = document.getElementById('auth-password');
 
+
+
             const email = emailInput ? emailInput.value.trim() : '';
+
             const password = passwordInput ? passwordInput.value : '';
+
             const t = translations[currentLang] || translations['ky'];
 
+
+
             if (!email || !password) {
+
                 if (authError) {
+
                     authError.style.display = 'block';
+
                     authError.textContent = "Электрондук почта жана сыр сөздү толтуруңуз!";
+
                 }
+
                 return;
+
             }
+
+
 
             if (authSubmitBtn) {
+
                 authSubmitBtn.disabled = true;
+
                 authSubmitBtn.textContent = 'Күтө туруңуз...';
+
             }
+
+
 
             try {
+
                 if (isModeLogin) {
+
                     await signInWithEmailAndPassword(auth, email, password);
+
                 } else {
+
                     await createUserWithEmailAndPassword(auth, email, password);
+
                 }
+
             } catch (error) {
+
                 if (authError) {
+
                     authError.style.display = 'block';
 
+
+
                     if (
+
                         error.code === 'auth/user-not-found' || 
+
                         error.code === 'auth/wrong-password' || 
+
                         error.code === 'auth/invalid-credential'
+
                     ) {
+
                         authError.textContent = t.errWrongPass;
+
                     } else if (error.code === 'auth/email-already-in-use') {
+
                         authError.textContent = t.errEmailInUse;
+
                     } else if (error.code === 'auth/weak-password') {
+
                         authError.textContent = t.errWeakPass;
+
                     } else if (error.code === 'auth/invalid-email') {
+
                         authError.textContent = "Туура эмес почта форматы!";
+
                     } else {
+
                         authError.textContent = t.errGeneral + error.message;
+
                     }
+
                 }
+
             } finally {
+
                 if (authSubmitBtn) authSubmitBtn.disabled = false;
+
                 setLanguage(currentLang);
+
             }
+
         }
+
+
 
         if (authSubmitBtn) authSubmitBtn.addEventListener('click', handleAuthAction);
 
+
+
         const authPassInput = document.getElementById('auth-password');
+
         if (authPassInput) {
+
             authPassInput.addEventListener('keydown', (e) => {
+
                 if (e.key === 'Enter') handleAuthAction();
+
             });
+
         }
 
+
+
         if (logoutBtn) {
+
             logoutBtn.addEventListener('click', () => {
+
                 signOut(auth).then(() => {
+
                     currentUserEmail = null;
+
                     localStorage.removeItem('duty_current_teacher_email');
+
                 }).catch(() => {});
+
             });
+
         }
+
     </script>
+
 </body>
+
 </html>
+
+            </a>
