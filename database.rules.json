@@ -1,0 +1,56 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+    "marketplace": {
+      "products": {
+        ".read": true,
+        "$productId": {
+          ".write": "auth != null && (!data.exists() || data.child('authorId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+        }
+      },
+      "orders": {
+        "$orderId": {
+          ".read": "auth != null && (data.child('buyerId').val() === auth.uid || data.child('authorId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": false
+        }
+      },
+      "transactions": {
+        "$transactionId": {
+          ".read": "auth != null && (data.child('userId').val() === auth.uid || data.child('authorId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": false
+        }
+      },
+      "authorBalances": {
+        "$userId": {
+          ".read": "auth != null && ($userId === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": false
+        }
+      },
+      "withdrawals": {
+        ".read": "auth != null",
+        "$withdrawalId": {
+          ".write": false
+        }
+      },
+      "settings": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      },
+      "auditLogs": {
+        ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".write": false
+      }
+    },
+    "purchases": {
+      "$userId": {
+        ".read": "auth != null && $userId === auth.uid",
+        ".write": false
+      }
+    }
+  }
+}
