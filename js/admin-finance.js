@@ -1,83 +1,91 @@
 window.AdminFinance = (function() {
-  const API_BASE = 'http://localhost:5000/api';
-
-  function loadAdminDashboard() {
-    listenToFinanceStats();
-    listenToWithdrawals();
-  }
-
-  function listenToFinanceStats() {
-    rtdb.ref('marketplace/orders').on('value', (snap) => {
-      let totalSales = 0;
-      let totalCommission = 0;
-      let totalEarnings = 0;
-
-      if (snap.exists()) {
-        snap.forEach(child => {
-          const order = child.val();
-          if (order.status === 'PAID') {
-            totalSales += order.amount || 0;
-            totalCommission += order.commissionAmount || 0;
-            totalEarnings += order.authorAmount || 0;
-          }
-        });
-      }
-
-      document.getElementById('adminTotalSales').textContent = `${totalSales.toFixed(2)} сом`;
-      document.getElementById('adminTotalCommission').textContent = `${totalCommission.toFixed(2)} сом`;
-      document.getElementById('adminTotalAuthorEarnings').textContent = `${totalEarnings.toFixed(2)} сом`;
-    });
-  }
-
-  function listenToWithdrawals() {
-    rtdb.ref('marketplace/withdrawals').on('value', (snap) => {
-      const tbody = document.getElementById('adminWithdrawalsTable');
-      tbody.innerHTML = '';
-      if (!snap.exists()) return;
-
-      snap.forEach(child => {
-        const w = child.val();
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${w.authorName}</td>
-          <td><strong>${w.amount} сом</strong></td>
-          <td>${w.payoutDetails ? `${w.payoutDetails.bankName} (${w.payoutDetails.accountIdentifier})` : 'Көрсөтүлгөн эмес'}</td>
-          <td>${new Date(w.requestedAt).toLocaleDateString()}</td>
-          <td><span class="badge">${w.status}</span></td>
-          <td>
-            ${w.status === 'PENDING' ? `<button class="btn btn-sm btn-success approve-btn" data-id="${w.withdrawalId}">Төлөдүм</button>` : 'Аткарылды'}
-          </td>
-        `;
-
-        if (w.status === 'PENDING') {
-          tr.querySelector('.approve-btn').addEventListener('click', () => handleApprovePayout(w.withdrawalId));
+    document.addEventListener('DOMContentLoaded', () => {
+        // Эгер админ бетинде болсо панелди жүктөө
+        if (document.getElementById('adminWithdrawalsTable')) {
+            loadAdminDashboard();
         }
-
-        tbody.appendChild(tr);
-      });
     });
-  }
 
-  async function handleApprovePayout(withdrawalId) {
-    if (!currentUser) return;
-    if (!confirm('Акча чынында эле которулдубу? Статусту ырастайсызбы?')) return;
+    function loadAdminDashboard() {
+        // Жалпы каржылык статистиканы эсептөө
+        rtdb.ref('sales').on('value', (snap) => {
+            let totalSales = 0;
+            let totalComm = 0;
+            let totalEarnings = 0;
 
-    try {
-      const token = await currentUser.getIdToken();
-      const res = await fetch(`${API_BASE}/admin/approve-payout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ withdrawalId })
-      });
-      const data = await res.json();
-      alert(data.message);
-    } catch (e) {
-      alert('Ырастоодо ката чыкты');
+            if (snap.exists()) {
+                snap.forEach(child => {
+                    const s = child.val();
+                    totalSales += Number(s.totalPrice || 0);
+                    totalComm += Number(s.platformCommission || 0);
+                    totalEarnings += Number(s.authorEarnings || 0);
+                });
+            }
+
+            const totalSalesEl = document.getElementById('adminTotalSales');
+            const totalCommEl = document.getElementById('adminTotalCommission');
+            const totalEarnEl = document.getElementById('adminTotalAuthorEarnings');
+
+            if (totalSalesEl) totalSalesEl.textContent = `${totalSales} сом`;
+            if (totalCommEl) totalCommEl.textContent = `${totalComm} сом`;
+            if (totalEarnEl) totalEarnEl.textContent = `${totalEarnings} сом`;
+        });
+
+        // Акча чыгаруу боюнча арыздарды алуу
+        rtdb.ref('withdrawals').on('value', (snap) => {
+            const tbody = document.getElementById('adminWithdrawalsTable');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!snap.exists()) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Арыздар жок.</td></tr>';
+                return;
+            }
+
+            snap.forEach(child => {
+                const w = child.val();
+                const key = child.key;
+                const tr = document.createElement('tr');
+                const date = w.timestamp ? new Date(w.timestamp).toLocaleDateString('ky-KG') : '—';
+                const req = w.payoutDetails || {};
+
+                const statusBadge = w.status === 'PAID' 
+                    ? '<span class="badge badge-success">Төлөндү</span>' 
+                    : '<span class="badge badge-warning">Күтүүдө</span>';
+
+                tr.innerHTML = `
+                    <td>${w.authorName || 'Мугалим'}</td>
+                    <td><strong>${w.amount} сом</strong></td>
+                    <td>${req.bankName || ''} - ${req.accountIdentifier || ''} (${req.recipientName || ''})</td>
+                    <td>${date}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        ${w.status === 'PENDING' 
+                            ? `<button class="btn btn-sm btn-success" onclick="AdminFinance.approveWithdrawal('${key}')">Төлөндү деп белгилөө</button>` 
+                            : '—'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
     }
-  }
 
-  return { loadAdminDashboard };
+    function approveWithdrawal(key) {
+        if (confirm('Бул арыз боюнча акча которулганын тастыктайсызбы?')) {
+            rtdb.ref(`withdrawals/${key}`).update({
+                status: 'PAID',
+                paidAt: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                alert('Статус "Төлөндү" деп өзгөртүлдү.');
+            }).catch(err => {
+                console.error("Статус өзгөртүүдө ката:", err);
+                alert('Аракетти аткаруу мүмкүн болгон жок.');
+            });
+        }
+    }
+
+    return {
+        loadAdminDashboard: loadAdminDashboard,
+        approveWithdrawal: approveWithdrawal
+    };
 })();
