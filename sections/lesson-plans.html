@@ -105,47 +105,70 @@
 
   </main>
 
-  <!-- Интерактивдүү Төлөм Модалдык Терезеси -->
-  <div id="paymentModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card max-w-md w-full rounded-2xl p-6 relative border border-purple-500/30 shadow-2xl">
+  <!-- Интерактивдүү Төлөм Модалдык Терезеси (Толук кандуу Төлөм Системасы) -->
+  <div id="paymentModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full rounded-2xl p-6 relative border border-purple-500/40 shadow-2xl space-y-4">
       <button onclick="closePaymentModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition text-lg">
         <i class="fa-solid fa-xmark"></i>
       </button>
 
-      <div class="flex items-center gap-3 mb-4">
-        <div class="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-xl">
+      <!-- Модал заголовок -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center text-xl border border-purple-500/30">
           <i class="fa-solid fa-wallet"></i>
         </div>
-        <h3 class="text-lg font-bold text-white" id="modalTitle">Материалды сатып алуу</h3>
+        <h3 class="text-lg font-bold text-white line-clamp-1" id="modalTitle">Материалды сатып алуу</h3>
       </div>
 
-      <div class="space-y-4 text-sm text-slate-300">
-        <p id="modalDescription" class="leading-relaxed"></p>
+      <!-- Сумма жана маалымат -->
+      <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-2.5 text-sm">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400 text-xs">Төлөм ыкмасы:</span>
+          <span class="font-semibold text-purple-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-qrcode"></i> MBank / Элкарт
+          </span>
+        </div>
+        <div class="flex justify-between items-center border-t border-slate-800/80 pt-2">
+          <span class="text-slate-400 text-xs">Төлөнүүчү сумма:</span>
+          <span class="font-extrabold text-green-400 text-lg" id="modalPrice">0 сом</span>
+        </div>
+      </div>
 
-        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2">
-          <div class="flex justify-between items-center">
-            <span class="text-slate-400 text-xs">Төлөм ыкмасы:</span>
-            <span class="font-semibold text-purple-400">MBank / Элкарт</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="text-slate-400 text-xs">Төлөнүүчү сумма:</span>
-            <span class="font-extrabold text-green-400 text-base" id="modalPrice">0 сом</span>
-          </div>
+      <!-- Төлөм реквизиттери -->
+      <div class="bg-purple-950/30 p-4 rounded-xl border border-purple-800/40 space-y-3 text-center">
+        <p class="text-xs text-slate-300">Оплатаны аткаруу үчүн төмөнкү MBank номерине которуңуз:</p>
+        <div class="flex items-center justify-center gap-2 bg-slate-900/80 py-2 px-3 rounded-lg border border-slate-700">
+          <span class="font-mono font-bold text-base text-purple-300 tracking-wider" id="mbankNumber">+996 700 000 000</span>
+          <button onclick="copyMbankNumber()" class="text-xs bg-purple-600/80 hover:bg-purple-500 text-white px-2.5 py-1 rounded transition">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-400">Алуучу: <span class="text-slate-200 font-semibold">BILIMAL</span></p>
+      </div>
+
+      <!-- Форма: Чек номери жана телефон -->
+      <form id="paymentConfirmForm" onsubmit="submitPayment(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Сиздин телефон номериңиз (MBank / WhatsApp):</label>
+          <input type="tel" id="payerPhone" placeholder="0700123456" required class="input-field w-full px-3.5 py-2.5 rounded-xl text-sm">
         </div>
 
-        <p class="text-xs text-amber-400/90 bg-amber-950/40 p-3 rounded-lg border border-amber-800/40">
-          <i class="fa-solid fa-triangle-exclamation mr-1"></i> Төлөм системасы автоматташтырылууда. Азыркы тапта маркетплейс аркылуу байланышсаңыз болот.
-        </p>
-      </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">Төлөм чегинин номери (Транзакция ID):</label>
+          <input type="text" id="transactionId" placeholder="Мисалы: 987654321 же чек ID" required class="input-field w-full px-3.5 py-2.5 rounded-xl text-sm">
+        </div>
 
-      <div class="mt-6 flex gap-3">
-        <a href="/market.html" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-center py-2.5 rounded-xl font-semibold text-sm transition">
-          Маркетке өтүү
-        </a>
-        <button onclick="closePaymentModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-semibold text-sm transition">
-          Жабуу
-        </button>
-      </div>
+        <div id="paymentStatusMessage" class="text-xs text-center min-h-[16px]"></div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="submit" id="btnConfirmPayment" class="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white py-2.5 rounded-xl font-bold text-sm transition shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-check-circle"></i> Төлөдүм / Кирүү
+          </button>
+          <button type="button" onclick="closePaymentModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2.5 rounded-xl font-semibold text-sm transition">
+            Жабуу
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -157,7 +180,8 @@
   <!-- Firebase Script -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, onValue, push, set, get } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -172,8 +196,16 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const auth = getAuth(app);
 
     let allMaterials = [];
+    let currentSelectedProduct = null;
+    let currentUser = null;
+
+    // Пользователь авторизациясын текшерүү
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+    });
 
     // Базадан материалдарды жүктөө
     const marketRef = ref(db, 'market_items');
@@ -195,7 +227,7 @@
       renderMaterials(allMaterials);
     });
 
-    // Карточкаларды карточка түрүндө чыгаруу
+    // Карточкаларды витринага чыгаруу
     function renderMaterials(items) {
       const grid = document.getElementById('materialsGrid');
       grid.innerHTML = '';
@@ -253,7 +285,7 @@
                   <i class="fa-solid fa-download"></i> Жүктөө
                 </a>
               ` : `
-                <button onclick="buyMaterial('${item.id}', '${item.title.replace(/'/g, "\\'")}', ${item.price})" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-lg shadow-purple-900/30">
+                <button onclick="buyMaterial('${item.id}')" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-lg shadow-purple-900/30">
                   <i class="fa-solid fa-cart-shopping"></i> Сатып алуу
                 </button>
               `}
@@ -282,17 +314,133 @@
       renderMaterials(filtered);
     };
 
-    // Интерактивдүү Модал Логикасы
-    window.buyMaterial = function(id, title, price) {
-      document.getElementById('modalTitle').textContent = `«${title}»`;
-      document.getElementById('modalDescription').textContent = `Бул материалды алуу үчүн ${price} сом MBank аркылуу которулушу керек.`;
-      document.getElementById('modalPrice').textContent = `${price} сом`;
-      
+    // Төлөм модалдык терезесин ачуу
+    window.buyMaterial = async function(id) {
+      const product = allMaterials.find(m => m.id === id);
+      if (!product) return;
+
+      if (!currentUser) {
+        alert('Материалды сатып алуу үчүн алгач «Маркет / Жеке кабинет» аркылуу кириңиз!');
+        window.location.href = '/market.html';
+        return;
+      }
+
+      // Пользователь мурда сатып алганын текшерүү
+      const purchaseRef = ref(db, `marketplace/purchases/${currentUser.uid}/${product.id}`);
+      const snapshot = await get(purchaseRef);
+
+      if (snapshot.exists() && snapshot.val().status === 'COMPLETED') {
+        alert('Бул материалды мурда сатып алгансыз! Шилтеме ачылууда...');
+        window.open(product.fileUrl || snapshot.val().fileUrl, '_blank');
+        return;
+      }
+
+      currentSelectedProduct = product;
+      document.getElementById('modalTitle').textContent = `«${product.title}»`;
+      document.getElementById('modalPrice').textContent = `${product.price} сом`;
+      document.getElementById('paymentStatusMessage').textContent = '';
+      document.getElementById('paymentConfirmForm').reset();
+
       document.getElementById('paymentModal').classList.remove('hidden');
     };
 
     window.closePaymentModal = function() {
       document.getElementById('paymentModal').classList.add('hidden');
+      currentSelectedProduct = null;
+    };
+
+    window.copyMbankNumber = function() {
+      const num = document.getElementById('mbankNumber').innerText;
+      navigator.clipboard.writeText(num);
+      alert('MBank номери көчүрүлдү: ' + num);
+    };
+
+    // Төлөмдү ырастоо жана Firebase RTDB'га сактоо
+    window.submitPayment = async function(event) {
+      event.preventDefault();
+
+      if (!currentUser || !currentSelectedProduct) return;
+
+      const payerPhone = document.getElementById('payerPhone').value.trim();
+      const transactionId = document.getElementById('transactionId').value.trim();
+      const submitBtn = document.getElementById('btnConfirmPayment');
+      const statusMsg = document.getElementById('paymentStatusMessage');
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Иштеп жатат...`;
+
+      try {
+        const price = Number(currentSelectedProduct.price) || 0;
+        const commissionRate = 0.21; // Bilimal комиссиясы 21%
+        const bilimalShare = Math.round(price * commissionRate * 100) / 100;
+        const authorShare = Math.round((price - bilimalShare) * 100) / 100; // 79% авторуна
+
+        const orderId = 'ORD_' + Date.now();
+        const timestamp = Date.now();
+
+        // 1. Заказ түшүрүү
+        const orderData = {
+          orderId: orderId,
+          buyerId: currentUser.uid,
+          buyerEmail: currentUser.email || '',
+          buyerPhone: payerPhone,
+          sellerId: currentSelectedProduct.sellerId || currentSelectedProduct.authorId || 'system_admin',
+          productId: currentSelectedProduct.id,
+          productTitle: currentSelectedProduct.title,
+          amount: price,
+          bilimalShare: bilimalShare,
+          authorShare: authorShare,
+          transactionId: transactionId,
+          status: 'PAID',
+          createdAt: timestamp
+        };
+
+        await set(ref(db, `marketplace/orders/${orderId}`), orderData);
+
+        // 2. Сатып алуучуга укук берүү
+        await set(ref(db, `marketplace/purchases/${currentUser.uid}/${currentSelectedProduct.id}`), {
+          productId: currentSelectedProduct.id,
+          orderId: orderId,
+          purchasedAt: timestamp,
+          status: 'COMPLETED',
+          fileUrl: currentSelectedProduct.fileUrl || '#'
+        });
+
+        // 3. Автордун балансын жаңылоо
+        const sellerId = currentSelectedProduct.sellerId || currentSelectedProduct.authorId || 'system_admin';
+        const sellerBalanceRef = ref(db, `marketplace/sellerBalances/${sellerId}`);
+        const sellerSnap = await get(sellerBalanceRef);
+        
+        let currentBalance = 0;
+        let currentTotalSales = 0;
+        if (sellerSnap.exists()) {
+          currentBalance = sellerSnap.val().availableBalance || 0;
+          currentTotalSales = sellerSnap.val().totalSales || 0;
+        }
+
+        await set(sellerBalanceRef, {
+          availableBalance: currentBalance + authorShare,
+          totalSales: currentTotalSales + price
+        });
+
+        statusMsg.className = "text-xs text-center text-green-400 font-semibold";
+        statusMsg.innerText = "Төлөм кабыл алынды! Материал ачылууда...";
+
+        setTimeout(() => {
+          closePaymentModal();
+          if (currentSelectedProduct.fileUrl) {
+            window.open(currentSelectedProduct.fileUrl, '_blank');
+          }
+        }, 1200);
+
+      } catch (err) {
+        console.error("Payment error:", err);
+        statusMsg.className = "text-xs text-center text-red-400 font-semibold";
+        statusMsg.innerText = "Ката чыкты: " + err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> Төлөдүм / Кирүү`;
+      }
     };
   </script>
 </body>
