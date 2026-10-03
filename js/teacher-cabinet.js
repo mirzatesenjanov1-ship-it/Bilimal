@@ -1,207 +1,259 @@
 window.TeacherCabinet = (function() {
-  const API_BASE = 'http://localhost:5000/api';
+    const PLATFORM_COMMISSION = 0.21;
 
-  document.addEventListener('DOMContentLoaded', () => {
-    initTabs();
-    initAddProductModal();
-    initPayoutForm();
-    initPricePreviewCalculator();
-  });
-
-  function loadCabinetData(userId) {
-    listenToBalance(userId);
-    listenToSales(userId);
-    listenToPurchases(userId);
-  }
-
-  function listenToBalance(userId) {
-    rtdb.ref(`marketplace/authorBalances/${userId}`).on('value', (snap) => {
-      const availableEl = document.getElementById('dashAvailableBalance');
-      const pendingEl = document.getElementById('dashPendingBalance');
-      const totalEarnedEl = document.getElementById('dashTotalEarned');
-      const salesCountEl = document.getElementById('dashSalesCount');
-      const withdrawBtn = document.getElementById('requestWithdrawalBtn');
-
-      if (snap.exists()) {
-        const val = snap.val();
-        const avail = val.availableBalance || 0;
-        availableEl.textContent = `${avail} сом`;
-        pendingEl.textContent = `${val.pendingBalance || 0} сом`;
-        totalEarnedEl.textContent = `${val.totalEarned || 0} сом`;
-        salesCountEl.textContent = `${val.salesCount || 0} шт`;
-
-        if (avail >= 100) {
-          withdrawBtn.disabled = false;
-        } else {
-          withdrawBtn.disabled = true;
+    document.addEventListener('DOMContentLoaded', () => {
+        initModalEvents();
+        initTabSwitching();
+        initForms();
+        
+        // Авторизация абалын текшерүү жана маалыматтарды жүктөө
+        if (typeof auth !== 'undefined') {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    loadCabinetData(user.uid);
+                }
+            });
         }
-      } else {
-        availableEl.textContent = '0 сом';
-        pendingEl.textContent = '0 сом';
-        totalEarnedEl.textContent = '0 сом';
-        salesCountEl.textContent = '0 шт';
-        withdrawBtn.disabled = true;
-      }
     });
 
-    document.getElementById('requestWithdrawalBtn').addEventListener('click', handleWithdrawalRequest);
-  }
+    function initModalEvents() {
+        const modal = document.getElementById('addProductModal');
+        const openBtn = document.getElementById('openAddProductModalBtn');
+        const closeBtn = document.getElementById('closeAddProductModalBtn');
 
-  async function handleWithdrawalRequest() {
-    if (!currentUser) return;
-    try {
-      const token = await currentUser.getIdToken();
-      const res = await fetch(`${API_BASE}/payout/request-withdrawal`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+        if (openBtn && modal) openBtn.addEventListener('click', () => modal.classList.remove('hidden'));
+        if (closeBtn && modal) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+
+        // Бааны өзгөрткөндө автордун таза кирешесин алдын ала эсептөө
+        const priceInput = document.getElementById('prodPrice');
+        const calcPreview = document.getElementById('priceCalcPreview');
+        if (priceInput && calcPreview) {
+            priceInput.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value) || 0;
+                const authorEarn = Math.round(val * (1 - PLATFORM_COMMISSION));
+                const comm = val - authorEarn;
+                calcPreview.innerHTML = 
+                    `<span>Платформа комиссиясы (21%): <strong>${comm} сом</strong></span> | <span>Сиздин кирешеңиз: <strong>${authorEarn} сом</strong></span>`;
+            });
         }
-      });
-      const data = await res.json();
-      alert(data.message);
-    } catch (e) {
-      alert('Арыз жөнөтүүдө ката чыкты');
     }
-  }
 
-  function listenToSales(userId) {
-    rtdb.ref('marketplace/orders').orderByChild('authorId').equalTo(userId).on('value', (snap) => {
-      const tbody = document.getElementById('mySalesTableBody');
-      tbody.innerHTML = '';
-      if (!snap.exists()) return;
+    function initTabSwitching() {
+        const tabs = document.querySelectorAll('.cabinet-tabs .tab-btn');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
 
-      snap.forEach((child) => {
-        const order = child.val();
-        if (order.status !== 'PAID') return;
+                const targetTab = tab.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+                const selectedContent = document.getElementById(`tab-${targetTab}`);
+                if (selectedContent) selectedContent.classList.remove('hidden');
+            });
+        });
+    }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${order.productTitle}</td>
-          <td>${new Date(order.paidAt).toLocaleDateString()}</td>
-          <td>${order.amount} сом</td>
-          <td><strong>${order.authorAmount} сом</strong></td>
-          <td><span class="badge badge-success">Сатылды</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    });
-  }
+    function initForms() {
+        const addProdForm = document.getElementById('addProductForm');
+        if (addProdForm) {
+            addProdForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!auth.currentUser) {
+                    alert('Сессия аяктады. Кайрадан системага кириңиз.');
+                    return;
+                }
 
-  function listenToPurchases(userId) {
-    rtdb.ref(`purchases/${userId}`).on('value', async (snap) => {
-      const container = document.getElementById('myPurchasesList');
-      container.innerHTML = '';
-      if (!snap.exists()) {
-        container.innerHTML = '<p>Сиз азырынча эч нерсе сатып ала элексиз.</p>';
-        return;
-      }
+                const newProd = {
+                    title: document.getElementById('prodTitle').value,
+                    subject: document.getElementById('prodSubject').value,
+                    grade: parseInt(document.getElementById('prodGrade').value) || 0,
+                    category: document.getElementById('prodCategory').value,
+                    price: parseFloat(document.getElementById('prodPrice').value) || 0,
+                    imageUrl: document.getElementById('prodImageUrl').value || '',
+                    previewUrl: document.getElementById('prodPreviewUrl').value || '',
+                    fileUrl: document.getElementById('prodFileUrl').value || '',
+                    description: document.getElementById('prodDescription').value || '',
+                    authorUid: auth.currentUser.uid,
+                    authorName: auth.currentUser.displayName || auth.currentUser.email,
+                    status: 'APPROVED', // Системага жараша 'PENDING' же 'APPROVED'
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                };
 
-      snap.forEach(async (child) => {
-        const prodId = child.key;
-        const pSnap = await rtdb.ref(`marketplace/products/${prodId}`).once('value');
-        if (pSnap.exists()) {
-          const prod = pSnap.val();
-          const card = document.createElement('div');
-          card.className = 'product-card';
-          card.innerHTML = `
-            <div class="product-card-body">
-              <h3 class="product-title">${prod.title}</h3>
-              <a href="${prod.fileUrl}" target="_blank" class="btn btn-block btn-success">Толук файлды ачуу</a>
-            </div>
-          `;
-          container.appendChild(card);
+                rtdb.ref('products').push(newProd).then(() => {
+                    alert('Материал ийгиликтүү кошулду!');
+                    const modal = document.getElementById('addProductModal');
+                    if (modal) modal.classList.add('hidden');
+                    addProdForm.reset();
+                    loadCabinetData(auth.currentUser.uid);
+                }).catch(err => {
+                    console.error("Материал кошууда ката:", err);
+                    alert('Материалды сактоодо ката чыкты.');
+                });
+            });
         }
-      });
-    });
-  }
 
-  function initPricePreviewCalculator() {
-    const priceInput = document.getElementById('prodPrice');
-    const previewDiv = document.getElementById('priceCalcPreview');
+        const payoutForm = document.getElementById('payoutDetailsForm');
+        if (payoutForm) {
+            payoutForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (!auth.currentUser) return;
 
-    priceInput.addEventListener('input', () => {
-      const price = parseFloat(priceInput.value) || 0;
-      const commission = (price * 0.21).toFixed(2);
-      const earning = (price - commission).toFixed(2);
-      previewDiv.innerHTML = `Платформа комиссиясы: 21% (${commission} сом) | Сиздин кирешеңиз: <strong>${earning} сом</strong>`;
-    });
-  }
+                const payoutData = {
+                    method: document.getElementById('payoutMethod').value,
+                    bankName: document.getElementById('payoutBankName').value,
+                    accountIdentifier: document.getElementById('payoutAccountIdentifier').value,
+                    recipientName: document.getElementById('payoutRecipientName').value,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP
+                };
 
-  function initAddProductModal() {
-    const modal = document.getElementById('addProductModal');
-    document.getElementById('openAddProductModalBtn').addEventListener('click', () => modal.classList.remove('hidden'));
-    document.getElementById('closeAddProductModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+                rtdb.ref(`users/${auth.currentUser.uid}/payoutDetails`).set(payoutData).then(() => {
+                    alert('Төлөм реквизиттери ийгиликтүү сакталды!');
+                }).catch(err => {
+                    console.error("Реквизит сактоодо ката:", err);
+                    alert('Реквизиттерди сактоо мүмкүн болгон жок.');
+                });
+            });
+        }
 
-    document.getElementById('addProductForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentUser) return;
+        const reqWithdrawalBtn = document.getElementById('requestWithdrawalBtn');
+        if (reqWithdrawalBtn) {
+            reqWithdrawalBtn.addEventListener('click', () => {
+                if (!auth.currentUser) return;
+                const uid = auth.currentUser.uid;
 
-      const pRef = rtdb.ref('marketplace/products').push();
-      const productData = {
-        productId: pRef.key,
-        authorId: currentUser.uid,
-        authorName: currentUser.displayName || currentUser.email,
-        title: document.getElementById('prodTitle').value,
-        subject: document.getElementById('prodSubject').value,
-        grade: parseInt(document.getElementById('prodGrade').value),
-        category: document.getElementById('prodCategory').value,
-        price: parseFloat(document.getElementById('prodPrice').value),
-        imageUrl: document.getElementById('prodImageUrl').value,
-        previewUrl: document.getElementById('prodPreviewUrl').value,
-        fileUrl: document.getElementById('prodFileUrl').value,
-        description: document.getElementById('prodDescription').value,
-        status: 'approved', // Кийинки кадамда 'pending' кылып, модерациядан өткөрсө болот
-        createdAt: firebase.database.ServerValue.TIMESTAMP
-      };
+                rtdb.ref(`users/${uid}`).once('value', (snap) => {
+                    const userData = snap.val() || {};
+                    const balance = userData.finance?.availableBalance || 0;
+                    const payout = userData.payoutDetails;
 
-      await pRef.set(productData);
-      alert('Материал ийгиликтүү кошулду жана сатууга даяр!');
-      modal.classList.add('hidden');
-      document.getElementById('addProductForm').reset();
-    });
-  }
+                    if (!payout || !payout.accountIdentifier) {
+                        alert('Алгач "Төлөм реквизиттери" бөлүмүнөн карта же капчык маалыматыңызды толтуруңуз!');
+                        return;
+                    }
 
-  function initPayoutForm() {
-    document.getElementById('payoutDetailsForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!currentUser) return;
+                    if (balance < 100) {
+                        alert('Минималдуу чыгаруу суммасы — 100 сом.');
+                        return;
+                    }
 
-      const token = await currentUser.getIdToken();
-      const body = {
-        payoutMethod: document.getElementById('payoutMethod').value,
-        bankName: document.getElementById('payoutBankName').value,
-        accountIdentifier: document.getElementById('payoutAccountIdentifier').value,
-        recipientName: document.getElementById('payoutRecipientName').value
-      };
+                    if (confirm(`Балансыңыздагы ${balance} сомду чыгарууга арыз бересизби?`)) {
+                        const reqRef = rtdb.ref('withdrawals').push();
+                        reqRef.set({
+                            uid: uid,
+                            authorName: userData.displayName || auth.currentUser.email,
+                            amount: balance,
+                            payoutDetails: payout,
+                            status: 'PENDING',
+                            timestamp: firebase.database.ServerValue.TIMESTAMP
+                        }).then(() => {
+                            return rtdb.ref(`users/${uid}/finance/availableBalance`).set(0);
+                        }).then(() => {
+                            alert('Акча чыгаруу арызы ийгиликтүү жөнөтүлдү!');
+                            loadCabinetData(uid);
+                        }).catch(err => {
+                            console.error("Арыз жөнөтүүдө ката:", err);
+                            alert('Арызды жөнөтүүдө ката чыкты.');
+                        });
+                    }
+                });
+            });
+        }
+    }
 
-      const res = await fetch(`${API_BASE}/payout/save-details`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(body)
-      });
+    function loadCabinetData(uid) {
+        if (!uid) return;
 
-      const data = await res.json();
-      alert(data.message);
-    });
-  }
+        // 1. Финансыны жүктөө
+        rtdb.ref(`users/${uid}/finance`).on('value', (snap) => {
+            const fin = snap.val() || {};
+            const avail = fin.availableBalance || 0;
+            
+            const availEl = document.getElementById('dashAvailableBalance');
+            const totalEarnEl = document.getElementById('dashTotalEarned');
+            const salesCountEl = document.getElementById('dashSalesCount');
+            const reqBtn = document.getElementById('requestWithdrawalBtn');
 
-  function initTabs() {
-    const tabs = document.querySelectorAll('.cabinet-tabs .tab-btn');
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
+            if (availEl) availEl.textContent = `${avail} сом`;
+            if (totalEarnEl) totalEarnEl.textContent = `${fin.totalEarned || 0} сом`;
+            if (salesCountEl) salesCountEl.textContent = `${fin.salesCount || 0} шт`;
+            if (reqBtn) reqBtn.disabled = avail < 100;
+        });
 
-        const tabName = tab.getAttribute('data-tab');
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-      });
-    });
-  }
+        // 2. Реквизиттерди жүктөө
+        rtdb.ref(`users/${uid}/payoutDetails`).once('value', (snap) => {
+            if (snap.exists()) {
+                const data = snap.val();
+                if (document.getElementById('payoutMethod')) document.getElementById('payoutMethod').value = data.method || 'BANK_CARD';
+                if (document.getElementById('payoutBankName')) document.getElementById('payoutBankName').value = data.bankName || '';
+                if (document.getElementById('payoutAccountIdentifier')) document.getElementById('payoutAccountIdentifier').value = data.accountIdentifier || '';
+                if (document.getElementById('payoutRecipientName')) document.getElementById('payoutRecipientName').value = data.recipientName || '';
+            }
+        });
 
-  return { loadCabinetData };
+        // 3. Мугалимдин өзүнүн материалдары
+        rtdb.ref('products').orderByChild('authorUid').equalTo(uid).once('value', (snap) => {
+            const grid = document.getElementById('myProductsList');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            if (!snap.exists()) {
+                grid.innerHTML = '<p class="no-data">Сиз азырынча материал кошо элексиз.</p>';
+                return;
+            }
+
+            snap.forEach(child => {
+                const prod = child.val();
+                prod.id = child.key;
+                grid.appendChild(createMyProductCard(prod));
+            });
+        });
+
+        // 4. Сатуулар тарыхы
+        rtdb.ref('sales').orderByChild('sellerUid').equalTo(uid).once('value', (snap) => {
+            const tbody = document.getElementById('mySalesTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!snap.exists()) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Сатуулар табылган жок.</td></tr>';
+                return;
+            }
+
+            snap.forEach(child => {
+                const s = child.val();
+                const tr = document.createElement('tr');
+                const date = s.timestamp ? new Date(s.timestamp).toLocaleDateString('ky-KG') : '—';
+                tr.innerHTML = `
+                    <td>${s.productTitle || 'Материал'}</td>
+                    <td>${date}</td>
+                    <td>${s.totalPrice} сом</td>
+                    <td><strong>${s.authorEarnings} сом</strong></td>
+                    <td><span class="badge badge-success">${s.status || 'COMPLETED'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    function createMyProductCard(prod) {
+        const div = document.createElement('div');
+        div.className = 'product-card';
+        const img = prod.imageUrl || 'https://via.placeholder.com/300x180?text=Bilimal';
+        div.innerHTML = `
+            <div class="card-image-wrap">
+                <img src="${img}" alt="${prod.title}">
+                <span class="badge">${prod.status || 'APPROVED'}</span>
+            </div>
+            <div class="card-body">
+                <h3>${prod.title || 'Аталышы жок'}</h3>
+                <p>Баасы: <strong>${prod.price} сом</strong></p>
+                <p>Категория: ${prod.category || '—'}</p>
+            </div>
+        `;
+        return div;
+    }
+
+    return {
+        loadCabinetData: loadCabinetData
+    };
 })();
