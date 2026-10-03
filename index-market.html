@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilimal.org — Билим берүү платформасы жана Мугалимдер маркетплейси</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Firebase SDK v9 Compatibility -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="container header-container">
+            <a href="#" class="logo" id="logoLink">
+                <span class="logo-bold">Bilim</span><span class="logo-accent">Al</span>.org
+            </a>
+            <nav class="main-nav">
+                <a href="#home" class="nav-link active" data-i18n="nav_home">Башкы бет</a>
+                <a href="#marketplace" class="nav-link" data-i18n="nav_marketplace">Маркетплейс</a>
+                <a href="#tests" class="nav-link" data-i18n="nav_tests">Тесттер</a>
+                <a href="#lesson-plans" class="nav-link" data-i18n="nav_plans">Сабак пландары</a>
+                <a href="#ebooks" class="nav-link" data-i18n="nav_ebooks">Э-Китептер</a>
+            </nav>
+            <div class="user-actions">
+                <div class="lang-selector">
+                    <select id="langSelect">
+                        <option value="ky">Кыргызча</option>
+                        <option value="ru">Русский</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                <div id="authButtons">
+                    <button class="btn btn-outline" id="loginBtn" data-i18n="btn_login">Кирүү</button>
+                    <button class="btn btn-primary" id="registerBtn" data-i18n="btn_register">Катталуу</button>
+                </div>
+                <div id="userProfile" class="user-profile hidden">
+                    <span id="userNameDisplay">Мугалим</span>
+                    <button class="btn btn-sm btn-secondary" id="cabinetBtn" data-i18n="btn_cabinet">Кабинет</button>
+                    <button class="btn btn-sm btn-outline" id="logoutBtn" data-i18n="btn_logout">Чыгуу</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- MARKEPLACE SECTION -->
+        <section id="marketplace-section" class="section-block">
+            <div class="container">
+                <div class="section-header">
+                    <h1 data-i18n="mp_title">Мугалимдердин маркетплейси</h1>
+                    <p data-i18n="mp_subtitle">Автордук даяр сабак комплекттерин, тесттерди жана презентацияларды сатып алыңыз же өзүңүздүн методикалык материалдарыңызды сатыңыз.</p>
+                </div>
+
+                <!-- SEARCH AND FILTERS -->
+                <div class="marketplace-filter-card">
+                    <div class="filter-row search-row">
+                        <input type="text" id="mpSearchInput" class="form-control" placeholder="Материалдын аталышы же ачкыч сөз..." data-i18n-ph="mp_search_ph">
+                        <button id="mpSearchBtn" class="btn btn-primary" data-i18n="btn_search">Издөө</button>
+                    </div>
+                    <div class="filter-row selectors-row">
+                        <div class="filter-group">
+                            <label data-i18n="filter_subject">Предмет:</label>
+                            <select id="mpSubjectFilter" class="form-control">
+                                <option value="ALL" data-i18n="opt_all">Баары</option>
+                                <option value="Физика">Физика</option>
+                                <option value="Математика">Математика</option>
+                                <option value="Информатика">Информатика</option>
+                                <option value="Кыргыз тили">Кыргыз тили</option>
+                                <option value="Англис тили">Англис тили</option>
+                                <option value="Башталгыч класс">Башталгыч класс</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label data-i18n="filter_grade">Класс:</label>
+                            <select id="mpGradeFilter" class="form-control">
+                                <option value="ALL" data-i18n="opt_all">Баары</option>
+                                <option value="1">1-класс</option>
+                                <option value="5">5-класс</option>
+                                <option value="9">9-класс</option>
+                                <option value="10">10-класс</option>
+                                <option value="11">11-класс</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label data-i18n="filter_category">Категория:</label>
+                            <select id="mpCategoryFilter" class="form-control">
+                                <option value="ALL" data-i18n="opt_all">Баары</option>
+                                <option value="Сабак планы">Сабак планы</option>
+                                <option value="Презентация">Презентация</option>
+                                <option value="Тест">Тест</option>
+                                <option value="Лабораториялык иш">Лабораториялык иш</option>
+                                <option value="Тарбиялык саат">Тарбиялык саат</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PRODUCT GRID -->
+                <div id="mpProductGrid" class="product-grid">
+                    <div class="loading-spinner" data-i18n="loading">Материалдар жүктөлүүдө...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TEACHER CABINET SECTION -->
+        <section id="cabinet-section" class="section-block hidden">
+            <div class="container">
+                <div class="cabinet-header">
+                    <h2>Мугалимдин жеке кабинети</h2>
+                    <button class="btn btn-success" id="openAddProductModalBtn">+ Материал кошуу</button>
+                </div>
+
+                <!-- FINANCIAL SUMMARY DASHBOARD -->
+                <div class="finance-dashboard-card">
+                    <div class="finance-header-row">
+                        <h3>Менин кирешем</h3>
+                        <div class="commission-info-badge" title="Ачык шарттар">
+                            <span class="info-icon">ⓘ</span>
+                            <span data-i18n="commission_note">Платформа комиссиясы — 21%</span>
+                        </div>
+                    </div>
+                    <div class="finance-stats-grid">
+                        <div class="stat-box main-stat">
+                            <span class="stat-label">Жеткиликтүү баланс</span>
+                            <span class="stat-value" id="dashAvailableBalance">0 сом</span>
+                            <button class="btn btn-sm btn-primary" id="requestWithdrawalBtn" disabled>Акча чыгаруу</button>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Күтүүдөгү киреше</span>
+                            <span class="stat-value" id="dashPendingBalance">0 сом</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Жалпы киреше</span>
+                            <span class="stat-value" id="dashTotalEarned">0 сом</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Сатылган материалдар</span>
+                            <span class="stat-value" id="dashSalesCount">0 шт</span>
+                        </div>
+                    </div>
+                    <div class="commission-explanation-box">
+                        <p><strong>Комиссия шарттары:</strong> Bilimal ар бир ийгиликтүү сатуудан 21% платформа комиссиясын кармайт. Калган 79% автордун балансына эсептелет. Жеткиликтүү баланс 100 сомдон ашканда акчаны банк эсебиңизге чыгарып ала аласыз.</p>
+                    </div>
+                </div>
+
+                <!-- CABINET TABS -->
+                <div class="cabinet-tabs">
+                    <button class="tab-btn active" data-tab="my-products">Менин материалдарым</button>
+                    <button class="tab-btn" data-tab="my-sales">Сатуулар тарыхы</button>
+                    <button class="tab-btn" data-tab="my-purchases">Менин сатып алууларым</button>
+                    <button class="tab-btn" data-tab="payout-settings">Төлөм реквизиттери</button>
+                </div>
+
+                <div class="tab-content" id="tab-my-products">
+                    <div id="myProductsList" class="product-grid"></div>
+                </div>
+
+                <div class="tab-content hidden" id="tab-my-sales">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Материал</th>
+                                <th>Дата</th>
+                                <th>Сатуу баасы</th>
+                                <th>Сиздин кирешеңиз (79%)</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mySalesTableBody"></tbody>
+                    </table>
+                </div>
+
+                <div class="tab-content hidden" id="tab-my-purchases">
+                    <div id="myPurchasesList" class="product-grid"></div>
+                </div>
+
+                <div class="tab-content hidden" id="tab-payout-settings">
+                    <form id="payoutDetailsForm" class="form-card">
+                        <h3>Төлөм алуу үчүн банк реквизиттериңиз</h3>
+                        <div class="form-group">
+                            <label>Төлөм ыкмасы:</label>
+                            <select id="payoutMethod" class="form-control" required>
+                                <option value="BANK_CARD">Банк картасы (Элкарт / Visa / Mastercard)</option>
+                                <option value="MBANK">MBANK / Элкарт Мобайл</option>
+                                <option value="IBANK">Банктык эсеп (IBAN)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Банктын аталышы:</label>
+                            <input type="text" id="payoutBankName" class="form-control" placeholder="Мисалы: MBANK, Демир Банк, KICB" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Карта же Эсеп номери:</label>
+                            <input type="text" id="payoutAccountIdentifier" class="form-control" placeholder="16 орундуу карта же IBAN эсеби" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Алуучунун толук аты-жөнү (ФИО):</label>
+                            <input type="text" id="payoutRecipientName" class="form-control" placeholder="Асанов Бакыт Өмүрбекович" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Реквизиттерди сактоо</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN FINANCE PANEL -->
+        <section id="admin-finance-section" class="section-block hidden">
+            <div class="container">
+                <h2>Админ Финансылык Панели</h2>
+                <div class="finance-stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Жалпы сатуу</span>
+                        <span class="stat-value" id="adminTotalSales">0 сом</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Платформа комиссиясы (21%)</span>
+                        <span class="stat-value" id="adminTotalCommission">0 сом</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Мугалимдердин кирешеси (79%)</span>
+                        <span class="stat-value" id="adminTotalAuthorEarnings">0 сом</span>
+                    </div>
+                </div>
+
+                <h3>Акча чыгаруу арыздары (Withdrawal Requests)</h3>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Мугалим</th>
+                            <th>Сумма</th>
+                            <th>Реквизиттер</th>
+                            <th>Дата</th>
+                            <th>Статус</th>
+                            <th>Аракет</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminWithdrawalsTable"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- MODAL: ADD PRODUCT -->
+    <div id="addProductModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="modal-close" id="closeAddProductModalBtn">&times;</span>
+            <h2>Жаны сатууга материал кошуу</h2>
+            <form id="addProductForm">
+                <div class="form-group">
+                    <label>Материалдын аталышы:</label>
+                    <input type="text" id="prodTitle" class="form-control" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Предмет:</label>
+                        <select id="prodSubject" class="form-control" required>
+                            <option value="Физика">Физика</option>
+                            <option value="Математика">Математика</option>
+                            <option value="Информатика">Информатика</option>
+                            <option value="Кыргыз тили">Кыргыз тили</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Класс:</label>
+                        <select id="prodGrade" class="form-control" required>
+                            <option value="5">5-класс</option>
+                            <option value="6">6-класс</option>
+                            <option value="7">7-класс</option>
+                            <option value="8">8-класс</option>
+                            <option value="9">9-класс</option>
+                            <option value="10">10-класс</option>
+                            <option value="11">11-класс</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Категория:</label>
+                    <select id="prodCategory" class="form-control" required>
+                        <option value="Сабак планы">Сабак планы</option>
+                        <option value="Презентация">Презентация</option>
+                        <option value="Тест">Тест</option>
+                        <option value="Лабораториялык иш">Лабораториялык иш</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Материалдын сатуу баасы (сом):</label>
+                    <input type="number" id="prodPrice" class="form-control" min="10" placeholder="500" required>
+                    <div class="price-calculation-preview" id="priceCalcPreview">
+                        <span>Платформа комиссиясы: 21%</span> | <span>Сиздин кирешеңиз: <strong>0 сом</strong></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Мукаба сүрөтүнүн шилтемеси (Image URL):</label>
+                    <input type="url" id="prodImageUrl" class="form-control" placeholder="https://..." required>
+                </div>
+                <div class="form-group">
+                    <label>Демо/Алдын ала көрүү шилтемеси (Preview Link):</label>
+                    <input type="url" id="prodPreviewUrl" class="form-control" placeholder="https://drive.google.com/..." required>
+                </div>
+                <div class="form-group">
+                    <label>Толук материалдын корголгон шилтемеси (Full File Link):</label>
+                    <input type="url" id="prodFileUrl" class="form-control" placeholder="https://drive.google.com/..." required>
+                </div>
+                <div class="form-group">
+                    <label>Кыскача сүрөттөмөсү:</label>
+                    <textarea id="prodDescription" class="form-control" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Модерацияга жөнөтүү</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT INCLUDES -->
+    <script src="js/app.js"></script>
+    <script src="js/marketplace.js"></script>
+    <script src="js/teacher-cabinet.js"></script>
+    <script src="js/admin-finance.js"></script>
+</body>
+</html>
