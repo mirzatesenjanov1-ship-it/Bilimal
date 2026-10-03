@@ -224,9 +224,9 @@
         return;
       }
 
-      // Мурда сатып алгандыгын текшерүү
+      // Мурда сатып алгандыгын users/{uid}/purchases аркылуу текшерүү
       try {
-        const purchaseRef = ref(db, `marketplace/purchases/${currentUser.uid}/${product.id}`);
+        const purchaseRef = ref(db, `users/${currentUser.uid}/purchases/${product.id}`);
         const snapshot = await get(purchaseRef);
 
         if (snapshot.exists() && snapshot.val().status === 'COMPLETED') {
@@ -247,7 +247,7 @@
       document.getElementById('paymentModal').classList.remove('hidden');
     }
 
-    // Базадан материалдарды алуу
+    // Базадан (market_items) материалдарды алуу (Rules: .read: true)
     const marketRef = ref(db, 'market_items');
     onValue(marketRef, (snapshot) => {
       const data = snapshot.val();
@@ -350,12 +350,12 @@
       renderMaterials(filtered);
     }
 
-    // Ивенттерди байлоо (Event Listeners)
+    // Ивенттерди байлоо
     document.getElementById('searchInput').addEventListener('input', filterMaterials);
     document.getElementById('subjectFilter').addEventListener('change', filterMaterials);
     document.getElementById('typeFilter').addEventListener('change', filterMaterials);
 
-    // Сатып алуу баскычын иштетүү (Event Delegation)
+    // Сатып алуу баскычын иштетүү
     document.getElementById('materialsGrid').addEventListener('click', (e) => {
       const btn = e.target.closest('.btn-buy-action');
       if (btn) {
@@ -374,7 +374,7 @@
       alert('MBank номери көчүрүлдү: ' + num);
     });
 
-    // Төлөм формасын жөнөтүү
+    // Төлөм формасын жөнөтүү (RULES эрежелерине ылайык оңдолду)
     document.getElementById('paymentConfirmForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -390,15 +390,16 @@
 
       try {
         const price = Number(currentSelectedProduct.price) || 0;
-        const commissionRate = 0.21; // BilimAl комиссиясы 21%
+        const commissionRate = 0.21;
         const bilimalShare = Math.round(price * commissionRate * 100) / 100;
         const authorShare = Math.round((price - bilimalShare) * 100) / 100;
 
         const orderId = 'ORD_' + Date.now();
         const timestamp = Date.now();
 
-        // 1. Заказ түшүрүү
+        // 1. Заказ маалыматын "applications" түйүнүнө жазуу (Rules: .write: true)
         const orderData = {
+          type: "MARKET_PURCHASE",
           orderId: orderId,
           buyerId: currentUser.uid,
           buyerEmail: currentUser.email || '',
@@ -414,10 +415,10 @@
           createdAt: timestamp
         };
 
-        await set(ref(db, `marketplace/orders/${orderId}`), orderData);
+        await set(ref(db, `applications/${orderId}`), orderData);
 
-        // 2. Сатып алуучуга жеткиликтүүлүк берүү
-        await set(ref(db, `marketplace/purchases/${currentUser.uid}/${currentSelectedProduct.id}`), {
+        // 2. Сатып алуучу колдонуучунун өзүнүн улуттук "users/$uid/purchases" түйүнүнө жазуу (Rules: auth.uid === $uid)
+        await set(ref(db, `users/${currentUser.uid}/purchases/${currentSelectedProduct.id}`), {
           productId: currentSelectedProduct.id,
           orderId: orderId,
           purchasedAt: timestamp,
@@ -425,25 +426,8 @@
           fileUrl: currentSelectedProduct.fileUrl || '#'
         });
 
-        // 3. Автордун балансын жаңылоо
-        const sellerId = currentSelectedProduct.sellerId || currentSelectedProduct.authorId || 'system_admin';
-        const sellerBalanceRef = ref(db, `marketplace/sellerBalances/${sellerId}`);
-        const sellerSnap = await get(sellerBalanceRef);
-        
-        let currentBalance = 0;
-        let currentTotalSales = 0;
-        if (sellerSnap.exists()) {
-          currentBalance = sellerSnap.val().availableBalance || 0;
-          currentTotalSales = sellerSnap.val().totalSales || 0;
-        }
-
-        await set(sellerBalanceRef, {
-          availableBalance: currentBalance + authorShare,
-          totalSales: currentTotalSales + price
-        });
-
         statusMsg.className = "text-xs text-center text-green-400 font-semibold";
-        statusMsg.innerText = "Төлөм кабыл алынды! Материал ачылууда...";
+        statusMsg.innerText = "Төлөм ийгиликтүү катталды! Материал ачылууда...";
 
         setTimeout(() => {
           closeModal();
