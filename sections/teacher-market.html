@@ -3,33 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Мугалимдин маркетплейси - BilimAl</title>
+  <title>Мугалимдин Маркети - BilimAl</title>
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Firebase v10+ Модулдарын кошуу -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { 
       getAuth, 
-      onAuthStateChanged, 
+      onAuthStateChanged,
       signOut 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { 
       getDatabase, 
       ref, 
-      onValue, 
-      query, 
-      orderByChild, 
-      equalTo, 
-      remove 
+      get 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-    // Config: БУЛ ЖЕРГЕ ӨЗҮҢҮЗДҮН ВЕРСЕЛ API URL ЖАЗЫЛАТ
-    const API_BASE_URL = 'https://YOUR-BILIMAL-API.vercel.app'; 
 
     // Firebase Конфигурациясы
     const firebaseConfig = {
-      apiKey: "AIzaSy...", // <-- БУЛ ЖЕРГЕ НАКТА FIREBASE API KEY'ДИ КОЮҢУЗ
+      apiKey: "AIzaSy...", // Өзүңүздүн API Key'иңизди унутпаңыз
       authDomain: "bilimal-org.firebaseapp.com",
       databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org",
@@ -42,216 +34,149 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    let currentUser = null;
+    const loadingState = document.getElementById('loadingState');
+    const mainContent = document.getElementById('mainContent');
+    const userEmailSpan = document.getElementById('userEmail');
+    const userBalanceSpan = document.getElementById('userBalance');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-    // Чыгуу баскычы
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      signOut(auth).then(() => {
-        window.location.href = '/login.html';
-      });
-    });
-
-    // Колдонуучунун авторизация статусун текшерүү
-    onAuthStateChanged(auth, (user) => {
+    // Авторизация абалын текшерүү
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
-        currentUser = user;
-        document.getElementById('userEmail').innerText = user.email;
-        loadTeacherProfile();
-        loadTeacherMaterials();
+        // Колдонуучу бар болсо UI даярдоо
+        if (userEmailSpan) {
+          userEmailSpan.innerText = user.email || 'Колдонуучу';
+        }
+
+        // Балансты Firebase Database аркылуу алуу
+        try {
+          const userRef = ref(db, `users/${user.uid}/balance`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            userBalanceSpan.innerText = `${snapshot.val()} сом`;
+          } else {
+            userBalanceSpan.innerText = '0 сом';
+          }
+        } catch (err) {
+          console.error("Баланс алууда ката чыкты:", err);
+          userBalanceSpan.innerText = '0 сом';
+        }
+
+        // Текшерүү бүттү, контентти көрсөтүү
+        loadingState.classList.add('hidden');
+        mainContent.classList.remove('hidden');
       } else {
+        // Колдонуучу жок болсо гана логин барагына багыттоо
         window.location.href = '/login.html';
       }
     });
 
-    async function getAuthToken() {
-      if (!currentUser) throw new Error('Авторизация жок.');
-      return await currentUser.getIdToken();
-    }
-
-    // Мугалимдин профилин жана балансын жүктөө
-    function loadTeacherProfile() {
-      const userRef = ref(db, `users/${currentUser.uid}`);
-      onValue(userRef, (snapshot) => {
-        const val = snapshot.val() || {};
-        const balance = val.balance || 0;
-        document.getElementById('balanceDisplay').innerText = `${balance.toLocaleString()} сом`;
-        
-        if (val.payoutCard && val.payoutCard.maskedPan) {
-          document.getElementById('cardStatus').innerText = `Карта кошулган: ${val.payoutCard.maskedPan}`;
-          document.getElementById('addCardBtn').innerText = 'Картаны өзгөртүү';
-        } else {
-          document.getElementById('cardStatus').innerText = 'Карта маалыматы азырынча жеткиликтүү эмес.';
-          document.getElementById('addCardBtn').innerText = 'Картаны кошуу';
+    // Системадан чыгуу (Logout)
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await signOut(auth);
+          window.location.href = '/login.html';
+        } catch (err) {
+          alert("Системадан чыгууда ката чыкты: " + err.message);
         }
       });
-    }
-
-    // Payout Карта кошуу баскычы
-    document.getElementById('addCardBtn').addEventListener('click', async () => {
-      try {
-        const token = await getAuthToken();
-        const res = await fetch(`${API_BASE_URL}/api/payouts/add-card`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data.message || 'Карта кошуу шилтемесин алууда ката чыкты.');
-        }
-        if (data.redirectUrl) {
-          window.location.href = data.redirectUrl;
-        } else {
-          alert('Карта формасынын шилтемеси табылган жок.');
-        }
-      } catch (err) {
-        console.error('Card Add Error:', err);
-        alert(`Ката: ${err.message}\n\nЭгер CORS катасы болсо, Vercel API дарегин (${API_BASE_URL}) туура киргизгениңизди текшериңиз.`);
-      }
-    });
-
-    // Жаңы материал кошуу
-    document.getElementById('materialForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        const token = await getAuthToken();
-        const payload = {
-          title: document.getElementById('titleInput').value,
-          subject: document.getElementById('subjectInput').value,
-          type: document.getElementById('typeInput').value,
-          price: parseFloat(document.getElementById('priceInput').value),
-          fileUrl: document.getElementById('fileUrlInput').value
-        };
-        const res = await fetch(`${API_BASE_URL}/api/materials`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.message || 'Ката чыкты.');
-        alert('Материал ийгиликтүү кошулду!');
-        document.getElementById('materialForm').reset();
-      } catch (err) {
-        alert(`Ката: ${err.message}`);
-      }
-    });
-
-    // Мугалимдин материалдарын жүктөө
-    function loadTeacherMaterials() {
-      const itemsRef = query(ref(db, 'market_items'), orderByChild('authorUid'), equalTo(currentUser.uid));
-      onValue(itemsRef, (snapshot) => {
-        const listEl = document.getElementById('materialsList');
-        listEl.innerHTML = '';
-        if (!snapshot.exists()) {
-          listEl.innerHTML = '<div class="text-slate-500 text-sm">Сизде азырынча материал жок.</div>';
-          return;
-        }
-        snapshot.forEach((child) => {
-          const item = child.val();
-          const itemKey = child.key;
-          const div = document.createElement('div');
-          div.className = 'bg-slate-900/60 p-4 rounded-xl flex justify-between items-center border border-slate-800';
-          div.innerHTML = `
-            <div>
-              <div class="font-bold text-slate-200">${item.title}</div>
-              <div class="text-xs text-slate-400">${item.subject} • ${item.price} сом</div>
-            </div>
-            <button class="delete-btn bg-red-600/20 text-red-400 hover:bg-red-600/30 px-3 py-1 rounded-lg text-sm transition" data-id="${itemKey}">Өчүрүү</button>
-          `;
-          listEl.appendChild(div);
-        });
-
-        // Өчүрүү баскычтарына event listener кошуу
-        document.querySelectorAll('.delete-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const id = e.target.getAttribute('data-id');
-            deleteMaterial(id);
-          });
-        });
-      });
-    }
-
-    async function deleteMaterial(id) {
-      if (!confirm('Материалды өчүрүүнү каалайсызбы?')) return;
-      try {
-        await remove(ref(db, `market_items/${id}`));
-      } catch (e) {
-        alert('Өчүрүүдө ката чыкты: ' + e.message);
-      }
     }
   </script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div class="max-w-6xl mx-auto p-4 sm:p-6">
-    <!-- Header -->
-    <header class="flex justify-between items-center py-4 border-b border-slate-800 mb-8">
-      <h1 class="text-2xl font-bold text-indigo-400">BilimAl</h1>
-      <div id="userInfo" class="flex items-center gap-4 text-sm">
-        <span id="userEmail" class="text-slate-400">Жүктөлүүдө...</span>
-        <button id="logoutBtn" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-slate-300 transition">Чыгуу</button>
+
+  <!-- Жүктөлүүдө абалы (Лоадер) -->
+  <div id="loadingState" class="fixed inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-sm z-50">
+    Авторизация текшерилүүдө, күтө туруңуз...
+  </div>
+
+  <!-- Негизги Контент (Авторизация ырасталганда ачылат) -->
+  <div id="mainContent" class="hidden min-h-screen flex flex-col">
+    
+    <!-- Навигация тилкеси -->
+    <header class="bg-slate-800 border-b border-slate-700/60 px-6 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-black text-indigo-400">BilimAl</h1>
+        <span class="bg-indigo-950 text-indigo-300 text-xs px-2.5 py-1 rounded-full font-medium border border-indigo-800">Мугалимдин Маркети</span>
+      </div>
+
+      <div class="flex items-center gap-6">
+        <div class="text-right">
+          <p id="userEmail" class="text-xs text-slate-400 font-medium">Загрузка...</p>
+          <p class="text-sm font-bold text-emerald-400">Баланс: <span id="userBalance">0 сом</span></p>
+        </div>
+        <button id="logoutBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3.5 py-2 rounded-xl transition">
+          Чыгуу
+        </button>
       </div>
     </header>
 
-    <!-- Dashboard Top Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <!-- Balance Card -->
-      <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50">
-        <div class="text-sm text-slate-400 mb-1">Мугалимдин капчыгы (79%)</div>
-        <div id="balanceDisplay" class="text-3xl font-extrabold text-emerald-400 mb-4">0,0 сом</div>
-        <button id="withdrawBtn" class="w-full bg-emerald-600 hover:bg-emerald-500 font-medium py-2.5 rounded-xl transition">MBank'ка чечүү (мин. 100 сом)</button>
-      </div>
-      <!-- Commission Info -->
-      <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50 flex flex-col justify-center">
-        <div class="text-3xl font-extrabold text-indigo-400 mb-1">21%</div>
-        <div class="text-sm text-slate-400">Ар бир сатууда автоматтык түрдө эсептелет</div>
-      </div>
-      <!-- Payout Card Info -->
-      <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50">
-        <div class="font-bold mb-2">Коопсуз payout картасы</div>
-        <div id="cardStatus" class="text-sm text-slate-400 mb-4">Карта маалыматы азырынча жеткиликтүү эмес.</div>
-        <button id="addCardBtn" class="w-full bg-indigo-600 hover:bg-indigo-500 font-medium py-2.5 rounded-xl transition">Картаны кошуу</button>
-      </div>
-    </div>
-
-    <!-- Main Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <!-- Add Material Form -->
-      <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50">
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>+</span> Жаңы материал кошуу</h2>
-        <form id="materialForm" class="space-y-4">
-          <input type="text" id="titleInput" placeholder="Материалдын аталышы *" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
-          <select id="subjectInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
-            <option value="">Предметти тандаңыз</option>
-            <option value="Физика">Физика</option>
-            <option value="Математика">Математика</option>
-            <option value="Информатика">Информатика</option>
-            <option value="Башка">Башка</option>
-          </select>
-          <select id="typeInput" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
-            <option value="">Түрүн тандаңыз</option>
-            <option value="Сабактын иштеп чыгуусу">Сабактын иштеп чыгуусу</option>
-            <option value="Презентация">Презентация</option>
-            <option value="Тесттик тапшырмалар">Тесттик тапшырмалар</option>
-          </select>
-          <input type="number" id="priceInput" placeholder="Баасы (сом)" min="0" step="10" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
-          <input type="url" id="fileUrlInput" placeholder="Файлга шилтеме (Google Drive/Telegram)" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:border-indigo-500">
-          <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 font-medium py-3 rounded-xl transition">Жайгаштыруу</button>
-        </form>
-      </div>
-
-      <!-- My Materials List -->
-      <div class="bg-slate-800/80 rounded-2xl p-6 border border-slate-700/50">
-        <h2 class="text-xl font-bold mb-4 flex items-center gap-2"><span>📁</span> Менин жайгаштырган материалдарым</h2>
-        <div id="materialsList" class="space-y-3">
-          <div class="text-slate-500 text-sm">Материалдар жүктөлүүдө...</div>
+    <!-- Маркетплейстин мазмуну -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+      
+      <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-100">Сабактын пландары жана материалдар</h2>
+          <p class="text-sm text-slate-400 mt-1">Даяр сабак пландарын сатып алыңыз же өзүңүздүн материалыңызды жайгаштырып акча табыңыз.</p>
         </div>
+        <button class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20">
+          + Материал кошуу
+        </button>
       </div>
-    </div>
+
+      <!-- Категориялар жана Маркет тизмеси -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Карточка 1 -->
+        <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="bg-blue-900/40 text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-blue-500/30">Физика</span>
+            <h3 class="text-base font-bold text-slate-100 mt-3">7-класс: Ньютондун мыйзамдары (Толук сабак планы)</h3>
+            <p class="text-xs text-slate-400 mt-2">Презентация, карточкалар, тесттер жана практикалык тапшырмалар камтылган.</p>
+          </div>
+          <div class="mt-6 flex items-center justify-between border-t border-slate-700/60 pt-4">
+            <span class="text-lg font-bold text-emerald-400">150 сом</span>
+            <button class="bg-slate-700 hover:bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+              Сатып алуу
+            </button>
+          </div>
+        </div>
+
+        <!-- Карточка 2 -->
+        <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="bg-purple-900/40 text-purple-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-purple-500/30">Астрономия</span>
+            <h3 class="text-base font-bold text-slate-100 mt-3">Күн системасы жана планеталар</h3>
+            <p class="text-xs text-slate-400 mt-2">Интерактивдүү көрсөтмөлөр жана видео материалдар топтому.</p>
+          </div>
+          <div class="mt-6 flex items-center justify-between border-t border-slate-700/60 pt-4">
+            <span class="text-lg font-bold text-emerald-400">200 сом</span>
+            <button class="bg-slate-700 hover:bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+              Сатып алуу
+            </button>
+          </div>
+        </div>
+
+        <!-- Карточка 3 -->
+        <div class="bg-slate-800 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="bg-amber-900/40 text-amber-400 text-xs font-semibold px-2.5 py-1 rounded-lg border border-amber-500/30">Математика</span>
+            <h3 class="text-base font-bold text-slate-100 mt-3">9-класс: Квадраттык теңдемелер</h3>
+            <p class="text-xs text-slate-400 mt-2">Методикалык сунуштар жана деңгээлдүү текшерүү иштери.</p>
+          </div>
+          <div class="mt-6 flex items-center justify-between border-t border-slate-700/60 pt-4">
+            <span class="text-lg font-bold text-emerald-400">120 сом</span>
+            <button class="bg-slate-700 hover:bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
+              Сатып алуу
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
   </div>
+
 </body>
 </html>
