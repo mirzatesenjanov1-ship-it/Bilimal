@@ -19,69 +19,66 @@
       get 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // Firebase Конфигурациясы
+    // Сиздин Консолдон алынган ЧЫНЫГЫ Firebase Конфигурациясы
     const firebaseConfig = {
-      apiKey: "AIzaSy...", // Өзүңүздүн API Key'иңизди унутпаңыз
+      apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
       authDomain: "bilimal-org.firebaseapp.com",
       databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org",
-      storageBucket: "bilimal-org.appspot.com",
-      messagingSenderId: "123456789",
-      appId: "1:123456789:web:abcdef"
+      storageBucket: "bilimal-org.firebasestorage.app",
+      messagingSenderId: "241750360816",
+      appId: "1:241750360816:web:a991434eb5afbc470d7835",
+      measurementId: "G-9GSQV60QV0"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getDatabase(app);
 
-    const loadingState = document.getElementById('loadingState');
-    const mainContent = document.getElementById('mainContent');
-    const userEmailSpan = document.getElementById('userEmail');
-    const userBalanceSpan = document.getElementById('userBalance');
-    const logoutBtn = document.getElementById('logoutBtn');
+    document.addEventListener("DOMContentLoaded", () => {
+      const loadingState = document.getElementById('loadingState');
+      const mainContent = document.getElementById('mainContent');
+      const userEmailSpan = document.getElementById('userEmail');
+      const userBalanceSpan = document.getElementById('userBalance');
+      const logoutBtn = document.getElementById('logoutBtn');
 
-    // Авторизация абалын текшерүү
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Колдонуучу бар болсо UI даярдоо
-        if (userEmailSpan) {
-          userEmailSpan.innerText = user.email || 'Колдонуучу';
-        }
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          if (userEmailSpan) {
+            userEmailSpan.innerText = user.email || 'Колдонуучу';
+          }
 
-        // Балансты Firebase Database аркылуу алуу
-        try {
-          const userRef = ref(db, `users/${user.uid}/balance`);
-          const snapshot = await get(userRef);
-          if (snapshot.exists()) {
-            userBalanceSpan.innerText = `${snapshot.val()} сом`;
-          } else {
+          try {
+            const userRef = ref(db, `users/${user.uid}/balance`);
+            const snapshot = await get(userRef);
+            if (snapshot.exists()) {
+              userBalanceSpan.innerText = `${snapshot.val()} сом`;
+            } else {
+              userBalanceSpan.innerText = '0 сом';
+            }
+          } catch (err) {
+            console.error("Баланс алууда ката чыкты:", err);
             userBalanceSpan.innerText = '0 сом';
           }
-        } catch (err) {
-          console.error("Баланс алууда ката чыкты:", err);
-          userBalanceSpan.innerText = '0 сом';
-        }
 
-        // Текшерүү бүттү, контентти көрсөтүү
-        loadingState.classList.add('hidden');
-        mainContent.classList.remove('hidden');
-      } else {
-        // Колдонуучу жок болсо гана логин барагына багыттоо
-        window.location.href = '/login.html';
-      }
-    });
-
-    // Системадан чыгуу (Logout)
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        try {
-          await signOut(auth);
+          if (loadingState) loadingState.classList.add('hidden');
+          if (mainContent) mainContent.classList.remove('hidden');
+        } else {
           window.location.href = '/login.html';
-        } catch (err) {
-          alert("Системадан чыгууда ката чыкты: " + err.message);
         }
       });
-    }
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+          try {
+            await signOut(auth);
+            window.location.href = '/login.html';
+          } catch (err) {
+            alert("Системадан чыгууда ката чыкты: " + err.message);
+          }
+        });
+      }
+    });
   </script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
@@ -91,7 +88,7 @@
     Авторизация текшерилүүдө, күтө туруңуз...
   </div>
 
-  <!-- Негизги Контент (Авторизация ырасталганда ачылат) -->
+  <!-- Негизги Контент -->
   <div id="mainContent" class="hidden min-h-screen flex flex-col">
     
     <!-- Навигация тилкеси -->
@@ -103,7 +100,7 @@
 
       <div class="flex items-center gap-6">
         <div class="text-right">
-          <p id="userEmail" class="text-xs text-slate-400 font-medium">Загрузка...</p>
+          <p id="userEmail" class="text-xs text-slate-400 font-medium">Жүктөлүүдө...</p>
           <p class="text-sm font-bold text-emerald-400">Баланс: <span id="userBalance">0 сом</span></p>
         </div>
         <button id="logoutBtn" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs px-3.5 py-2 rounded-xl transition">
@@ -125,7 +122,7 @@
         </button>
       </div>
 
-      <!-- Категориялар жана Маркет тизмеси -->
+      <!-- Маркет тизмеси -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         <!-- Карточка 1 -->
