@@ -18,7 +18,8 @@
       ref, 
       get,
       push,
-      onValue
+      onValue,
+      runTransaction
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -37,6 +38,9 @@
     const db = getDatabase(app);
 
     let currentUser = null;
+    let userMaterialCount = 0;
+    let allMaterialsData = {};
+    let selectedCategory = 'Все';
 
     document.addEventListener("DOMContentLoaded", () => {
       const loadingState = document.getElementById('loadingState');
@@ -45,6 +49,7 @@
       const userBalanceSpan = document.getElementById('userBalance');
       const logoutBtn = document.getElementById('logoutBtn');
       const materialsGrid = document.getElementById('materialsGrid');
+      const categoryFilter = document.getElementById('categoryFilter');
 
       // Модалдык терезе элементтери
       const openAddModalBtn = document.getElementById('openAddModalBtn');
@@ -53,6 +58,8 @@
       const addMaterialForm = document.getElementById('addMaterialForm');
       const formError = document.getElementById('formError');
       const saveMaterialBtn = document.getElementById('saveMaterialBtn');
+      const bonusNotice = document.getElementById('bonusNotice');
+      const userCountSpan = document.getElementById('userCountSpan');
 
       // Авторизацияны текшерүү
       onAuthStateChanged(auth, async (user) => {
@@ -62,7 +69,7 @@
             userEmailSpan.innerText = user.email || 'Колдонуучу';
           }
 
-          // Балансты тартып алуу жана форматтоо (213.30000000000001 -> 213.30)
+          // Балансты тартып алуу жана форматтоо
           try {
             const userRef = ref(db, `users/${user.uid}/balance`);
             const snapshot = await get(userRef);
@@ -77,6 +84,9 @@
             userBalanceSpan.innerText = '0.00 сом';
           }
 
+          // Колдонуучунун материалдарынын санын жүктөө
+          loadUserMaterialCount();
+
           // Материалдарды реалдуу убакытта угуу
           loadMaterials();
 
@@ -86,6 +96,37 @@
           window.location.href = '/login.html';
         }
       });
+
+      // Колдонуучу кошкон материалдардын санын эсептөө
+      function loadUserMaterialCount() {
+        const countRef = ref(db, `users/${currentUser.uid}/materialsCount`);
+        onValue(countRef, (snapshot) => {
+          if (snapshot.exists()) {
+            userMaterialCount = snapshot.val();
+          } else {
+            userMaterialCount = 0;
+          }
+          if (userCountSpan) userCountSpan.innerText = userMaterialCount;
+          updateBonusUI();
+        });
+      }
+
+      function updateBonusUI() {
+        // Ар бир 5 материалдан кийин 6-сы бекер (5, 11, 17, 23...)
+        const isNextFree = (userMaterialCount > 0 && (userMaterialCount + 1) % 6 === 0);
+        if (bonusNotice) {
+          if (isNextFree) {
+            bonusNotice.innerHTML = `🎉 <strong>Куттуктайбыз!</strong> Бул сиздин ${userMaterialCount + 1}-чи материалыңыз. Бул материал БЕКЕР жайгаштырылат!`;
+            bonusNotice.className = "bg-emerald-900/50 border border-emerald-500/60 text-emerald-300 text-xs p-3 rounded-xl mb-3";
+            bonusNotice.classList.remove('hidden');
+          } else {
+            const left = 5 - (userMaterialCount % 6);
+            bonusNotice.innerHTML = `💡 Сизде <strong>${userMaterialCount}</strong> материал бар. Дагы <strong>${left}</strong> материал кошсоңуз, кийинкиси БЕКЕР жайгаштырылат!`;
+            bonusNotice.className = "bg-indigo-900/40 border border-indigo-500/40 text-indigo-300 text-xs p-3 rounded-xl mb-3";
+            bonusNotice.classList.remove('hidden');
+          }
+        }
+      }
 
       // Системадан чыгуу
       if (logoutBtn) {
@@ -102,6 +143,7 @@
       // Модалды ачуу/жабуу
       if (openAddModalBtn) {
         openAddModalBtn.addEventListener('click', () => {
+          updateBonusUI();
           addMaterialModal.classList.remove('hidden');
           addMaterialModal.classList.add('flex');
         });
@@ -116,6 +158,14 @@
         });
       }
 
+      // Категория боюнча фильтр
+      if (categoryFilter) {
+        categoryFilter.addEventListener('change', (e) => {
+          selectedCategory = e.target.value;
+          renderFilteredMaterials();
+        });
+      }
+
       // Жаңы материал кошуу
       if (addMaterialForm) {
         addMaterialForm.addEventListener('submit', async (e) => {
@@ -125,22 +175,33 @@
           saveMaterialBtn.innerText = 'Сакталууда...';
 
           const title = document.getElementById('matTitle').value.trim();
-          const subject = document.getElementById('matSubject').value;
+          const category = document.getElementById('matCategory').value;
+          const subject = document.getElementById('matSubject').value.trim();
           const price = parseFloat(document.getElementById('matPrice').value) || 0;
           const desc = document.getElementById('matDesc').value.trim();
           const fileUrl = document.getElementById('matUrl').value.trim();
+
+          const isBonusFree = (userMaterialCount > 0 && (userMaterialCount + 1) % 6 === 0);
 
           try {
             const materialsRef = ref(db, 'materials');
             await push(materialsRef, {
               title: title,
+              category: category,
               subject: subject,
               price: price,
               description: desc,
               fileUrl: fileUrl,
               authorId: currentUser.uid,
               authorEmail: currentUser.email,
+              isBonusFree: isBonusFree,
               createdAt: Date.now()
+            });
+
+            // Колдонуучунун материалдар санын ашыруу
+            const userCountRef = ref(db, `users/${currentUser.uid}/materialsCount`);
+            await runTransaction(userCountRef, (current) => {
+              return (current || 0) + 1;
             });
 
             // Модалды жабуу
@@ -162,44 +223,63 @@
       function loadMaterials() {
         const materialsRef = ref(db, 'materials');
         onValue(materialsRef, (snapshot) => {
-          materialsGrid.innerHTML = '';
           if (snapshot.exists()) {
-            const data = snapshot.val();
-            Object.keys(data).forEach((key) => {
-              const item = data[key];
-              const card = createMaterialCard(key, item);
-              materialsGrid.appendChild(card);
-            });
+            allMaterialsData = snapshot.val();
           } else {
-            materialsGrid.innerHTML = `
-              <div class="col-span-full text-center py-12 text-slate-500">
-                Азырынча эч кандай материал жайгаштырыла элек. Биринчи болуп кошуңуз!
-              </div>
-            `;
+            allMaterialsData = {};
           }
+          renderFilteredMaterials();
         });
+      }
+
+      function renderFilteredMaterials() {
+        materialsGrid.innerHTML = '';
+        const keys = Object.keys(allMaterialsData);
+
+        const filteredKeys = keys.filter(key => {
+          if (selectedCategory === 'Все') return true;
+          return allMaterialsData[key].category === selectedCategory;
+        });
+
+        if (filteredKeys.length > 0) {
+          filteredKeys.reverse().forEach((key) => {
+            const item = allMaterialsData[key];
+            const card = createMaterialCard(key, item);
+            materialsGrid.appendChild(card);
+          });
+        } else {
+          materialsGrid.innerHTML = `
+            <div class="col-span-full text-center py-12 text-slate-500">
+              Бул категорияда азырынча материал жок. Биринчи болуп кошуңуз!
+            </div>
+          `;
+        }
       }
 
       // Карточка түзүү
       function createMaterialCard(id, item) {
         const card = document.createElement('div');
-        card.className = 'bg-slate-800 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between hover:border-indigo-500/50 transition duration-200';
+        card.className = 'bg-slate-800 border border-slate-700/60 rounded-2xl p-5 flex flex-col justify-between hover:border-indigo-500/50 transition duration-200 shadow-lg';
 
-        let badgeColor = 'bg-blue-900/40 text-blue-400 border-blue-500/30';
-        if (item.subject === 'Астрономия') badgeColor = 'bg-purple-900/40 text-purple-400 border-purple-500/30';
-        if (item.subject === 'Математика') badgeColor = 'bg-amber-900/40 text-amber-400 border-amber-500/30';
-        if (item.subject === 'Информатика') badgeColor = 'bg-emerald-900/40 text-emerald-400 border-emerald-500/30';
+        const isFreeBadge = item.isBonusFree ? `<span class="bg-emerald-900/60 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded border border-emerald-500/40">🎁 Бонус 6-материал</span>` : '';
 
         card.innerHTML = `
           <div>
-            <span class="${badgeColor} text-xs font-semibold px-2.5 py-1 rounded-lg border">${item.subject || 'Мугалимдин материалы'}</span>
-            <h3 class="text-base font-bold text-slate-100 mt-3 break-words">${item.title}</h3>
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+              <span class="bg-indigo-950 text-indigo-300 text-xs font-semibold px-2.5 py-1 rounded-lg border border-indigo-800/60">${item.category || 'Материал'}</span>
+              ${isFreeBadge}
+            </div>
+            <h3 class="text-base font-bold text-slate-100 mt-1 break-words">${item.title}</h3>
+            <p class="text-xs text-slate-400 font-medium mt-1">Предмет/Класс: <span class="text-slate-300">${item.subject || 'Жалпы'}</span></p>
             <p class="text-xs text-slate-400 mt-2 break-words line-clamp-3">${item.description}</p>
           </div>
           <div class="mt-6 flex items-center justify-between border-t border-slate-700/60 pt-4">
-            <span class="text-lg font-bold text-emerald-400">${item.price} сом</span>
-            <button onclick="window.open('${item.fileUrl}', '_blank')" class="bg-slate-700 hover:bg-indigo-600 text-white text-xs font-semibold px-4 py-2 rounded-xl transition">
-              Сатып алуу / Көрүү
+            <div>
+              <span class="text-xs text-slate-500 block">Баасы:</span>
+              <span class="text-lg font-bold text-emerald-400">${item.price} сом</span>
+            </div>
+            <button onclick="window.open('${item.fileUrl}', '_blank')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20">
+              Ачуу / Сатып алуу
             </button>
           </div>
         `;
@@ -242,19 +322,52 @@
     <!-- Маркетплейстин мазмуну -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
       
+      <!-- Жогорку Банер жана Баскычтар -->
       <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 class="text-xl font-bold text-slate-100">Сабактын пландары жана материалдар</h2>
-          <p class="text-sm text-slate-400 mt-1">Даяр сабак пландарын сатып алыңыз же өзүңүздүн материалыңызды жайгаштырып акча табыңыз.</p>
+          <h2 class="text-xl font-bold text-slate-100">Сабактын пландары жана методикалык материалдар</h2>
+          <p class="text-sm text-slate-400 mt-1">
+            Кошкон материалдарыңыз: <span id="userCountSpan" class="text-indigo-400 font-bold">0</span> | 
+            <span class="text-emerald-400 font-medium">Ар бир 5 материалдан кийин 6-сы БЕКЕР жайгаштырылат!</span>
+          </p>
         </div>
-        <button id="openAddModalBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20">
-          + Материал кошуу
+        <button id="openAddModalBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20 flex items-center gap-2">
+          <span>+</span>
+          <span>Материал кошуу</span>
         </button>
       </div>
 
-      <!-- Маркет тизмеси (Firebase'ден динамикалык жүктөлөт) -->
+      <!-- Фильтр панели -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/40 p-4 rounded-xl border border-slate-700/40">
+        <label class="text-xs font-semibold text-slate-400">Категория боюнча чыпкалоо:</label>
+        <select id="categoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 w-full sm:w-auto">
+          <option value="Все">Бардык категориялар</option>
+          <option value="📘 Сабак пландары">📘 Сабак пландары (Word, PDF, 3C+1E, 5E)</option>
+          <option value="🖥️ Презентациялар">🖥️ Презентациялар (PowerPoint, Canva)</option>
+          <option value="🎬 Видеосабактар">🎬 Видеосабактар (Толук сабак, эксперимент)</option>
+          <option value="📝 Тесттер">📝 Тесттер (Даяр, олимпиадалык, чейректик)</option>
+          <option value="🧮 Маселелер жыйнагы">🧮 Маселелер жыйнагы (Физика, мат ж.б.)</option>
+          <option value="📄 Жумушчу баракчалар">📄 Жумушчу баракчалар (Worksheet, карточка)</option>
+          <option value="🧪 Лабораториялык иштер">🧪 Лабораториялык иштер (Нускама + таблица)</option>
+          <option value="📑 Контролдук иштер">📑 Контролдук иштер (БЖБ/ТЖБ)</option>
+          <option value="🏆 Олимпиада материалдары">🏆 Олимпиада материалдары</option>
+          <option value="📚 Электрондук китептер">📚 Электрондук китептер (Окуу куралдар)</option>
+          <option value="🎮 Окутуучу оюндар">🎮 Окутуучу оюндар (Quiz, интерактив)</option>
+          <option value="🧩 Интерактивдүү тапшырмалар">🧩 Интерактивдүү тапшырмалар (LearningApps)</option>
+          <option value="🔬 Виртуалдык лабораториялар">🔬 Виртуалдык лабораториялар</option>
+          <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
+          <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет)</option>
+          <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
+          <option value="👨‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар</option>
+          <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Майрамдар)</option>
+          <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
+          <option value="🤖 AI үчүн промпттар">🤖 AI үчүн промпттар (Сабак, тест түзүү)</option>
+          <option value="📦 Даяр комплекттер">📦 Даяр комплекттер (План + тест + през)</option>
+        </select>
+      </div>
+
+      <!-- Маркет тизмеси -->
       <div id="materialsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Жүктөлүүдө билдирүүсү -->
         <div class="col-span-full text-center py-12 text-slate-500">
           Материалдар жүктөлүүдө...
         </div>
@@ -265,15 +378,44 @@
 
   <!-- Материал кошуу Модалдык Терезеси -->
   <div id="addMaterialModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5">
+    <div class="bg-slate-800 border border-slate-700/80 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-700 pb-3">
         <h3 class="text-lg font-bold text-slate-100">Жаңы материал кошуу</h3>
         <button id="closeModalBtn" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
       </div>
 
+      <div id="bonusNotice" class="hidden"></div>
       <div id="formError" class="hidden bg-red-900/40 border border-red-500/50 text-red-300 text-xs p-3 rounded-xl"></div>
 
       <form id="addMaterialForm" class="space-y-4">
+        
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Материалдын түрү / Категориясы</label>
+          <select id="matCategory" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
+            <option value="📘 Сабак пландары">📘 Сабак пландары (Word, PDF, 3C+1E, 5E, КМП)</option>
+            <option value="🖥️ Презентациялар">🖥️ Презентациялар (PowerPoint, Canva, Google Slides)</option>
+            <option value="🎬 Видеосабактар">🎬 Видеосабактар (Толук сабак, эксперименттер)</option>
+            <option value="📝 Тесттер">📝 Тесттер (Даяр, олимпиадалык, чейректик)</option>
+            <option value="🧮 Маселелер жыйнагы">🧮 Маселелер жыйнагы (Физика, математика ж.б.)</option>
+            <option value="📄 Жумушчу баракчалар">📄 Жумушчу баракчалар (Worksheet, карточкалар)</option>
+            <option value="🧪 Лабораториялык иштер">🧪 Лабораториялык иштер (Нускама + таблица)</option>
+            <option value="📑 Контролдук иштер">📑 Контролдук иштер (БЖБ/ТЖБ, текшерүү иштери)</option>
+            <option value="🏆 Олимпиада материалдары">🏆 Олимпиада материалдары (Маселелер, даярдык)</option>
+            <option value="📚 Электрондук китептер">📚 Электрондук китептер (Окуу куралдар)</option>
+            <option value="🎮 Окутуучу оюндар">🎮 Окутуучу оюндар (Quiz, интерактивдүү оюн)</option>
+            <option value="🧩 Интерактивдүү тапшырмалар">🧩 Интерактивдүү тапшырмалар (LearningApps/Genially)</option>
+            <option value="🔬 Виртуалдык лабораториялар">🔬 Виртуалдык лабораториялар (Симуляциялар)</option>
+            <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
+            <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет, портфолио)</option>
+            <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
+            <option value="👨‍‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар (Тарбиялык саат)</option>
+            <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Акыркы коңгуроо ж.б.)</option>
+            <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
+            <option value="🤖 AI үчүн промпттар">🤖 AI үчүн промпттар (Сабак, тест түзүү даяр промпттар)</option>
+            <option value="📦 Даяр комплекттер">📦 Даяр комплекттер (План + презентация + тест)</option>
+          </select>
+        </div>
+
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Материалдын аталышы</label>
           <input type="text" id="matTitle" required placeholder="Мисалы: 7-класс Физика: Ньютон мыйзамы" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
@@ -281,14 +423,8 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-400 mb-1">Предмет</label>
-            <select id="matSubject" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
-              <option value="Физика">Физика</option>
-              <option value="Астрономия">Астрономия</option>
-              <option value="Математика">Математика</option>
-              <option value="Информатика">Информатика</option>
-              <option value="Башка">Башка</option>
-            </select>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Предмет же Класс</label>
+            <input type="text" id="matSubject" required placeholder="Мисалы: 8-класс Физика" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Баасы (сом)</label>
@@ -298,7 +434,7 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">Кыскача сүрөттөмө</label>
-          <textarea id="matDesc" required rows="3" placeholder="Сабактын пландары, тесттер ж.б. тууралуу маалымат..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500"></textarea>
+          <textarea id="matDesc" required rows="3" placeholder="Материалдын мазмуну, курамы тууралуу маалымат..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:border-indigo-500"></textarea>
         </div>
 
         <div>
@@ -307,7 +443,7 @@
         </div>
 
         <div class="flex justify-end gap-3 pt-3 border-t border-slate-700">
-          <button type="submit" id="saveMaterialBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition">
+          <button type="submit" id="saveMaterialBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20">
             Жайгаштыруу
           </button>
         </div>
