@@ -1,186 +1,93 @@
 <!DOCTYPE html>
+
 <html lang="ky">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>БилимАл — Кирүү</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+
+    <title>БилимАл — Текшерүү</title> <!-- -->
+
+    
 
     <!-- 1. Firebase SDK Модулдарын кошуу (v10+) -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { 
-            getAuth, 
-            onAuthStateChanged, 
-            signInWithEmailAndPassword, 
-            createUserWithEmailAndPassword 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // 2. Өзүңүздүн Firebase долбооруңуздун НАКТА API Key жана конфигурациясын коюңуз
-        // (Firebase Console -> Project Settings -> General -> Web App бөлүмүнөн алыңыз)
+    <script type="module">
+
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+
+
+        // 2. Өзүңүздүн Firebase долбооруңуздун конфигурациясын бул жерге коюңуз
+
         const firebaseConfig = {
-            apiKey: "AIzaSy...", // <-- БУЛ ЖЕРГЕ НАКТА FIREBASE API KEY'ДИ КОЮҢУЗ
-            authDomain: "bilimal-org.firebaseapp.com",
-            databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "bilimal-org",
-            storageBucket: "bilimal-org.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
+
+            apiKey: "СИЗДИН_API_KEY",
+
+            authDomain: "СИЗДИН_AUTH_DOMAIN",
+
+            projectId: "СИЗДИН_PROJECT_ID",
+
+            storageBucket: "СИЗДИН_STORAGE_BUCKET",
+
+            messagingSenderId: "СИЗДИН_MESSAGING_SENDER_ID",
+
+            appId: "СИЗДИН_APP_ID"
+
         };
 
+
+
         // Firebase'ди ишке киргизүү
+
         const app = initializeApp(firebaseConfig);
+
         const auth = getAuth(app);
-        const db = getDatabase(app);
 
-        const loadingState = document.getElementById('loadingState');
-        const authContainer = document.getElementById('authContainer');
-        const errorAlert = document.getElementById('errorAlert');
 
-        function showError(msg) {
-            errorAlert.innerText = msg;
-            errorAlert.classList.remove('hidden');
-        }
 
-        function clearError() {
-            errorAlert.innerText = '';
-            errorAlert.classList.add('hidden');
-        }
+        // 3. Авторизация абалын текшерүү жана 404 катасыз туура багыттоо
 
-        // 3. Авторизация абалын текшерүү (Чексиз редирект жок)
         onAuthStateChanged(auth, (user) => {
-            loadingState.classList.add('hidden');
+
             if (user) {
-                // Колдонуучу кирген болсо, жеке кабинетке өткөрүү
+
+                // Колдонуучу ийгиликтүү кирди
+
                 console.log("Колдонуучу кирди:", user.uid);
-                window.location.href = "/sections/teacher-market.html";
+
+                // Бул жерге киргенден кийин аткарыла турган функцияларды жазсаңыз болот
+
             } else {
-                // Кирбеген болсо форманы көрсөтүү
-                authContainer.classList.remove('hidden');
+
+                // Колдонуучу кирген эмес, авторизация барагына багыттоо.
+
+                //GitHub Pages'те 404 катасы чыкпас үчүн "/auth/" папкасы жок, түз эле login.html шилтемеси берилди.
+
+                window.location.href = "https://bilimal.org/login.html"; //
+
             }
+
         });
 
-        // Tab которуу логикасы (Кирүү / Катталуу)
-        const tabLoginBtn = document.getElementById('tabLoginBtn');
-        const tabRegisterBtn = document.getElementById('tabRegisterBtn');
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-
-        tabLoginBtn.addEventListener('click', () => {
-            clearError();
-            tabLoginBtn.className = 'flex-1 py-2 text-center font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none';
-            tabRegisterBtn.className = 'flex-1 py-2 text-center font-semibold text-slate-400 hover:text-slate-200 focus:outline-none';
-            loginForm.classList.remove('hidden');
-            registerForm.classList.add('hidden');
-        });
-
-        tabRegisterBtn.addEventListener('click', () => {
-            clearError();
-            tabRegisterBtn.className = 'flex-1 py-2 text-center font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none';
-            tabLoginBtn.className = 'flex-1 py-2 text-center font-semibold text-slate-400 hover:text-slate-200 focus:outline-none';
-            registerForm.classList.remove('hidden');
-            loginForm.classList.add('hidden');
-        });
-
-        // Электрондук почта жана пароль аркылуу КИРҮҮ
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearError();
-            const email = document.getElementById('loginEmail').value;
-            const pass = document.getElementById('loginPassword').value;
-
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (err) {
-                if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                    showError('Электрондук почта же сыр сөз туура эмес!');
-                } else if (err.code === 'auth/api-key-not-valid') {
-                    showError('Firebase API Key ката! Ээси Firebase Console\'дон API Key\'ди оңдошу керек.');
-                } else {
-                    showError('Кирүүдө ката чыкты: ' + err.message);
-                }
-            }
-        });
-
-        // Электрондук почта жана пароль аркылуу КАТТАЛУУ
-        registerForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearError();
-            const email = document.getElementById('regEmail').value;
-            const pass = document.getElementById('regPassword').value;
-
-            try {
-                const res = await createUserWithEmailAndPassword(auth, email, pass);
-                if (res.user) {
-                    await set(ref(db, `users/${res.user.uid}`), {
-                        email: res.user.email,
-                        createdAt: Date.now(),
-                        balance: 0
-                    });
-                }
-            } catch (err) {
-                if (err.code === 'auth/email-already-in-use') {
-                    showError('Бул электрондук почта мурда катталган!');
-                } else if (err.code === 'auth/weak-password') {
-                    showError('Сыр сөз өтө начар! Кем дегенде 6 белги жазыңыз.');
-                } else {
-                    showError('Катталууда ката чыкты: ' + err.message);
-                }
-            }
-        });
     </script>
+
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
 
-    <!-- Loading State -->
-    <div id="loadingState" class="text-center py-10">
-        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-        <p class="text-slate-300 font-medium">Колдонуучунун авторизациясы текшерилүүдө...</p>
-    </div>
+<body>
 
-    <!-- Auth Form Container -->
-    <div id="authContainer" class="hidden w-full max-w-md bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl p-6 sm:p-8">
-        <div class="text-center mb-6">
-            <h1 class="text-3xl font-extrabold text-indigo-400 mb-1">BilimAl</h1>
-            <p class="text-sm text-slate-400">Билим берүү платформасына кош келиңиз</p>
-        </div>
+    <!-- Баракчанын мазмуну -->
 
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-700 mb-6">
-            <button id="tabLoginBtn" class="flex-1 py-2 text-center font-semibold text-indigo-400 border-b-2 border-indigo-500 focus:outline-none">Кирүү</button>
-            <button id="tabRegisterBtn" class="flex-1 py-2 text-center font-semibold text-slate-400 hover:text-slate-200 focus:outline-none">Катталуу</button>
-        </div>
+    <div id="app">
 
-        <!-- Error Alert -->
-        <div id="errorAlert" class="hidden mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-sm"></div>
+        <p>Колдонуучунун авторизациясы текшерилүүдө...</p>
 
-        <!-- LOGIN FORM (E-mail / Password) -->
-        <form id="loginForm" class="space-y-4">
-            <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">E-mail дарек</label>
-                <input type="email" id="loginEmail" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="example@mail.com">
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Сыр сөз</label>
-                <input type="password" id="loginPassword" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="••••••••">
-            </div>
-            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 font-semibold py-3 rounded-xl transition text-white shadow-lg shadow-indigo-600/30">Системага кирүү</button>
-        </form>
-
-        <!-- REGISTER FORM (E-mail / Password) -->
-        <form id="registerForm" class="hidden space-y-4">
-            <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">E-mail дарек</label>
-                <input type="email" id="regEmail" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="example@mail.com">
-            </div>
-            <div>
-                <label class="block text-xs font-medium text-slate-400 mb-1">Жаңы сыр сөз</label>
-                <input type="password" id="regPassword" required minlength="6" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500" placeholder="Кем дегенде 6 белги">
-            </div>
-            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 font-semibold py-3 rounded-xl transition text-white shadow-lg shadow-indigo-600/30">Катталуу</button>
-        </form>
     </div>
 
 </body>
+
 </html>
