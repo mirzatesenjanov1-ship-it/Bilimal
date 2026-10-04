@@ -8,13 +8,13 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
 
-  <!-- Жүктөлүүдө абалы (Лоадер) -->
+  <!-- Жүктөлүүдө абалы -->
   <div id="loadingState" class="text-slate-400 text-sm flex flex-col items-center gap-3">
     <div class="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-    <span>Колдонуучунун авторизациясы текшерилүүдө...</span>
+    <span>Текшерилүүдө...</span>
   </div>
 
-  <!-- Негизги Контент (Башында жашыруун турат) -->
+  <!-- Негизги Контент -->
   <div id="mainContent" class="hidden w-full max-w-md bg-slate-800/90 rounded-2xl p-6 border border-slate-700/60 shadow-2xl">
     
     <div class="text-center mb-6">
@@ -77,8 +77,10 @@
       onAuthStateChanged 
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    // ЭГЕР ӨЗҮҢҮЗДҮН ЧЫНЫГЫ API KEY'ИҢИЗ БОЛСО, ТӨМӨНКҮ АРАЛЫККA ЖАЗЫҢЫЗ.
+    // АНТКЕНИ ЭЧ КАНДАЙ API KEY ЖАЗЫЛБАСА FIREBASE КИРГИЗБЕЙТ.
     const firebaseConfig = {
-      apiKey: "AIzaSy...", // Өзүңүздүн Firebase API Key'иңизди унутпаңыз
+      apiKey: "AIzaSy..." /* Чыныгы Firebase API Key'иңизди ушул жерге коюңуз */,
       authDomain: "bilimal-org.firebaseapp.com",
       databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org",
@@ -87,8 +89,13 @@
       appId: "1:123456789:web:abcdef"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
+    let auth;
+    try {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+    } catch (e) {
+      console.error("Firebase Initialization Error:", e);
+    }
 
     document.addEventListener("DOMContentLoaded", () => {
       let activeTab = 'login';
@@ -110,7 +117,6 @@
         }
       }
 
-      // Табтарды которуу
       tabLogin.addEventListener('click', () => {
         activeTab = 'login';
         tabLogin.className = 'w-1/2 py-2 text-center font-semibold border-b-2 border-indigo-500 text-indigo-400 cursor-pointer';
@@ -127,21 +133,22 @@
         errorBox.classList.add('hidden');
       });
 
-      // Firebase Абалын текшерүү
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          window.location.href = '/sections/teacher-market.html';
-        } else {
-          showForm();
-        }
-      });
+      if (auth) {
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            window.location.href = '/sections/teacher-market.html';
+          } else {
+            showForm();
+          }
+        });
+      } else {
+        showForm();
+      }
 
-      // Эгер Firebase 2.5 секунд ичинде жооп бербесе, форманы ачуу (Fallback)
       setTimeout(() => {
         showForm();
-      }, 2500);
+      }, 1500);
 
-      // Форманы жөнөтүү
       authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         errorBox.classList.add('hidden');
@@ -149,6 +156,13 @@
 
         const email = document.getElementById('emailInput').value.trim();
         const password = document.getElementById('passwordInput').value;
+
+        if (!auth) {
+          submitBtn.disabled = false;
+          errorBox.innerText = "Ката: Firebase конфигурациясында API Key жетишсиз!";
+          errorBox.classList.remove('hidden');
+          return;
+        }
 
         try {
           if (activeTab === 'login') {
