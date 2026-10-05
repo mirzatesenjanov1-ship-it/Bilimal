@@ -84,10 +84,10 @@
             userBalanceSpan.innerText = '0.00 сом';
           }
 
-          // Колдонуучунун материалдарынын санын жүктөө
+          // Колдонуучу кошкон материалдардын санын жүктөө
           loadUserMaterialCount();
 
-          // Материалдарды реалдуу убакытта угуу
+          // Материалдарды реалдуу убакытта угуу (market_items түйүнүнөн)
           loadMaterials();
 
           if (loadingState) loadingState.classList.add('hidden');
@@ -166,7 +166,7 @@
         });
       }
 
-      // Жаңы материал кошуу
+      // Жаңы материал кошуу (market_items түйүнүнө сакталат)
       if (addMaterialForm) {
         addMaterialForm.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -191,7 +191,8 @@
           const isBonusFree = (userMaterialCount > 0 && (userMaterialCount + 1) % 6 === 0);
 
           try {
-            const materialsRef = ref(db, 'materials');
+            // Эрежеде уруксат берилген 'market_items' түйүнүнө сактайбыз
+            const materialsRef = ref(db, 'market_items');
             await push(materialsRef, {
               title: title,
               category: category,
@@ -205,7 +206,7 @@
               createdAt: Date.now()
             });
 
-            // Колдонуучунун материалдар санын көбөйтүү
+            // Колдонуучунун материалдар санын көбөйтүү (users/$uid түйүнүнө уруксат бар)
             const userCountRef = ref(db, `users/${currentUser.uid}/materialsCount`);
             await runTransaction(userCountRef, (current) => {
               return (current || 0) + 1;
@@ -220,19 +221,15 @@
           } catch (err) {
             saveMaterialBtn.disabled = false;
             saveMaterialBtn.innerText = 'Жайгаштыруу';
-            if (err.message.includes("PERMISSION_DENIED")) {
-              formError.innerText = "Ката: Firebase Console'догу Rules (эрежелер) авторизацияланган колдонуучуга сактоого уруксат берген жок. Firebase Console -> Realtime Database -> Rules бөлүмүнөн эрежелерди жаңыртыңыз.";
-            } else {
-              formError.innerText = "Сактоодо ката чыкты: " + err.message;
-            }
+            formError.innerText = "Сактоодо ката чыкты: " + err.message;
             formError.classList.remove('hidden');
           }
         });
       }
 
-      // Материалдарды жүктөө
+      // Материалдарды 'market_items' түйүнүнөн жүктөө
       function loadMaterials() {
-        const materialsRef = ref(db, 'materials');
+        const materialsRef = ref(db, 'market_items');
         onValue(materialsRef, (snapshot) => {
           if (snapshot.exists()) {
             allMaterialsData = snapshot.val();
@@ -364,7 +361,7 @@
           <option value="🔬 Виртуалдык лабораториялар">🔬 Виртуалдык лабораториялар</option>
           <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
           <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет)</option>
-          <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
+          <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
           <option value="👨‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар</option>
           <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Майрамдар)</option>
           <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
