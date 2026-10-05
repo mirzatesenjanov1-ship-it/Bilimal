@@ -172,8 +172,8 @@
           e.preventDefault();
           formError.classList.add('hidden');
 
-          if (!currentUser) {
-            formError.innerText = "Ката: Колдонуучу авторизациядан өткөн эмес. Кайра кириңиз.";
+          if (!currentUser || !currentUser.email) {
+            formError.innerText = "Ката: Колдонуучунун электрондук почтасы аныкталган жок. Кайра кириңиз.";
             formError.classList.remove('hidden');
             return;
           }
@@ -191,7 +191,6 @@
           const isBonusFree = (userMaterialCount > 0 && (userMaterialCount + 1) % 6 === 0);
 
           try {
-            // Эрежеде уруксат берилген 'market_items' түйүнүнө сактайбыз
             const materialsRef = ref(db, 'market_items');
             await push(materialsRef, {
               title: title,
@@ -201,12 +200,12 @@
               description: desc,
               fileUrl: fileUrl,
               authorId: currentUser.uid,
-              authorEmail: currentUser.email,
+              authorEmail: currentUser.email.toLowerCase().trim(),
               isBonusFree: isBonusFree,
               createdAt: Date.now()
             });
 
-            // Колдонуучунун материалдар санын көбөйтүү (users/$uid түйүнүнө уруксат бар)
+            // Колдонуучунун материалдар санын көбөйтүү
             const userCountRef = ref(db, `users/${currentUser.uid}/materialsCount`);
             await runTransaction(userCountRef, (current) => {
               return (current || 0) + 1;
@@ -242,13 +241,27 @@
         });
       }
 
+      // ФИЛЬТРАЦИЯ: Электрондук почтасы аркылуу гана бөлүнүп көрсөтүлөт
       function renderFilteredMaterials() {
         materialsGrid.innerHTML = '';
+        if (!currentUser || !currentUser.email) return;
+
+        const currentEmail = currentUser.email.toLowerCase().trim();
         const keys = Object.keys(allMaterialsData);
 
         const filteredKeys = keys.filter(key => {
+          const item = allMaterialsData[key];
+          
+          // 1. ЭЛЕКТРОНДУК ПОЧТА БОЮНЧА ТЕКШЕРҮҮ:
+          // Болгону ушул электрондук почтага таандык материалдар сакталат
+          const itemEmail = item.authorEmail ? item.authorEmail.toLowerCase().trim() : '';
+          if (itemEmail !== currentEmail) {
+            return false;
+          }
+
+          // 2. КАТЕГОРИЯЛЫК ТЕКШЕРҮҮ:
           if (selectedCategory === 'Все') return true;
-          return allMaterialsData[key].category === selectedCategory;
+          return item.category === selectedCategory;
         });
 
         if (filteredKeys.length > 0) {
@@ -260,7 +273,7 @@
         } else {
           materialsGrid.innerHTML = `
             <div class="col-span-full text-center py-12 text-slate-500">
-              Бул категорияда азырынча материал жок. Биринчи болуп кошуңуз!
+              Сиздин почтаңызга (${currentUser.email}) байланган материал азырынча жок.
             </div>
           `;
         }
@@ -289,7 +302,7 @@
               <span class="text-lg font-bold text-emerald-400">${item.price} сом</span>
             </div>
             <button onclick="window.open('${item.fileUrl}', '_blank')" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-indigo-600/20">
-              Ачуу / Сатып алуу
+              Ачуу / Кароо
             </button>
           </div>
         `;
@@ -330,7 +343,7 @@
       
       <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 class="text-xl font-bold text-slate-100">Сабактын пландары жана методикалык материалдар</h2>
+          <h2 class="text-xl font-bold text-slate-100">Менин сабак пландарым жана методикалык материалдарым</h2>
           <p class="text-sm text-slate-400 mt-1">
             Кошкон материалдарыңыз: <span id="userCountSpan" class="text-indigo-400 font-bold">0</span> | 
             <span class="text-emerald-400 font-medium">Ар бир 5 материалдан кийин 6-сы БЕКЕР жайгаштырылат!</span>
@@ -409,7 +422,7 @@
             <option value="🔬 Виртуалдык лабораториялар">🔬 Виртуалдык лабораториялар (Симуляциялар)</option>
             <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
             <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет, портфолио)</option>
-            <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
+            <option value="👨‍👩‍‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
             <option value="👨‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар (Тарбиялык саат)</option>
             <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Акыркы коңгуроо ж.б.)</option>
             <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
