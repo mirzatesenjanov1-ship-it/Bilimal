@@ -69,7 +69,7 @@
             userEmailSpan.innerText = user.email || 'Колдонуучу';
           }
 
-          // Балансты тартып алуу жана форматтоо
+          // Балансты алуу
           try {
             const userRef = ref(db, `users/${user.uid}/balance`);
             const snapshot = await get(userRef);
@@ -99,6 +99,7 @@
 
       // Колдонуучу кошкон материалдардын санын эсептөө
       function loadUserMaterialCount() {
+        if (!currentUser) return;
         const countRef = ref(db, `users/${currentUser.uid}/materialsCount`);
         onValue(countRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -112,7 +113,6 @@
       }
 
       function updateBonusUI() {
-        // Ар бир 5 материалдан кийин 6-сы бекер (5, 11, 17, 23...)
         const isNextFree = (userMaterialCount > 0 && (userMaterialCount + 1) % 6 === 0);
         if (bonusNotice) {
           if (isNextFree) {
@@ -171,6 +171,13 @@
         addMaterialForm.addEventListener('submit', async (e) => {
           e.preventDefault();
           formError.classList.add('hidden');
+
+          if (!currentUser) {
+            formError.innerText = "Ката: Колдонуучу авторизациядан өткөн эмес. Кайра кириңиз.";
+            formError.classList.remove('hidden');
+            return;
+          }
+
           saveMaterialBtn.disabled = true;
           saveMaterialBtn.innerText = 'Сакталууда...';
 
@@ -198,7 +205,7 @@
               createdAt: Date.now()
             });
 
-            // Колдонуучунун материалдар санын ашыруу
+            // Колдонуучунун материалдар санын көбөйтүү
             const userCountRef = ref(db, `users/${currentUser.uid}/materialsCount`);
             await runTransaction(userCountRef, (current) => {
               return (current || 0) + 1;
@@ -213,7 +220,11 @@
           } catch (err) {
             saveMaterialBtn.disabled = false;
             saveMaterialBtn.innerText = 'Жайгаштыруу';
-            formError.innerText = "Сактоодо ката чыкты: " + err.message;
+            if (err.message.includes("PERMISSION_DENIED")) {
+              formError.innerText = "Ката: Firebase Console'догу Rules (эрежелер) авторизацияланган колдонуучуга сактоого уруксат берген жок. Firebase Console -> Realtime Database -> Rules бөлүмүнөн эрежелерди жаңыртыңыз.";
+            } else {
+              formError.innerText = "Сактоодо ката чыкты: " + err.message;
+            }
             formError.classList.remove('hidden');
           }
         });
@@ -229,6 +240,8 @@
             allMaterialsData = {};
           }
           renderFilteredMaterials();
+        }, (err) => {
+          console.error("Материалдарды жүктөөдө ката:", err);
         });
       }
 
@@ -270,7 +283,7 @@
               ${isFreeBadge}
             </div>
             <h3 class="text-base font-bold text-slate-100 mt-1 break-words">${item.title}</h3>
-            <p class="text-xs text-slate-400 font-medium mt-1">Предмет/Класс: <span class="text-slate-300">${item.subject || 'Жалпы'}</span></p>
+            <p class="text-xs text-slate-400 font-medium mt-1">Предмет же Класс: <span class="text-slate-300">${item.subject || 'Жалпы'}</span></p>
             <p class="text-xs text-slate-400 mt-2 break-words line-clamp-3">${item.description}</p>
           </div>
           <div class="mt-6 flex items-center justify-between border-t border-slate-700/60 pt-4">
@@ -290,7 +303,6 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen">
 
-  <!-- Жүктөлүүдө абалы -->
   <div id="loadingState" class="fixed inset-0 flex items-center justify-center bg-slate-900 text-slate-400 text-sm z-50">
     <div class="flex items-center gap-3">
       <div class="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -298,10 +310,8 @@
     </div>
   </div>
 
-  <!-- Негизги Контент -->
   <div id="mainContent" class="hidden min-h-screen flex flex-col">
     
-    <!-- Навигация тилкеси -->
     <header class="bg-slate-800 border-b border-slate-700/60 px-6 py-4 flex justify-between items-center">
       <div class="flex items-center gap-3">
         <h1 class="text-2xl font-black text-indigo-400">BilimAl</h1>
@@ -319,10 +329,8 @@
       </div>
     </header>
 
-    <!-- Маркетплейстин мазмуну -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
       
-      <!-- Жогорку Банер жана Баскычтар -->
       <div class="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 class="text-xl font-bold text-slate-100">Сабактын пландары жана методикалык материалдар</h2>
@@ -337,7 +345,6 @@
         </button>
       </div>
 
-      <!-- Фильтр панели -->
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/40 p-4 rounded-xl border border-slate-700/40">
         <label class="text-xs font-semibold text-slate-400">Категория боюнча чыпкалоо:</label>
         <select id="categoryFilter" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-slate-100 text-xs focus:outline-none focus:border-indigo-500 w-full sm:w-auto">
@@ -357,7 +364,7 @@
           <option value="🔬 Виртуалдык лабораториялар">🔬 Виртуалдык лабораториялар</option>
           <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
           <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет)</option>
-          <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
+          <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
           <option value="👨‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар</option>
           <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Майрамдар)</option>
           <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
@@ -366,7 +373,6 @@
         </select>
       </div>
 
-      <!-- Маркет тизмеси -->
       <div id="materialsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="col-span-full text-center py-12 text-slate-500">
           Материалдар жүктөлүүдө...
@@ -376,7 +382,6 @@
     </main>
   </div>
 
-  <!-- Материал кошуу Модалдык Терезеси -->
   <div id="addMaterialModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="bg-slate-800 border border-slate-700/80 rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
       <div class="flex justify-between items-center border-b border-slate-700 pb-3">
@@ -408,7 +413,7 @@
             <option value="🎨 Дизайн материалдары">🎨 Дизайн материалдары (Постер, инфографика)</option>
             <option value="📋 Документ шаблондору">📋 Документ шаблондору (Журнал, отчет, портфолио)</option>
             <option value="👨‍👩‍👦 Ата-эне менен иштөө">👨‍👩‍👦 Ата-эне менен иштөө (Протокол, анкета)</option>
-            <option value="👨‍‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар (Тарбиялык саат)</option>
+            <option value="👨‍🏫 Класс жетекчиге материалдар">👨‍🏫 Класс жетекчиге материалдар (Тарбиялык саат)</option>
             <option value="🎉 Иш-чара сценарийлери">🎉 Иш-чара сценарийлери (Акыркы коңгуроо ж.б.)</option>
             <option value="🎓 Курстар">🎓 Курстар (Видео курс + сертификат)</option>
             <option value="🤖 AI үчүн промпттар">🤖 AI үчүн промпттар (Сабак, тест түзүү даяр промпттар)</option>
