@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Атомдун жана Кварктардын 3D Илимий Модели — BiliMal</title>
+  
+  <!-- Three.js жана OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Font Awesome жана Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: #04060c;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Жогорку банер */
+    .top-header {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px 20px;
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-back {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.3s;
+    }
+
+    .btn-back:hover {
+      color: #38bdf8;
+      transform: translateX(-3px);
+    }
+
+    .page-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* 3D Симуляция Контейнери */
+    .sim-wrapper {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 3fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .sim-wrapper {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 580px;
+      background: radial-gradient(circle at center, #0b1329 0%, #02050b 100%);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.15);
+    }
+
+    .sim-hint {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 10px 15px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      pointer-events: none;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      line-height: 1.5;
+    }
+
+    /* Информатика Панели */
+    .info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .info-card {
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .info-card h3 {
+      font-size: 0.95rem;
+      color: #38bdf8;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-list {
+      list-style: none;
+      font-size: 0.83rem;
+      color: #cbd5e1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .btn-ctrl {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: 0.3s;
+      margin-top: 8px;
+    }
+
+    .btn-ctrl:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Жогорку навигация -->
+  <div class="top-header">
+    <a href="lab-works.html" class="btn-back">
+      <i class="fa-solid fa-arrow-left"></i> Артка кайтуу
+    </a>
+    <div class="page-title">
+      <i class="fa-solid fa-atom"></i> Атомдун, Ядронун жана Кварктардын 3D Модели
+    </div>
+    <button class="btn-ctrl" style="width: auto; padding: 6px 16px;" onclick="openSmartlink()">
+      🚀 Кабинетке кирүү
+    </button>
+  </div>
+
+  <!-- 3D Контейнер жана Панель -->
+  <div class="sim-wrapper">
+    
+    <div id="canvas-container">
+      <div class="sim-hint">
+        🔍 <b>Жакындатуу / Алыстатуу:</b> Чычкан дөңгөлөгүн же экранды чоңойтуңуз<br>
+        🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
+        💡 <i>Атомдун ичине жакындап, Кварктарды байкаңыз!</i>
+      </div>
+    </div>
+
+    <!-- Информатика жана илимий маалыматтар -->
+    <div class="info-panel">
+      
+      <div class="info-card">
+        <h3><i class="fa-solid fa-layer-group"></i> Субатомдук Бөлүкчөлөр</h3>
+        <ul class="legend-list">
+          <li class="legend-item">
+            <span class="dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
+            <b>Протон (p+):</b> u-u-d кварктар
+          </li>
+          <li class="legend-item">
+            <span class="dot" style="background: #3b82f6; box-shadow: 0 0 8px #3b82f6;"></span>
+            <b>Нейтрон (n0):</b> u-d-d кварктар
+          </li>
+          <li class="legend-item">
+            <span class="dot" style="background: #00f0ff; box-shadow: 0 0 8px #00f0ff;"></span>
+            <b>Электрон (e-):</b> Лептон
+          </li>
+          <li class="legend-item">
+            <span class="dot" style="background: #facc15; box-shadow: 0 0 8px #facc15;"></span>
+            <b>Up (u) Кварк:</b> Заряды +2/3
+          </li>
+          <li class="legend-item">
+            <span class="dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span>
+            <b>Down (d) Кварк:</b> Заряды -1/3
+          </li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h3><i class="fa-solid fa-microscope"></i> Кванттык Структура</h3>
+        <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">
+          Адрондор (протон жана нейтрон) дагы да майда элементардык бөлүкчөлөрдөн — <b>Кварктардан</b> турат. Кварктар бири-бири менен <b>Глюондор</b> аркылуу күчтүү өз ара аракеттенүүдө кармалып турат.
+        </p>
+        <button class="btn-ctrl" onclick="focusNucleus()">🔬 Ядрого жакындап көрүү</button>
+        <button class="btn-ctrl" style="background: #374151;" onclick="resetCamera()">🌌 Толук Атомду көрүү</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Monetag Smartlink шилтемелери
+    const SMARTLINK_EFFICIENT = "https://uplcm.com/4/11977316";
+    const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
+
+    // Баракчага киргенде Popunder жарнама
+    document.addEventListener('click', function(e) {
+      if (!sessionStorage.getItem('monetag_atom_opened')) {
+        window.open(SMARTLINK_LOVEY, '_blank');
+        sessionStorage.setItem('monetag_atom_opened', 'true');
+      }
+    });
+
+    function openSmartlink() {
+      window.open(SMARTLINK_EFFICIENT, '_blank');
+    }
+
+    // Three.js Негизги өзгөрмөлөрү
+    let scene, camera, renderer, controls;
+    let atomGroup, nucleusGroup, electronsGroup = [];
+    const container = document.getElementById('canvas-container');
+
+    function init() {
+      // 1. Сахна
+      scene = new THREE.Scene();
+
+      // 2. Камера
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.set(0, 15, 35);
+
+      // 3. Рендерер
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      // 4. Жарыктар
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+      scene.add(ambientLight);
+
+      const pointLight = new THREE.PointLight(0x00f0ff, 2, 100);
+      pointLight.position.set(0, 0, 0);
+      scene.add(pointLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(20, 30, 20);
+      scene.add(dirLight);
+
+      // 5. Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 2; // Ядронун ичине чейин жакындатуу
+      controls.maxDistance = 100;
+
+      // Башкы Атом тобу
+      atomGroup = new THREE.Group();
+      scene.add(atomGroup);
+
+      // 6. Атом Ядросун түзүү (Протондор, Нейтрондор жана Кварктар)
+      createNucleus();
+
+      // 7. Электрондук Орбиталдарды жана Электрондорду түзүү
+      createElectronShells();
+
+      // 8. Фонго космостук нурларды/жылдыздарды кошуу
+      createBackgroundParticles();
+
+      animate();
+    }
+
+    // ПРОТОН, НЕЙТРОН ЖАНА КВАРКТАРДЫ ТҮЗҮҮ
+    function createNucleus() {
+      nucleusGroup = new THREE.Group();
+
+      const numProtons = 6;  // Көмүртек (Carbon) атомунун модели
+      const numNeutrons = 6;
+      const nucleons = [];
+
+      // Протондорду жана Нейтрондорду жайгаштыруу
+      for (let i = 0; i < numProtons + numNeutrons; i++) {
+        const isProton = i < numProtons;
+        const nucleonGroup = new THREE.Group();
+
+        // Протон же Нейтрон сферасы (Жаркырак)
+        const color = isProton ? 0xef4444 : 0x3b82f6;
+        const geo = new THREE.SphereGeometry(0.7, 32, 32);
+        const mat = new THREE.MeshPhysicalMaterial({
+          color: color,
+          emissive: color,
+          emissiveIntensity: 0.2,
+          roughness: 0.2,
+          transparent: true,
+          opacity: 0.85
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        nucleonGroup.add(mesh);
+
+        // Ичине 3 КВАРК Кошуу
+        // Протон = Up (+2/3), Up (+2/3), Down (-1/3)
+        // Нейтрон = Up (+2/3), Down (-1/3), Down (-1/3)
+        const quarkTypes = isProton ? [0xfacc15, 0xfacc15, 0xa855f7] : [0xfacc15, 0xa855f7, 0xa855f7];
+        
+        quarkTypes.forEach((qColor, idx) => {
+          const quarkGeo = new THREE.SphereGeometry(0.18, 16, 16);
+          const quarkMat = new THREE.MeshBasicMaterial({ color: qColor });
+          const quarkMesh = new THREE.Mesh(quarkGeo, quarkMat);
+
+          const angle = (idx / 3) * Math.PI * 2;
+          quarkMesh.position.set(Math.cos(angle) * 0.35, Math.sin(angle) * 0.35, (Math.random() - 0.5) * 0.2);
+          nucleonGroup.add(quarkMesh);
+        });
+
+        // Ядронун ичиндеги кокустук орун
+        const phi = Math.acos(-1 + (2 * i) / (numProtons + numNeutrons));
+        const theta = Math.sqrt((numProtons + numNeutrons) * Math.PI) * phi;
+        const r = 1.3;
+
+        nucleonGroup.position.set(
+          r * Math.cos(theta) * Math.sin(phi),
+          r * Math.sin(theta) * Math.sin(phi),
+          r * Math.cos(phi)
+        );
+
+        nucleusGroup.add(nucleonGroup);
+      }
+
+      atomGroup.add(nucleusGroup);
+    }
+
+    // ЭЛЕКТРОНДОРДУ ЖАНА КВАНТТЫК ОРБИТАЛДАРДЫ ТҮЗҮҮ
+    function createElectronShells() {
+      const shellRadii = [6, 10, 14];
+      const electronCounts = [2, 4, 2];
+
+      shellRadii.forEach((radius, sIdx) => {
+        // Орбитал шакекчеси
+        const ringGeo = new THREE.RingGeometry(radius - 0.03, radius + 0.03, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+
+        // Орбитаны ар кандай бурчка кыйшайтуу
+        const rotX = (sIdx + 1) * 0.6;
+        const rotY = (sIdx + 1) * 0.8;
+        ringMesh.rotation.x = rotX;
+        ringMesh.rotation.y = rotY;
+        atomGroup.add(ringMesh);
+
+        // Электрондор
+        const count = electronCounts[sIdx];
+        for (let e = 0; e < count; e++) {
+          const electronMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+          const electronGeo = new THREE.SphereGeometry(0.25, 16, 16);
+          const electronMesh = new THREE.Mesh(electronGeo, electronMat);
+
+          electronsGroup.push({
+            mesh: electronMesh,
+            radius: radius,
+            speed: 0.02 + (sIdx * 0.01),
+            angle: (e / count) * Math.PI * 2,
+            rotX: rotX,
+            rotY: rotY
+          });
+
+          scene.add(electronMesh);
+        }
+      });
+    }
+
+    // КОСМОСТОГУ ЖЫЛДЫЗДАРДЫ / ПАРТИКЛДАРДЫ ТҮЗҮҮ
+    function createBackgroundParticles() {
+      const geo = new THREE.BufferGeometry();
+      const count = 500;
+      const posArray = new Float32Array(count * 3);
+
+      for (let i = 0; i < count * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 150;
+      }
+
+      geo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      const mat = new THREE.PointsMaterial({ size: 0.3, color: 0x38bdf8, transparent: true, opacity: 0.5 });
+      const particles = new THREE.Points(geo, mat);
+      scene.add(particles);
+    }
+
+    // КАМЕРАНЫ ЯДРОГО ЖАКЫНДАТУУ
+    function focusNucleus() {
+      openSmartlink();
+      controls.target.set(0, 0, 0);
+      camera.position.set(0, 2, 5);
+    }
+
+    function resetCamera() {
+      controls.target.set(0, 0, 0);
+      camera.position.set(0, 15, 35);
+    }
+
+    // АНИМАЦИЯ ЖАНА КЫЙМЫЛДАР
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Ядронун жай айлануусу
+      if (nucleusGroup) {
+        nucleusGroup.rotation.y += 0.005;
+        nucleusGroup.rotation.x += 0.003;
+      }
+
+      // Электрондордун кванттык кыймылы
+      electronsGroup.forEach(e => {
+        e.angle += e.speed;
+        const x = Math.cos(e.angle) * e.radius;
+        const z = Math.sin(e.angle) * e.radius;
+
+        // Орбитанын бурчтарына жараша математикалык вектордук айландыруу
+        const pos = new THREE.Vector3(x, 0, z);
+        pos.applyAxisAngle(new THREE.Vector3(1, 0, 0), e.rotX);
+        pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), e.rotY);
+
+        e.mesh.position.copy(pos);
+      });
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      if (container && camera && renderer) {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
+
+    window.onload = init;
+  </script>
+</body>
+</html>
