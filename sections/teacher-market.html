@@ -166,7 +166,7 @@
           disabled
           class="w-full bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-green-500 text-white text-xs font-bold py-2.5 rounded-xl transition"
         >
-          Чыгаруу өтүнүчү (мин. 100 сом)
+          MBank'ка чечүү (мин. 100 сом)
         </button>
       </div>
 
@@ -191,45 +191,54 @@
         </div>
       </div>
 
-      <!-- PAYOUT КАРТА -->
+      <!-- ЧЫГАРУУ РЕКВИЗИТИ -->
       <div class="glass-card p-5 rounded-2xl space-y-3">
         <p class="text-xs font-semibold text-slate-300">
-          Чыгаруу реквизитим
+          Акча чыгаруу реквизити
         </p>
 
-        <div class="flex items-center justify-between gap-3">
-          <p
-            id="cardInfo"
-            class="text-xs text-slate-400 min-w-0 break-words"
-          >
-            Реквизит кошула элек
-          </p>
+        <p
+          id="cardInfo"
+          class="text-xs text-slate-400 min-w-0 break-words"
+        >
+          Реквизит кошула элек
+        </p>
 
-          <button
-            id="btnAddCard"
-            type="button"
-            class="bg-purple-600 hover:bg-purple-500 text-white text-xs px-3 py-2 rounded-xl font-bold shrink-0 transition"
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <select
+            id="payoutMethod"
+            class="input-field w-full p-2.5 rounded-xl text-xs"
           >
-            Реквизитти кошуу
-          </button>
+            <option value="MBank">MBank</option>
+            <option value="Элкарт">Элкарт</option>
+            <option value="Visa/Mastercard">Visa/Mastercard</option>
+            <option value="O!Деньги">O!Деньги</option>
+            <option value="MegaPay">MegaPay</option>
+            <option value="Башка">Башка</option>
+          </select>
+
+          <input
+            id="payoutAccount"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            maxlength="80"
+            placeholder="Карта/телефон/эсеп номери"
+            class="input-field w-full p-2.5 rounded-xl text-xs"
+          >
         </div>
 
-        <p class="text-[10px] text-slate-500">
-          GoPay Bilimal'дагы сатып алуулар үчүн төлөм кабыл алат. Мугалимдин балансы 79% үлүш менен эсептелет. Чыгаруу реквизити Bilimal серверинде сакталат жана payout администратор тарабынан аткарылат.
-        </p>
-
-        <input
-          type="hidden"
-          id="mbankReqInput"
-        >
-
         <button
-          id="btnSaveReq"
+          id="btnAddCard"
           type="button"
-          class="hidden"
+          class="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs px-3 py-2.5 rounded-xl font-bold w-full transition"
         >
-          Картаны сактоо
+          Реквизитти сактоо
         </button>
+
+        <p class="text-[10px] text-slate-500">
+          GoPay бул жерде төлөм кабыл алуу үчүн колдонулат. Мугалимдердин акча чыгаруусу азырынча администратор тарабынан көрсөтүлгөн реквизитке кол менен жүргүзүлөт. Толук реквизиттер Firebase'де жеке колдонуучунун бөлүгүндө сакталат.
+        </p>
       </div>
     </div>
 
@@ -533,7 +542,7 @@
       Эми frontend ошол эле bilimal.org домениндеги /api маршруттарын колдонот.
       Эгер API өзүнчө доменде болсо, window.BILIMAL_MARKET_API аркылуу override кылса болот.
     */
-    const API_BASE = (window.BILIMAL_MARKET_API || "https://bilimal-market-api.vercel.app").replace(/\/$/, "");
+    const API_BASE = (window.BILIMAL_MARKET_API || window.location.origin).replace(/\/$/, "");
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
@@ -783,7 +792,7 @@
             "Реквизит кошула элек";
 
           $("btnAddCard").textContent =
-            "Реквизитти кошуу";
+            "Реквизитти сактоо";
 
           return;
         }
@@ -899,13 +908,13 @@
 
         $("cardInfo").textContent =
           data.card?.masked
-            ? `Сакталган реквизит: ${data.card.method || "MBank"} ${data.card.masked}`
-            : "Реквизит кошула элек";
+            ? `Сакталган реквизит: ${data.card.masked}`
+            : "Карта кошула элек";
 
         $("btnAddCard").textContent =
           data.card
-            ? "Картаны өзгөртүү"
-            : "Реквизитти кошуу";
+            ? "Реквизитти өзгөртүү"
+            : "Реквизитти сактоо";
       } catch (error) {
         $("cardInfo").textContent =
           "Реквизит маалыматы азырынча жеткиликтүү эмес.";
@@ -974,56 +983,43 @@
     $("btnAddCard").addEventListener(
       "click",
       async () => {
+        if (!currentUser) {
+          alert("Алгач сайтка кириңиз.");
+          return;
+        }
+
         const method =
-          prompt(
-            "Чыгаруу ыкмасын жазыңыз (мисалы: MBank, карта, Элкарт):",
-            "MBank"
-          );
-
-        if (!method) return;
-
+          String($("payoutMethod").value || "MBank").trim();
         const account =
-          prompt(
-            "Чыгаруу реквизитин жазыңыз (MBank телефону же карта/эсеп номери):"
-          );
+          String($("payoutAccount").value || "").trim();
 
-        if (!account) return;
+        if (account.length < 5) {
+          alert("Карта/телефон/эсеп реквизитин толук жазыңыз.");
+          $("payoutAccount").focus();
+          return;
+        }
+
+        const button = $("btnAddCard");
+        button.disabled = true;
+        button.textContent = "Сакталууда...";
 
         try {
-          const data =
-            await api(
-              "/api/cards/add",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  method,
-                  account
-                })
-              }
-            );
-
-          if (!data.ok) {
-            throw new Error(
-              "Реквизитти сактоо мүмкүн болгон жок."
-            );
-          }
-
-          alert(
-            "Чыгаруу реквизити ийгиликтүү сакталды."
+          await api(
+            "/api/cards/add",
+            {
+              method: "POST",
+              body: JSON.stringify({ method, account })
+            }
           );
-          loadPayoutCard();
+
+          $("payoutAccount").value = "";
+          await loadPayoutCard();
+          alert("Акча чыгаруу реквизити сакталды.");
         } catch (error) {
           alert(error.message);
+        } finally {
+          button.disabled = false;
         }
-      }
-    );
-
-    $("btnSaveReq").addEventListener(
-      "click",
-      () => {
-        alert(
-          "Эми MBank номер эмес, коопсуз карта сактоо колдонулат. «Реквизитти кошуу» баскычын колдонуңуз."
-        );
       }
     );
 
@@ -1093,13 +1089,13 @@
           alert(
             `Өтүнүч кабыл алынды: ${formatMoney(
               data.amount
-            )} сом. Администратор бекиткенден кийин көрсөтүлгөн реквизитке которулат.`
+            )} сом. Администратор бекиткенден кийин payout аткарылат.`
           );
         } catch (error) {
           alert(error.message);
         } finally {
           button.textContent =
-            "Чыгаруу өтүнүчү (мин. 100 сом)";
+            "MBank'ка чечүү (мин. 100 сом)";
 
           const balance =
             roundMoney(
@@ -1505,7 +1501,7 @@
                         ].includes(
                           String(item.status)
                         )
-                          ? '<span class="text-xs text-yellow-400">Чыгаруу иштетилүүдө...</span>'
+                          ? '<span class="text-xs text-yellow-400">Payout иштетилүүдө...</span>'
                           : ""
                       }
                     </div>
@@ -1554,7 +1550,7 @@
 
           alert(
             data.message ||
-            "Чыгаруу өтүнүчү иштетилди."
+            "Payout жөнөтүлдү."
           );
 
           loadAdminWithdrawals();
