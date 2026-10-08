@@ -370,7 +370,7 @@
 
     // Three.js өзгөрмөлөрү
     let scene, camera, renderer, controls;
-    let centerMesh, particleMesh, rodMesh, trajectoryMesh, gridHelper;
+    let particleMesh, rodLine, trajectoryMesh, gridHelper;
     let arrowV, arrowA, arrowF;
     let projLineX, projLineY, projPointX, projPointY;
 
@@ -386,79 +386,89 @@
     const container = document.getElementById('canvas-container');
 
     function init() {
-      scene = new THREE.Scene();
+      try {
+        scene = new THREE.Scene();
 
-      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-      camera.position.set(0, 16, 22);
+        camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 16, 22);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
-      container.appendChild(renderer.domElement);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-      scene.add(ambientLight);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+        scene.add(ambientLight);
 
-      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      dirLight.position.set(10, 20, 15);
-      scene.add(dirLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 15);
+        scene.add(dirLight);
 
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
 
-      // 1. Борбордук чекит (Таяныч мамыча)
-      const centerGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 32);
-      const centerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.3 });
-      centerMesh = new THREE.Mesh(centerGeo, centerMat);
-      centerMesh.position.y = 0;
-      scene.add(centerMesh);
+        // 1. Борбордук чекит
+        const centerGeo = new THREE.CylinderGeometry(0.3, 0.4, 2, 32);
+        const centerMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x38bdf8, emissiveIntensity: 0.3 });
+        const centerMesh = new THREE.Mesh(centerGeo, centerMat);
+        centerMesh.position.y = 0;
+        scene.add(centerMesh);
 
-      // Борбордогу нурлуу шарча
-      const centerSphereGeo = new THREE.SphereGeometry(0.5, 32, 32);
-      const centerSphereMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-      const centerSphere = new THREE.Mesh(centerSphereGeo, centerSphereMat);
-      centerSphere.position.y = 1;
-      scene.add(centerSphere);
+        const centerSphereGeo = new THREE.SphereGeometry(0.5, 32, 32);
+        const centerSphereMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
+        const centerSphere = new THREE.Mesh(centerSphereGeo, centerSphereMat);
+        centerSphere.position.y = 1;
+        scene.add(centerSphere);
 
-      // 2. Айлануучу Шар (Материалдык чекит)
-      const particleGeo = new THREE.SphereGeometry(0.6, 32, 32);
-      const particleMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 0.4, roughness: 0.2 });
-      particleMesh = new THREE.Mesh(particleGeo, particleMat);
-      particleMesh.position.y = 1;
-      scene.add(particleMesh);
+        // 2. Айлануучу Шар
+        const particleGeo = new THREE.SphereGeometry(0.6, 32, 32);
+        const particleMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0xfacc15, emissiveIntensity: 0.4, roughness: 0.2 });
+        particleMesh = new THREE.Mesh(particleGeo, particleMat);
+        particleMesh.position.y = 1;
+        scene.add(particleMesh);
 
-      // 3. Радиус (Жип / Штанга)
-      const rodGeo = new THREE.CylinderGeometry(0.08, 0.08, 1, 16);
-      rodGeo.translate(0, 0.5, 0); // Центр вращения в основании
-      const rodMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
-      rodMesh = new THREE.Mesh(rodGeo, rodMat);
-      rodMesh.position.y = 1;
-      scene.add(rodMesh);
+        // 3. Жип (Line - эң туруктуу объект)
+        const rodGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0, 1, 0),
+          new THREE.Vector3(R, 1, 0)
+        ]);
+        const rodMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 2 });
+        rodLine = new THREE.Line(rodGeo, rodMat);
+        scene.add(rodLine);
 
-      // 4. Траектория сызыгы
-      updateTrajectory();
+        // 4. Траектория
+        updateTrajectory();
 
-      // Торчо (Grid)
-      gridHelper = new THREE.GridHelper(30, 30, 0x38bdf8, 0x1e293b);
-      gridHelper.position.y = -0.01;
-      scene.add(gridHelper);
+        // Торчо (Grid)
+        gridHelper = new THREE.GridHelper(30, 30, 0x38bdf8, 0x1e293b);
+        gridHelper.position.y = -0.01;
+        scene.add(gridHelper);
 
-      // Векторлорди (Жебелерди) даярдоо
-      arrowV = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, 0x22c55e, 0.4, 0.25);
-      arrowA = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, 0xef4444, 0.4, 0.25);
-      arrowF = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, 0xf97316, 0.3, 0.2);
-      
-      scene.add(arrowV);
-      scene.add(arrowA);
-      scene.add(arrowF);
+        // Векторлор (ArrowHelpers)
+        const initDir = new THREE.Vector3(1, 0, 0);
+        const initPos = new THREE.Vector3(0, 1, 0);
+        
+        arrowV = new THREE.ArrowHelper(initDir, initPos, 2, 0x22c55e, 0.4, 0.25);
+        arrowA = new THREE.ArrowHelper(initDir, initPos, 2, 0xef4444, 0.4, 0.25);
+        arrowF = new THREE.ArrowHelper(initDir, initPos, 2, 0xf97316, 0.3, 0.2);
+        
+        scene.add(arrowV);
+        scene.add(arrowA);
+        scene.add(arrowF);
 
-      // Проекциялык сызыктар
-      initProjections();
+        // Проекциялар
+        initProjections();
 
-      // Слайдерлерди угуу
-      setupUI();
+        // Слайдерлер
+        setupUI();
 
-      animate();
+        // Баштапкы абалды жаңыртуу жана Анимацияны баштоо
+        updatePhysicsCalculations();
+        animate();
+
+      } catch (err) {
+        console.error("Init error:", err);
+      }
     }
 
     function updateTrajectory() {
@@ -525,8 +535,6 @@
         document.getElementById('val-m').innerText = mass.toFixed(1) + ' кг';
         updatePhysicsCalculations();
       });
-
-      updatePhysicsCalculations();
     }
 
     function updatePhysicsCalculations() {
@@ -560,23 +568,26 @@
     }
 
     function updateScenePositions() {
-      // 1. Шардын координаталары
+      if (!particleMesh || !rodLine) return;
+
+      // 1. Шардын баштапкы абалы
       const x = R * Math.cos(angle);
       const z = R * Math.sin(angle);
       const y = 1;
 
       particleMesh.position.set(x, y, z);
 
-      // 2. Жипти туура багыттоо
-      rodMesh.rotation.set(0, 0, 0);
-      rodMesh.rotation.y = -angle + Math.PI / 2;
-      rodMesh.rotation.z = -Math.PI / 2;
-      rodMesh.scale.set(1, R, 1);
+      // 2. Жипти (Line) жаңыртуу
+      const rodPoints = [
+        new THREE.Vector3(0, 1, 0),
+        new THREE.Vector3(x, y, z)
+      ];
+      rodLine.geometry.setFromPoints(rodPoints);
 
-      // 3. Векторлорду жаңыртуу
+      // 3. Векторлор
       const pPos = particleMesh.position.clone();
 
-      // Сызыктуу ылдамдык вектору v (Тангенциалдуу)
+      // Сызыктуу ылдамдык v
       const dirV = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)).normalize();
       const vVal = omega * R;
       const lenV = Math.min(Math.max(vVal * 0.25, 1), 6);
@@ -584,7 +595,7 @@
       arrowV.setPosition(pPos);
       arrowV.setLength(lenV, lenV * 0.2, lenV * 0.15);
 
-      // Борборго умтулуучу ылдамдануу вектору a (Борборду көздөй)
+      // Ылдамдануу a
       const dirA = new THREE.Vector3(-Math.cos(angle), 0, -Math.sin(angle)).normalize();
       const aVal = (vVal * vVal) / R;
       const lenA = Math.min(Math.max(aVal * 0.08, 1), 5.5);
@@ -592,7 +603,7 @@
       arrowA.setPosition(pPos);
       arrowA.setLength(lenA, lenA * 0.2, lenA * 0.15);
 
-      // Борборго умтулуучу күч вектору F
+      // Күч F
       const FVal = mass * aVal;
       const lenF = Math.min(Math.max(FVal * 0.06, 0.8), 5);
       arrowF.setDirection(dirA);
@@ -608,7 +619,7 @@
         projLineY.geometry.setFromPoints([pPos, projPointY.position]);
       }
 
-      // 5. 2D Тексттик белгилердин ордун экранга карата теңдөө
+      // 5. 2D Белгилер
       updateLabelPosition('lbl-v', pPos.clone().add(dirV.clone().multiplyScalar(lenV)));
       updateLabelPosition('lbl-a', pPos.clone().add(dirA.clone().multiplyScalar(lenA)));
       updateLabelPosition('lbl-f', pPos.clone().add(dirA.clone().multiplyScalar(lenF)));
