@@ -81,7 +81,7 @@ const siteUrl = () =>
   (env.PUBLIC_SITE_URL || 'https://bilimal.org').replace(/\/$/, '');
 
 const apiUrl = () =>
-  (env.PUBLIC_API_URL || '').replace(/\/$/, '');
+  (env.PUBLIC_API_URL || siteUrl()).replace(/\/$/, '');
 
 const testingMode =
   String(env.GOPAY_TESTING_MODE || '1') === '1';
@@ -362,7 +362,7 @@ async function json(req, res, fn) {
 */
 
 app.get(
-  '/health',
+  ['/health', '/api/health'],
   (_req, res) => {
     res.json({
       ok: true,
@@ -1018,6 +1018,1604 @@ async function applyPaidOrder(
   ] = 'approved';
 
   updates[
+    `users/${order.buyerUid}/purchases/${order.productId}/paidAt`
+  ] = timestamp;
+
+  updates[
+    `users/${order.buyerUid}/purchases/${order.productId}/expiresAt`
+  ] = expires;
+
+  updates[
+    `users/${order.buyerUid}/purchases/${order.productId}/fileUrl`
+  ] =
+    order.fileUrl ||
+    '';
+
+  updates[
+    `users/${order.teacherUid}/wallet/totalSales`
+  ] =
+    (
+      Number(
+        (
+          await db()
+            .ref(
+              `users/${order.teacherUid}/wallet/totalSales`
+            )
+            .once('value')
+        ).val()
+      ) || 0
+    ) +
+    money(order.teacherShare);
+
+  updates[
+    `users/${order.teacherUid}/wallet/commission`
+  ] =
+    (
+      Number(
+        (
+          await db()
+            .ref(
+              `users/${order.teacherUid}/wallet/commission`
+            )
+            .once('value')
+        ).val()
+      ) || 0
+    ) +
+    money(order.siteShare);
+
+  updates[
+    `users/${order.teacherUid}/wallet/earnings`
+  ] =
+    (
+      Number(
+        (
+          await db()
+            .ref(
+              `users/${order.teacherUid}/wallet/earnings`
+            )
+            .once('value')
+        ).val()
+      ) || 0
+    ) +
+    money(order.teacherShare);
+
+  updates[
+    `users/${order.teacherUid}/wallet/available`
+  ] =
+    (
+      Number(
+        (
+          await db()
+            .ref(
+              `users/${order.teacherUid}/wallet/available`
+            )
+            .once('value')
+        ).val()
+      ) || 0
+    ) +
+    money(order.teacherShare);
+
+  updates[
+    `users/${order.teacherUid}/wallet/lastSaleAt`
+  ] = timestamp;
+
+  updates[
+    `sales/${oid}`
+  ] = {
+    orderId: oid,
+
+    buyerUid:
+      order.buyerUid,
+
+    buyerEmail:
+      order.buyerEmail || '',
+
+    teacherUid:
+      order.teacherUid,
+
+    teacherEmail:
+      order.teacherEmail || '',
+
+    productId:
+      order.productId,
+
+    productTitle:
+      order.productTitle,
+
+    price:
+      money(order.price),
+
+    commission:
+      money(order.siteShare),
+
+    teacherEarnings:
+      money(order.teacherShare),
+
+    commissionRate:
+      COMMISSION_RATE,
+
+    authorRate:
+      AUTHOR_RATE,
+
+    status:
+      'paid',
+
+    paymentMethod:
+      'GoPay',
+
+    goPayPaymentId:
+      providerData.payment_id ||
+      order.goPayPaymentId ||
+      null,
+
+    paidAt:
+      timestamp
+  };
+
+  await db()
+    .ref()
+    .update(updates);
+
+  return true;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| GoPay webhook
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  '/api/webhooks/gopay/events',
+  (req, res) =>
+    json(req, res, async () => {
+      const body =
+        req.body || {};
+
+      const oid =
+        String(
+          body.order_id ||
+            body.data?.order_id ||
+            ''
+        );
+
+      if (!oid) {
+        fail(
+          'GoPay webhook ичинде order_id жок.',
+          400
+        );
+      }
+
+      const providerData =
+        body.data ||
+        body.payment ||
+        body;
+
+      const status =
+        String(
+          providerData.status ||
+            body.status ||
+            ''
+        ).toUpperCase();
+
+      if (
+        [
+          'PAID',
+          'COMMITTED',
+          'SUCCESS',
+          'SUCCEEDED',
+          'COMPLETED'
+        ].includes(status)
+      ) {
+        await applyPaidOrder(
+          oid,
+          providerData
+        );
+      } else {
+        await db()
+          .ref(
+            `payment_orders/${oid}/goPayStatus`
+          )
+          .set(status || 'UNKNOWN');
+
+        await db()
+          .ref(
+            `applications/${oid}/goPayStatus`
+          )
+          .set(status || 'UNKNOWN');
+      }
+
+      return {
+        ok: true
+      };
+    })
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| PAYMENT STATUS
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/payments/status',
+  (req, res) =>
+    json(req, res, async () => {
+      const user =
+        await bearerUser(req);
+
+      const oid =
+        String(
+          req.query.orderId || ''
+        );
+
+      const productId =
+        String(
+          req.query.productId || ''
+        );
+
+      if (!oid && !productId) {
+        fail(
+          'orderId же productId керек.'
+        );
+      }
+
+      let order = null;
+
+      if (oid) {
+        const snapshot =
+          await db()
+            .ref(
+              `payment_orders/${oid}`
+            )
+            .once('value');
+
+        if (
+          snapshot.exists()
+        ) {
+          order =
+            snapshot.val();
+        }
+      }
+
+      if (
+        !order &&
+        productId
+      ) {
+        const snapshot =
+          await db()
+            .ref(
+              `users/${user.uid}/purchases/${productId}`
+            )
+            .once('value');
+
+        if (
+          snapshot.exists()
+        ) {
+          const purchase =
+            snapshot.val();
+
+          if (
+            purchase.orderId
+          ) {
+            const orderSnapshot =
+              await db()
+                .ref(
+                  `payment_orders/${purchase.orderId}`
+                )
+                .once('value');
+
+            if (
+              orderSnapshot.exists()
+            ) {
+              order =
+                orderSnapshot.val();
+            }
+          }
+        }
+      }
+
+      if (!order) {
+        return {
+          ok: true,
+          status: 'not_found',
+          paid: false
+        };
+      }
+
+      if (
+        order.buyerUid !==
+        user.uid
+      ) {
+        fail(
+          'Бул төлөмдү көрүүгө уруксат жок.',
+          403
+        );
+      }
+
+      let finalStatus =
+        String(
+          order.status || ''
+        );
+
+      if (
+        order.goPayPaymentId &&
+        finalStatus !== 'paid'
+      ) {
+        try {
+          const provider =
+            await goPayQuery({
+              paymentId:
+                order.goPayPaymentId,
+
+              orderIdValue:
+                order.orderId
+            });
+
+          const providerStatus =
+            String(
+              provider.status ||
+                ''
+            ).toUpperCase();
+
+          if (
+            [
+              'PAID',
+              'COMMITTED',
+              'SUCCESS',
+              'SUCCEEDED',
+              'COMPLETED'
+            ].includes(
+              providerStatus
+            )
+          ) {
+            await applyPaidOrder(
+              order.orderId,
+              provider
+            );
+
+            finalStatus =
+              'paid';
+          } else {
+            finalStatus =
+              order.status ||
+              providerStatus ||
+              'pending_payment';
+          }
+        } catch (error) {
+          console.error(
+            'GoPay status query:',
+            error
+          );
+        }
+      }
+
+      const purchaseSnapshot =
+        await db()
+          .ref(
+            `users/${user.uid}/purchases/${order.productId}`
+          )
+          .once('value');
+
+      const purchase =
+        purchaseSnapshot.val() ||
+        {};
+
+      return {
+        ok: true,
+
+        orderId:
+          order.orderId,
+
+        productId:
+          order.productId,
+
+        status:
+          finalStatus,
+
+        paid:
+          finalStatus ===
+          'paid',
+
+        expiresAt:
+          purchase.expiresAt ||
+          null,
+
+        fileUrl:
+          finalStatus ===
+          'paid'
+            ? purchase.fileUrl ||
+              null
+            : null
+      };
+    })
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| ADD CARD / PAYOUT REQUISITE
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  '/api/cards/add',
+  (req, res) =>
+    json(req, res, async () => {
+      const user =
+        await bearerUser(req);
+
+      const {
+        type,
+        phone,
+        cardNumber,
+        bank,
+        wallet,
+        holderName
+      } = req.body || {};
+
+      const cleanType =
+        String(
+          type || 'card'
+        )
+          .trim()
+          .toLowerCase();
+
+      if (
+        ![
+          'card',
+          'mbank',
+          'wallet'
+        ].includes(cleanType)
+      ) {
+        fail(
+          'Реквизиттин түрү туура эмес.'
+        );
+      }
+
+      let value = '';
+
+      if (
+        cleanType === 'card'
+      ) {
+        value =
+          String(
+            cardNumber || ''
+          )
+            .replace(/\D/g, '')
+            .slice(0, 19);
+
+        if (
+          value.length < 13
+        ) {
+          fail(
+            'Картанын номери туура эмес.'
+          );
+        }
+      }
+
+      if (
+        cleanType === 'mbank'
+      ) {
+        value =
+          String(
+            phone || ''
+          )
+            .replace(/[^\d+]/g, '')
+            .slice(0, 20);
+
+        if (
+          value.length < 9
+        ) {
+          fail(
+            'MBANK телефон номери туура эмес.'
+          );
+        }
+      }
+
+      if (
+        cleanType === 'wallet'
+      ) {
+        value =
+          String(
+            wallet || ''
+          )
+            .trim()
+            .slice(0, 100);
+
+        if (!value) {
+          fail(
+            'Капчык реквизити керек.'
+          );
+        }
+      }
+
+      const id =
+        db()
+          .ref(
+            `users/${user.uid}/payoutMethods`
+          )
+          .push()
+          .key;
+
+      const record = {
+        id,
+
+        type:
+          cleanType,
+
+        value,
+
+        bank:
+          String(
+            bank || ''
+          )
+            .trim()
+            .slice(0, 100),
+
+        holderName:
+          String(
+            holderName || ''
+          )
+            .trim()
+            .slice(0, 150),
+
+        createdAt:
+          now(),
+
+        active:
+          true
+      };
+
+      await db()
+        .ref(
+          `users/${user.uid}/payoutMethods/${id}`
+        )
+        .set(record);
+
+      await db()
+        .ref(
+          `users/${user.uid}/wallet/defaultPayoutMethod`
+        )
+        .set(id);
+
+      return {
+        ok: true,
+        id,
+        message:
+          'Төлөм алуу реквизити сакталды.'
+      };
+    })
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| LIST CARDS / PAYOUT METHODS
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/cards',
+  (req, res) =>
+    json(req, res, async () => {
+      const user =
+        await bearerUser(req);
+
+      const snapshot =
+        await db()
+          .ref(
+            `users/${user.uid}/payoutMethods`
+          )
+          .once('value');
+
+      const list = [];
+
+      snapshot.forEach(
+        (child) => {
+          const item =
+            child.val() || {};
+
+          list.push({
+            id:
+              child.key,
+
+            type:
+              item.type ||
+              'card',
+
+            value:
+              item.value ||
+              '',
+
+            bank:
+              item.bank ||
+              '',
+
+            holderName:
+              item.holderName ||
+              '',
+
+            createdAt:
+              item.createdAt ||
+              0,
+
+            active:
+              item.active !== false
+          });
+        }
+      );
+
+      return {
+        ok: true,
+        items: list
+      };
+    })
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| DELETE PAYOUT METHOD
+|--------------------------------------------------------------------------
+*/
+
+app.delete(
+  '/api/cards/:id',
+  (req, res) =>
+    json(req, res, async () => {
+      const user =
+        await bearerUser(req);
+
+      const id =
+        String(
+          req.params.id
+        );
+
+      const reference =
+        db().ref(
+          `users/${user.uid}/payoutMethods/${id}`
+        );
+
+      const snapshot =
+        await reference.once(
+          'value'
+        );
+
+      if (
+        !snapshot.exists()
+      ) {
+        fail(
+          'Реквизит табылган жок.',
+          404
+        );
+      }
+
+      await reference.remove();
+
+      const defaultRef =
+        db().ref(
+          `users/${user.uid}/wallet/defaultPayoutMethod`
+        );
+
+      const defaultSnapshot =
+        await defaultRef.once(
+          'value'
+        );
+
+      if (
+        defaultSnapshot.val() ===
+        id
+      ) {
+        await defaultRef.remove();
+      }
+
+      return {
+        ok: true
+      };
+    })
+);
+        updates[
+          `payment_orders/${oid}/goPayPaymentId`
+        ] =
+          String(
+            providerData.payment_id ||
+              order.goPayPaymentId ||
+              ''
+          );
+
+        updates[
+          `payment_orders/${oid}/goPayStatus`
+        ] =
+          String(
+            providerData.status ||
+              'COMMITTED'
+          );
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/status`
+        ] = 'approved';
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/approvedAt`
+        ] = timestamp;
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/expiresAt`
+        ] = expires;
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/goPayPaymentId`
+        ] =
+          String(
+            providerData.payment_id ||
+              order.goPayPaymentId ||
+              ''
+          );
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/goPayStatus`
+        ] =
+          String(
+            providerData.status ||
+              'COMMITTED'
+          );
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/orderId`
+        ] = oid;
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/fileUrl`
+        ] =
+          order.fileUrl ||
+          '';
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/title`
+        ] =
+          order.productTitle ||
+          '';
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/price`
+        ] =
+          money(order.price);
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/sellerUid`
+        ] =
+          order.teacherUid ||
+          '';
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/sellerEmail`
+        ] =
+          order.teacherEmail ||
+          '';
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/siteShare`
+        ] =
+          money(order.siteShare);
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/teacherShare`
+        ] =
+          money(order.teacherShare);
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/commissionRate`
+        ] =
+          COMMISSION_RATE;
+
+        updates[
+          `users/${order.buyerUid}/purchases/${order.productId}/authorRate`
+        ] =
+          AUTHOR_RATE;
+
+        await db()
+          .ref()
+          .update(updates);
+
+        const teacherBalanceRef =
+          db()
+            .ref(
+              `users/${order.teacherUid}/wallet/balance`
+            );
+
+        const teacherBalanceSnapshot =
+          await teacherBalanceRef.once(
+            'value'
+          );
+
+        const oldBalance =
+          money(
+            teacherBalanceSnapshot.val()
+          );
+
+        const newBalance =
+          money(
+            oldBalance +
+              money(order.teacherShare)
+          );
+
+        await teacherBalanceRef.set(
+          newBalance
+        );
+
+        const teacherTransactionsRef =
+          db()
+            .ref(
+              `users/${order.teacherUid}/wallet/transactions`
+            );
+
+        const transactionKey =
+          teacherTransactionsRef.push()
+            .key;
+
+        await teacherTransactionsRef
+          .child(transactionKey)
+          .set({
+            type:
+              'sale',
+
+            orderId:
+              oid,
+
+            productId:
+              order.productId,
+
+            productTitle:
+              order.productTitle,
+
+            amount:
+              money(
+                order.teacherShare
+              ),
+
+            grossAmount:
+              money(
+                order.price
+              ),
+
+            commission:
+              money(
+                order.siteShare
+              ),
+
+            commissionRate:
+              COMMISSION_RATE,
+
+            authorRate:
+              AUTHOR_RATE,
+
+            status:
+              'available',
+
+            createdAt:
+              timestamp
+          });
+
+        const teacherSalesRef =
+          db()
+            .ref(
+              `users/${order.teacherUid}/sales`
+            );
+
+        const saleKey =
+          teacherSalesRef.push()
+            .key;
+
+        await teacherSalesRef
+          .child(saleKey)
+          .set({
+            orderId:
+              oid,
+
+            productId:
+              order.productId,
+
+            productTitle:
+              order.productTitle,
+
+            buyerUid:
+              order.buyerUid,
+
+            buyerEmail:
+              order.buyerEmail ||
+              '',
+
+            grossAmount:
+              money(
+                order.price
+              ),
+
+            teacherShare:
+              money(
+                order.teacherShare
+              ),
+
+            commission:
+              money(
+                order.siteShare
+              ),
+
+            commissionRate:
+              COMMISSION_RATE,
+
+            authorRate:
+              AUTHOR_RATE,
+
+            paymentMethod:
+              'GoPay',
+
+            goPayPaymentId:
+              String(
+                providerData.payment_id ||
+                  order.goPayPaymentId ||
+                  ''
+              ),
+
+            createdAt:
+              timestamp
+          });
+
+        return true;
+      }
+
+
+/*
+|--------------------------------------------------------------------------
+| GOPAY WEBHOOK
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  '/api/webhooks/gopay/events',
+  (req, res) =>
+    json(
+      req,
+      res,
+      async () => {
+        const body =
+          req.body || {};
+
+        const oid =
+          String(
+            body.order_id ||
+              body.orderId ||
+              ''
+          );
+
+        if (!oid) {
+          return {
+            ok: true,
+            ignored: true,
+            reason:
+              'order_id жок.'
+          };
+        }
+
+        const providerStatus =
+          String(
+            body.status ||
+              body.payment_status ||
+              body.state ||
+              ''
+          ).toUpperCase();
+
+        const successStatuses =
+          new Set([
+            'PAID',
+            'SUCCESS',
+            'SUCCEEDED',
+            'COMPLETED',
+            'COMMITTED',
+            'CONFIRMED'
+          ]);
+
+        const failedStatuses =
+          new Set([
+            'FAILED',
+            'CANCELED',
+            'CANCELLED',
+            'EXPIRED',
+            'REJECTED',
+            'DECLINED'
+          ]);
+
+        if (
+          successStatuses.has(
+            providerStatus
+          )
+        ) {
+          await applyPaidOrder(
+            oid,
+            body
+          );
+
+          return {
+            ok: true,
+            orderId:
+              oid,
+            status:
+              'paid'
+          };
+        }
+
+        if (
+          failedStatuses.has(
+            providerStatus
+          )
+        ) {
+          await db()
+            .ref(
+              `payment_orders/${oid}`
+            )
+            .update({
+              status:
+                'failed',
+
+              goPayStatus:
+                providerStatus,
+
+              updatedAt:
+                now()
+            });
+
+          const orderSnapshot =
+            await db()
+              .ref(
+                `payment_orders/${oid}`
+              )
+              .once('value');
+
+          if (
+            orderSnapshot.exists()
+          ) {
+            const order =
+              orderSnapshot.val();
+
+            if (
+              order.buyerUid &&
+              order.productId
+            ) {
+              await db()
+                .ref(
+                  `users/${order.buyerUid}/purchases/${order.productId}`
+                )
+                .update({
+                  status:
+                    'failed',
+
+                  goPayStatus:
+                    providerStatus,
+
+                  updatedAt:
+                    now()
+                });
+            }
+          }
+
+          return {
+            ok: true,
+            orderId:
+              oid,
+            status:
+              'failed'
+          };
+        }
+
+        await db()
+          .ref(
+            `payment_orders/${oid}`
+          )
+          .update({
+            goPayStatus:
+              providerStatus ||
+              'UNKNOWN',
+
+            providerWebhook:
+              body,
+
+            updatedAt:
+              now()
+          });
+
+        return {
+          ok: true,
+          orderId:
+            oid,
+
+          status:
+            'received',
+
+          providerStatus
+        };
+      }
+    )
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| PAYMENT STATUS
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/payments/status',
+  (req, res) =>
+    json(
+      req,
+      res,
+      async () => {
+        const user =
+          await bearerUser(req);
+
+        const oid =
+          String(
+            req.query.order ||
+              req.query.orderId ||
+              ''
+          );
+
+        const productId =
+          String(
+            req.query.productId ||
+              ''
+          );
+
+        if (
+          !oid &&
+          !productId
+        ) {
+          fail(
+            'order же productId керек.'
+          );
+        }
+
+        let order = null;
+
+        if (oid) {
+          const snapshot =
+            await db()
+              .ref(
+                `payment_orders/${oid}`
+              )
+              .once('value');
+
+          if (
+            snapshot.exists()
+          ) {
+            order =
+              snapshot.val();
+          }
+        }
+
+        if (
+          !order &&
+          productId
+        ) {
+          const snapshot =
+            await db()
+              .ref(
+                `users/${user.uid}/purchases/${productId}`
+              )
+              .once('value');
+
+          if (
+            snapshot.exists()
+          ) {
+            const purchase =
+              snapshot.val();
+
+            if (
+              purchase.orderId
+            ) {
+              const orderSnapshot =
+                await db()
+                  .ref(
+                    `payment_orders/${purchase.orderId}`
+                  )
+                  .once('value');
+
+              if (
+                orderSnapshot.exists()
+              ) {
+                order =
+                  orderSnapshot.val();
+              }
+            }
+          }
+        }
+
+        if (!order) {
+          return {
+            ok: true,
+
+            found:
+              false,
+
+            status:
+              'not_found'
+          };
+        }
+
+        if (
+          order.buyerUid !==
+          user.uid
+        ) {
+          fail(
+            'Бул төлөмдү көрүүгө уруксат жок.',
+            403
+          );
+        }
+
+        let provider =
+          null;
+
+        if (
+          order.goPayPaymentId
+        ) {
+          try {
+            provider =
+              await goPayPost(
+                '/v1/payments/query',
+                {
+                  payment_id:
+                    order.goPayPaymentId,
+
+                  order_id:
+                    order.orderId
+                }
+              );
+          } catch (
+            providerError
+          ) {
+            provider =
+              {
+                error:
+                  providerError.message
+              };
+          }
+        }
+
+        const purchaseSnapshot =
+          await db()
+            .ref(
+              `users/${user.uid}/purchases/${order.productId}`
+            )
+            .once('value');
+
+        const purchase =
+          purchaseSnapshot.exists()
+            ? purchaseSnapshot.val()
+            : null;
+
+        return {
+          ok: true,
+
+          found:
+            true,
+
+          orderId:
+            order.orderId,
+
+          productId:
+            order.productId,
+
+          status:
+            order.status,
+
+          goPayStatus:
+            order.goPayStatus ||
+            null,
+
+          paymentId:
+            order.goPayPaymentId ||
+            null,
+
+          redirectUrl:
+            order.checkoutUrl ||
+            null,
+
+          price:
+            money(order.price),
+
+          teacherShare:
+            money(
+              order.teacherShare
+            ),
+
+          commission:
+            money(
+              order.siteShare
+            ),
+
+          purchaseStatus:
+            purchase?.status ||
+            null,
+
+          expiresAt:
+            purchase?.expiresAt ||
+            order.expiresAt ||
+            null,
+
+          provider
+        };
+      }
+    )
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| ADD PAYOUT METHOD
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  '/api/cards/add',
+  (req, res) =>
+    json(
+      req,
+      res,
+      async () => {
+        const user =
+          await bearerUser(req);
+
+        const type =
+          String(
+            req.body?.type ||
+              ''
+          ).trim();
+
+        const value =
+          String(
+            req.body?.value ||
+              ''
+          ).trim();
+
+        const title =
+          String(
+            req.body?.title ||
+              ''
+          ).trim();
+
+        if (!type) {
+          fail(
+            'Реквизиттин түрү керек.'
+          );
+        }
+
+        if (!value) {
+          fail(
+            'Реквизит керек.'
+          );
+        }
+
+        const allowedTypes =
+          new Set([
+            'mbank',
+            'card',
+            'wallet'
+          ]);
+
+        if (
+          !allowedTypes.has(
+            type
+          )
+        ) {
+          fail(
+            'Реквизиттин түрү туура эмес.'
+          );
+        }
+
+        const safeValue =
+          value
+            .replace(
+              /\s+/g,
+              ' '
+            )
+            .trim();
+
+        const ref =
+          db()
+            .ref(
+              `users/${user.uid}/payoutMethods`
+            );
+
+        const key =
+          ref.push().key;
+
+        const record = {
+          id:
+            key,
+
+          type:
+            type,
+
+          title:
+            title ||
+            type,
+
+          value:
+            safeValue,
+
+          createdAt:
+            now(),
+
+          updatedAt:
+            now(),
+
+          status:
+            'active'
+        };
+
+        await ref
+          .child(key)
+          .set(record);
+
+        return {
+          ok: true,
+
+          method:
+            record
+        };
+      }
+    )
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| LIST PAYOUT METHODS
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/cards',
+  (req, res) =>
+    json(
+      req,
+      res,
+      async () => {
+        const user =
+          await bearerUser(req);
+
+        const snapshot =
+          await db()
+            .ref(
+              `users/${user.uid}/payoutMethods`
+            )
+            .once('value');
+
+        const value =
+          snapshot.val() ||
+          {};
+
+        const methods =
+          Object.entries(
+            value
+          )
+            .map(
+              ([id, item]) => ({
+                id,
+                ...item
+              })
+            )
+            .filter(
+              (item) =>
+                item.status !==
+                'deleted'
+            )
+            .sort(
+              (a, b) =>
+                Number(
+                  b.createdAt ||
+                    0
+                ) -
+                Number(
+                  a.createdAt ||
+                    0
+                )
+            );
+
+        return {
+          ok: true,
+
+          methods
+        };
+      }
+    )
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| DELETE PAYOUT METHOD
+|--------------------------------------------------------------------------
+*/
+
+app.delete(
+  '/api/cards/:id',
+  (req, res) =>
+    json(
+      req,
+      res,
+      async () => {
+        const user =
+          await bearerUser(req);
+
+        const id =
+          String(
+            req.params.id
+          );
+
+        if (!id) {
+          fail(
+            'Реквизиттин ID керек.'
+          );
+        }
+
+        const ref =
+          db()
+            .ref(
+              `users/${user.uid}/payoutMethods/${id}`
+            );
+
+        const snapshot =
+          await ref.once(
+            'value'
+          );
+
+        if (
+          !snapshot.exists()
+        ) {
+          fail(
+            'Реквизит табылган жок.',
+            404
+          );
+        }
+
+        await ref.update({
+          status:
+            'deleted',
+
+          deletedAt:
+            now()
+        });
+
+        return {
+          ok: true
+        };
+      }
+    )
+);
+  ] =
+    String(
+      providerData.payment_id ||
+        order.goPayPaymentId ||
+        ''
+    );
+
+  updates[
+    `payment_orders/${oid}/goPayStatus`
+  ] =
+    String(
+      providerData.status ||
+        'COMMITTED'
+    );
+
+  updates[
+    `users/${order.buyerUid}/purchases/${order.productId}/status`
+  ] = 'approved';
+
+  updates[
     `users/${order.buyerUid}/purchases/${order.productId}/approvedAt`
   ] = timestamp;
 
@@ -1498,509 +3096,8 @@ app.post(
           req.body?.method ||
             'MBank'
         )
-          .trim()
-          .slice(0, 40);
+      /*
 
-      const account =
-        String(
-          req.body?.account ||
-            ''
-        ).trim();
-
-      if (!account) {
-        fail(
-          'Чыгаруу үчүн карта/эсеп/телефон реквизити керек.'
-        );
-      }
-
-      if (
-        account.length < 5 ||
-        account.length > 80
-      ) {
-        fail(
-          'Реквизиттин узундугу туура эмес.'
-        );
-      }
-
-      const masked =
-        account.length > 4
-          ? `${'*'.repeat(
-              Math.max(
-                0,
-                account.length - 4
-              )
-            )}${account.slice(-4)}`
-          : account;
-
-      await db()
-        .ref(
-          `users/${user.uid}/payoutCard`
-        )
-        .set({
-          method,
-
-          account,
-
-          masked,
-
-          createdAt:
-            now(),
-
-          provider:
-            'Manual payout'
-        });
-
-      return {
-        ok: true,
-
-        card: {
-          masked,
-
-          method,
-
-          tokenSaved:
-            false,
-
-          manualPayout:
-            true
-        }
-      };
-    })
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| GET PAYOUT CARD
-|--------------------------------------------------------------------------
-*/
-
-app.get(
-  '/api/cards',
-  (req, res) =>
-    json(req, res, async () => {
-      const user =
-        await bearerUser(req);
-
-      const snapshot =
-        await db()
-          .ref(
-            `users/${user.uid}/payoutCard`
-          )
-          .once('value');
-
-      if (
-        !snapshot.exists()
-      ) {
-        return {
-          ok: true,
-          card: null
-        };
-      }
-
-      const value =
-        snapshot.val();
-
-      return {
-        ok: true,
-
-        card: {
-          masked:
-            value.masked ||
-            '',
-
-          method:
-            value.method ||
-            'MBank',
-
-          tokenSaved:
-            false,
-
-          manualPayout:
-            true,
-
-          createdAt:
-            value.createdAt ||
-            null
-        }
-      };
-    })
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| CREATE WITHDRAWAL
-|--------------------------------------------------------------------------
-*/
-
-app.post(
-  '/api/withdrawals/create',
-  (req, res) =>
-    json(req, res, async () => {
-      const user =
-        await bearerUser(req);
-
-      const amount =
-        money(
-          req.body?.amount
-        );
-
-      if (
-        amount <
-        MIN_WITHDRAWAL
-      ) {
-        fail(
-          `Минималдуу чыгаруу ${MIN_WITHDRAWAL} сом.`
-        );
-      }
-
-      const card =
-        await db()
-          .ref(
-            `users/${user.uid}/payoutCard`
-          )
-          .once('value');
-
-      if (
-        !card.exists() ||
-        !card.val().account
-      ) {
-        fail(
-          'Алгач чыгаруу реквизитин кошуңуз.'
-        );
-      }
-
-      const balanceRef =
-        db().ref(
-          `users/${user.uid}/balance`
-        );
-
-      const reservedRef =
-        db().ref(
-          `users/${user.uid}/withdrawalReserved`
-        );
-
-      let reservedOk =
-        false;
-
-      const transaction =
-        await balanceRef.transaction(
-          (value) => {
-            const balance =
-              money(value);
-
-            if (
-              balance <
-              amount
-            ) {
-              return;
-            }
-
-            reservedOk =
-              true;
-
-            return money(
-              balance - amount
-            );
-          }
-        );
-
-      if (
-        !transaction.committed ||
-        !reservedOk
-      ) {
-        fail(
-          'Баланс жетишсиз же чыгаруу учурунда ката кетти.',
-          409
-        );
-      }
-
-      await reservedRef.transaction(
-        (value) =>
-          money(value) +
-          amount
-      );
-
-      const id =
-        orderId('WD');
-
-      const payout =
-        card.val();
-
-      await db()
-        .ref(
-          `withdrawal_requests/${id}`
-        )
-        .set({
-          id,
-
-          uid:
-            user.uid,
-
-          email:
-            user.email || '',
-
-          amount,
-
-          status:
-            'pending',
-
-          payoutMethod:
-            payout.method ||
-            'MBank',
-
-          payoutAccount:
-            payout.account,
-
-          cardMasked:
-            payout.masked ||
-            '',
-
-          provider:
-            'Manual payout',
-
-          createdAt:
-            now(),
-
-          updatedAt:
-            now()
-        });
-
-      return {
-        ok: true,
-
-        id,
-
-        amount,
-
-        status:
-          'pending'
-      };
-    })
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| RESTORE WITHDRAWAL
-|--------------------------------------------------------------------------
-*/
-
-async function restoreWithdrawal(
-  withdrawal
-) {
-  await db()
-    .ref(
-      `users/${withdrawal.uid}/balance`
-    )
-    .transaction(
-      (value) =>
-        money(value) +
-        money(
-          withdrawal.amount
-        )
-    );
-
-  await db()
-    .ref(
-      `users/${withdrawal.uid}/withdrawalReserved`
-    )
-    .transaction(
-      (value) =>
-        Math.max(
-          0,
-          money(value) -
-            money(
-              withdrawal.amount
-            )
-        )
-    );
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN APPROVE WITHDRAWAL
-|--------------------------------------------------------------------------
-*/
-
-app.post(
-  '/api/admin/withdrawals/:id/approve',
-  (req, res) =>
-    json(req, res, async () => {
-      const admin =
-        await adminUser(req);
-
-      const id =
-        String(
-          req.params.id
-        );
-
-      const snapshot =
-        await db()
-          .ref(
-            `withdrawal_requests/${id}`
-          )
-          .once('value');
-
-      if (
-        !snapshot.exists()
-      ) {
-        fail(
-          'Withdrawal табылган жок.',
-          404
-        );
-      }
-
-      const withdrawal =
-        snapshot.val();
-
-      if (
-        withdrawal.status !==
-        'pending'
-      ) {
-        fail(
-          'Бул withdrawal мурда иштетилген.',
-          409
-        );
-      }
-
-      await db()
-        .ref(
-          `withdrawal_requests/${id}`
-        )
-        .update({
-          status:
-            'paid',
-
-          approvedAt:
-            now(),
-
-          approvedBy:
-            admin.uid,
-
-          updatedAt:
-            now(),
-
-          provider:
-            'Manual payout'
-        });
-
-      await db()
-        .ref(
-          `users/${withdrawal.uid}/withdrawalReserved`
-        )
-        .transaction(
-          (value) =>
-            Math.max(
-              0,
-              money(value) -
-                money(
-                  withdrawal.amount
-                )
-            )
-        );
-
-      return {
-        ok: true,
-
-        status:
-          'paid',
-
-        message:
-          'Чыгаруу өтүнүчү бекитилди. GoPay автоматтык payout жасабайт; сумманы көрсөтүлгөн реквизитке администратор өзү которот.'
-      };
-    })
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN REJECT WITHDRAWAL
-|--------------------------------------------------------------------------
-*/
-
-app.post(
-  '/api/admin/withdrawals/:id/reject',
-  (req, res) =>
-    json(req, res, async () => {
-      const admin =
-        await adminUser(req);
-
-      const id =
-        String(
-          req.params.id
-        );
-
-      const snapshot =
-        await db()
-          .ref(
-            `withdrawal_requests/${id}`
-          )
-          .once('value');
-
-      if (
-        !snapshot.exists()
-      ) {
-        fail(
-          'Withdrawal табылган жок.',
-          404
-        );
-      }
-
-      const withdrawal =
-        snapshot.val();
-
-      if (
-        withdrawal.status !==
-        'pending'
-      ) {
-        fail(
-          'Бул withdrawal мурда иштетилген.',
-          409
-        );
-      }
-
-      await restoreWithdrawal(
-        withdrawal
-      );
-
-      await db()
-        .ref(
-          `withdrawal_requests/${id}`
-        )
-        .update({
-          status:
-            'rejected',
-
-          rejectedAt:
-            now(),
-
-          rejectedBy:
-            admin.uid,
-
-          rejectReason:
-            String(
-              req.body?.reason ||
-                'Администратор четке какты.'
-            ).slice(0, 500),
-
-          updatedAt:
-            now()
-        });
-
-      return {
-        ok: true,
-
-        status:
-          'rejected'
-      };
-    })
-);
-
-
-/*
 |--------------------------------------------------------------------------
 | ADMIN WITHDRAWALS
 |--------------------------------------------------------------------------
@@ -2029,6 +3126,7 @@ app.get(
 
 
 /*
+
 |--------------------------------------------------------------------------
 | 404
 |--------------------------------------------------------------------------
@@ -2045,6 +3143,7 @@ app.use(
 
 
 /*
+
 |--------------------------------------------------------------------------
 | Vercel
 |--------------------------------------------------------------------------
