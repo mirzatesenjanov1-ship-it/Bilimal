@@ -230,7 +230,6 @@
       border-radius: 3px;
     }
 
-    /* 2D HTML багыттоочу тексттер */
     .label-tag {
       position: absolute;
       color: #ffffff;
@@ -430,8 +429,10 @@
 
       // 3. Радиус (Жип / Штанга)
       const rodGeo = new THREE.CylinderGeometry(0.08, 0.08, 1, 16);
+      rodGeo.translate(0, 0.5, 0); // Центр вращения в основании
       const rodMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
       rodMesh = new THREE.Mesh(rodGeo, rodMat);
+      rodMesh.position.y = 1;
       scene.add(rodMesh);
 
       // 4. Траектория сызыгы
@@ -566,11 +567,11 @@
 
       particleMesh.position.set(x, y, z);
 
-      // 2. Жипти (Род) шар менен борбордун ортосуна коюу
-      rodMesh.position.set(x / 2, y, z / 2);
+      // 2. Жипти туура багыттоо
+      rodMesh.rotation.set(0, 0, 0);
+      rodMesh.rotation.y = -angle + Math.PI / 2;
+      rodMesh.rotation.z = -Math.PI / 2;
       rodMesh.scale.set(1, R, 1);
-      rodMesh.rotation.z = Math.PI / 2;
-      rodMesh.rotation.y = -angle;
 
       // 3. Векторлорду жаңыртуу
       const pPos = particleMesh.position.clone();
@@ -578,7 +579,7 @@
       // Сызыктуу ылдамдык вектору v (Тангенциалдуу)
       const dirV = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)).normalize();
       const vVal = omega * R;
-      const lenV = Math.min(Math.max(vVal * 0.2, 1), 6); // Вектор батпай кетбеши үчүн чектөө
+      const lenV = Math.min(Math.max(vVal * 0.25, 1), 6);
       arrowV.setDirection(dirV);
       arrowV.setPosition(pPos);
       arrowV.setLength(lenV, lenV * 0.2, lenV * 0.15);
@@ -615,7 +616,7 @@
 
     function updateLabelPosition(id, pos3D) {
       const elem = document.getElementById(id);
-      if (!elem) return;
+      if (!elem || !camera || !container) return;
 
       const vector = pos3D.clone().project(camera);
       const hw = container.clientWidth / 2;
