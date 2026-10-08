@@ -106,6 +106,7 @@
       pointer-events: none;
       border: 1px solid rgba(56, 189, 248, 0.2);
       line-height: 1.5;
+      z-index: 10;
     }
 
     /* Панель башкаруу жана маалыматтар */
@@ -229,7 +230,7 @@
       border-radius: 3px;
     }
 
-    /* 2D HTML багыттоочу тексттер (Canvas үстүндө) */
+    /* 2D HTML багыттоочу тексттер */
     .label-tag {
       position: absolute;
       color: #ffffff;
@@ -241,6 +242,7 @@
       transform: translate(-50%, -50%);
       white-space: nowrap;
       text-shadow: 0 0 4px #000;
+      z-index: 5;
     }
   </style>
 </head>
@@ -388,14 +390,14 @@
       scene = new THREE.Scene();
 
       camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-      camera.position.set(0, 12, 18);
+      camera.position.set(0, 16, 22);
 
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(container.clientWidth, container.clientHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
       scene.add(ambientLight);
 
       const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -461,29 +463,26 @@
     function updateTrajectory() {
       if (trajectoryMesh) scene.remove(trajectoryMesh);
 
-      const curve = new THREE.EllipseCurve(0, 0, R, R, 0, 2 * Math.PI, false, 0);
-      const points = curve.getPoints(128);
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-      
-      // Ийрини XZ тегиздигине жайгаштыруу
-      geometry.rotateX(Math.PI / 2);
+      const points = [];
+      const segments = 128;
+      for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        points.push(new THREE.Vector3(R * Math.cos(theta), 1, R * Math.sin(theta)));
+      }
 
-      const material = new THREE.LineDashedMaterial({
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({
         color: 0x38bdf8,
-        dashSize: 0.3,
-        gapSize: 0.2,
-        opacity: 0.6,
-        transparent: true
+        transparent: true,
+        opacity: 0.6
       });
 
       trajectoryMesh = new THREE.Line(geometry, material);
-      trajectoryMesh.computeLineDistances();
-      trajectoryMesh.position.y = 1;
       scene.add(trajectoryMesh);
     }
 
     function initProjections() {
-      const lineMat = new THREE.LineDashedMaterial({ color: 0xa855f7, dashSize: 0.2, gapSize: 0.2 });
+      const lineMat = new THREE.LineBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.8 });
       
       const geoX = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
       projLineX = new THREE.Line(geoX, lineMat);
@@ -579,7 +578,7 @@
       // Сызыктуу ылдамдык вектору v (Тангенциалдуу)
       const dirV = new THREE.Vector3(-Math.sin(angle), 0, Math.cos(angle)).normalize();
       const vVal = omega * R;
-      const lenV = Math.min(vVal * 0.4, 8); // Модель экрандан чыгып кетпеши үчүн визуалдык масштаб
+      const lenV = Math.min(Math.max(vVal * 0.2, 1), 6); // Вектор батпай кетбеши үчүн чектөө
       arrowV.setDirection(dirV);
       arrowV.setPosition(pPos);
       arrowV.setLength(lenV, lenV * 0.2, lenV * 0.15);
@@ -587,16 +586,16 @@
       // Борборго умтулуучу ылдамдануу вектору a (Борборду көздөй)
       const dirA = new THREE.Vector3(-Math.cos(angle), 0, -Math.sin(angle)).normalize();
       const aVal = (vVal * vVal) / R;
-      const lenA = Math.min(aVal * 0.15, 7);
+      const lenA = Math.min(Math.max(aVal * 0.08, 1), 5.5);
       arrowA.setDirection(dirA);
       arrowA.setPosition(pPos);
       arrowA.setLength(lenA, lenA * 0.2, lenA * 0.15);
 
       // Борборго умтулуучу күч вектору F
       const FVal = mass * aVal;
-      const lenF = Math.min(FVal * 0.12, 6);
+      const lenF = Math.min(Math.max(FVal * 0.06, 0.8), 5);
       arrowF.setDirection(dirA);
-      arrowF.setPosition(pPos.clone().add(new THREE.Vector3(0, 0.1, 0))); // Кичине өйдө
+      arrowF.setPosition(pPos.clone().add(new THREE.Vector3(0, 0.15, 0)));
       arrowF.setLength(lenF, lenF * 0.2, lenF * 0.15);
 
       // 4. Проекциялар
@@ -605,10 +604,7 @@
         projPointY.position.set(0, 0.01, z);
 
         projLineX.geometry.setFromPoints([pPos, projPointX.position]);
-        projLineX.geometry.computeLineDistances();
-
         projLineY.geometry.setFromPoints([pPos, projPointY.position]);
-        projLineY.geometry.computeLineDistances();
       }
 
       // 5. 2D Тексттик белгилердин ордун экранга карата теңдөө
@@ -642,13 +638,12 @@
 
       if (isPlaying) {
         angle += omega * 0.015;
-        updateScenePositions();
-      } else {
-        updateScenePositions();
       }
+      
+      updateScenePositions();
 
-      controls.update();
-      renderer.render(scene, camera);
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
     }
 
     window.addEventListener('resize', () => {
