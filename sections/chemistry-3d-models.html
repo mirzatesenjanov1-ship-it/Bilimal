@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Химия 3D Интерактивдүү Моделдер — BiliMal</title>
+
+  <!-- Three.js жана OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Font Awesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: #030712;
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* Навигация шапкасы */
+    .top-header {
+      width: 100%;
+      max-width: 1250px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px 20px;
+      background: rgba(17, 24, 39, 0.85);
+      border: 1px solid rgba(168, 85, 247, 0.25);
+      border-radius: 16px;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn-back {
+      color: #a855f7;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: 0.3s;
+    }
+
+    .btn-back:hover {
+      transform: translateX(-3px);
+      color: #c084fc;
+    }
+
+    .page-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #c084fc, #38bdf8, #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Негизги Макети */
+    .sim-wrapper {
+      width: 100%;
+      max-width: 1250px;
+      display: grid;
+      grid-template-columns: 2.8fr 1.2fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 960px) {
+      .sim-wrapper { grid-template-columns: 1fr; }
+    }
+
+    #canvas-container {
+      width: 100%;
+      height: 620px;
+      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      box-shadow: 0 0 35px rgba(168, 85, 247, 0.15);
+    }
+
+    .sim-hint {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      color: #c084fc;
+      pointer-events: none;
+      border: 1px solid rgba(168, 85, 247, 0.2);
+      line-height: 1.5;
+      z-index: 10;
+    }
+
+    /* Панельдер */
+    .control-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .panel-card {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    .panel-card h3 {
+      font-size: 0.95rem;
+      color: #c084fc;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      background: #111827;
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .tab-btn.active {
+      background: #a855f7;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+    }
+
+    .select-group {
+      margin-bottom: 12px;
+    }
+
+    .select-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      margin-bottom: 5px;
+    }
+
+    select {
+      width: 100%;
+      padding: 9px;
+      background: #111827;
+      border: 1px solid #374151;
+      color: #ffffff;
+      border-radius: 8px;
+      outline: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .btn-act {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, #9333ea, #7e22ce);
+      color: white;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .btn-act:hover {
+      background: linear-gradient(135deg, #a855f7, #9333ea);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+    }
+
+    .info-box {
+      background: rgba(168, 85, 247, 0.08);
+      border-left: 3px solid #a855f7;
+      padding: 10px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: #e9d5ff;
+      margin-bottom: 10px;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      padding: 5px 0;
+      border-bottom: 1px dashed #1f2937;
+    }
+
+    .data-val {
+      color: #34d399;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Навигация -->
+  <div class="top-header">
+    <a href="lab-works.html" class="btn-back">
+      <i class="fa-solid fa-arrow-left"></i> Артка кайтуу
+    </a>
+    <div class="page-title">
+      <i class="fa-solid fa-flask-vial"></i> Заттардын түзүлүшү жана Микро-дүйнө 3D
+    </div>
+    <button class="btn-act" style="width: auto; padding: 6px 16px;" onclick="openSmartlink()">
+      🚀 Кабинетке кирүү
+    </button>
+  </div>
+
+  <div class="sim-wrapper">
+    
+    <!-- 3D Сахна -->
+    <div id="canvas-container">
+      <div class="sim-hint">
+        🔄 <b>3D Камера:</b> Чычкан менен 360° айландырыңыз<br>
+        🔍 <b>Масштаб:</b> Скролл аркылуу жакындатыңыз
+      </div>
+    </div>
+
+    <!-- Интерактивдүү Панель -->
+    <div class="control-panel">
+      
+      <!-- Режимдерди тандоо -->
+      <div class="panel-card">
+        <h3><i class="fa-solid fa-cubes"></i> Модель тандоо</h3>
+        
+        <div class="tab-nav">
+          <button class="tab-btn active" onclick="switchMode('orbitals')">Орбиталдар</button>
+          <button class="tab-btn" onclick="switchMode('vsepr')">VSEPR (Молекула)</button>
+          <button class="tab-btn" onclick="switchMode('crystal')">Кристаллдар</button>
+        </div>
+
+        <!-- 1-режим: Орбиталдар -->
+        <div id="ctrl-orbitals" class="select-group">
+          <label>Электрондук Орбиталь:</label>
+          <select id="sel-orbital" onchange="renderModel()">
+            <option value="s">s-Орбиталь (1s/2s - Сфералык)</option>
+            <option value="p">p-Орбиталь (2p - Гантель сымал)</option>
+            <option value="d">d-Орбиталь (3d - 4-Калакчалуу)</option>
+            <option value="f">f-Орбиталь (4f - Татаал 3D Булут)</option>
+          </select>
+          <button class="btn-act" onclick="triggerQuantumJump()">⚡ Кванттык секирүү (Фотон)</button>
+        </div>
+
+        <!-- 2-режим: VSEPR Молекулалар -->
+        <div id="ctrl-vsepr" class="select-group" style="display:none;">
+          <label>Молекула геометриясы:</label>
+          <select id="sel-molecule" onchange="renderModel()">
+            <option value="CO2">CO₂ — Сызыктуу (180°)</option>
+            <option value="H2O">H₂O — Бурчтук (104.5°)</option>
+            <option value="CH4">CH₄ — Тетраэдр (109.5°)</option>
+            <option value="NH3">NH₃ — Пирамидалык (107°)</option>
+            <option value="SF6">SF₆ — Октаэдрлик (90°)</option>
+          </select>
+        </div>
+
+        <!-- 3-режим: Кристаллдык торчолор -->
+        <div id="ctrl-crystal" class="select-group" style="display:none;">
+          <label>Кристаллдык торчонун түрү:</label>
+          <select id="sel-crystal" onchange="renderModel()">
+            <option value="NaCl">NaCl — Иондук кристалл</option>
+            <option value="Diamond">Алмаз (C) — Атомдук кристалл</option>
+            <option value="Graphite">Графит (C) — Катмарлуу атомдук</option>
+            <option value="Cu">Жез (Cu) — Металлдык кристалл</option>
+            <option value="CO2_ice">Кургак муз (CO₂) — Молекулалык</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Илимий Маалымат Панели -->
+      <div class="panel-card">
+        <h3><i class="fa-solid fa-atom"></i> Илимий Параметрлер</h3>
+        
+        <div class="info-box" id="info-desc">
+          <b>s-Орбиталь:</b> Сфералык формага ээ. Электрондун ядронун айланасында табылуу ыктымалдуулугу бардык багыттарда бирдей.
+        </div>
+
+        <div class="data-row">
+          <span>Гибридизация / Тиби:</span>
+          <span class="data-val" id="info-type">1s / 2s</span>
+        </div>
+        <div class="data-row">
+          <span>Валенттик бурч / Формасы:</span>
+          <span class="data-val" id="info-angle">360° Сфера</span>
+        </div>
+        <div class="data-row">
+          <span>Диполь моменти (Уюлдуулугу):</span>
+          <span class="data-val" id="info-dipole">0 D (Уюлсуз)</span>
+        </div>
+        <div class="data-row">
+          <span>Байланыш тиби:</span>
+          <span class="data-val" id="info-bond">Кванттык булут</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Monetag Smartlink
+    const SMARTLINK_EFFICIENT = "https://uplcm.com/4/11977316";
+    const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
+
+    document.addEventListener('click', function(e) {
+      if (!sessionStorage.getItem('monetag_chem_opened')) {
+        window.open(SMARTLINK_LOVEY, '_blank');
+        sessionStorage.setItem('monetag_chem_opened', 'true');
+      }
+    });
+
+    function openSmartlink() {
+      window.open(SMARTLINK_EFFICIENT, '_blank');
+    }
+
+    // Three.js Негизги өзгөрмөлөрү
+    let scene, camera, renderer, controls;
+    let currentMode = 'orbitals';
+    let currentGroup = null;
+    let photonParticle = null;
+
+    const container = document.getElementById('canvas-container');
+
+    // CPK Атом түстөрү
+    const CPK = {
+      H: 0xffffff,   // Ак
+      C: 0x6b7280,   // Боз/Кара
+      O: 0xef4444,   // Кызыл
+      N: 0x3b82f6,   // Көк
+      F: 0x22c55e,   // Жашыл
+      S: 0xeab308,   // Сары
+      Na: 0xa855f7,  // Кызгылт
+      Cl: 0x10b981,  // Ачык жашыл
+      Cu: 0xf97316   // Жез түс
+    };
+
+    function init() {
+      try {
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
+
+        scene = new THREE.Scene();
+
+        camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 8, 18);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(10, 20, 15);
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(0xa855f7, 1.5, 50);
+        pointLight.position.set(0, 0, 0);
+        scene.add(pointLight);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        renderModel();
+        animate();
+
+      } catch (err) {
+        console.error("Init Error:", err);
+      }
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+
+      document.getElementById('ctrl-orbitals').style.display = mode === 'orbitals' ? 'block' : 'none';
+      document.getElementById('ctrl-vsepr').style.display = mode === 'vsepr' ? 'block' : 'none';
+      document.getElementById('ctrl-crystal').style.display = mode === 'crystal' ? 'block' : 'none';
+
+      renderModel();
+    }
+
+    function clearCurrentGroup() {
+      if (currentGroup) {
+        scene.remove(currentGroup);
+        currentGroup = null;
+      }
+    }
+
+    function renderModel() {
+      clearCurrentGroup();
+      currentGroup = new THREE.Group();
+
+      if (currentMode === 'orbitals') {
+        buildOrbitals();
+      } else if (currentMode === 'vsepr') {
+        buildVSEPR();
+      } else if (currentMode === 'crystal') {
+        buildCrystal();
+      }
+
+      scene.add(currentGroup);
+    }
+
+    // 1. ОРБИТАЛДАРДЫН КВАНТТЫК БУЛУТТАРЫ (S, P, D, F)
+    function buildOrbitals() {
+      const type = document.getElementById('sel-orbital').value;
+      const count = 3500;
+      const points = [];
+      const colors = [];
+
+      const nucleusGeo = new THREE.SphereGeometry(0.3, 32, 32);
+      const nucleusMat = new THREE.MeshBasicMaterial({ color: 0xf43f5e });
+      currentGroup.add(new THREE.Mesh(nucleusGeo, nucleusMat));
+
+      for (let i = 0; i < count; i++) {
+        let x, y, z;
+        let u = Math.random();
+        let v = Math.random();
+        let theta = u * 2.0 * Math.PI;
+        let phi = Math.acos(2.0 * v - 1.0);
+
+        if (type === 's') {
+          let r = Math.pow(Math.random(), 2) * 4.5;
+          x = r * Math.sin(phi) * Math.cos(theta);
+          y = r * Math.sin(phi) * Math.sin(theta);
+          z = r * Math.cos(phi);
+          colors.push(0.2, 0.7, 1.0);
+        } else if (type === 'p') {
+          let r = Math.pow(Math.random(), 1.5) * 5;
+          let factor = Math.abs(Math.cos(phi));
+          r *= factor;
+          x = r * Math.sin(phi) * Math.cos(theta);
+          y = r * Math.cos(phi);
+          z = r * Math.sin(phi) * Math.sin(theta);
+          colors.push(0.8, 0.3, 1.0);
+        } else if (type === 'd') {
+          let r = Math.pow(Math.random(), 1.5) * 5.5;
+          let factor = Math.abs(Math.sin(2 * phi) * Math.cos(theta));
+          r *= factor;
+          x = r * Math.sin(phi) * Math.cos(theta);
+          y = r * Math.sin(phi) * Math.sin(theta);
+          z = r * Math.cos(phi);
+          colors.push(0.2, 0.9, 0.5);
+        } else if (type === 'f') {
+          let r = Math.pow(Math.random(), 1.5) * 6;
+          let factor = Math.abs(Math.sin(3 * theta) * Math.sin(phi));
+          r *= factor;
+          x = r * Math.sin(phi) * Math.cos(theta);
+          y = r * Math.sin(phi) * Math.sin(theta);
+          z = r * Math.cos(phi);
+          colors.push(1.0, 0.6, 0.2);
+        }
+
+        points.push(x, y, z);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+      const mat = new THREE.PointsMaterial({ size: 0.08, vertexColors: true, transparent: true, opacity: 0.7 });
+      const cloud = new THREE.Points(geo, mat);
+      currentGroup.add(cloud);
+
+      // Маалыматты жаңыртуу
+      const infoMap = {
+        s: { desc: "<b>s-Орбиталь:</b> Сфералык симметриялуу. Электрондук булут бардык багыттарда бирдей тыгыздыкка ээ.", type: "1s/2s/3s", angle: "360° Сфера", dipole: "0 D (Уюлсуз)", bond: "s-электрондук булут" },
+        p: { desc: "<b>p-Орбиталь:</b> Гантель сымал формада. Ядронун эки тарабында 2 калакча түрүндө жайгашкан ($p_x, p_y, p_z$).", type: "2p/3p", angle: "90° багытталган", dipole: "0 D", bond: "σ же π байланыш" },
+        d: { desc: "<b>d-Орбиталь:</b> 4 калакчалуу татаал формага ээ. Өтөөчү металлдардын комплекс бирикмелерин түзөт.", type: "3d/4d", angle: "Татаал бурчтар", dipole: "Өзгөрүлмөлүү", bond: "d-гибридизация" },
+        f: { desc: "<b>f-Орбиталь:</b> Лантаноиддер жана актиноиддер үчүн мүнөздүү 8 калакчалуу мейкиндиктеги гибриддик форма.", type: "4f/5f", angle: "Көп калакчалуу", dipole: "Өзгөрүлмөлүү", bond: "Кванттык f-деңгээл" }
+      };
+
+      document.getElementById('info-desc').innerHTML = infoMap[type].desc;
+      document.getElementById('info-type').innerText = infoMap[type].type;
+      document.getElementById('info-angle').innerText = infoMap[type].angle;
+      document.getElementById('info-dipole').innerText = infoMap[type].dipole;
+      document.getElementById('info-bond').innerText = infoMap[type].bond;
+    }
+
+    // КВАНТТЫК СЕКИРҮҮ ЖАНА ФОТOН БӨЛҮНҮШҮ (ANIMATION)
+    function triggerQuantumJump() {
+      openSmartlink();
+
+      if (photonParticle) scene.remove(photonParticle);
+
+      const pGeo = new THREE.SphereGeometry(0.3, 16, 16);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+      photonParticle = new THREE.Mesh(pGeo, pMat);
+      photonParticle.position.set(0, 0, 0);
+      scene.add(photonParticle);
+
+      let radius = 0.1;
+      let alpha = 1.0;
+
+      const interval = setInterval(() => {
+        radius += 0.3;
+        photonParticle.scale.set(radius, radius, radius);
+        if (radius > 8) {
+          clearInterval(interval);
+          scene.remove(photonParticle);
+        }
+      }, 30);
+    }
+
+    // 2. VSEPR МОЛЕКУЛАЛАРДЫН 3D ГЕОМЕТРИЯСЫ
+    function buildVSEPR() {
+      const mol = document.getElementById('sel-molecule').value;
+
+      const createAtom = (color, pos, size = 0.6) => {
+        const geo = new THREE.SphereGeometry(size, 32, 32);
+        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(pos);
+        currentGroup.add(mesh);
+        return mesh;
+      };
+
+      const createBond = (pos1, pos2) => {
+        const dir = new THREE.Vector3().subVectors(pos2, pos1);
+        const len = dir.length();
+        const geo = new THREE.CylinderGeometry(0.12, 0.12, len, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x94a3b8 });
+        const mesh = new THREE.Mesh(geo, mat);
+
+        mesh.position.copy(pos1).add(dir.clone().multiplyScalar(0.5));
+        mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+        currentGroup.add(mesh);
+      };
+
+      const createDipoleArrow = (from, to) => {
+        const dir = new THREE.Vector3().subVectors(to, from).normalize();
+        const arrow = new THREE.ArrowHelper(dir, from, 2.5, 0x38bdf8, 0.5, 0.3);
+        currentGroup.add(arrow);
+      };
+
+      if (mol === 'CO2') {
+        const c = createAtom(CPK.C, new THREE.Vector3(0, 0, 0), 0.65);
+        const o1 = createAtom(CPK.O, new THREE.Vector3(-2.2, 0, 0), 0.55);
+        const o2 = createAtom(CPK.O, new THREE.Vector3(2.2, 0, 0), 0.55);
+        createBond(c.position, o1.position);
+        createBond(c.position, o2.position);
+
+        document.getElementById('info-desc').innerHTML = "<b>CO₂ (Көмүр кычкыл газы):</b> Сызыктуу молекула. $sp$-гибридизация. Диполь моменттери бири-бирин компенсациялап, молекула уюлсуз болот.";
+        document.getElementById('info-type').innerText = "sp-гибридизация";
+        document.getElementById('info-angle').innerText = "180° (Сызыктуу)";
+        document.getElementById('info-dipole').innerText = "0 D (Уюлсуз)";
+        document.getElementById('info-bond').innerText = "2 Коваленттик кош байланыш";
+
+      } else if (mol === 'H2O') {
+        const o = createAtom(CPK.O, new THREE.Vector3(0, 0.3, 0), 0.65);
+        const h1 = createAtom(CPK.H, new THREE.Vector3(-1.4, -0.8, 0), 0.4);
+        const h2 = createAtom(CPK.H, new THREE.Vector3(1.4, -0.8, 0), 0.4);
+        createBond(o.position, h1.position);
+        createBond(o.position, h2.position);
+        createDipoleArrow(new THREE.Vector3(0, -0.8, 0), new THREE.Vector3(0, 1.2, 0));
+
+        document.getElementById('info-desc').innerHTML = "<b>H₂O (Суу):</b> Бурчтук геометрия. Кычкылтектин 2 бөлүнбөгөн электрондук түгөйү аймакты кысып, бурчту 104.5° кылат.";
+        document.getElementById('info-type').innerText = "sp³-гибридизация";
+        document.getElementById('info-angle').innerText = "104.5° (Бурчтук)";
+        document.getElementById('info-dipole').innerText = "1.85 D (Кубаттуу уюлдуу)";
+        document.getElementById('info-bond').innerText = "2 Уюлдуу коваленттик байланыш";
+
+      } else if (mol === 'CH4') {
+        const c = createAtom(CPK.C, new THREE.Vector3(0, 0, 0), 0.65);
+        const p1 = new THREE.Vector3(1.2, 1.2, 1.2);
+        const p2 = new THREE.Vector3(-1.2, -1.2, 1.2);
+        const p3 = new THREE.Vector3(-1.2, 1.2, -1.2);
+        const p4 = new THREE.Vector3(1.2, -1.2, -1.2);
+
+        [p1, p2, p3, p4].forEach(p => {
+          const h = createAtom(CPK.H, p, 0.4);
+          createBond(c.position, h.position);
+        });
+
+        document.getElementById('info-desc').innerHTML = "<b>CH₄ (Метан):</b> Идеалдуу тетраэдрлик геометрия. Бардык $C-H$ байланыштары тең укуктуу жана бурчу 109.5° түзөт.";
+        document.getElementById('info-type').innerText = "sp³-гибридизация";
+        document.getElementById('info-angle').innerText = "109.5° (Тетраэдр)";
+        document.getElementById('info-dipole').innerText = "0 D (Симметриялуу уюлсуз)";
+        document.getElementById('info-bond').innerText = "4 Жөнөкөй σ-байланыш";
+
+      } else if (mol === 'NH3') {
+        const n = createAtom(CPK.N, new THREE.Vector3(0, 0.4, 0), 0.65);
+        const p1 = new THREE.Vector3(0, -0.5, 1.5);
+        const p2 = new THREE.Vector3(-1.3, -0.5, -0.75);
+        const p3 = new THREE.Vector3(1.3, -0.5, -0.75);
+
+        [p1, p2, p3].forEach(p => {
+          const h = createAtom(CPK.H, p, 0.4);
+          createBond(n.position, h.position);
+        });
+
+        document.getElementById('info-desc').innerHTML = "<b>NH₃ (Аммиак):</b> Тригоналдык пирамида. Азоттогу 1 бөлүнбөгөн электрондук түгөй байланыштарды ылдый түртөт.";
+        document.getElementById('info-type').innerText = "sp³-гибридизация";
+        document.getElementById('info-angle').innerText = "107° (Пирамидалык)";
+        document.getElementById('info-dipole').innerText = "1.47 D (Уюлдуу)";
+        document.getElementById('info-bond').innerText = "3 Коваленттик байланыш";
+
+      } else if (mol === 'SF6') {
+        const s = createAtom(CPK.S, new THREE.Vector3(0, 0, 0), 0.7);
+        const coords = [
+          new THREE.Vector3(2, 0, 0), new THREE.Vector3(-2, 0, 0),
+          new THREE.Vector3(0, 2, 0), new THREE.Vector3(0, -2, 0),
+          new THREE.Vector3(0, 0, 2), new THREE.Vector3(0, 0, -2)
+        ];
+
+        coords.forEach(p => {
+          const f = createAtom(CPK.F, p, 0.45);
+          createBond(s.position, f.position);
+        });
+
+        document.getElementById('info-desc').innerHTML = "<b>SF₆ (Күкүрт гексафториди):</b> Октаэдрлик геометрия. $sp³d²$-гибридизация. Абдан симметриялуу жана туруктуу бирикме.";
+        document.getElementById('info-type').innerText = "sp³d²-гибридизация";
+        document.getElementById('info-angle').innerText = "90° (Октаэдр)";
+        document.getElementById('info-dipole').innerText = "0 D (Симметриялуу)";
+        document.getElementById('info-bond').innerText = "6 Коваленттик байланыш";
+      }
+    }
+
+    // 3. КРИСТАЛЛДЫК ТОРЧОЛОР (CRYSTALLOGRAPHY)
+    function buildCrystal() {
+      const type = document.getElementById('sel-crystal').value;
+
+      const createNode = (color, pos, size = 0.35) => {
+        const geo = new THREE.SphereGeometry(size, 16, 16);
+        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(pos);
+        currentGroup.add(mesh);
+      };
+
+      const createWireframeBox = (size) => {
+        const geo = new THREE.BoxGeometry(size, size, size);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true, transparent: true, opacity: 0.3 });
+        const box = new THREE.Mesh(geo, mat);
+        currentGroup.add(box);
+      };
+
+      if (type === 'NaCl') {
+        createWireframeBox(4);
+        for (let x = -2; x <= 2; x += 2) {
+          for (let y = -2; y <= 2; y += 2) {
+            for (let z = -2; z <= 2; z += 2) {
+              const isNa = (Math.abs(x + y + z) / 2) % 2 === 0;
+              createNode(isNa ? CPK.Na : CPK.Cl, new THREE.Vector3(x, y, z), isNa ? 0.3 : 0.45);
+            }
+          }
+        }
+        document.getElementById('info-desc').innerHTML = "<b>NaCl (Натрий хлориди):</b> Кубдук иондук кристаллдык торчо. Кубдун чокуларында $Na^+$ жана $Cl^-$ иондору кезектешип жайгашат.";
+        document.getElementById('info-type').innerText = "Иондук кристалл";
+        document.getElementById('info-angle').innerText = "90° Кубдук";
+        document.getElementById('info-dipole').innerText = "Иондук байланыш";
+        document.getElementById('info-bond').innerText = "Электростатикалык тартылуу";
+
+      } else if (type === 'Diamond') {
+        createWireframeBox(4);
+        for (let x = -1.5; x <= 1.5; x += 1.5) {
+          for (let y = -1.5; y <= 1.5; y += 1.5) {
+            for (let z = -1.5; z <= 1.5; z += 1.5) {
+              createNode(CPK.C, new THREE.Vector3(x, y, z), 0.3);
+            }
+          }
+        }
+        document.getElementById('info-desc').innerHTML = "<b>Алмаз (C):</b> Атомдук кристаллдык торчо. Ар бир көмүртек атому 4 коңшу атому менен бекем $sp³$ коваленттик байланышта.";
+        document.getElementById('info-type').innerText = "Атомдук кристалл";
+        document.getElementById('info-angle').innerText = "109.5° Тетраэдр";
+        document.getElementById('info-dipole').innerText = "0 D";
+        document.getElementById('info-bond').innerText = "Үч өлчөмдүү бекем коваленттик";
+
+      } else if (type === 'Graphite') {
+        [-1.5, 0, 1.5].forEach(layerY => {
+          for (let x = -2; x <= 2; x += 1.2) {
+            for (let z = -2; z <= 2; z += 1.2) {
+              createNode(CPK.C, new THREE.Vector3(x, layerY, z), 0.25);
+            }
+          }
+        });
+        document.getElementById('info-desc').innerHTML = "<b>Графит (C):</b> Катмарлуу атомдук торчо. Катмарлардын ичинде коваленттик, ал эми катмарлардын ортосунда ажыроочу Ван-дер-Ваальс күчтөрү аракеттенет.";
+        document.getElementById('info-type').innerText = "Катмарлуу атомдук";
+        document.getElementById('info-angle').innerText = "120° Гексагоналдык";
+        document.getElementById('info-dipole').innerText = "Электр өткөргүч";
+        document.getElementById('info-bond').innerText = "Ван-дер-Ваальс күчтөрү";
+
+      } else if (type === 'Cu') {
+        createWireframeBox(4);
+        for (let x = -2; x <= 2; x += 2) {
+          for (let y = -2; y <= 2; y += 2) {
+            for (let z = -2; z <= 2; z += 2) {
+              createNode(CPK.Cu, new THREE.Vector3(x, y, z), 0.4);
+            }
+          }
+        }
+        document.getElementById('info-desc').innerHTML = "<b>Жез (Cu):</b> Жогорку электр жана жылуулук өткөргүчтүккө ээ болгон металлдык кристаллдык торчо (Кырлары борборлоштурулган куб).";
+        document.getElementById('info-type').innerText = "Металлдык кристалл";
+        document.getElementById('info-angle').innerText = "ГЦК ячейка";
+        document.getElementById('info-dipole').innerText = "Электрондук газ";
+        document.getElementById('info-bond').innerText = "Металлдык байланыш";
+
+      } else if (type === 'CO2_ice') {
+        createWireframeBox(4);
+        for (let x = -2; x <= 2; x += 2) {
+          for (let y = -2; y <= 2; y += 2) {
+            createNode(CPK.O, new THREE.Vector3(x - 0.4, y, 0), 0.25);
+            createNode(CPK.C, new THREE.Vector3(x, y, 0), 0.3);
+            createNode(CPK.O, new THREE.Vector3(x + 0.4, y, 0), 0.25);
+          }
+        }
+        document.getElementById('info-desc').innerHTML = "<b>Кургак муз (CO₂):</b> Молекулалык кристаллдык торчо. Кристаллдардын түйүндөрүндө өзүнчө $CO₂$ молекулалары начар аралык күчтөр менен жайгашкан.";
+        document.getElementById('info-type').innerText = "Молекулалык кристалл";
+        document.getElementById('info-angle').innerText = "Сүзүлүүчү торчо";
+        document.getElementById('info-dipole').innerText = "Жеңил сублимацияланат";
+        document.getElementById('info-bond').innerText = "Молекула аралык тартылуу";
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (currentGroup) {
+        currentGroup.rotation.y += 0.004;
+      }
+
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      if (container && camera && renderer) {
+        const w = container.clientWidth || 800;
+        const h = container.clientHeight || 600;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      }
+    });
+
+    window.onload = init;
+  </script>
+</body>
+</html>
