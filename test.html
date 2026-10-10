@@ -69,10 +69,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 90px;
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(0, 240, 255, 0.2);
-            border-radius: 12px;
+            min-height: 0px;
             overflow: hidden;
         }
         .test-box { 
@@ -203,10 +200,8 @@
 </head>
 <body>
 
-    <!-- Monetag Жарнама Коду (12001461) -->
-    <div class="clean-banner-container">
-        <script>(function(s){s.dataset.zone='12001461',s.src='https://al5sm.com/tag.min.js'})([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')))</script>
-    </div>
+    <!-- Жарнама контейнери (Тест бүткөндө гана скрипт динамикалык жүктөлөт) -->
+    <div class="clean-banner-container" id="monetagResultContainer"></div>
 
     <div class="test-box">
         <div id="startScreen">
@@ -250,6 +245,41 @@
             <button type="button" class="btn-start" id="nextBtn" style="margin-top:20px">Следующий вопрос →</button>
         </div>
     </div>
+
+    <!-- ТЕСТ БҮТКӨНДӨ ЖАРНАМАНЫ ИШКЕ КИРГИЗҮҮЧҮ СКРИПТ -->
+    <script>
+        function loadMonetagAd() {
+            const container = document.getElementById('monetagResultContainer');
+            if (container && !container.dataset.loaded) {
+                container.dataset.loaded = "true";
+                container.style.minHeight = "90px";
+
+                const s = document.createElement('script');
+                s.dataset.zone = '12001461';
+                s.src = 'https://al5sm.com/tag.min.js';
+
+                const target = [document.documentElement, document.body].filter(Boolean).pop();
+                if (target) {
+                    target.appendChild(s);
+                }
+            }
+        }
+
+        // Тест аяктаганда экранынын өзгөрүшүн көзөмөлдөө
+        const finishObserver = new MutationObserver((mutations) => {
+            const testBox = document.querySelector('.test-box');
+            if (testBox && (testBox.innerText.includes('Тест аяктады') || testBox.innerText.includes('Тест завершен') || testBox.innerText.includes('Test completed') || testBox.innerText.includes('Ваш результат') || testBox.innerText.includes('Сиздин жыйынтык'))) {
+                loadMonetagAd();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const testBox = document.querySelector('.test-box');
+            if (testBox) {
+                finishObserver.observe(testBox, { childList: true, subtree: true, characterData: true });
+            }
+        });
+    </script>
 
     <script>
         const testTranslations = {
