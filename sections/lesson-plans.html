@@ -235,3 +235,879 @@
       </button>
     </div>
   </div>
+    <!-- Сатып алынган материалдар -->
+  <div
+    id="purchasesModal"
+    class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden items-center justify-center p-4"
+  >
+    <div class="glass-card max-w-2xl w-full max-h-[85vh] overflow-y-auto modal-scroll rounded-2xl p-6 relative border border-purple-500/40 shadow-2xl">
+      <button
+        id="btnClosePurchases"
+        type="button"
+        class="absolute top-4 right-4 text-slate-400 hover:text-white"
+        aria-label="Жабуу"
+      >
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <h3 class="text-xl font-bold text-white mb-5 pr-8">
+        <i class="fa-solid fa-box-open text-purple-400 mr-2"></i>
+        Менин сатып алган материалдарым
+      </h3>
+
+      <div id="purchasesList" class="space-y-3">
+        <p class="text-sm text-slate-400">Маалымат жүктөлүүдө...</p>
+      </div>
+    </div>
+  </div>
+
+  <div
+    id="toast"
+    class="fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] hidden max-w-[90vw] rounded-xl border border-slate-600 bg-slate-900 px-5 py-3 text-sm text-white shadow-2xl"
+    role="status"
+    aria-live="polite"
+  ></div>
+
+  <footer class="border-t border-slate-800 py-6 px-4 text-center text-xs text-slate-500">
+    © <span id="currentYear"></span> Bilimal.org — Билим берүү материалдары
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp, getApps, getApp }
+      from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+    import {
+      getAuth,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    import {
+      getDatabase,
+      ref,
+      get
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    /*
+      ЭСКЕРТҮҮ:
+      Бул firebaseConfig маанилерин долбооруңуздагы
+      firebase-config.js файлындагы чыныгы конфигурация менен толтуруңуз.
+      Firebase web config'ин сервердин купуя ачкычтары менен чаташтырбаңыз.
+    */
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_WEB_API_KEY",
+      authDomain: "bilimal-org.firebaseapp.com",
+      databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "bilimal-org",
+      storageBucket: "bilimal-org.firebasestorage.app",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_FIREBASE_APP_ID"
+    };
+
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    const API_BASE = "/api";
+
+    const state = {
+      user: null,
+      materials: [],
+      selectedMaterial: null,
+      currentOrder: null,
+      purchases: [],
+      showPurchases: false,
+      busy: false
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    $("currentYear").textContent = new Date().getFullYear();
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[char]);
+    }
+
+    function formatSom(value) {
+      return `${Number(value || 0).toLocaleString("ky-KG")} сом`;
+    }
+
+    function showToast(message, timeout = 4000) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.remove("hidden");
+
+      window.clearTimeout(showToast.timer);
+      showToast.timer = window.setTimeout(() => {
+        toast.classList.add("hidden");
+      }, timeout);
+    }
+
+    async function getIdToken() {
+      if (!state.user) {
+        throw new Error("Улантуу үчүн сайтка кириңиз.");
+      }
+
+      return state.user.getIdToken();
+    }
+
+    async function api(path, options = {}) {
+      const token = await getIdToken();
+
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+          ...(options.headers || {})
+        }
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.ok === false) {
+        throw new Error(result.message || `Сервер катасы: ${response.status}`);
+      }
+
+      return result;
+    }
+
+    function openModal() {
+      $("paymentModal").classList.remove("hidden");
+      $("paymentModal").classList.add("flex");
+    }
+
+    function closeModal() {
+      $("paymentModal").classList.add("hidden");
+      $("paymentModal").classList.remove("flex");
+
+      state.selectedMaterial = null;
+      state.currentOrder = null;
+      state.busy = false;
+
+      $("paymentInstructions").innerHTML = `
+        <p class="text-xs text-slate-300">
+          Алгач төлөм алуучуну аныктап, QR реквизиттерин көрсөтүңүз.
+        </p>
+      `;
+
+      $("receiptForm").classList.add("hidden");
+      $("btnSubmitPayment").disabled = false;
+      $("btnSubmitPayment").textContent = "QR реквизиттерин көрсөтүү";
+      $("receiptTransactionId").value = "";
+      $("receiptTransferTime").value = "";
+      $("receiptFile").value = "";
+      $("receiptNote").value = "";
+    }
+
+    function openPurchasesModal() {
+      $("purchasesModal").classList.remove("hidden");
+      $("purchasesModal").classList.add("flex");
+    }
+
+    function closePurchasesModal() {
+      $("purchasesModal").classList.add("hidden");
+      $("purchasesModal").classList.remove("flex");
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      state.user = user;
+
+      if (!user) {
+        showToast("Сатып алуу үчүн Bilimal аккаунтуңузга кириңиз.");
+      }
+
+      await loadMaterials();
+    });
+
+    async function loadMaterials() {
+      const grid = $("materialsGrid");
+
+      grid.innerHTML = `
+        <div class="col-span-full text-center py-12 text-slate-400">
+          <i class="fa-solid fa-spinner fa-spin mr-2"></i>
+          Материалдар жүктөлүүдө...
+        </div>
+      `;
+
+      try {
+        /*
+          API'де GET /api/materials маршруту болушу керек.
+          Бул маршрут жарыяланган материалдарды гана кайтарышы керек.
+        */
+        const response = await fetch(`${API_BASE}/materials`);
+        const result = await response.json();
+
+        if (!response.ok || result.ok === false) {
+          throw new Error(result.message || "Материалдарды алуу мүмкүн болгон жок.");
+        }
+
+        state.materials = Array.isArray(result.items)
+          ? result.items
+          : [];
+
+        renderMaterials();
+      } catch (error) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-12 text-red-300">
+            ${escapeHtml(error.message)}
+          </div>
+        `;
+      }
+    }
+
+    function renderMaterials() {
+      const grid = $("materialsGrid");
+      const query = $("searchInput").value.trim().toLowerCase();
+      const subject = $("subjectFilter").value;
+
+      const filtered = state.materials.filter((item) => {
+        const matchesQuery = [
+          item.title,
+          item.subject,
+          item.type,
+          item.description
+        ].some((value) => String(value || "").toLowerCase().includes(query));
+
+        const matchesSubject =
+          subject === "all" || item.subject === subject;
+
+        return matchesQuery && matchesSubject;
+      });
+
+      $("resultsInfo").textContent =
+        `Табылган материалдар: ${filtered.length}`;
+
+      if (!filtered.length) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-16 text-slate-400">
+            <i class="fa-solid fa-folder-open text-3xl mb-3"></i>
+            <p>Материал табылган жок.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map((item) => `
+        <article class="glass-card rounded-2xl p-5 flex flex-col gap-4 hover:border-purple-500/50 transition">
+          <div class="flex items-start justify-between gap-3">
+            <span class="text-xs text-purple-300 bg-purple-500/10 px-3 py-1 rounded-full">
+              ${escapeHtml(item.subject || "Башка предмет")}
+            </span>
+
+            <span class="text-sm font-bold text-green-400 whitespace-nowrap">
+              ${Number(item.price) > 0 ? escapeHtml(formatSom(item.price)) : "Акысыз"}
+            </span>
+          </div>
+
+          <div>
+            <h3 class="font-bold text-lg text-white">
+              ${escapeHtml(item.title || "Аталышы жок материал")}
+            </h3>
+
+            <p class="text-xs text-slate-400 mt-2">
+              ${escapeHtml(item.type || "Окуу материалы")}
+            </p>
+          </div>
+
+          <p class="text-sm text-slate-300 leading-relaxed flex-grow">
+            ${escapeHtml(item.description || "Материалдын сүрөттөмөсү көрсөтүлгөн эмес.")}
+          </p>
+
+          <button
+            type="button"
+            class="buy-material-btn w-full bg-purple-600 hover:bg-purple-500 text-white rounded-xl py-3 font-semibold text-sm transition"
+            data-id="${escapeHtml(item.id)}"
+          >
+            ${Number(item.price) > 0 ? "Сатып алуу" : "Материалды ачуу"}
+          </button>
+        </article>
+      `).join("");
+
+      grid.querySelectorAll(".buy-material-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const item = state.materials.find(
+            (material) => String(material.id) === button.dataset.id
+          );
+
+          if (item) {
+            selectMaterial(item);
+          }
+        });
+      });
+    }
+
+    $("searchInput").addEventListener("input", renderMaterials);
+    $("subjectFilter").addEventListener("change", renderMaterials);
+
+    $("btnCloseModal").addEventListener("click", closeModal);
+    $("btnClosePurchases").addEventListener("click", closePurchasesModal);
+
+    $("paymentModal").addEventListener("click", (event) => {
+      if (event.target === $("paymentModal")) closeModal();
+    });
+
+    $("purchasesModal").addEventListener("click", (event) => {
+      if (event.target === $("purchasesModal")) closePurchasesModal();
+    });
+
+    $("btnMyPurchases").addEventListener("click", async () => {
+      if (!state.user) {
+        showToast("Алгач сайтка кириңиз.");
+        return;
+      }
+
+      openPurchasesModal();
+      await loadPurchases();
+    });
+        // =========================================================
+    // МАТЕРИАЛДЫ ТАНДОО ЖАНА ТӨЛӨМ ТЕРЕЗЕСИН АЧУУ
+    // =========================================================
+
+    async function selectMaterial(item) {
+      if (!state.user) {
+        showToast("Материал алуу үчүн алгач сайтка кириңиз.");
+        return;
+      }
+
+      state.selectedMaterial = item;
+      $("modalTitle").textContent = item.title || "Окуу материалы";
+      $("paymentRecipient").textContent = "Төлөм маалыматы жүктөлүүдө...";
+      $("modalPrice").textContent = formatSom(item.price || 0);
+      $("paymentInstructions").innerHTML =
+        "<p>Төлөм маалыматтары алынууда. Бир аз күтө туруңуз...</p>";
+
+      $("receiptTransactionId").value = "";
+      $("receiptTransferTime").value = "";
+      $("receiptFile").value = "";
+      $("receiptNote").value = "";
+
+      openModal();
+
+      try {
+        // Сервер төлөм буйрутмасын түзөт.
+        // Баа жана алуучу серверде кайра текшерилиши керек.
+        const result = await api("/payments/create", {
+          method: "POST",
+          body: JSON.stringify({
+            productId: item.id
+          })
+        });
+
+        state.currentOrder = result.order || result.payment || result;
+
+        const methods =
+          result.paymentMethods ||
+          result.methods ||
+          state.currentOrder.paymentMethods ||
+          {};
+
+        renderPaymentMethods(methods, result);
+
+        $("paymentRecipient").textContent =
+          result.recipientName ||
+          state.currentOrder.recipientName ||
+          "Төлөм алуучу";
+
+        $("modalPrice").textContent = formatSom(
+          result.price ?? state.currentOrder.price ?? item.price ?? 0
+        );
+
+        $("paymentInstructions").insertAdjacentHTML(
+          "beforeend",
+          `<p class="mt-3 text-sm text-gray-600">
+            Төлөмдү туура алуучуга жөнөтүңүз. Андан кийин чек сүрөтүн,
+            транзакциянын ID номерин жана которулган убакытты толтуруңуз.
+          </p>`
+        );
+
+      } catch (error) {
+        console.error("Төлөм буйрутмасын түзүү катасы:", error);
+
+        $("paymentInstructions").innerHTML = `
+          <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+            <p class="font-semibold">Төлөм буйрутмасын түзүү мүмкүн болгон жок.</p>
+            <p class="mt-1 text-sm">${escapeHtml(error.message || "Сервер менен байланышта ката кетти.")}</p>
+            <p class="mt-2 text-sm">
+              API сервери иштеп жатканын жана Firebase жөндөөлөрүн текшериңиз.
+            </p>
+          </div>
+        `;
+      }
+    }
+
+
+    // =========================================================
+    // ТӨЛӨМ ЫКМАЛАРЫН КӨРСӨТҮҮ
+    // =========================================================
+
+    function renderPaymentMethods(methods, result = {}) {
+      const container = $("paymentInstructions");
+
+      const mbankQr =
+        methods.mbankQr ||
+        methods.mbankQR ||
+        methods.mbank ||
+        result.mbankQr ||
+        "";
+
+      const obankQr =
+        methods.obankQr ||
+        methods.obankQR ||
+        methods.obank ||
+        result.obankQr ||
+        "";
+
+      const obalance =
+        methods.obalance ||
+        methods.oBalance ||
+        result.obalance ||
+        "";
+
+      const html = [];
+
+      if (mbankQr) {
+        html.push(`
+          <div class="rounded-xl border p-4">
+            <h3 class="font-semibold">MBank аркылуу төлөө</h3>
+            <p class="my-2 text-sm text-gray-600">
+              QR-кодду банк колдонмосу менен сканерлеңиз.
+            </p>
+            <img
+              src="${escapeHtml(mbankQr)}"
+              alt="MBank төлөм QR-коду"
+              class="mx-auto max-h-64 max-w-full rounded-lg object-contain"
+              onerror="this.style.display='none';"
+            >
+          </div>
+        `);
+      }
+
+      if (obankQr) {
+        html.push(`
+          <div class="rounded-xl border p-4">
+            <h3 class="font-semibold">O!Bank аркылуу төлөө</h3>
+            <p class="my-2 text-sm text-gray-600">
+              QR-кодду O!Bank колдонмосу менен сканерлеңиз.
+            </p>
+            <img
+              src="${escapeHtml(obankQr)}"
+              alt="O!Bank төлөм QR-коду"
+              class="mx-auto max-h-64 max-w-full rounded-lg object-contain"
+              onerror="this.style.display='none';"
+            >
+          </div>
+        `);
+      }
+
+      if (obalance) {
+        html.push(`
+          <div class="rounded-xl border p-4">
+            <h3 class="font-semibold">O!Balance аркылуу төлөө</h3>
+            <p class="my-2 text-sm text-gray-600">
+              Төмөнкү номерге төлөм жөнөтүңүз:
+            </p>
+            <div class="flex items-center gap-2">
+              <span class="break-all font-bold text-lg">
+                ${escapeHtml(String(obalance))}
+              </span>
+              <button
+                type="button"
+                id="copyOBalance"
+                class="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+              >
+                Көчүрүү
+              </button>
+            </div>
+          </div>
+        `);
+      }
+
+      if (!html.length) {
+        html.push(`
+          <div class="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-yellow-800">
+            Төлөм ыкмалары табылган жок. Материалдын автору жана
+            Bilimal төлөм жөндөөлөрү серверде туура орнотулганын текшериңиз.
+          </div>
+        `);
+      }
+
+      container.innerHTML = html.join("");
+
+      const copyButton = $("copyOBalance");
+
+      if (copyButton) {
+        copyButton.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(String(obalance));
+            showToast("O!Balance номери көчүрүлдү.");
+          } catch {
+            showToast("Номерди кол менен көчүрүңүз: " + obalance);
+          }
+        });
+      }
+    }
+
+
+    // =========================================================
+    // ЧЕК СҮРӨТҮН DATA URL ФОРМАТЫНА АЙЛАНДЫРУУ
+    // =========================================================
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Чек сүрөтүн окуу мүмкүн болгон жок."));
+
+        reader.readAsDataURL(file);
+      });
+    }
+
+
+    // =========================================================
+    // ТӨЛӨМ ЧЕГИН ЖӨНӨТҮҮ
+    // =========================================================
+
+    async function submitReceipt(event) {
+      event.preventDefault();
+
+      if (!state.user) {
+        showToast("Алгач сайтка кириңиз.");
+        return;
+      }
+
+      if (!state.currentOrder) {
+        showToast("Төлөм буйрутмасы табылган жок. Кайра аракет кылыңыз.");
+        return;
+      }
+
+      const transactionId = $("receiptTransactionId").value.trim();
+      const transferTimeValue = $("receiptTransferTime").value;
+      const file = $("receiptFile").files[0];
+
+      if (!transactionId) {
+        showToast("Транзакциянын ID номерин киргизиңиз.");
+        $("receiptTransactionId").focus();
+        return;
+      }
+
+      if (!transferTimeValue) {
+        showToast("Акча которулган убакытты көрсөтүңүз.");
+        $("receiptTransferTime").focus();
+        return;
+      }
+
+      if (!file) {
+        showToast("Төлөмдүн чек сүрөтүн тандаңыз.");
+        $("receiptFile").focus();
+        return;
+      }
+
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp"
+      ];
+
+      if (!allowedTypes.includes(file.type)) {
+        showToast("JPG, PNG же WEBP форматындагы сүрөт тандаңыз.");
+        return;
+      }
+
+      const maxSize = 2 * 1024 * 1024;
+
+      if (file.size > maxSize) {
+        showToast("Чек сүрөтүнүн көлөмү 2 МБдан ашпашы керек.");
+        return;
+      }
+
+      const transferTimestamp = new Date(transferTimeValue).getTime();
+
+      if (!Number.isFinite(transferTimestamp)) {
+        showToast("Которуу убактысы туура эмес көрсөтүлгөн.");
+        return;
+      }
+
+      const now = Date.now();
+
+      if (transferTimestamp > now + 60 * 1000) {
+        showToast("Которуу убактысы келечектеги убакыт болбошу керек.");
+        return;
+      }
+
+      if (now - transferTimestamp > 2 * 60 * 60 * 1000) {
+        showToast("Которулган убакыт 2 сааттан ашып кетти. Жаңы төлөмдүн чегин колдонуңуз.");
+        return;
+      }
+
+      const submitButton = $("btnSubmitPayment");
+      const originalText = submitButton.textContent;
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Чек текшерилүүдө...";
+
+      try {
+        const receiptDataUrl = await fileToDataUrl(file);
+
+        const orderId =
+          state.currentOrder.orderId ||
+          state.currentOrder.id ||
+          state.currentOrder.paymentId;
+
+        if (!orderId) {
+          throw new Error(
+            "Сервер төлөм буйрутмасынын номерин кайтарган жок."
+          );
+        }
+
+        const result = await api("/payments/receipt", {
+          method: "POST",
+          body: JSON.stringify({
+            orderId,
+            transactionId,
+            transferTime: transferTimestamp,
+            receiptDataUrl,
+            note: $("receiptNote").value.trim()
+          })
+        });
+
+        const status = String(
+          result.status ||
+          result.payment?.status ||
+          "pending"
+        ).toLowerCase();
+
+        closeModal();
+
+        if (
+          status === "approved" ||
+          status === "completed" ||
+          status === "paid"
+        ) {
+          showToast("Төлөм ырасталды. Сатып алуулар бөлүмүн текшериңиз.");
+        } else {
+          showToast(
+            "Чек кабыл алынды. Төлөм текшерүүгө жөнөтүлдү."
+          );
+        }
+
+        await loadPurchases();
+
+      } catch (error) {
+        console.error("Чек жөнөтүү катасы:", error);
+        showToast(error.message || "Чекти жөнөтүү мүмкүн болгон жок.");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+      }
+    }
+
+    $("receiptForm").addEventListener("submit", submitReceipt);
+
+
+    // =========================================================
+    // САТЫП АЛЫНГАН МАТЕРИАЛДАР
+    // =========================================================
+
+    async function loadPurchases() {
+      const list = $("purchasesList");
+
+      if (!state.user) {
+        list.innerHTML = `
+          <p class="text-gray-500">Сатып алууларды көрүү үчүн сайтка кириңиз.</p>
+        `;
+        return;
+      }
+
+      list.innerHTML = `
+        <p class="text-gray-500">Сатып алуулар жүктөлүүдө...</p>
+      `;
+
+      try {
+        // Бул маалымат Firebase Realtime Database эрежелери аркылуу
+        // колдонуучунун өзүнө гана жеткиликтүү болушу керек.
+        const snapshot = await get(
+          ref(database, `users/${state.user.uid}/purchases`)
+        );
+
+        if (!snapshot.exists()) {
+          list.innerHTML = `
+            <p class="text-gray-500">Сизде азырынча сатып алынган материал жок.</p>
+          `;
+          return;
+        }
+
+        const raw = snapshot.val();
+        const purchases = Object.entries(raw).map(([key, value]) => ({
+          key,
+          ...(value || {})
+        }));
+
+        purchases.sort((a, b) => {
+          return Number(b.purchasedAt || b.createdAt || 0) -
+                 Number(a.purchasedAt || a.createdAt || 0);
+        });
+
+        list.innerHTML = purchases.map((purchase) => {
+          const title = purchase.title ||
+                        purchase.materialTitle ||
+                        "Окуу материалы";
+
+          const expiresAt = Number(purchase.expiresAt || 0);
+          const approved = [
+            "approved",
+            "completed",
+            "paid"
+          ].includes(String(purchase.status || "").toLowerCase());
+
+          const active = approved &&
+                         expiresAt > Date.now();
+
+          const expiryText = expiresAt
+            ? new Date(expiresAt).toLocaleString("ky-KG")
+            : "Мөөнөт маалыматы жок";
+
+          return `
+            <article class="rounded-xl border p-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="font-semibold">${escapeHtml(title)}</h3>
+                  <p class="mt-1 text-sm text-gray-500">
+                    Баасы: ${formatSom(purchase.price || 0)}
+                  </p>
+                  <p class="mt-1 text-sm text-gray-500">
+                    Статусу: ${active ? "Жеткиликтүү" : approved ? "Мөөнөтү бүткөн" : "Текшерилүүдө"}
+                  </p>
+                  <p class="mt-1 text-sm text-gray-500">
+                    Жеткиликтүүлүк мөөнөтү: ${escapeHtml(expiryText)}
+                  </p>
+                </div>
+
+                <div>
+                  ${
+                    active
+                      ? `<button
+                           type="button"
+                           class="download-purchase rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                           data-material-id="${escapeHtml(String(purchase.materialId || purchase.productId || purchase.key))}"
+                         >
+                           Материалды жүктөө
+                         </button>`
+                      : `<span class="text-sm text-gray-500">
+                           Жүктөө жеткиликтүү эмес
+                         </span>`
+                  }
+                </div>
+              </div>
+            </article>
+          `;
+        }).join("");
+
+        list.querySelectorAll(".download-purchase").forEach((button) => {
+          button.addEventListener("click", async () => {
+            await downloadPurchasedMaterial(button.dataset.materialId);
+          });
+        });
+
+      } catch (error) {
+        console.error("Сатып алууларды жүктөө катасы:", error);
+
+        list.innerHTML = `
+          <p class="text-red-600">
+            Сатып алууларды жүктөө мүмкүн болгон жок.
+            Firebase эрежелерин жана серверди текшериңиз.
+          </p>
+        `;
+      }
+    }
+
+
+    // =========================================================
+    // САТЫП АЛЫНГАН МАТЕРИАЛДЫ КООПСУЗ ЖҮКТӨӨ
+    // =========================================================
+
+    async function downloadPurchasedMaterial(materialId) {
+      if (!state.user) {
+        showToast("Алгач сайтка кириңиз.");
+        return;
+      }
+
+      if (!materialId) {
+        showToast("Материалдын ID номери табылган жок.");
+        return;
+      }
+
+      try {
+        /*
+          Маанилүү:
+          Бул API серверде ишке ашырылышы керек.
+          Сервер колдонуучунун сатып алуусун, 72 сааттык мөөнөтүн
+          жана файлга жетүү укугун кайра текшерип, кыска мөөнөттүү
+          корголгон download URL кайтарышы керек.
+
+          Серверде бул маршрут жок болсо, жүктөө иштебейт.
+        */
+
+        const result = await api(
+          `/materials/${encodeURIComponent(materialId)}/download`,
+          { method: "GET" }
+        );
+
+        if (!result.url) {
+          throw new Error(
+            "Сервер коопсуз жүктөө шилтемесин кайтарган жок."
+          );
+        }
+
+        window.location.href = result.url;
+
+      } catch (error) {
+        console.error("Материалды жүктөө катасы:", error);
+        showToast(
+          error.message ||
+          "Материалды жүктөө мүмкүн болгон жок. Сервердин download API маршрутун текшериңиз."
+        );
+      }
+    }
+
+
+    // =========================================================
+    // БАРДЫК ТЕРЕЗЕЛЕРДИ ЖАБУУ ЖАНА БАШТАПКЫ ЖҮКТӨӨ
+    // =========================================================
+
+    $("btnCloseModal").addEventListener("click", closeModal);
+    $("btnClosePurchases").addEventListener("click", closePurchasesModal);
+
+    $("paymentModal").addEventListener("click", (event) => {
+      if (event.target === $("paymentModal")) {
+        closeModal();
+      }
+    });
+
+    $("purchasesModal").addEventListener("click", (event) => {
+      if (event.target === $("purchasesModal")) {
+        closePurchasesModal();
+      }
+    });
+
+    // Сатып алууларды кайра ачканда жаңыртып көрсөтүү.
+    $("btnMyPurchases").addEventListener("click", async () => {
+      if (!state.user) {
+        showToast("Алгач сайтка кириңиз.");
+        return;
+      }
+
+      openPurchasesModal();
+      await loadPurchases();
+    });
+
+  </script>
+</body>
+</html>
