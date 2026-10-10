@@ -99,6 +99,24 @@
       gap: 20px;
     }
 
+    /* Визуалдык Canvas терезеси */
+    .canvas-container {
+      width: 100%;
+      height: 180px;
+      background: #020617;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    canvas {
+      display: block;
+    }
+
     .control-group {
       display: flex;
       flex-direction: column;
@@ -132,7 +150,7 @@
     }
 
     .result-value {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: #4ade80;
       margin-top: 5px;
@@ -179,27 +197,36 @@
       <i class="fa-solid fa-business-time"></i> Виртуалдык лаборатория: Эйнштейндин салыштырмалуулук теориясын визуалдаштыруу
     </div>
     <div class="lab-desc">
-      Бул интерактивдүү лабораторияда жарык ылдамдыгына жакындаганда убакыттын өзгөрүшүн (убакыттын басаңдоосун — time dilation) жана массанын энергияга айлануусун кошуна слайдерди жылдыруу аркылуу текшерип көрүңүз.
+      Атайын салыштырмалуулук теориясынын негизги эффекттери: ылдамдык жарык ылдамдыгына ($c$) жеткенде убакыттын басаңдоосу (<span style="color: #38bdf8;">Time Dilation</span>), узундуктун кысылышы (<span style="color: #38bdf8;">Length Contraction</span>) жана релятивисттик энергиянын өсүшү. Слайдерди жылдырып байкаңыз.
     </div>
 
     <div class="sim-box">
+      <!-- Визуалдык симуляция чыга турган Canvas -->
+      <div class="canvas-container">
+        <canvas id="relativityCanvas" width="940" height="180"></canvas>
+      </div>
+
       <div class="control-group">
-        <label for="speedRange">Ракетанын ылдамдыгы ($v$ / Жылдамдыкка катышы $v/c$): <span id="speedVal">0.0</span>c</label>
+        <label for="speedRange">Космос кемесинин ылдамдыгы ($v/c$): <span id="speedVal" style="color: #f43f5e;">0.00</span>c</label>
         <input type="range" id="speedRange" min="0" max="0.99" step="0.01" value="0" oninput="updateRelativity()">
       </div>
 
       <div class="results-grid">
         <div class="result-card">
-          <div style="font-size: 0.85rem; color: #94a3b8;">Лоренц фактору ($\gamma$):</div>
+          <div style="font-size: 0.82rem; color: #94a3b8;">Лоренц фактору ($\gamma$):</div>
           <div class="result-value" id="lorentzVal">1.00</div>
         </div>
         <div class="result-card">
-          <div style="font-size: 0.85rem; color: #94a3b8;">Жердеги 1 саат ракетада:</div>
+          <div style="font-size: 0.82rem; color: #94a3b8;">Узундуктун кысылышы ($L/L_0$):</div>
+          <div class="result-value" id="lengthVal" style="color: #38bdf8;">100 %</div>
+        </div>
+        <div class="result-card">
+          <div style="font-size: 0.82rem; color: #94a3b8;">Жердеги 1 саат ракетада:</div>
           <div class="result-value" id="timeVal">60.0 мүн</div>
         </div>
         <div class="result-card">
-          <div style="font-size: 0.85rem; color: #94a3b8;">Массанын энергиясы ($E=mc^2$):</div>
-          <div class="result-value" id="energyVal">1.00 эcсе өсөт</div>
+          <div style="font-size: 0.82rem; color: #94a3b8;">Толук энергия ($E/E_0$):</div>
+          <div class="result-value" id="energyVal" style="color: #c084fc;">1.00 эсе</div>
         </div>
       </div>
     </div>
@@ -222,6 +249,55 @@
   </div>
 
   <script>
+    const canvas = document.getElementById('relativityCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawRocket(v_c) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Фондук жылдыздар
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < 40; i++) {
+        let x = (i * 37 + (Date.now() * v_c * 0.2) % canvas.width) % canvas.width;
+        let y = (i * 23) % canvas.height;
+        ctx.fillRect(x, y, 1.5, 1.5);
+      }
+
+      // Ракетанын узундугу Лоренц факторуна жараша кысылат
+      const gamma = 1.0 / Math.sqrt(1 - (v_c * v_c));
+      const baseWidth = 140;
+      const currentWidth = baseWidth / gamma; // Узундуктун кысылышы
+
+      const startX = (canvas.width - currentWidth) / 2;
+      const startY = canvas.height / 2 - 25;
+
+      // Ракетанын корпусу
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.moveTo(startX + currentWidth, startY + 25);
+      ctx.lineTo(startX, startY);
+      ctx.lineTo(startX, startY + 50);
+      ctx.closePath();
+      ctx.fill();
+
+      // Ракетанын от жалыны (ылдамдыкка жараша чоңоёт)
+      if (v_c > 0) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.moveTo(startX, startY + 12);
+        ctx.lineTo(startX - (20 * v_c + 10), startY + 25);
+        ctx.lineTo(startX, startY + 38);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Текст маалыматтар кампаниясы
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '13px Poppins, sans-serif';
+      ctx.fillText(`Кеме ылдамдыгы: ${(v_c * 100).toFixed(0)}% жарык ылдамдыгынан`, 20, 30);
+      ctx.fillText(`Кысылуу коэффициенти: ${(1/gamma * 100).toFixed(1)}%`, 20, 50);
+    }
+
     function updateRelativity() {
       const v_c = parseFloat(document.getElementById('speedRange').value);
       document.getElementById('speedVal').innerText = v_c.toFixed(2);
@@ -230,13 +306,23 @@
       const gamma = 1.0 / Math.sqrt(1 - (v_c * v_c));
       document.getElementById('lorentzVal').innerText = gamma.toFixed(2);
 
-      // Убакыттын басаңдоосу (минута менен, баштапкы 60 мүнөт)
+      // Узундуктун кысылышы
+      const lengthPercent = (1.0 / gamma) * 100;
+      document.getElementById('lengthVal').innerText = lengthPercent.toFixed(1) + " %";
+
+      // Убакыттын басаңдоосу (60 мүнөт стандарт)
       const timeElapsed = 60.0 / gamma;
       document.getElementById('timeVal').innerText = timeElapsed.toFixed(1) + " мүн";
 
       // Энергия коэффициенти
       document.getElementById('energyVal').innerText = gamma.toFixed(2) + " эсе";
+
+      // Canvas анимациясын жаңылоо
+      drawRocket(v_c);
     }
+
+    // Баштапкы абал
+    updateRelativity();
   </script>
 </body>
 </html>
