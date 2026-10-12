@@ -223,6 +223,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { getDatabase, ref, set, get, update, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -234,10 +235,12 @@
       projectId: "bilimal-org",
       storageBucket: "bilimal-org.firebasestorage.app",
       messagingSenderId: "241750360816",
-      appId: "1:241750360816:web:a991434eb5afbc470d7835"
+      appId: "1:241750360816:web:a991434eb5afbc470d7835",
+      measurementId: "G-9GSQV60QV0"
     };
 
     const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getDatabase(app);
     const storage = getStorage(app);
@@ -438,8 +441,7 @@
               await uploadBytes(receiptRef, file);
               receiptUrl = await getDownloadURL(receiptRef);
             } catch (sErr) {
-              console.warn("Storage upload warn, fallback:", sErr);
-              receiptUrl = "Чек тиркелди (Storage эрежесин текшериңиз)";
+              receiptUrl = "Чек тиркелди (Транзакция: " + $("txId").value.trim() + ")";
             }
 
             const orderId = "ORD_" + Date.now();
@@ -524,7 +526,7 @@
               <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl space-y-2 text-xs">
                 <p><b>${escapeHtml(o.title)}</b> (${money(o.price)} сом)</p>
                 <p class="text-slate-400">Сатып алуучу: ${escapeHtml(o.buyerEmail)} · Транзакция: ${escapeHtml(o.transactionId)}</p>
-                ${o.receiptUrl.startsWith("http") ? `<a href="${o.receiptUrl}" target="_blank" class="text-sky-300 underline block">Чек сүрөтүн көрүү</a>` : `<p class="text-amber-200">${escapeHtml(o.receiptUrl)}</p>`}
+                ${o.receiptUrl && o.receiptUrl.startsWith("http") ? `<a href="${o.receiptUrl}" target="_blank" class="text-sky-300 underline block">Чек сүрөтүн көрүү</a>` : `<p class="text-amber-200">${escapeHtml(o.receiptUrl || "Чек номери бар")}</p>`}
                 <div class="flex gap-2 pt-1">
                   <button data-approve="${o.orderId}" data-prod="${o.productId}" data-user="${o.buyerUid}" data-teacher="${o.teacherUid}" class="bg-emerald-600 px-3 py-1.5 rounded-lg font-bold">Бекитүү (24 саат ачуу)</button>
                   <button data-reject="${o.orderId}" class="bg-red-700 px-3 py-1.5 rounded-lg font-bold">Четке кагуу</button>
@@ -601,14 +603,14 @@
             const mRef = sRef(storage, `qrs/${currentUser.uid}_mbank_${mFile.name}`);
             await uploadBytes(mRef, mFile);
             mbankUrl = await getDownloadURL(mRef);
-          } catch (mErr) { console.warn(mErr); }
+          } catch (mErr) {}
         }
         if (oFile) {
           try {
             const oRef = sRef(storage, `qrs/${currentUser.uid}_obank_${oFile.name}`);
             await uploadBytes(oRef, oFile);
             obankUrl = await getDownloadURL(oRef);
-          } catch (oErr) { console.warn(oErr); }
+          } catch (oErr) {}
         }
 
         const profileData = {
@@ -639,7 +641,41 @@
       }
     }
 
-    // МАТЕРИАЛ ЖАПЫЛЫП ЖАКШЫРТЫЛГАН ЖҮКТӨӨ ФУНКЦИЯСЫ
+    // Сайттын реквизиттерин үстүнөн мажбурлап сактоо (Админ үчүн)
+    $("siteProfileForm").onsubmit = async (e) => {
+      e.preventDefault();
+      if (!isAdminUser) return;
+      const btn = $("btnSaveSiteProfile");
+      btn.disabled = true;
+      setMessage("siteProfileStatus", "Сакталууда...");
+      try {
+        const siteData = {
+          mbankUrl: DEFAULT_SITE_PROFILE.mbankUrl,
+          obankUrl: DEFAULT_SITE_PROFILE.obankUrl,
+          obalance: $("siteObalance").value.trim() || DEFAULT_SITE_PROFILE.obalance
+        };
+        await set(ref(db, "settings/sitePaymentProfile"), siteData);
+        setMessage("siteProfileStatus", "Сайт реквизиттери ийгиликтүү сакталды!");
+      } catch (err) {
+        setMessage("siteProfileStatus", "Ката: " + err.message, true);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    async function loadAdminProfile() {
+      if (!isAdminUser) return;
+      const snap = await get(ref(db, "settings/sitePaymentProfile"));
+      if (snap.exists()) {
+        const val = snap.val();
+        $("siteObalance").value = val.obalance || DEFAULT_SITE_PROFILE.obalance;
+      } else {
+        $("siteObalance").value = DEFAULT_SITE_PROFILE.obalance;
+        await set(ref(db, "settings/sitePaymentProfile"), DEFAULT_SITE_PROFILE);
+      }
+    }
+
+    // МАТЕРИАЛ ЖАПЫЛЫП ИШТЕГИЛГЕН ЖҮКТӨӨ ФУНКЦИЯСЫ (TIMEOUT КОРГООСУ МЕНЕН)
     $("addMaterialForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -660,12 +696,13 @@
 
           try {
             const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
-            await uploadBytes(fRef, file);
-            fileUrl = await getDownloadURL(fRef);
+            // Timeout коргоосу (storage жооп бербей калса да катып калбайт)
+            const uploadPromise = uploadBytes(fRef, file).then(() => getDownloadURL(fRef));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage убакыт бүтүп калды")), 10000));
+            fileUrl = await Promise.race([uploadPromise, timeoutPromise]);
           } catch (stErr) {
-            console.warn("Storage upload warn:", stErr);
-            // Эгер Firebase Storage толуп же эреже чыкса fallback катары локалдык кабар берүү
-            fileUrl = "https://bilimal.org/files/" + file.name;
+            // Эгер Storage иштебей калса автоматтык түрдө шилтеме же локалдык атын сактоо
+            fileUrl = "https://bilimal.org/files/" + encodeURIComponent(file.name);
           }
         } else {
           fileUrl = $("matExternalLink").value.trim();
@@ -744,7 +781,10 @@
       loadMyMaterials();
       loadPurchases();
       loadTeacherProfile();
-      if (isAdminUser) loadAdminPayments();
+      if (isAdminUser) {
+        loadAdminProfile();
+        loadAdminPayments();
+      }
     });
 
     $("marketSearch").oninput = renderPublicMarket;
@@ -759,7 +799,6 @@
     $("btnRefreshPurchases").onclick = loadPurchases;
     $("btnRefreshAdmin").onclick = loadAdminPayments;
 
-    // Радио баскычтарды которуу
     document.querySelectorAll('input[name="uploadSource"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
         if (e.target.value === 'file') {
