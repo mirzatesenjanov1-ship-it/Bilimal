@@ -17,6 +17,7 @@
     .btn-primary { background:#7c3aed; color:#fff; } .btn-primary:hover { background:#8b5cf6; }
     .badge { padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
     
+    /* БҮДӨМҮК (MUTNYI) ЭФФЕКТ СТИЛИ */
     .blur-preview-container {
       position: relative;
       overflow: hidden;
@@ -111,8 +112,8 @@
       <div id="cartItemsList" class="space-y-3"></div>
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
-        <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Чек акыркы 2 сааттын ичинде берилген жана мурда колдонулбаган болушу керек (автоматтык түрө текшерилет).</p>
+        <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана тастыктоо</h3>
+        <p class="text-xs text-slate-400">Ар бир топтун суммасына жараша төлөм жасап, астына чек номерин жазып жөнөтүңүз.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -122,10 +123,10 @@
             <input id="buyerEmailInput" type="email" placeholder="email@gmail.com" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
           <div>
-            <label class="block text-xs text-slate-300 mb-1" for="cartReceiptFile">Төлөм чектин сүрөтү (Скриншот) *</label>
-            <input id="cartReceiptFile" type="file" accept="image/*" required class="input-field w-full p-2.5 rounded-xl text-xs">
+            <label class="block text-xs text-slate-300 mb-1" for="cartTxId">Транзакция ID / Чек номери *</label>
+            <input id="cartTxId" type="text" placeholder="Мисалы: 9876543210" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
-          <button type="submit" id="btnSubmitCartOrder" class="btn-primary w-full py-3 rounded-xl font-bold text-xs">Чекти текшерүү жана автоматтык түрдө алуу</button>
+          <button type="submit" id="btnSubmitCartOrder" class="btn-primary w-full py-3 rounded-xl font-bold text-xs">Чекти жөнөтүү жана буйрутма берүү</button>
         </form>
         <p id="cartStatus" class="text-xs text-slate-400 text-center"></p>
       </div>
@@ -134,8 +135,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -150,7 +150,6 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const storage = getStorage(app);
 
     const DEFAULT_SITE = {
       mbankUrl: "/qrmbank.png",
@@ -212,6 +211,7 @@
               <span class="text-slate-400 font-medium">${item.grade || ''}</span>
             </div>
             
+            <!-- МАТЕРИАЛДЫН ТҮРҮ ЖАНА ТЕМА ЖАЗЫЛГАН БӨЛҮК -->
             <div class="space-y-1">
               <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">${matType}</span>
               <h3 class="font-bold text-base text-slate-100">${item.title}</h3>
@@ -220,6 +220,7 @@
             <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
           </div>
 
+          <!-- ДОКУМЕНТТИК ҮЧТӨН БИР БӨЛҮГҮ АЧЫК, КАЛГАНЫ БҮДӨМҮК (BLUR) -->
           <div class="blur-preview-container min-h-[120px] p-3 text-xs text-slate-300 space-y-1">
             <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1">
               📄 Документтин үзүндүсү (1/3 бөлүгү):
@@ -368,80 +369,32 @@
     $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРҮҮ ЖАНА ДОСТУП БЕРҮҮ
     $("cartSubmitForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("btnSubmitCartOrder");
       btn.disabled = true;
-      $("cartStatus").textContent = "Чек талдоого алынууда жана текшерилүүдө...";
+      $("cartStatus").textContent = "Буйрутма жөнөтүлүүдө...";
 
       try {
         const email = $("buyerEmailInput").value.trim();
-        const receiptFile = $("cartReceiptFile").files[0];
-        if (!receiptFile) throw new Error("Чектин сүрөтүн тандаңыз.");
-
-        // Чектин файлын Storage'га сактоо
-        const receiptRef = sRef(storage, `receipts/AUTO_${Date.now()}_${receiptFile.name}`);
-        await uploadBytes(receiptRef, receiptFile);
-        const receiptUrl = await getDownloadURL(receiptRef);
-
-        // Чектин уникалдуулугун текшерүү (used_receipts аркылуу)
-        const receiptHash = receiptFile.name + "_" + receiptFile.size;
-        const usedSnap = await get(ref(db, `used_receipts/${btoa(receiptHash).replace(/[/+=]/g, '')}`));
-        
-        if (usedSnap.exists()) {
-          throw new Error("Бул чек буга чейин колдонулган! Башка чек жүктөңүз.");
-        }
-
-        // Чек акыркы 2 сааттын ичинде берилгенин текшерүү (симуляция же файлдын акыркы убагы)
-        const fileTime = receiptFile.lastModified || Date.now();
-        const now = Date.now();
-        const twoHoursMs = 2 * 60 * 60 * 1000;
-
-        if (now - fileTime > twoHoursMs) {
-          throw new Error("Чектин убактысы эскирген (2 сааттан мурунку чектер кабыл алынбайт).");
-        }
-
-        // Чекти колдонулган деп сактоо
-        await set(ref(db, `used_receipts/${btoa(receiptHash).replace(/[/+=]/g, '')}`), {
-          usedAt: now,
-          email
-        });
-
-        // Автоматтык түрдө файлдарды жүктөп алуу укугун (доступ) берүү
-        let downloadLinksHtml = "";
-        const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000; // 24 саат
-        const expiresAt = now + ACCESS_DURATION_MS;
+        const txId = $("cartTxId").value.trim();
 
         for (const item of cart) {
-          const orderId = "AUTO_" + now + "_" + Math.floor(Math.random()*1000);
-          
-          // Буйрутманы жазуу
+          const orderId = "CART_" + Date.now() + "_" + Math.floor(Math.random()*1000);
           await set(ref(db, `payment_orders/${orderId}`), {
             orderId, productId: item.id, title: item.title, price: item.price,
             buyerEmail: email, teacherUid: item.authorUid,
-            receiptUrl, status: "approved_automatically", createdAt: now
+            transactionId: txId, status: "pending_review", createdAt: Date.now()
           });
-
-          // Сатуу циклин жаңыртуу (5-сатуу сайтыка багытталышы үчүн)
-          try {
-            const cycleRef = ref(db, `payment_cycles/${item.authorUid}`);
-            const cSnap = await get(cycleRef);
-            const cVal = cSnap.val() || { count: 0 };
-            await set(cycleRef, { count: (cVal.count || 0) + 1 });
-          } catch(err) {}
-
-          downloadLinksHtml += `<div class="p-2 bg-slate-800 rounded-lg mt-1"><b class="text-white">${item.title}</b><br><a href="${item.fileUrl}" target="_blank" class="text-emerald-400 underline font-bold">👉 Жүктөп алуу (Скачать)</a></div>`;
         }
 
-        $("cartStatusinnerHTML = `<div class='text-emerald-400 font-bold space-y-2'>✅ Чек ийгиликтүү тастыкталды! Төмөнкү материалдарга 24 сааттык жүктөө укугу берилди:<br>${downloadLinksHtml}</div>`;
-        
+        $("cartStatus").textContent = "Буйрутма кабыл алынды! Чек текшерилген соң укук берилет.";
         cart = [];
         renderShowcase();
         updateCartUI();
+        setTimeout(() => $("cartModal").classList.add("hidden"), 2500);
       } catch (err) {
         $("cartStatus").textContent = "Ката: " + err.message;
-        $("cartStatus").classList.add("text-red-400");
       } finally {
         btn.disabled = false;
       }
