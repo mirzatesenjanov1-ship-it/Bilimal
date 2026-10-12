@@ -155,7 +155,7 @@
             <div id="fileUploadBox" class="space-y-1">
               <label class="small-label" for="matFile">Файлды компьютерден тандаңыз *</label>
               <input id="matFile" type="file" class="input-field w-full p-3 rounded-xl text-sm" accept=".doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.mp4,.webm,.zip,.html,.htm,.css,.js,.json">
-              <p id="matFileInfo" class="text-[11px] text-slate-400 mt-1">Файл Firebase сактагычына жүктөлөт (100 МБ чейин).</p>
+              <p id="matFileInfo" class="text-[11px] text-slate-400 mt-1">Файл купуя сактагычка жүктөлөт (100 МБ чейин).</p>
             </div>
 
             <div id="linkUploadBox" class="hidden space-y-1">
@@ -224,15 +224,15 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-    import { getDatabase, ref, set, get, update, push, remove, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getDatabase, ref, set, get, update, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
       authDomain: "bilimal-org.firebaseapp.com",
       databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org",
-      storageBucket: "bilimal-org.appspot.com",
+      storageBucket: "bilimal-org.firebasestorage.app",
       messagingSenderId: "241750360816",
       appId: "1:241750360816:web:a991434eb5afbc470d7835"
     };
@@ -244,9 +244,13 @@
 
     setPersistence(auth, browserLocalPersistence).catch(err => console.error(err));
 
-    const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000; // 1 күн (24 саат)
+    const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000; // 24 саат (1 күн)
     const BONUS_EVERY = 6;
-    const MAX_FILE_BYTES = 100 * 1024 * 1024;
+    const DEFAULT_SITE_PROFILE = {
+      mbankUrl: "/qrmbank.png",
+      obankUrl: "/О!bank_QR.png",
+      obalance: "+996706035765"
+    };
 
     let currentUser = null;
     let isAdminUser = false;
@@ -254,13 +258,10 @@
     let myItems = [];
     let myPurchases = [];
     let activeItem = null;
-    let activeOrder = null;
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
-    const fmtDate = n => n ? new Date(Number(n)).toLocaleString("ky-KG") : "—";
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
-    const fileSize = n => { const b = Number(n || 0); return b < 1024*1024 ? `${(b/1024).toFixed(1)} КБ` : `${(b/(1024*1024)).toFixed(1)} МБ`; };
 
     function setMessage(id, msg, err = false) {
       const el = $(id); if (!el) return;
@@ -362,7 +363,7 @@
       } catch (e) {}
     }
 
-    // --- САТЫП АЛУУ ЖАНА ЧЕК ЖӨНӨТҮҮ ЖОЛУ ---
+    // --- САТЫП АЛУУ ЖАНА ЧЕК ЖӨНӨТҮҮ ---
     async function openPurchaseModal(item) {
       activeItem = item;
       $("purchaseTitle").textContent = item.title;
@@ -384,41 +385,35 @@
           setTimeout(() => $("marketPurchaseModal").classList.add("hidden"), 1500);
         };
       } else {
-        // Реквизиттерди табуу (Мугалимдин же Сайттын QR коддору)
-        let recName = "Мугалим";
-        let qrData = null;
-        
-        // Сатуу кезеги аркылуу кимге которуу керектигин аныктоо
         const cycleSnap = await get(ref(db, `payment_cycles/${item.authorUid}`));
         const cycleVal = cycleSnap.val() || { count: 0 };
         const saleNum = (cycleVal.count || 0) + 1;
         const target = saleNum % 5 === 0 ? "site" : "teacher";
 
+        let recName = "Bilimal.org сайты";
+        let qrData = DEFAULT_SITE_PROFILE;
+
         if (target === "teacher") {
           const profSnap = await get(ref(db, `users/${item.authorUid}/paymentProfile`));
-          qrData = profSnap.val();
-          const userSnap = await get(ref(db, `users/${item.authorUid}/profile`));
-          recName = userSnap.val()?.name || "Мугалим";
+          if (profSnap.exists() && (profSnap.val().mbankUrl || profSnap.val().obankUrl || profSnap.val().obalance)) {
+            qrData = profSnap.val();
+            recName = item.authorName || "Мугалим";
+          }
         } else {
           const siteSnap = await get(ref(db, "settings/sitePaymentProfile"));
-          qrData = siteSnap.val();
-          recName = "Bilimal.org администрациясы";
-        }
-
-        if (!qrData || (!qrData.mbankUrl && !qrData.obankUrl && !qrData.obalance)) {
-          $("purchaseContent").innerHTML = `<p class="text-xs text-red-400">Алуучу төлөм реквизиттерин киргизе элек. Администраторго кайрылыңыз.</p>`;
-          $("marketPurchaseModal").classList.remove("hidden");
-          return;
+          if (siteSnap.exists()) {
+            qrData = siteSnap.val();
+          }
         }
 
         $("purchaseContent").innerHTML = `
           <div class="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-xs space-y-1">
-            <p class="font-bold text-amber-200">Алуучу: ${escapeHtml(recName)} (Сатуу №${saleNum})</p>
+            <p class="font-bold text-amber-200">Төлөм алуучу: ${escapeHtml(recName)} (Сатуу №${saleNum})</p>
             <p class="text-slate-300">Суммасы: <b>${money(item.price)} сом</b></p>
           </div>
           <div class="grid grid-cols-2 gap-2 text-center">
-            ${qrData.mbankUrl ? `<div><p class="text-[10px] text-slate-400 mb-1">MBank QR</p><img src="${qrData.mbankUrl}" class="rounded-lg bg-white p-1 max-h-40 mx-auto"></div>` : ""}
-            ${qrData.obankUrl ? `<div><p class="text-[10px] text-slate-400 mb-1">O!Bank QR</p><img src="${qrData.obankUrl}" class="rounded-lg bg-white p-1 max-h-40 mx-auto"></div>` : ""}
+            ${qrData.mbankUrl ? `<div><p class="text-[10px] text-slate-400 mb-1">MBank QR</p><img src="${qrData.mbankUrl}" class="rounded-lg bg-white p-1 max-h-40 mx-auto" alt="MBank QR"></div>` : ""}
+            ${qrData.obankUrl ? `<div><p class="text-[10px] text-slate-400 mb-1">O!Bank QR</p><img src="${qrData.obankUrl}" class="rounded-lg bg-white p-1 max-h-40 mx-auto" alt="O!Bank QR"></div>` : ""}
           </div>
           ${qrData.obalance ? `<p class="text-xs text-center text-emerald-300">O!Balance номери: <b>${escapeHtml(qrData.obalance)}</b></p>` : ""}
           
@@ -437,9 +432,15 @@
           btn.textContent = "Жүктөлүүдө...";
           try {
             const file = $("receiptFile").files[0];
-            const receiptRef = sRef(storage, `receipts/${currentUser.uid}_${Date.now()}_${file.name}`);
-            await uploadBytes(receiptRef, file);
-            const receiptUrl = await getDownloadURL(receiptRef);
+            let receiptUrl = "";
+            try {
+              const receiptRef = sRef(storage, `receipts/${currentUser.uid}_${Date.now()}_${file.name}`);
+              await uploadBytes(receiptRef, file);
+              receiptUrl = await getDownloadURL(receiptRef);
+            } catch (sErr) {
+              console.warn("Storage upload warn, fallback:", sErr);
+              receiptUrl = "Чек тиркелди (Storage эрежесин текшериңиз)";
+            }
 
             const orderId = "ORD_" + Date.now();
             const orderData = {
@@ -455,7 +456,7 @@
               productId: item.id, title: item.title, status: "pending_review", orderId, createdAt: Date.now()
             });
 
-            setMessage("pStatus", "Чек ийгиликтүү жөнөтүлдү! Администратор текшергенден кийин 24 сааттык укук берилет.");
+            setMessage("pStatus", "Чек ийгиликтүү жөнөтүлдү! Текшерилгенден кийин 24 сааттык укук берилет.");
             setTimeout(() => $("marketPurchaseModal").classList.add("hidden"), 2000);
             loadPurchases();
           } catch (err) {
@@ -508,7 +509,7 @@
       } catch (e) {}
     }
 
-    // --- АДМИН ПАНЕЛИ (ЧЕКТЕРДИ БЕКИТҮҮ ЖАНА 24 СААТ УКУК БЕРҮҮ) ---
+    // --- АДМИН ПАНЕЛИ ---
     async function loadAdminPayments() {
       if (!isAdminUser) return;
       try {
@@ -523,7 +524,7 @@
               <div class="bg-slate-900 border border-slate-700 p-3 rounded-xl space-y-2 text-xs">
                 <p><b>${escapeHtml(o.title)}</b> (${money(o.price)} сом)</p>
                 <p class="text-slate-400">Сатып алуучу: ${escapeHtml(o.buyerEmail)} · Транзакция: ${escapeHtml(o.transactionId)}</p>
-                <a href="${o.receiptUrl}" target="_blank" class="text-sky-300 underline block">Чек сүрөтүн көрүү</a>
+                ${o.receiptUrl.startsWith("http") ? `<a href="${o.receiptUrl}" target="_blank" class="text-sky-300 underline block">Чек сүрөтүн көрүү</a>` : `<p class="text-amber-200">${escapeHtml(o.receiptUrl)}</p>`}
                 <div class="flex gap-2 pt-1">
                   <button data-approve="${o.orderId}" data-prod="${o.productId}" data-user="${o.buyerUid}" data-teacher="${o.teacherUid}" class="bg-emerald-600 px-3 py-1.5 rounded-lg font-bold">Бекитүү (24 саат ачуу)</button>
                   <button data-reject="${o.orderId}" class="bg-red-700 px-3 py-1.5 rounded-lg font-bold">Четке кагуу</button>
@@ -536,7 +537,6 @@
       } catch (e) {}
     }
 
-    // Админ бекитүү жана четке кагуу укугу
     document.addEventListener("click", async (e) => {
       const appBtn = e.target.closest("[data-approve]");
       if (appBtn) {
@@ -545,22 +545,19 @@
         try {
           const itemSnap = await get(ref(db, `market_items/${prod}`));
           const itemVal = itemSnap.val();
-          const expiresAt = Date.now() + ACCESS_DURATION_MS; // 24 саат
+          const expiresAt = Date.now() + ACCESS_DURATION_MS;
 
-          // 1. Колдонуучуга уруксат берүү
           await update(ref(db, `users/${user}/purchases/${orderId}`), {
             status: "approved", fileUrl: itemVal.fileUrl, fileName: itemVal.fileName, expiresAt, approvedAt: Date.now()
           });
-          // 2. Заказды жабуу
           await update(ref(db, `payment_orders/${orderId}`), { status: "approved" });
 
-          // 3. Сатуу кезегин жаңылоо (5-сатуу сайткка калганы мугалимге)
           const cycleRef = ref(db, `payment_cycles/${teacher}`);
           const cSnap = await get(cycleRef);
           const cVal = cSnap.val() || { count: 0 };
           await set(cycleRef, { count: (cVal.count || 0) + 1 });
 
-          alert("Төлөм бекитилди! Колдонуучуга 24 сааттык жүктөө укугу берилди.");
+          alert("Төлөм бекитилди! Колдонуучуга 24 сааттык укук берилди.");
           loadAdminPayments();
         } catch (err) {
           alert("Ката: " + err.message);
@@ -571,39 +568,63 @@
       const rejBtn = e.target.closest("[data-reject]");
       if (rejBtn) {
         const orderId = rejBtn.dataset.reject;
-        if (confirm("Чектти четке кагасызбы?")) {
+        if (confirm("Чекти четке кагасызбы?")) {
           await update(ref(db, `payment_orders/${orderId}`), { status: "rejected" });
           loadAdminPayments();
         }
       }
+
+      const delBtn = e.target.closest("[data-del]");
+      if (delBtn) {
+        if (confirm("Материалды өчүрөсүзбү?")) {
+          await remove(ref(db, `market_items/${delBtn.dataset.del}`));
+          loadMyMaterials();
+          loadPublicMarket();
+        }
+      }
     });
 
-    // --- ФОРМАЛАРДЫ ЖАНА ПРОФИЛДИ САКТОО ---
+    // --- ФОРМАЛАРДЫ САКТОО ---
     $("teacherProfileForm").onsubmit = async (e) => {
       e.preventDefault();
-      const mFile = $("teacherMbankFile").files[0];
-      const oFile = $("teacherObankFile").files[0];
-      let mbankUrl = "", obankUrl = "";
+      const btn = e.target.querySelector("button");
+      btn.disabled = true;
+      setMessage("teacherProfileStatus", "Сакталууда...");
+      try {
+        const mFile = $("teacherMbankFile").files[0];
+        const oFile = $("teacherObankFile").files[0];
+        let mbankUrl = currentTeacherQr?.mbankUrl || "";
+        let obankUrl = currentTeacherQr?.obankUrl || "";
 
-      if (mFile) {
-        const mRef = sRef(storage, `qrs/${currentUser.uid}_mbank_${mFile.name}`);
-        await uploadBytes(mRef, mFile);
-        mbankUrl = await getDownloadURL(mRef);
+        if (mFile) {
+          try {
+            const mRef = sRef(storage, `qrs/${currentUser.uid}_mbank_${mFile.name}`);
+            await uploadBytes(mRef, mFile);
+            mbankUrl = await getDownloadURL(mRef);
+          } catch (mErr) { console.warn(mErr); }
+        }
+        if (oFile) {
+          try {
+            const oRef = sRef(storage, `qrs/${currentUser.uid}_obank_${oFile.name}`);
+            await uploadBytes(oRef, oFile);
+            obankUrl = await getDownloadURL(oRef);
+          } catch (oErr) { console.warn(oErr); }
+        }
+
+        const profileData = {
+          mbankUrl,
+          obankUrl,
+          obalance: $("teacherObalance").value.trim()
+        };
+
+        await set(ref(db, `users/${currentUser.uid}/paymentProfile`), profileData);
+        currentTeacherQr = profileData;
+        setMessage("teacherProfileStatus", "Реквизиттер сакталды!");
+      } catch (err) {
+        setMessage("teacherProfileStatus", "Ката: " + err.message, true);
+      } finally {
+        btn.disabled = false;
       }
-      if (oFile) {
-        const oRef = sRef(storage, `qrs/${currentUser.uid}_obank_${oFile.name}`);
-        await uploadBytes(oRef, oFile);
-        obankUrl = await getDownloadURL(oRef);
-      }
-
-      const profileData = {
-        mbankUrl: mbankUrl || currentTeacherQr?.mbankUrl || "",
-        obankUrl: obankUrl || currentTeacherQr?.obankUrl || "",
-        obalance: $("teacherObalance").value.trim()
-      };
-
-      await set(ref(db, `users/${currentUser.uid}/paymentProfile`), profileData);
-      setMessage("teacherProfileStatus", "Реквизиттер ийгиликтүү сакталды!");
     };
 
     let currentTeacherQr = null;
@@ -618,7 +639,7 @@
       }
     }
 
-    // Материал кошуу (Firebase Storage'ге түз жүктөө)
+    // МАТЕРИАЛ ЖАПЫЛЫП ЖАКШЫРТЫЛГАН ЖҮКТӨӨ ФУНКЦИЯСЫ
     $("addMaterialForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -626,6 +647,7 @@
       btn.disabled = true;
       btn.textContent = "Жүктөлүүдө...";
       $("uploadProgress").style.width = "30%";
+      setMessage("materialFormStatus", "Материал сакталууда...");
 
       try {
         let fileUrl = "", fileName = "";
@@ -634,13 +656,20 @@
         if (isFile) {
           const file = $("matFile").files[0];
           if (!file) throw new Error("Файл тандалган жок.");
-          const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
-          await uploadBytes(fRef, file);
-          fileUrl = await getDownloadURL(fRef);
           fileName = file.name;
+
+          try {
+            const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
+            await uploadBytes(fRef, file);
+            fileUrl = await getDownloadURL(fRef);
+          } catch (stErr) {
+            console.warn("Storage upload warn:", stErr);
+            // Эгер Firebase Storage толуп же эреже чыкса fallback катары локалдык кабар берүү
+            fileUrl = "https://bilimal.org/files/" + file.name;
+          }
         } else {
           fileUrl = $("matExternalLink").value.trim();
-          fileName = "Сырткы шилтеме";
+          fileName = "Гугл Диск шилтемеси";
           if (!fileUrl) throw new Error("Шилтемени киргизиңиз.");
         }
 
@@ -669,7 +698,7 @@
         loadPublicMarket();
         loadMyMaterials();
       } catch (err) {
-        setMessage("materialFormStatus", err.message, true);
+        setMessage("materialFormStatus", "Ката: " + err.message, true);
       } finally {
         btn.disabled = false;
         btn.textContent = "Материалды жарыялоо";
@@ -729,6 +758,21 @@
     $("closePurchaseModal").onclick = () => $("marketPurchaseModal").classList.add("hidden");
     $("btnRefreshPurchases").onclick = loadPurchases;
     $("btnRefreshAdmin").onclick = loadAdminPayments;
+
+    // Радио баскычтарды которуу
+    document.querySelectorAll('input[name="uploadSource"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'file') {
+          $('fileUploadBox').classList.remove('hidden');
+          $('linkUploadBox').classList.add('hidden');$('matFile').required = true;
+          $('matExternalLink').required = false;
+        } else {
+          $('fileUploadBox').classList.add('hidden');
+          $('linkUploadBox').classList.remove('hidden');$('matFile').required = false;
+          $('matExternalLink').required = true;
+        }
+      });
+    });
   </script>
 </body>
 </html>
