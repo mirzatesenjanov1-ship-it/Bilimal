@@ -351,7 +351,7 @@
         publicItems = data.items || [];
         renderPublicMarket();
       } catch (error) {
-        $("publicMarketItems").innerHTML = `<p class="text-xs text-slate-500">Азырынча даяр материалдар жок.</p>`;
+        $("publicMarketItems").innerHTML = '<p class="text-xs text-slate-500">Азырынча даяр материалдар жок.</p>';
         $("marketStatus").textContent = "Даяр абалда.";
       }
     }
@@ -376,23 +376,37 @@
         return; 
       }
 
-      $("publicMarketItems").innerHTML = list.map(item => `
+      $("publicMarketItems").innerHTML = list.map(item => {
+        const typeStr = escapeHtml(item.type || "Окуу материалы");
+        const extStr = item.externalLink ? "🔗 ГУГЛ ДИСК" : escapeHtml(extOf(item.fileName));
+        const titleStr = escapeHtml(item.title);
+        const subjStr = escapeHtml(item.subject) + (item.grade ? ` · ${escapeHtml(item.grade)}` : "");
+        const authorStr = escapeHtml(item.authorName || "Мугалим");
+        const descHtml = item.description ? `<p class="text-xs text-slate-300 break-words">${escapeHtml(item.description)}</p>` : "";
+        const isFree = Number(item.price) === 0;
+        const priceStr = isFree ? "Акысыз" : `${money(item.price)} сом`;
+        const btnClass = isFree ? "bg-emerald-600 hover:bg-emerald-500" : "btn-primary";
+        const btnText = isFree ? "Акысыз алуу" : "Сатып алуу";
+        const buyId = escapeHtml(item.id);
+
+        return `
         <article class="glass-card rounded-xl p-4 flex flex-col gap-3">
           <div class="flex justify-between gap-3">
-            <span class="text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-full px-2 py-1 h-fit">${escapeHtml(item.type || "Окуу материалы")}</span>
-            <span class="text-[10px] text-slate-400 font-bold">${item.externalLink ? "🔗 ГУГЛ ДИСК" : escapeHtml(extOf(item.fileName))}</span>
+            <span class="text-[10px] text-purple-300 bg-purple-500/10 border border-purple-500/20 rounded-full px-2 py-1 h-fit">${typeStr}</span>
+            <span class="text-[10px] text-slate-400 font-bold">${extStr}</span>
           </div>
           <div>
-            <h3 class="font-bold text-sm break-words">${escapeHtml(item.title)}</h3>
-            <p class="text-xs text-slate-400 mt-1">${escapeHtml(item.subject)}${item.grade ? ` · ${escapeHtml(item.grade)}` : ""}</p>
-            <p class="text-xs text-slate-400 mt-1">Мугалим: ${escapeHtml(item.authorName || "Мугалим")}</p>
+            <h3 class="font-bold text-sm break-words">${titleStr}</h3>
+            <p class="text-xs text-slate-400 mt-1">${subjStr}</p>
+            <p class="text-xs text-slate-400 mt-1">Мугалим: ${authorStr}</p>
           </div>
-          ${item.description ? `<p class="text-xs text-slate-300 break-words">${escapeHtml(item.description)}</p>` : ""}
+          ${descHtml}
           <div class="mt-auto pt-2 border-t border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-lg font-bold ${Number(item.price) === 0 ? "text-emerald-300" : "text-purple-300"}">${Number(item.price) === 0 ? "Акысыз" : `${money(item.price)} сом`}</span>
-            <button type="button" data-buy="${escapeHtml(item.id)}" class="${Number(item.price) === 0 ? "bg-emerald-600 hover:bg-emerald-500" : "btn-primary"} px-4 py-2 rounded-lg text-xs font-bold">${Number(item.price) === 0 ? "Акысыз алуу" : "Сатып алуу"}</button>
+            <span class="text-lg font-bold ${isFree ? "text-emerald-300" : "text-purple-300"}">${priceStr}</span>
+            <button type="button" data-buy="${buyId}" class="${btnClass} px-4 py-2 rounded-lg text-xs font-bold">${btnText}</button>
           </div>
-        </article>`).join("");
+        </article>`;
+      }).join("");
     }
 
     async function loadMyMaterials() {
@@ -403,7 +417,7 @@
         renderMyMaterials(); 
         updateBonusNotice();
       } catch (e) {
-        $("myMaterialsList").innerHTML = `<p class="text-xs text-slate-500">Материалдарыңыз азырынча жок.</p>`;
+        $("myMaterialsList").innerHTML = '<p class="text-xs text-slate-500">Материалдарыңыз азырынча жок.</p>';
       }
     }
 
@@ -415,19 +429,30 @@
     function renderMyMaterials() {
       $("materialCount").textContent = `${myItems.length} материал`;
       if (!myItems.length) { $("myMaterialsList").innerHTML = '<p class="text-xs text-slate-500">Материалдарыңыз азырынча жок.</p>'; return; }
-      $("myMaterialsList").innerHTML = myItems.map(item => `
+      $("myMaterialsList").innerHTML = myItems.map(item => {
+        const titleStr = escapeHtml(item.title);
+        const detailsStr = `${escapeHtml(item.subject)} · ${money(item.price)} сом · ${escapeHtml(item.status)}`;
+        const fileStr = item.externalLink ? `🔗 ${escapeHtml(item.externalLink)}` : escapeHtml(item.fileName || "Файл");
+        const dateStr = fmtDate(item.createdAt);
+        const bonusHtml = item.bonusFree ? '<p class="text-[11px] text-emerald-300 mt-1">🎁 6-материал — акысыз бонус</p>' : "";
+        const idStr = escapeHtml(item.id);
+        const needsReplace = !item.storageReady && !item.externalLink;
+        const notRemoved = item.status !== "removed";
+
+        return `
         <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 flex justify-between gap-3">
           <div class="min-w-0">
-            <b class="text-sm break-words">${escapeHtml(item.title)}</b>
-            <p class="text-[11px] text-slate-400 mt-1">${escapeHtml(item.subject)} · ${money(item.price)} сом · ${escapeHtml(item.status)}</p>
-            <p class="text-[11px] text-slate-500">${item.externalLink ? "🔗 " + escapeHtml(item.externalLink) : escapeHtml(item.fileName || "Файл")} · ${fmtDate(item.createdAt)}</p>
-            ${item.bonusFree ? '<p class="text-[11px] text-emerald-300 mt-1">🎁 6-материал — акысыз бонус</p>' : ""}
+            <b class="text-sm break-words">${titleStr}</b>
+            <p class="text-[11px] text-slate-400 mt-1">${detailsStr}</p>
+            <p class="text-[11px] text-slate-500">${fileStr} · ${dateStr}</p>
+            ${bonusHtml}
           </div>
           <div class="flex flex-col gap-2 self-start">
-            ${!item.storageReady && !item.externalLink ? `<button type="button" data-replace-material="${escapeHtml(item.id)}" class="bg-sky-800 hover:bg-sky-700 px-3 py-2 rounded-lg text-xs">Файлды кайра жүктөө</button>` : ""}
-            ${item.status !== "removed" ? `<button type="button" data-delete-material="${escapeHtml(item.id)}" class="bg-red-900/70 hover:bg-red-800 px-3 py-2 rounded-lg text-xs">Витринадан алуу</button>` : '<span class="text-xs text-slate-500">Жашырылган</span>'}
+            ${needsReplace ? `<button type="button" data-replace-material="${idStr}" class="bg-sky-800 hover:bg-sky-700 px-3 py-2 rounded-lg text-xs">Файлды кайра жүктөө</button>` : ""}
+            ${notRemoved ? `<button type="button" data-delete-material="${idStr}" class="bg-red-900/70 hover:bg-red-800 px-3 py-2 rounded-lg text-xs">Витринадан алуу</button>` : '<span class="text-xs text-slate-500">Жашырылган</span>'}
           </div>
-        </div>`).join("");
+        </div>`;
+      }).join("");
     }
 
     async function loadPurchases() {
@@ -439,9 +464,33 @@
         $("myPurchasesList").innerHTML = myPurchases.map(p => {
           const active = p.status === "approved" && Number(p.expiresAt) > Date.now();
           const statusText = active ? (p.externalLink ? "Шилтемени ашуу" : "Жүктөп алууга болот") : p.status === "pending_review" ? "Чек текшерилүүдө" : p.status === "awaiting_receipt" ? "Төлөм күтүлүүдө" : p.status === "approved" ? "Мөөнөтү бүткөн" : p.status === "rejected" ? "Четке кагылган" : p.status;
-          return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 flex justify-between gap-3"><div class="min-w-0"><b class="text-sm break-words">${escapeHtml(p.title || p.productId)}</b><p class="text-xs text-slate-400 mt-1">${money(p.price)} сом · ${escapeHtml(statusText)}</p><p class="text-[10px] text-slate-500 mt-1">Сатып алынган: ${fmtDate(p.purchasedAt)} · Мөөнөтү: ${fmtDate(p.expiresAt)}</p></div>${active ? `<button type="button" data-download="${escapeHtml(p.productId)}" data-order="${escapeHtml(p.orderId)}" data-file="${escapeHtml(p.title \vert{}\vert{} "material")}" data-link="${escapeHtml(p.externalLink || "")}" class="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-2 text-xs font-bold self-start">${p.externalLink ? "Шилтемени ашуу 🔗" : "Жүктөө 📥"}</button>` : p.status === "awaiting_receipt" || p.status === "pending_review" ? `<button type="button" data-check-order="${escapeHtml(p.orderId)}" class="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 text-xs self-start">Текшерүү</button>` : ""}</div>`;
+          const titleStr = escapeHtml(p.title || p.productId);
+          const priceStr = money(p.price);
+          const pDate = fmtDate(p.purchasedAt);
+          const expDate = fmtDate(p.expiresAt);
+          const prodId = escapeHtml(p.productId);
+          const ordId = escapeHtml(p.orderId);
+          const fName = escapeHtml(p.title || "material");
+          const linkStr = escapeHtml(p.externalLink || "");
+
+          let actionBtn = "";
+          if (active) {
+            actionBtn = `<button type="button" data-download="${prodId}" data-order="${ordId}" data-file="${fName}" data-link="${linkStr}" class="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-2 text-xs font-bold self-start">${p.externalLink ? "Шилтемени ашуу 🔗" : "Жүктөө 📥"}</button>`;
+          } else if (p.status === "awaiting_receipt" || p.status === "pending_review") {
+            actionBtn = `<button type="button" data-check-order="${ordId}" class="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 text-xs self-start">Текшерүү</button>`;
+          }
+
+          return `
+          <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 flex justify-between gap-3">
+            <div class="min-w-0">
+              <b class="text-sm break-words">${titleStr}</b>
+              <p class="text-xs text-slate-400 mt-1">${priceStr} сом · ${escapeHtml(statusText)}</p>
+              <p class="text-[10px] text-slate-500 mt-1">Сатып алынган: ${pDate} · Мөөнөтү: ${expDate}</p>
+            </div>
+            ${actionBtn}
+          </div>`;
         }).join("");
-      } catch (error) { $("myPurchasesList").innerHTML = `<p class="text-xs text-slate-500">Сатып алууларыңыз азырынча жок.</p>`; }
+      } catch (error) { $("myPurchasesList").innerHTML = '<p class="text-xs text-slate-500">Сатып алууларыңыз азырынча жок.</p>'; }
     }
 
     async function loadTeacherProfile() {
@@ -467,8 +516,41 @@
       try {
         const data = await api("/api/admin/payments"); const list = data.items || [];
         if (!list.length) { box.innerHTML = '<p class="text-xs text-slate-500">Текшериле турган төлөмдөр жок.</p>'; return; }
-        box.innerHTML = list.map(item => `<div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700 space-y-2"><div class="flex justify-between gap-3"><div class="min-w-0"><b class="text-sm">${escapeHtml(item.productTitle || "Материал")}</b><p class="text-xs text-emerald-300 mt-1">${money(item.amount)} сом · ${item.target === "teacher" ? "Мугалимге" : "Bilimal.org сайтына"} · сатуунун №${escapeHtml(item.cycleIndex)}</p><p class="text-[10px] text-slate-400 break-all">Заказ: ${escapeHtml(item.orderId)}</p><p class="text-[10px] text-slate-400">Сатып алуучу: ${escapeHtml(item.buyerEmail || item.buyerUid || "")}</p><p class="text-[10px] text-slate-300">Транзакция: ${escapeHtml(item.transactionId || "—")}</p><p class="text-[10px] text-slate-300">Төлөгөн убакыт: ${item.transferTime ? fmtDate(item.transferTime) : "—"}</p><p class="text-[10px] text-slate-300">Статус: ${escapeHtml(item.status)}</p></div></div>${item.receiptUrl && !item.receiptUrl.startsWith("<!DOCTYPE") ? `<a href="${escapeHtml(item.receiptUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-sky-300 underline">Чектин сүрөтүн ачуу</a>` : '<p class="text-xs text-red-300">Чек тиркелген эмес.</p>'}<p class="text-[11px] text-amber-200">${escapeHtml(item.receiptNote || "Сумманы текшериңиз.")}</p><div class="flex flex-wrap gap-2">${item.status === "pending_review" ? `<button type="button" data-payment-approve="${escapeHtml(item.orderId)}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3 py-2 rounded-lg font-bold">Төлөмдү бекитүү</button>` : ""}<button type="button" data-payment-reject="${escapeHtml(item.orderId)}" class="bg-red-700 hover:bg-red-600 text-xs px-3 py-2 rounded-lg font-bold">Четке кагуу</button></div></div>`).join("");
-      } catch (error) { box.innerHTML = `<p class="text-xs text-slate-500">Төлөмдөр азырынча жок.</p>`; }
+        box.innerHTML = list.map(item => {
+          const titleStr = escapeHtml(item.productTitle || "Материал");
+          const amountStr = money(item.amount);
+          const targetStr = item.target === "teacher" ? "Мугалимге" : "Bilimal.org сайтына";
+          const cycleStr = escapeHtml(item.cycleIndex);
+          const ordId = escapeHtml(item.orderId);
+          const buyerStr = escapeHtml(item.buyerEmail || item.buyerUid || "");
+          const txStr = escapeHtml(item.transactionId || "—");
+          const tTime = item.transferTime ? fmtDate(item.transferTime) : "—";
+          const stStr = escapeHtml(item.status);
+          const hasReceipt = item.receiptUrl && !item.receiptUrl.startsWith("<!DOCTYPE");
+          const receiptHtml = hasReceipt ? `<a href="${escapeHtml(item.receiptUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-sky-300 underline">Чектин сүрөтүн ачуу</a>` : '<p class="text-xs text-red-300">Чек тиркелген эмес.</p>';
+          const noteStr = escapeHtml(item.receiptNote || "Сумманы текшериңиз.");
+          const approveBtn = item.status === "pending_review" ? `<button type="button" data-payment-approve="${ordId}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3 py-2 rounded-lg font-bold">Төлөмдү бекитүү</button>` : "";
+          const rejectBtn = `<button type="button" data-payment-reject="${ordId}" class="bg-red-700 hover:bg-red-600 text-xs px-3 py-2 rounded-lg font-bold">Четке кагуу</button>`;
+
+          return `
+          <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700 space-y-2">
+            <div class="flex justify-between gap-3">
+              <div class="min-w-0">
+                <b class="text-sm">${titleStr}</b>
+                <p class="text-xs text-emerald-300 mt-1">${amountStr} сом · ${targetStr} · сатуунун №${cycleStr}</p>
+                <p class="text-[10px] text-slate-400 break-all">Заказ: ${ordId}</p>
+                <p class="text-[10px] text-slate-400">Сатып алуучу: ${buyerStr}</p>
+                <p class="text-[10px] text-slate-300">Транзакция: ${txStr}</p>
+                <p class="text-[10px] text-slate-300">Төлөгөн убакыт: ${tTime}</p>
+                <p class="text-[10px] text-slate-300">Статус: ${stStr}</p>
+              </div>
+            </div>
+            ${receiptHtml}
+            <p class="text-[11px] text-amber-200">${noteStr}</p>
+            <div class="flex flex-wrap gap-2">${approveBtn}${rejectBtn}</div>
+          </div>`;
+        }).join("");
+      } catch (error) { box.innerHTML = '<p class="text-xs text-slate-500">Төлөмдөр азырынча жок.</p>'; }
     }
 
     async function checkAdminAccess() {
@@ -488,14 +570,14 @@
       $("purchaseTitle").textContent = item.title;
       $("purchaseSubtitle").textContent = `${money(item.price)} сом · ${item.subject || ""} ${item.grade || ""}`;
       if (Number(item.price) === 0) {
-        $("purchaseContent").innerHTML = `<p class="text-sm text-slate-300">Бул материал акысыз. Сатып алуу тарыхына кошуп, 72 саатка укук аласыз.</p><button id="btnGetFree" class="bg-emerald-600 hover:bg-emerald-500 w-full py-3 rounded-xl font-bold">Акысыз алуу</button><p id="purchaseStatus" class="status-line text-xs text-slate-400"></p>`;
+        $("purchaseContent").innerHTML = '<p class="text-sm text-slate-300">Бул материал акысыз. Сатып алуу тарыхына кошуп, 72 саатка укук аласыз.</p><button id="btnGetFree" class="bg-emerald-600 hover:bg-emerald-500 w-full py-3 rounded-xl font-bold">Акысыз алуу</button><p id="purchaseStatus" class="status-line text-xs text-slate-400"></p>';
         $("btnGetFree").addEventListener("click", async () => {
           const b = $("btnGetFree"); b.disabled = true;
           try { const data = await api("/api/purchases/free", { method: "POST", body: JSON.stringify({ productId: item.id }) }); setMessage("purchaseStatus", data.message); await loadPurchases(); b.textContent = "Алуу ийгиликтүү"; }
           catch (e) { setMessage("purchaseStatus", e.message, true); b.disabled = false; }
         });
       } else {
-        $("purchaseContent").innerHTML = `<p class="text-sm text-slate-300">Төлөм алуучу бул материалдын авторунун сатуу кезеги боюнча аныкталат.</p><div><label for="paymentMethod" class="small-label">Төлөм ыкмасы</label><select id="paymentMethod" class="input-field w-full p-3 rounded-xl text-sm"><option value="mbank">MBank QR</option><option value="obank">O!Bank QR</option><option value="obalance">O!Balance</option></select></div><p id="purchaseStatus" class="status-line text-xs text-slate-400"></p><button id="btnCreateOrder" class="btn-primary w-full py-3 rounded-xl font-bold">Заказ түзүп, реквизиттерди көрсөтүү</button>`;
+        $("purchaseContent").innerHTML = '<p class="text-sm text-slate-300">Төлөм алуучу бул материалдын авторунун сатуу кезеги боюнча аныкталат.</p><div><label for="paymentMethod" class="small-label">Төлөм ыкмасы</label><select id="paymentMethod" class="input-field w-full p-3 rounded-xl text-sm"><option value="mbank">MBank QR</option><option value="obank">O!Bank QR</option><option value="obalance">O!Balance</option></select></div><p id="purchaseStatus" class="status-line text-xs text-slate-400"></p><button id="btnCreateOrder" class="btn-primary w-full py-3 rounded-xl font-bold">Заказ түзүп, реквизиттерди көрсөтүү</button>';
         $("btnCreateOrder").addEventListener("click", async () => {
           const b = $("btnCreateOrder"); b.disabled = true; setMessage("purchaseStatus", "Заказ түзүлүүдө...");
           try { const data = await api("/api/payments/create", { method: "POST", body: JSON.stringify({ productId: item.id, paymentMethod: $("paymentMethod").value }) }); activePurchaseOrder = data.order; renderPaymentOrder(data.order); }
@@ -514,10 +596,25 @@
       else if (order.paymentMethod === "obalance" && pm.obalance) payHtml = `<div class="bg-slate-950 rounded-xl p-4 text-center"><p class="text-xs text-slate-400">O!Balance номери</p><p class="text-xl font-bold text-emerald-300 select-all">${escapeHtml(pm.obalance)}</p><button id="copyBalance" type="button" class="mt-2 text-xs text-sky-300 underline">Номерди көчүрүү</button></div>`;
       $("purchaseSubtitle").textContent = `${money(order.amount)} сом · ${order.recipientName} · сатуу №${order.saleNumber}`;
       $("purchaseContent").innerHTML = `
-        <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1"><p class="text-sm font-bold text-amber-200">Төлөм алуучу: ${escapeHtml(order.recipientName)}</p><p class="text-xs text-slate-300">Сатуунун №${order.saleNumber}.</p><p class="text-xs text-slate-400">Заказ: ${escapeHtml(order.orderId)}</p><p class="text-xs text-slate-400">Төлөм мөөнөтү: ${fmtDate(order.receiptDeadline)}</p></div>
+        <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 space-y-1">
+          <p class="text-sm font-bold text-amber-200">Төлөм алуучу: ${escapeHtml(order.recipientName)}</p>
+          <p class="text-xs text-slate-300">Сатуунун №${order.saleNumber}.</p>
+          <p class="text-xs text-slate-400">Заказ: ${escapeHtml(order.orderId)}</p>
+          <p class="text-xs text-slate-400">Төлөм мөөнөтү: ${fmtDate(order.receiptDeadline)}</p>
+        </div>
         <div class="space-y-3">${payHtml}</div>
-        <form id="receiptForm" class="space-y-3 border-t border-slate-700 pt-4"><h3 class="font-bold text-sm">Төлөгөндөн кийин чекти жөнөтүңүз</h3><div><label class="small-label" for="transactionId">Транзакция ID *</label><input id="transactionId" maxlength="120" required class="input-field w-full p-3 rounded-xl text-sm" placeholder="Операциянын ID'и"></div><div><label class="small-label" for="transferTime">Төлөгөн убакыт *</label><input id="transferTime" type="datetime-local" required class="input-field w-full p-3 rounded-xl text-sm"></div><div><label class="small-label" for="receiptFile">Чектин сүрөтү *</label><input id="receiptFile" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="input-field w-full p-3 rounded-xl text-sm"></div><button id="btnSubmitReceipt" type="submit" class="bg-sky-700 hover:bg-sky-600 w-full py-3 rounded-xl font-bold">Чекти жөнөтүү</button></form>
-        <div class="flex gap-2"><button type="button" id="btnCheckOrder" class="bg-slate-700 hover:bg-slate-600 flex-1 py-2 rounded-lg text-sm">Төлөм статусун текшерүү</button><button type="button" id="btnCloseOrder" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm">Жабуу</button></div><p id="purchaseStatus" class="status-line text-xs text-slate-400" role="status"></p>`;
+        <form id="receiptForm" class="space-y-3 border-t border-slate-700 pt-4">
+          <h3 class="font-bold text-sm">Төлөгөндөн кийин чекти жөнөтүңүз</h3>
+          <div><label class="small-label" for="transactionId">Транзакция ID *</label><input id="transactionId" maxlength="120" required class="input-field w-full p-3 rounded-xl text-sm" placeholder="Операциянын ID'и"></div>
+          <div><label class="small-label" for="transferTime">Төлөгөн убакыт *</label><input id="transferTime" type="datetime-local" required class="input-field w-full p-3 rounded-xl text-sm"></div>
+          <div><label class="small-label" for="receiptFile">Чектин сүрөтү *</label><input id="receiptFile" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" required class="input-field w-full p-3 rounded-xl text-sm"></div>
+          <button id="btnSubmitReceipt" type="submit" class="bg-sky-700 hover:bg-sky-600 w-full py-3 rounded-xl font-bold">Чекти жөнөтүү</button>
+        </form>
+        <div class="flex gap-2">
+          <button type="button" id="btnCheckOrder" class="bg-slate-700 hover:bg-slate-600 flex-1 py-2 rounded-lg text-sm">Төлөм статусун текшерүү</button>
+          <button type="button" id="btnCloseOrder" class="bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg text-sm">Жабуу</button>
+        </div>
+        <p id="purchaseStatus" class="status-line text-xs text-slate-400" role="status"></p>`;
       if ($("copyBalance")) $("copyBalance").addEventListener("click", async () => { try { await navigator.clipboard.writeText(pm.obalance); setMessage("purchaseStatus", "Номер көчүрүлдү."); } catch { setMessage("purchaseStatus", `Номер: ${pm.obalance}`); } });
       $("receiptForm").addEventListener("submit", submitReceipt);
       $("btnCheckOrder").addEventListener("click", () => refreshOrderStatus(order.orderId));
