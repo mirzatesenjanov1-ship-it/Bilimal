@@ -279,7 +279,6 @@
       return adminSnap.exists() && adminSnap.val() === true;
     }
 
-    // --- МАТЕРИАЛДАРДЫ ЖҮКТӨӨ ЖАНА КӨРСӨТҮҮ ---
     async function loadPublicMarket() {
       try {
         const snap = await get(ref(db, "market_items"));
@@ -335,7 +334,6 @@
       }).join("");
     }
 
-    // --- МУГАЛИМДИН МАТЕРИАЛДАРЫ ---
     async function loadMyMaterials() {
       if (!currentUser) return;
       try {
@@ -366,7 +364,6 @@
       } catch (e) {}
     }
 
-    // --- САТЫП АЛУУ ЖАНА ЧЕК ЖӨНӨТҮҮ ---
     async function openPurchaseModal(item) {
       activeItem = item;
       $("purchaseTitle").textContent = item.title;
@@ -438,8 +435,9 @@
             let receiptUrl = "";
             try {
               const receiptRef = sRef(storage, `receipts/${currentUser.uid}_${Date.now()}_${file.name}`);
-              await uploadBytes(receiptRef, file);
-              receiptUrl = await getDownloadURL(receiptRef);
+              const uploadP = uploadBytes(receiptRef, file).then(() => getDownloadURL(receiptRef));
+              const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 6000));
+              receiptUrl = await Promise.race([uploadP, timeoutP]);
             } catch (sErr) {
               receiptUrl = "Чек тиркелди (Транзакция: " + $("txId").value.trim() + ")";
             }
@@ -471,7 +469,6 @@
       $("marketPurchaseModal").classList.remove("hidden");
     }
 
-    // --- САТЫП АЛУУЛАР ЖАНА 1 КҮНДҮК ДОСТУП ---
     async function loadPurchases() {
       if (!currentUser) return;
       try {
@@ -511,7 +508,6 @@
       } catch (e) {}
     }
 
-    // --- АДМИН ПАНЕЛИ ---
     async function loadAdminPayments() {
       if (!isAdminUser) return;
       try {
@@ -586,7 +582,7 @@
       }
     });
 
-    // --- МУГАЛИМДИН РЕКВИЗИТТЕРИН САКТОО (ТОҢУП КАЛБАЙ ТҮЗ САКТАЙТ) ---
+    // РЕКВИЗИТТИ САКТОО (Timeout жана тез сактоо коргоосу менен)
     $("teacherProfileForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector("button");
@@ -597,11 +593,10 @@
         const mFile = $("teacherMbankFile").files[0];
         const oFile = $("teacherObankFile").files[0];
         
-        let mbankUrl = currentTeacherQr?.mbankUrl || (mFile ? `/qrmbank.png` : DEFAULT_SITE_PROFILE.mbankUrl);
-        let obankUrl = currentTeacherQr?.obankUrl || (oFile ? `/О!bank_QR.png` : DEFAULT_SITE_PROFILE.obankUrl);
+        let mbankUrl = currentTeacherQr?.mbankUrl || DEFAULT_SITE_PROFILE.mbankUrl;
+        let obankUrl = currentTeacherQr?.obankUrl || DEFAULT_SITE_PROFILE.obankUrl;
         const obalance = $("teacherObalance").value.trim() || DEFAULT_SITE_PROFILE.obalance;
 
-        // Эгер колдонуучу файл тандаган болсо Storage убактысын текшерип аракет кылат
         if (mFile) {
           try {
             const mRef = sRef(storage, `qrs/${currentUser.uid}_mbank_${mFile.name}`);
@@ -609,7 +604,7 @@
             const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 5000));
             mbankUrl = await Promise.race([uploadP, timeoutP]);
           } catch (mErr) {
-            mbankUrl = "/qrmbank.png";
+            mbankUrl = DEFAULT_SITE_PROFILE.mbankUrl;
           }
         }
 
@@ -620,13 +615,12 @@
             const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 5000));
             obankUrl = await Promise.race([uploadP, timeoutP]);
           } catch (oErr) {
-            obankUrl = "/О!bank_QR.png";
+            obankUrl = DEFAULT_SITE_PROFILE.obankUrl;
           }
         }
 
         const profileData = { mbankUrl, obankUrl, obalance };
 
-        // Түздөн-түз Realtime Database'ге сактоо
         await set(ref(db, `users/${currentUser.uid}/paymentProfile`), profileData);
         currentTeacherQr = profileData;
         setMessage("teacherProfileStatus", "Реквизиттер ийгиликтүү сакталды!");
@@ -640,18 +634,21 @@
     let currentTeacherQr = null;
     async function loadTeacherProfile() {
       if (!currentUser) return;
-      const snap = await get(ref(db, `users/${currentUser.uid}/paymentProfile`));
-      if (snap.exists()) {
-        currentTeacherQr = snap.val();
-        $("teacherObalance").value = currentTeacherQr.obalance || DEFAULT_SITE_PROFILE.obalance;
-        if (currentTeacherQr.mbankUrl) { $("teacherMbankPreview").src = currentTeacherQr.mbankUrl; $("teacherMbankPreview").classList.remove("hidden"); }
-        if (currentTeacherQr.obankUrl) { $("teacherObankPreview").src = currentTeacherQr.obankUrl; $("teacherObankPreview").classList.remove("hidden"); }
-      } else {
+      try {
+        const snap = await get(ref(db, `users/${currentUser.uid}/paymentProfile`));
+        if (snap.exists()) {
+          currentTeacherQr = snap.val();
+          $("teacherObalance").value = currentTeacherQr.obalance || DEFAULT_SITE_PROFILE.obalance;
+          if (currentTeacherQr.mbankUrl) { $("teacherMbankPreview").src = currentTeacherQr.mbankUrl; $("teacherMbankPreview").classList.remove("hidden"); }
+          if (currentTeacherQr.obankUrl) { $("teacherObankPreview").src = currentTeacherQr.obankUrl; $("teacherObankPreview").classList.remove("hidden"); }
+        } else {
+          $("teacherObalance").value = DEFAULT_SITE_PROFILE.obalance;
+        }
+      } catch (e) {
         $("teacherObalance").value = DEFAULT_SITE_PROFILE.obalance;
       }
     }
 
-    // Сайттын реквизиттерин сактоо (Админ үчүн)
     $("siteProfileForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!isAdminUser) return;
@@ -675,17 +672,20 @@
 
     async function loadAdminProfile() {
       if (!isAdminUser) return;
-      const snap = await get(ref(db, "settings/sitePaymentProfile"));
-      if (snap.exists()) {
-        const val = snap.val();
-        $("siteObalance").value = val.obalance || DEFAULT_SITE_PROFILE.obalance;
-      } else {
+      try {
+        const snap = await get(ref(db, "settings/sitePaymentProfile"));
+        if (snap.exists()) {
+          const val = snap.val();
+          $("siteObalance").value = val.obalance || DEFAULT_SITE_PROFILE.obalance;
+        } else {
+          $("siteObalance").value = DEFAULT_SITE_PROFILE.obalance;
+          await set(ref(db, "settings/sitePaymentProfile"), DEFAULT_SITE_PROFILE);
+        }
+      } catch (e) {
         $("siteObalance").value = DEFAULT_SITE_PROFILE.obalance;
-        await set(ref(db, "settings/sitePaymentProfile"), DEFAULT_SITE_PROFILE);
       }
     }
 
-    // МАТЕРИАЛ ЖАПЫЛЫП ИШТЕГИЛГЕН ЖҮКТӨӨ ФУНКЦИЯСЫ
     $("addMaterialForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -751,7 +751,6 @@
       }
     };
 
-    // --- АУТЕНТИФИКАЦИЯ ---
     $("authForm").onsubmit = async (e) => {
       e.preventDefault();
       const email = $("authEmail").value.trim();
