@@ -16,6 +16,31 @@
     .input-field:focus { border-color:#a855f7; outline:none; box-shadow:0 0 0 3px rgba(168,85,247,.12); }
     .btn-primary { background:#7c3aed; color:#fff; } .btn-primary:hover { background:#8b5cf6; }
     .badge { padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+    
+    /* БҮДӨМҮК (MUTNYI) ЭФФЕКТ СТИЛИ */
+    .blur-preview-container {
+      position: relative;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      background: #111827;
+    }
+    .blur-preview-text {
+      filter: blur(4px);
+      user-select: none;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+    .blur-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(15, 23, 42, 0.2), rgba(15, 23, 42, 0.95));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -43,7 +68,7 @@
   <main class="max-w-7xl mx-auto px-4 py-8 flex-grow w-full space-y-6">
     <div class="space-y-1">
       <h1 class="text-3xl font-extrabold text-white">Мугалимдердин материалдар витринасы</h1>
-      <p class="text-xs text-slate-400">Керектүү материалдарды тандап, себетке чогултуп оңой сатып алыңыз.</p>
+      <p class="text-xs text-slate-400">Керектүү материалдарды тандап, алардын алдын ала мазмунун көрүп, себетке чогултуп оңой сатып алыңыз.</p>
     </div>
 
     <!-- ИЗДӨӨ ЖАНА ФИЛЬТРЛЕР -->
@@ -95,7 +120,7 @@
         <p class="text-xs text-slate-400">Ар бир топтун суммасына жараша төлөм жасап, астына чек номерин жазып жөнөтүңүз.</p>
         
         <div id="cartPaymentGroups" class="space-y-4">
-          <!-- Төлөм топтору (Мугалим/Сайт) ушу жерге бөлүнөт -->
+          <!-- Төлөм топтору ушу жерге бөлүнөт -->
         </div>
 
         <form id="cartSubmitForm" class="space-y-3 bg-slate-900/80 p-4 rounded-xl border border-slate-700">
@@ -116,7 +141,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set, push } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -139,12 +164,11 @@
     };
 
     let allItems = [];
-    let cart = []; // Себеттин тизмеси
+    let cart = [];
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
 
-    // --- ВИТРИНАНЫ ЖҮКТӨӨ ---
     async function fetchShowcase() {
       try {
         const snap = await get(ref(db, "market_items"));
@@ -183,30 +207,54 @@
         const inCart = cart.some(c => c.id === item.id);
         const isFree = Number(item.price) === 0;
 
+        // Демо текст даярдоо
+        const rawDesc = item.description || "Бул окуу материалы боюнча сабак планы, теориялык түшүнүктөр, маселелер жана практикалык тапшырмалар камтылган.";
+
         return `
-        <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-lg">
+        <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
           <div class="space-y-2">
             <div class="flex justify-between items-center text-[11px]">
               <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/30">${item.subject}</span>
-              <span class="text-slate-400">${item.grade || ''}</span>
+              <span class="text-slate-400 font-medium">${item.grade || ''}</span>
             </div>
-            <h3 class="font-bold text-sm text-slate-100">${item.title}</h3>
-            <p class="text-xs text-slate-400 line-clamp-2">${item.description || 'Сүрөттөмө жок'}</p>
-            <p class="text-[11px] text-slate-500">Мугалим: ${item.authorName || 'Мугалим'}</p>
+            <h3 class="font-bold text-base text-slate-100">${item.title}</h3>
+            <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
           </div>
 
-          <div class="pt-3 border-t border-slate-700/80 flex items-center justify-between mt-auto">
+          <!-- МУТНЫЙ (BLUR) АЛДЫН АЛА КӨРҮҮ БӨЛҮМҮ -->
+          <div class="blur-preview-container min-h-[110px] p-3 text-xs text-slate-300">
+            <div class="blur-preview-text space-y-1">
+              <p class="font-bold">1. Сабактын максаты жана милдеттери:</p>
+              <p>Окуучулар ${item.title} темасын терең өздөштүрүшөт. Негизги формуларды жана закондорду турмушта колдонууну үйрөнүшөт.</p>
+              <p class="font-bold mt-2">2. Сабактын жүрүшү жана этаптары:</p>
+              <p>Уюштуруу, өтүлгөн теманы кайталоо, жаңы теманы түшүндүрүп берүү жана көнүгүүлөрдү аткаруу.</p>
+            </div>
+
+            ${!isFree ? `
+            <div class="blur-overlay">
+              <i class="fa-solid fa-lock text-amber-400 text-lg mb-1"></i>
+              <span class="text-[11px] font-bold text-amber-200">Материалды ачуу үчүн сатып алыңыз</span>
+              <span class="text-[10px] text-slate-300 mt-0.5">Толук Word/PDF форматы берилет</span>
+            </div>` : ''}
+          </div>
+
+          <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between mt-auto">
             <span class="text-lg font-extrabold ${isFree ? 'text-emerald-400' : 'text-purple-300'}">${isFree ? 'Акысыз' : `${money(item.price)} сом`}</span>
-            <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5">
-              <i class="fa-solid ${inCart ? 'fa-check' : 'fa-cart-plus'}"></i>
-              ${inCart ? 'Себетте' : 'Себетке кошуу'}
-            </button>
+            
+            ${isFree ? `
+              <a href="${item.fileUrl}" target="_blank" download="${item.fileName || 'material'}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white">
+                <i class="fa-solid fa-download"></i> Жүктөп алуу
+              </a>` : `
+              <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
+                <i class="fa-solid ${inCart ? 'fa-check' : 'fa-cart-plus'}"></i>
+                ${inCart ? 'Себетте' : 'Себетке кошуу'}
+              </button>`
+            }
           </div>
         </div>`;
       }).join("");
     }
 
-    // --- СЕБЕТТИ БАШКАРУУ ---
     function updateCartUI() {
       $("cartCountBadge").textContent = cart.length;
       if (!cart.length) {
@@ -217,7 +265,6 @@
 
       $("cartCheckoutArea").classList.remove("hidden");
       
-      // Себеттеги материалдардын тизмеси
       $("cartItemsList").innerHTML = cart.map(item => `
         <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
           <div>
@@ -230,7 +277,6 @@
       preparePaymentGroups();
     }
 
-    // Төлөм топторун фильтрлеп бөлүү (Мугалим же Сайт)
     async function preparePaymentGroups() {
       $("cartPaymentGroups").innerHTML = '<p class="text-xs text-slate-400">Төлөм маалыматтары даярдалууда...</p>';
       
@@ -292,7 +338,6 @@
       $("cartPaymentGroups").innerHTML = html || '<p class="text-xs text-emerald-400">Бардык тандалган материалдар акысыз!</p>';
     }
 
-    // --- ОКУЯЛАРДЫ ТҮШҮНҮҮ ЖАНА ЧЕК ЖӨНӨТҮҮ ---
     document.addEventListener("click", (e) => {
       const addBtn = e.target.closest("[data-addcart]");
       if (addBtn) {
