@@ -107,7 +107,7 @@
 
     .canvas-container {
       width: 100%;
-      height: 200px;
+      height: 230px;
       background: #020617;
       border-radius: 12px;
       border: 1px solid #1e293b;
@@ -234,7 +234,7 @@
     <div class="sim-box">
       <!-- Визуалдык симуляция чыга турган Canvas -->
       <div class="canvas-container">
-        <canvas id="relativityCanvas" width="980" height="200"></canvas>
+        <canvas id="relativityCanvas" width="980" height="230"></canvas>
       </div>
 
       <div class="control-group">
@@ -286,50 +286,114 @@
     const canvas = document.getElementById('relativityCanvas');
     const ctx = canvas.getContext('2d');
 
-    function drawRocket(v_c) {
+    // Фондук жылдыздар массиви (деформация үчүн)
+    let stars = [];
+    for (let i = 0; i < 70; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 0.5,
+        speed: Math.random() * 1.5 + 0.5
+      });
+    }
+
+    function drawScene(v_c) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Фондук динамикалык жылдыздар
+      // 1. Фон жана жылдыздардын сызыктуу деформациясы (Warp/Speed Effect)
       ctx.fillStyle = '#ffffff';
-      for (let i = 0; i < 50; i++) {
-        let x = (i * 41 + (Date.now() * v_c * 0.25) % canvas.width) % canvas.width;
-        let y = (i * 29) % canvas.height;
-        ctx.fillRect(x, y, 1.8, 1.8);
-      }
+      stars.forEach(star => {
+        let currentSpeed = star.speed * (1 + v_c * 15);
+        star.x -= currentSpeed;
+        if (star.x < 0) star.x = canvas.width;
 
-      // Ракетанын узундугу Лоренц факторуна жараша кысылат
+        if (v_c > 0.4) {
+          // Ылдамдык жогору болгондо жылдыздар жарык сызыктарына айланат
+          ctx.strokeStyle = `rgba(56, 189, 248, ${v_c})`;
+          ctx.lineWidth = star.size;
+          ctx.beginPath();
+          ctx.moveTo(star.x, star.y);
+          ctx.lineTo(star.x + (v_c * 35), star.y);
+          ctx.stroke();
+        } else {
+          ctx.fillRect(star.x, star.y, star.size, star.size);
+        }
+      });
+
+      // Лоренц фактору жана узундуктун кысылышы
       const gamma = 1.0 / Math.sqrt(1 - (v_c * v_c));
-      const baseWidth = 150;
-      const currentWidth = baseWidth / gamma; 
+      const baseLength = 180;
+      const currentLength = baseLength / gamma; // Узундуктун релятивисттик кысылышы
 
-      const startX = (canvas.width - currentWidth) / 2;
-      const startY = canvas.height / 2 - 30;
+      const startX = (canvas.width - currentLength) / 2;
+      const startY = canvas.height / 2 - 35;
 
-      // Ракетанын корпусу
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath();
-      ctx.moveTo(startX + currentWidth, startY + 30);
-      ctx.lineTo(startX, startY);
-      ctx.lineTo(startX, startY + 60);
-      ctx.closePath();
-      ctx.fill();
-
-      // Ракетанын от жалыны (ылдамдыкка жараша чоңоёт)
+      // 2. Ракетанын плазмалык от жалыны (Космостук сопло)
       if (v_c > 0) {
-        ctx.fillStyle = '#f43f5e';
+        let flameLength = (40 + v_c * 90) * (0.8 + Math.random() * 0.4);
+        let gradient = ctx.createLinearGradient(startX, 0, startX - flameLength, 0);
+        gradient.addColorStop(0, '#f43f5e');
+        gradient.addColorStop(0.5, '#f59e0b');
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.moveTo(startX, startY + 15);
-        ctx.lineTo(startX - (30 * v_c + 10), startY + 30);
-        ctx.lineTo(startX, startY + 45);
+        ctx.moveTo(startX, startY + 20);
+        ctx.lineTo(startX - flameLength, startY + 35);
+        ctx.lineTo(startX, startY + 50);
         ctx.closePath();
         ctx.fill();
       }
 
-      // Визуалдык маалыматтар
-      ctx.fillStyle = '#94a3b8';
+      // 3. Реалымацияланган Космос Кемесинин Корпусу
+      ctx.save();
+      // Жарыкка жакындаганда кеменин айланасы кызгылт/көк нур менен курчалат (Glow effect)
+      if (v_c > 0.5) {
+        ctx.shadowBlur = v_c * 25;
+        ctx.shadowColor = '#38bdf8';
+      }
+
+      // Негизги корпус
+      ctx.fillStyle = '#0284c7';
+      ctx.beginPath();
+      ctx.moveTo(startX + currentLength, startY + 35); // Кеменин мурду
+      ctx.lineTo(startX + currentLength * 0.3, startY);    // Үсткү бөлүгү
+      ctx.lineTo(startX, startY + 15);                    // Арка үстү
+      ctx.lineTo(startX, startY + 55);                    // Арка асты
+      ctx.lineTo(startX + currentLength * 0.3, startY + 70); // Астыңкы бөлүгү
+      ctx.closePath();
+      ctx.fill();
+
+      // Кеменин кабинасы (Терезеси - Көклөнтүлгөн иллюминатор)
+      ctx.fillStyle = '#93c5fd';
+      ctx.beginPath();
+      ctx.ellipse(startX + currentLength * 0.55, startY + 35, currentLength * 0.12, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Кеменин канаттары
+      ctx.fillStyle = '#0369a1';
+      ctx.beginPath();
+      ctx.moveTo(startX + currentLength * 0.3, startY + 15);
+      ctx.lineTo(startX + currentLength * 0.1, startY - 10);
+      ctx.lineTo(startX + currentLength * 0.5, startY + 15);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(startX + currentLength * 0.3, startY + 55);
+      ctx.lineTo(startX + currentLength * 0.1, startY + 80);
+      ctx.lineTo(startX + currentLength * 0.5, startY + 55);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      // 4. Тексттик визуалдык көрсөткүчтөр
+      ctx.fillStyle = '#38bdf8';
       ctx.font = '13px Poppins, sans-serif';
-      ctx.fillText(`Кеме ылдамдыгы: ${(v_c * 100).toFixed(0)}% жарык ылдамдыгынан`, 25, 35);
-      ctx.fillText(`Кысылуу коэффициенти: ${(1/gamma * 100).toFixed(1)}%`, 25, 58);
+      ctx.fillText(`Кеме ылдамдыгы: ${(v_c * 100).toFixed(0)}% с`, 25, 32);
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText(`Узундуктун кысылуу катышы: ${(1/gamma * 100).toFixed(1)}%`, 25, 55);
     }
 
     function updateRelativity() {
@@ -347,10 +411,17 @@
 
       document.getElementById('energyVal').innerText = gamma.toFixed(2) + " эсе";
 
-      drawRocket(v_c);
+      drawScene(v_c);
     }
 
-    updateRelativity();
+    // Автономдуу реалдуу убактагы анимациялык цикл (Жылдыздар үзгүлтүксүз жылыш үчүн)
+    function animate() {
+      const v_c = parseFloat(document.getElementById('speedRange').value);
+      drawScene(v_c);
+      requestAnimationFrame(animate);
+    }
+
+    animate();
   </script>
 </body>
 </html>
