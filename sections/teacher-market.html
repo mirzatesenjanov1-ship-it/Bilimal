@@ -586,42 +586,50 @@
       }
     });
 
-    // --- ФОРМАЛАРДЫ САКТОО ---
+    // --- МУГАЛИМДИН РЕКВИЗИТТЕРИН САКТОО (ТОҢУП КАЛБАЙ ТҮЗ САКТАЙТ) ---
     $("teacherProfileForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector("button");
       btn.disabled = true;
       setMessage("teacherProfileStatus", "Сакталууда...");
+
       try {
         const mFile = $("teacherMbankFile").files[0];
         const oFile = $("teacherObankFile").files[0];
-        let mbankUrl = currentTeacherQr?.mbankUrl || "";
-        let obankUrl = currentTeacherQr?.obankUrl || "";
+        
+        let mbankUrl = currentTeacherQr?.mbankUrl || (mFile ? `/qrmbank.png` : DEFAULT_SITE_PROFILE.mbankUrl);
+        let obankUrl = currentTeacherQr?.obankUrl || (oFile ? `/О!bank_QR.png` : DEFAULT_SITE_PROFILE.obankUrl);
+        const obalance = $("teacherObalance").value.trim() || DEFAULT_SITE_PROFILE.obalance;
 
+        // Эгер колдонуучу файл тандаган болсо Storage убактысын текшерип аракет кылат
         if (mFile) {
           try {
             const mRef = sRef(storage, `qrs/${currentUser.uid}_mbank_${mFile.name}`);
-            await uploadBytes(mRef, mFile);
-            mbankUrl = await getDownloadURL(mRef);
-          } catch (mErr) {}
+            const uploadP = uploadBytes(mRef, mFile).then(() => getDownloadURL(mRef));
+            const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 5000));
+            mbankUrl = await Promise.race([uploadP, timeoutP]);
+          } catch (mErr) {
+            mbankUrl = "/qrmbank.png";
+          }
         }
+
         if (oFile) {
           try {
             const oRef = sRef(storage, `qrs/${currentUser.uid}_obank_${oFile.name}`);
-            await uploadBytes(oRef, oFile);
-            obankUrl = await getDownloadURL(oRef);
-          } catch (oErr) {}
+            const uploadP = uploadBytes(oRef, oFile).then(() => getDownloadURL(oRef));
+            const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 5000));
+            obankUrl = await Promise.race([uploadP, timeoutP]);
+          } catch (oErr) {
+            obankUrl = "/О!bank_QR.png";
+          }
         }
 
-        const profileData = {
-          mbankUrl,
-          obankUrl,
-          obalance: $("teacherObalance").value.trim()
-        };
+        const profileData = { mbankUrl, obankUrl, obalance };
 
+        // Түздөн-түз Realtime Database'ге сактоо
         await set(ref(db, `users/${currentUser.uid}/paymentProfile`), profileData);
         currentTeacherQr = profileData;
-        setMessage("teacherProfileStatus", "Реквизиттер сакталды!");
+        setMessage("teacherProfileStatus", "Реквизиттер ийгиликтүү сакталды!");
       } catch (err) {
         setMessage("teacherProfileStatus", "Ката: " + err.message, true);
       } finally {
@@ -635,13 +643,15 @@
       const snap = await get(ref(db, `users/${currentUser.uid}/paymentProfile`));
       if (snap.exists()) {
         currentTeacherQr = snap.val();
-        $("teacherObalance").value = currentTeacherQr.obalance || "";
+        $("teacherObalance").value = currentTeacherQr.obalance || DEFAULT_SITE_PROFILE.obalance;
         if (currentTeacherQr.mbankUrl) { $("teacherMbankPreview").src = currentTeacherQr.mbankUrl; $("teacherMbankPreview").classList.remove("hidden"); }
         if (currentTeacherQr.obankUrl) { $("teacherObankPreview").src = currentTeacherQr.obankUrl; $("teacherObankPreview").classList.remove("hidden"); }
+      } else {
+        $("teacherObalance").value = DEFAULT_SITE_PROFILE.obalance;
       }
     }
 
-    // Сайттын реквизиттерин үстүнөн мажбурлап сактоо (Админ үчүн)
+    // Сайттын реквизиттерин сактоо (Админ үчүн)
     $("siteProfileForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!isAdminUser) return;
@@ -675,7 +685,7 @@
       }
     }
 
-    // МАТЕРИАЛ ЖАПЫЛЫП ИШТЕГИЛГЕН ЖҮКТӨӨ ФУНКЦИЯСЫ (TIMEOUT КОРГООСУ МЕНЕН)
+    // МАТЕРИАЛ ЖАПЫЛЫП ИШТЕГИЛГЕН ЖҮКТӨӨ ФУНКЦИЯСЫ
     $("addMaterialForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -696,12 +706,10 @@
 
           try {
             const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
-            // Timeout коргоосу (storage жооп бербей калса да катып калбайт)
             const uploadPromise = uploadBytes(fRef, file).then(() => getDownloadURL(fRef));
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage убакыт бүтүп калды")), 10000));
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 8000));
             fileUrl = await Promise.race([uploadPromise, timeoutPromise]);
           } catch (stErr) {
-            // Эгер Storage иштебей калса автоматтык түрдө шилтеме же локалдык атын сактоо
             fileUrl = "https://bilimal.org/files/" + encodeURIComponent(file.name);
           }
         } else {
