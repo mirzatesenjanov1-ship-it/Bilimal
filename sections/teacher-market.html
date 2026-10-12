@@ -70,7 +70,7 @@
             <div><label class="small-label" for="matSubject">Предмет *</label><select id="matSubject" required class="input-field w-full p-3 rounded-xl text-sm"><option value="">Предметти тандаңыз</option><option>Физика</option><option>Астрономия</option><option>Математика</option><option>Кыргыз тили</option><option>Кыргыз адабияты</option><option>Орус тили</option><option>Англис тили</option><option>Тарых</option><option>География</option><option>Биология</option><option>Химия</option><option>Информатика</option><option>Башка</option></select></div>
             <div><label class="small-label" for="matGrade">Класс</label><select id="matGrade" class="input-field w-full p-3 rounded-xl text-sm"><option value="">Класс көрсөтүлгөн эмес</option><option>1-класс</option><option>2-класс</option><option>3-класс</option><option>4-класс</option><option>5-класс</option><option>6-класс</option><option>7-класс</option><option>8-класс</option><option>9-класс</option><option>10-класс</option><option>11-класс</option><option>Мугалимдер үчүн</option></select></div>
           </div>
-          <div><label class="small-label" for="matType">Материалдын түрү *</label><select id="matType" required class="input-field w-full p-3 rounded-xl text-sm"><option value="">Түрүн тандаңыз</option><option>Сабактын кыска мөөнөттүү планы</option><option>3C+1E сабак планы</option><option>5E сабак планы</option><option>Word документ</option><option>PDF документ</option><option>PowerPoint презентация</option><option>Тест жана суроолор</option><option>Маселе жыйнагы</option><option>Жумушчу барак</option><option>Лабораториялык иш</option><option>БЖБ/ТЖБ</option><option>Олимпиадалык тапшырмалар</option><option>Электрондук китеп</option><option>Видео сабак</option><option>HTML окуу оюну</option><option>Интерактивдүү тапшырма</option><option>Виртуалдык лаборатория / симуляция</option><option>Дизайн жана жасалгалоо</option><option>Класс жетекчилик / ата-эне менен иштөө</option><option>Башка окуу материалы</option></select></div>
+          <div><label class="small-label" for="matType">Материалдын түрү *</label><select id="matType" required class="input-field w-full p-3 rounded-xl text-sm"><option value="">Түрүн тандаңыз</option><option>Сабактын кыска мөөнөттүү планы</option><option>3C+1E сабак планы</option><option>5E сабак планы</option><option>Word документ</option><option>PDF документ</option><option>PowerPoint презентация</option><option>Тест жана суроолор</option><option>Маселе жыйнагы</option><option>Жумушчу барак</option><option>Лабораториялык иш</option><option>БЖБ/ТЖБ</option><option>Олимпиадалык тапшырмалар</option><option>Электрондук китеп</option><option>Видео сабак</option><option>HTML окуу оюну</option><option>Интерактивдүү тапшырма</option><option>Виртуалдык лаборатория / симуляция</option><option>Дизайн жана жасалгалоо</option><option>Класс жетекчилик / ата-эне менен иштөө</option><option>Башка окуу материаласы</option></select></div>
           <div><label class="small-label" for="matPrice">Баасы (сом) *</label><input id="matPrice" type="number" min="0" max="100000" step="1" value="50" required class="input-field w-full p-3 rounded-xl text-sm"><p class="text-[11px] text-slate-500 mt-1">Ар бир алтынчы жарыяланган материалыңыз бекер бонус болуп белгиленет. Бонус сатуу кезегине кирбейт.</p></div>
           <div><label class="small-label" for="matDesc">Сүрөттөмө</label><textarea id="matDesc" maxlength="1000" rows="3" class="input-field w-full p-3 rounded-xl text-sm" placeholder="Материалдын мазмуну, колдонуу жолу..."></textarea></div>
           <div><label class="small-label" for="matFile">Файлды компьютерден тандаңыз *</label><input id="matFile" type="file" required class="input-field w-full p-3 rounded-xl text-sm" accept=".doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx,.txt,.rtf,.jpg,.jpeg,.png,.webp,.mp4,.webm,.zip,.html,.htm,.css,.js,.json"><p id="matFileInfo" class="text-[11px] text-slate-400 mt-1">Файл Bilimal.org аркылуу купуя сактагычка жүктөлөт. Максималдуу өлчөмү — 100 МБ.</p></div>
@@ -132,11 +132,15 @@
       databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "bilimal-org"
     };
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+
+    // Backend API дареги. Эгер Backend башка доменде болсо, BILIMAL_MARKET_API катары аныкталат.
     const API_BASE = (window.BILIMAL_MARKET_API || window.location.origin).replace(/\/$/, "");
     const BONUS_EVERY = 6;
     const MAX_FILE_BYTES = 100 * 1024 * 1024;
+
     let currentUser = null;
     let isAdminUser = false;
     let publicItems = [];
@@ -154,23 +158,40 @@
     const fileSize = (n) => { const bytes = Number(n || 0); if (bytes < 1024) return `${bytes} Б`; if (bytes < 1024*1024) return `${(bytes/1024).toFixed(1)} КБ`; return `${(bytes/(1024*1024)).toFixed(1)} МБ`; };
     const extOf = (name) => { const p = String(name || "").split("."); return p.length > 1 ? p.pop().toUpperCase() : "FILE"; };
 
+    // Туура API суроо-талап жөнөтүү функциясы (HTML 404 баракчаларды коопсуз иштетүү менен)
     async function api(route, options = {}) {
       const headers = new Headers(options.headers || {});
-      if (currentUser) headers.set("Authorization", `Bearer ${await currentUser.getIdToken()}`);
-      if (options.body !== undefined && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+      if (currentUser) {
+        headers.set("Authorization", `Bearer ${await currentUser.getIdToken()}`);
+      }
+      if (options.body !== undefined && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
+
       const response = await fetch(`${API_BASE}${route}`, { ...options, headers, cache: "no-store" });
+      const contentType = response.headers.get("content-type") || "";
       const text = await response.text();
       let data = {};
-      try { data = text ? JSON.parse(text) : {}; } catch { data = { message: text || "Серверден жараксыз жооп келди." }; }
-      if (!response.ok) throw new Error(data.message || `API ката: ${response.status}`);
+
+      if (contentType.includes("application/json")) {
+        try { data = JSON.parse(text); } catch { data = {}; }
+      }
+
+      if (!response.ok) {
+        const errorMsg = data.message || (text.includes("<!DOCTYPE") ? `Серверден ката кетти (${response.status} Not Found)` : text);
+        throw new Error(errorMsg || `API ката: ${response.status}`);
+      }
       return data;
     }
 
     async function uploadWithSignedUrl(file, purpose, extra = {}, progressElement = null) {
       if (!(file instanceof File)) throw new Error("Файл тандалган жок.");
-      const request = await api("/api/uploads/sign", { method: "POST", body: JSON.stringify({ purpose, fileName: file.name, contentType: file.type || "application/octet-stream", size: file.size, ...extra }) });
+      const request = await api("/api/uploads/sign", {
+        method: "POST",
+        body: JSON.stringify({ purpose, fileName: file.name, contentType: file.type || "application/octet-stream", size: file.size, ...extra })
+      });
       const uploadResponse = await fetch(request.uploadUrl, { method: "PUT", headers: request.requiredHeaders, body: file });
-      if (!uploadResponse.ok) throw new Error(`Файл сактагычка жүктөлгөн жок (HTTP ${uploadResponse.status}). Firebase Storage CORS жөндөөсүн текшериңиз.`);
+      if (!uploadResponse.ok) throw new Error(`Файл сактагычка жүктөлгөн жок (HTTP ${uploadResponse.status}). Storage жөндөөсүн текшериңиз.`);
       if (progressElement) progressElement.style.width = "100%";
       return request.storagePath;
     }
@@ -194,21 +215,28 @@
     function setMessage(id, message, isError = false) {
       const el = $(id); if (!el) return; el.textContent = message || ""; el.classList.toggle("text-red-400", Boolean(isError)); el.classList.toggle("text-slate-400", !isError);
     }
+
     function showQrPreview(id, url) {
       const img = $(id); if (!img) return;
-      if (url) { img.src = url; img.classList.remove("hidden"); }
-      else { img.removeAttribute("src"); img.classList.add("hidden"); }
+      if (url && typeof url === "string" && !url.trim().startsWith("<!DOCTYPE")) { 
+        img.src = url; img.classList.remove("hidden"); 
+      } else { 
+        img.removeAttribute("src"); img.classList.add("hidden"); 
+      }
     }
 
     async function loadPublicMarket() {
       try {
-        const data = await api("/api/materials"); publicItems = data.items || [];
-        populateFilters(); renderPublicMarket();
+        const data = await api("/api/materials");
+        publicItems = data.items || [];
+        populateFilters(); 
+        renderPublicMarket();
       } catch (error) {
-        $("publicMarketItems").innerHTML = `<p class="text-xs text-red-400">${escapeHtml(error.message)}</p>`;
+        $("publicMarketItems").innerHTML = `<p class="text-xs text-red-400">Материалдарды жүктөө мүмкүн болгон жок.</p>`;
         $("marketStatus").textContent = "Материалдарды жүктөөдө ката кетти.";
       }
     }
+
     function populateFilters() {
       const subject = $("filterSubject").value; const grade = $("filterGrade").value; const type = $("filterType").value;
       const options = [
@@ -221,6 +249,7 @@
       }
       $("filterSubject").value = subject; $("filterGrade").value = grade; $("filterType").value = type;
     }
+
     function renderPublicMarket() {
       const query = $("marketSearch").value.trim().toLocaleLowerCase("ky-KG");
       const subject = $("filterSubject").value; const grade = $("filterGrade").value; const type = $("filterType").value;
@@ -238,22 +267,31 @@
 
     async function loadMyMaterials() {
       if (!currentUser) return;
-      const data = await api("/api/me/materials"); myItems = data.items || [];
-      renderMyMaterials(); updateBonusNotice();
+      try {
+        const data = await api("/api/me/materials"); 
+        myItems = data.items || [];
+        renderMyMaterials(); 
+        updateBonusNotice();
+      } catch (e) {
+        $("myMaterialsList").innerHTML = `<p class="text-xs text-slate-500">Материалдарды жүктөөдө ката чыкты.</p>`;
+      }
     }
+
     function updateBonusNotice() {
       const next = myItems.length + 1;
       $("bonusNotice").classList.toggle("hidden", next % BONUS_EVERY !== 0);
     }
+
     function renderMyMaterials() {
       $("materialCount").textContent = `${myItems.length} материал`;
       if (!myItems.length) { $("myMaterialsList").innerHTML = '<p class="text-xs text-slate-500">Материалдарыңыз азырынча жок.</p>'; return; }
       $("myMaterialsList").innerHTML = myItems.map(item => `
         <div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 flex justify-between gap-3">
           <div class="min-w-0"><b class="text-sm break-words">${escapeHtml(item.title)}</b><p class="text-[11px] text-slate-400 mt-1">${escapeHtml(item.subject)} · ${money(item.price)} сом · ${escapeHtml(item.status)}</p><p class="text-[11px] text-slate-500">${escapeHtml(item.fileName || "Файл")} · ${fmtDate(item.createdAt)}</p>${item.bonusFree ? '<p class="text-[11px] text-emerald-300 mt-1">🎁 6-материал — акысыз бонус</p>' : ""}</div>
-          <div class="flex flex-col gap-2 self-start">${!item.storageReady ? `<button type="button" data-replace-material="${escapeHtml(item.id)}" class="bg-sky-800 hover:bg-sky-700 px-3 py-2 rounded-lg text-xs">Файлды купуя сактагычка кайра жүктөө</button>` : ""}${item.status !== "removed" ? `<button type="button" data-delete-material="${escapeHtml(item.id)}" class="bg-red-900/70 hover:bg-red-800 px-3 py-2 rounded-lg text-xs">Витринадан алуу</button>` : '<span class="text-xs text-slate-500">Жашырылган</span>'}</div>
+          <div class="flex flex-col gap-2 self-start">${!item.storageReady ? `<button type="button" data-replace-material="${escapeHtml(item.id)}" class="bg-sky-800 hover:bg-sky-700 px-3 py-2 rounded-lg text-xs">Файлды кайра жүктөө</button>` : ""}${item.status !== "removed" ? `<button type="button" data-delete-material="${escapeHtml(item.id)}" class="bg-red-900/70 hover:bg-red-800 px-3 py-2 rounded-lg text-xs">Витринадан алуу</button>` : '<span class="text-xs text-slate-500">Жашырылган</span>'}</div>
         </div>`).join("");
     }
+
     async function loadPurchases() {
       if (!currentUser) return;
       try {
@@ -264,35 +302,46 @@
           const statusText = active ? "Жүктөп алууга болот" : p.status === "pending_review" ? "Чек текшерилүүдө" : p.status === "awaiting_receipt" ? "Төлөм күтүлүүдө" : p.status === "approved" ? "Мөөнөтү бүткөн" : p.status === "rejected" ? "Четке кагылган" : p.status;
           return `<div class="bg-slate-900/70 rounded-xl p-3 border border-slate-800 flex justify-between gap-3"><div class="min-w-0"><b class="text-sm break-words">${escapeHtml(p.title || p.productId)}</b><p class="text-xs text-slate-400 mt-1">${money(p.price)} сом · ${escapeHtml(statusText)}</p><p class="text-[10px] text-slate-500 mt-1">Сатып алынган: ${fmtDate(p.purchasedAt)} · Мөөнөтү: ${fmtDate(p.expiresAt)}</p></div>${active ? `<button type="button" data-download="${escapeHtml(p.productId)}" data-order="${escapeHtml(p.orderId)}" data-file="${escapeHtml(p.title || "material")}" class="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-3 py-2 text-xs font-bold self-start">Жүктөө</button>` : p.status === "awaiting_receipt" || p.status === "pending_review" ? `<button type="button" data-check-order="${escapeHtml(p.orderId)}" class="bg-slate-700 hover:bg-slate-600 rounded-lg px-3 py-2 text-xs self-start">Текшерүү</button>` : ""}</div>`;
         }).join("");
-      } catch (error) { $("myPurchasesList").innerHTML = `<p class="text-xs text-red-400">${escapeHtml(error.message)}</p>`; }
+      } catch (error) { $("myPurchasesList").innerHTML = `<p class="text-xs text-slate-500">Сатып алууларды жүктөөдө ката кетти.</p>`; }
     }
 
     async function loadTeacherProfile() {
-      const data = await api("/api/teacher/payment-profile"); currentTeacherProfile = data.profile || currentTeacherProfile;
-      $("teacherObalance").value = currentTeacherProfile.obalance || "";
-      showQrPreview("teacherMbankPreview", currentTeacherProfile.mbankQr || "");
-      showQrPreview("teacherObankPreview", currentTeacherProfile.obankQr || "");
+      try {
+        const data = await api("/api/teacher/payment-profile"); currentTeacherProfile = data.profile || currentTeacherProfile;
+        $("teacherObalance").value = currentTeacherProfile.obalance || "";
+        showQrPreview("teacherMbankPreview", currentTeacherProfile.mbankQr || "");
+        showQrPreview("teacherObankPreview", currentTeacherProfile.obankQr || "");
+      } catch {}
     }
+
     async function loadAdminProfile() {
-      const data = await api("/api/admin/site-payment-profile"); currentSiteProfile = data.profile || currentSiteProfile;
-      $("siteObalance").value = currentSiteProfile.obalance || "";
-      showQrPreview("siteMbankPreview", currentSiteProfile.mbankQr || "");
-      showQrPreview("siteObankPreview", currentSiteProfile.obankQr || "");
+      try {
+        const data = await api("/api/admin/site-payment-profile"); currentSiteProfile = data.profile || currentSiteProfile;
+        $("siteObalance").value = currentSiteProfile.obalance || "";
+        showQrPreview("siteMbankPreview", currentSiteProfile.mbankQr || "");
+        showQrPreview("siteObankPreview", currentSiteProfile.obankQr || "");
+      } catch {}
     }
+
     async function loadAdminPayments() {
       const box = $("adminQrPayments");
       try {
         const data = await api("/api/admin/payments"); const list = data.items || [];
         if (!list.length) { box.innerHTML = '<p class="text-xs text-slate-500">Текшериле турган төлөмдөр жок.</p>'; return; }
-        box.innerHTML = list.map(item => `<div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700 space-y-2"><div class="flex justify-between gap-3"><div class="min-w-0"><b class="text-sm">${escapeHtml(item.productTitle || "Материал")}</b><p class="text-xs text-emerald-300 mt-1">${money(item.amount)} сом · ${item.target === "teacher" ? "Мугалимге" : "Bilimal.org сайтына"} · сатуунун №${escapeHtml(item.cycleIndex)}</p><p class="text-[10px] text-slate-400 break-all">Заказ: ${escapeHtml(item.orderId)}</p><p class="text-[10px] text-slate-400">Сатып алуучу: ${escapeHtml(item.buyerEmail || item.buyerUid || "")}</p><p class="text-[10px] text-slate-300">Транзакция: ${escapeHtml(item.transactionId || "—")}</p><p class="text-[10px] text-slate-300">Төлөгөн убакыт: ${item.transferTime ? fmtDate(item.transferTime) : "—"}</p><p class="text-[10px] text-slate-300">Статус: ${escapeHtml(item.status)}</p></div></div>${item.receiptUrl ? `<a href="${escapeHtml(item.receiptUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-sky-300 underline">Чектин сүрөтүн ачуу</a>` : '<p class="text-xs text-red-300">Чек тиркелген эмес.</p>'}<p class="text-[11px] text-amber-200">${escapeHtml(item.receiptNote || "Сумманы жана алуучуну банк колдонмосунан текшериңиз.")}</p><div class="flex flex-wrap gap-2">${item.status === "pending_review" ? `<button type="button" data-payment-approve="${escapeHtml(item.orderId)}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3 py-2 rounded-lg font-bold">Төлөмдү бекитүү</button>` : ""}<button type="button" data-payment-reject="${escapeHtml(item.orderId)}" class="bg-red-700 hover:bg-red-600 text-xs px-3 py-2 rounded-lg font-bold">Четке кагуу</button></div></div>`).join("");
-      } catch (error) { box.innerHTML = `<p class="text-xs text-red-400">${escapeHtml(error.message)}</p>`; }
+        box.innerHTML = list.map(item => `<div class="bg-slate-900/80 rounded-xl p-3 border border-slate-700 space-y-2"><div class="flex justify-between gap-3"><div class="min-w-0"><b class="text-sm">${escapeHtml(item.productTitle || "Материал")}</b><p class="text-xs text-emerald-300 mt-1">${money(item.amount)} сом · ${item.target === "teacher" ? "Мугалимге" : "Bilimal.org сайтына"} · сатуунун №${escapeHtml(item.cycleIndex)}</p><p class="text-[10px] text-slate-400 break-all">Заказ: ${escapeHtml(item.orderId)}</p><p class="text-[10px] text-slate-400">Сатып алуучу: ${escapeHtml(item.buyerEmail || item.buyerUid || "")}</p><p class="text-[10px] text-slate-300">Транзакция: ${escapeHtml(item.transactionId || "—")}</p><p class="text-[10px] text-slate-300">Төлөгөн убакыт: ${item.transferTime ? fmtDate(item.transferTime) : "—"}</p><p class="text-[10px] text-slate-300">Статус: ${escapeHtml(item.status)}</p></div></div>${item.receiptUrl && !item.receiptUrl.startsWith("<!DOCTYPE") ? `<a href="${escapeHtml(item.receiptUrl)}" target="_blank" rel="noopener noreferrer" class="text-xs text-sky-300 underline">Чектин сүрөтүн ачуу</a>` : '<p class="text-xs text-red-300">Чек тиркелген эмес.</p>'}<p class="text-[11px] text-amber-200">${escapeHtml(item.receiptNote || "Сумманы жана алуучуну банк колдонмосунан текшериңиз.")}</p><div class="flex flex-wrap gap-2">${item.status === "pending_review" ? `<button type="button" data-payment-approve="${escapeHtml(item.orderId)}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3 py-2 rounded-lg font-bold">Төлөмдү бекитүү</button>` : ""}<button type="button" data-payment-reject="${escapeHtml(item.orderId)}" class="bg-red-700 hover:bg-red-600 text-xs px-3 py-2 rounded-lg font-bold">Четке кагуу</button></div></div>`).join("");
+      } catch (error) { box.innerHTML = `<p class="text-xs text-slate-500">Төлөмдөрдү жүктөөдө ката чыкты.</p>`; }
     }
+
     async function checkAdminAccess() {
       try {
-        const result = await api("/api/admin/me"); isAdminUser = result.isAdmin === true;
+        const result = await api("/api/admin/me"); 
+        isAdminUser = result.isAdmin === true;
         $("adminSection").classList.toggle("hidden", !isAdminUser);
         if (isAdminUser) { await Promise.all([loadAdminProfile(), loadAdminPayments()]); }
-      } catch { isAdminUser = false; $("adminSection").classList.add("hidden"); }
+      } catch { 
+        isAdminUser = false; 
+        $("adminSection").classList.add("hidden"); 
+      }
     }
 
     async function openPurchase(item) {
@@ -316,6 +365,7 @@
       }
       $("marketPurchaseModal").classList.remove("hidden");
     }
+
     function renderPaymentOrder(order) {
       activePurchaseOrder = order;
       const pm = order.paymentMethods || {};
@@ -334,6 +384,7 @@
       $("btnCheckOrder").addEventListener("click", () => refreshOrderStatus(order.orderId));
       $("btnCloseOrder").addEventListener("click", closePurchaseModal);
     }
+
     async function submitReceipt(event) {
       event.preventDefault(); if (!activePurchaseOrder || !currentUser) return;
       const button = $("btnSubmitReceipt"); button.disabled = true; button.textContent = "Чек жүктөлүүдө...";
@@ -347,8 +398,9 @@
         const result = await api("/api/payments/receipt", { method: "POST", body: JSON.stringify({ orderId: activePurchaseOrder.orderId, transactionId: $("transactionId").value.trim(), transferTime, receiptStoragePath }) });
         setMessage("purchaseStatus", result.message); $("receiptForm").classList.add("hidden"); await loadPurchases();
       } catch (e) { setMessage("purchaseStatus", e.message, true); button.disabled = false; }
-      finally { if ($( "btnSubmitReceipt")) button.textContent = "Чекти жөнөтүү"; }
+      finally { if ($("btnSubmitReceipt")) button.textContent = "Чекти жөнөтүү"; }
     }
+
     async function refreshOrderStatus(orderId) {
       try {
         const status = await api(`/api/payments/status?orderId=${encodeURIComponent(orderId)}`);
@@ -364,6 +416,7 @@
         }
       } catch (e) { setMessage("purchaseStatus", e.message, true); }
     }
+
     function closePurchaseModal() { $("marketPurchaseModal").classList.add("hidden"); activePurchaseOrder = null; activePurchaseItem = null; }
 
     $("authForm").addEventListener("submit", async (event) => {
@@ -377,16 +430,20 @@
         } else { $("authError").textContent = `Кирүү катасы: ${error.message}`; $("authError").classList.remove("hidden"); }
       } finally { button.disabled = false; button.textContent = "Кирүү / Катталуу"; }
     });
+
     $("btnLogout").addEventListener("click", () => signOut(auth));
     $("marketSearch").addEventListener("input", renderPublicMarket);
     ["filterSubject", "filterGrade", "filterType"].forEach(id => $(id).addEventListener("change", renderPublicMarket));
+    
     $("publicMarketItems").addEventListener("click", async (event) => {
       const button = event.target.closest("[data-buy]"); if (!button) return;
       const item = publicItems.find(x => x.id === button.dataset.buy); if (!item) return;
       try { await openPurchase(item); } catch (e) { alert(e.message); }
     });
+
     $("closePurchaseModal").addEventListener("click", closePurchaseModal);
     $("marketPurchaseModal").addEventListener("click", (event) => { if (event.target === $("marketPurchaseModal")) closePurchaseModal(); });
+    
     $("matFile").addEventListener("change", () => {
       const f = $("matFile").files[0]; $("matFileInfo").textContent = f ? `${f.name} · ${fileSize(f.size)} · ${extOf(f.name)}` : "Файл тандай элек.";
       if (f && f.size > MAX_FILE_BYTES) { setMessage("materialFormStatus", "Файл 100 МБдан ашпашы керек.", true); $("matFile").value = ""; }
@@ -422,6 +479,7 @@
       } catch (e) { setMessage("teacherProfileStatus", e.message, true); }
       finally { button.disabled = false; }
     });
+
     $("siteProfileForm").addEventListener("submit", async (event) => {
       event.preventDefault(); if (!isAdminUser) return; const button = $("btnSaveSiteProfile"); button.disabled = true; setMessage("siteProfileStatus", "Сайттын реквизиттери сакталууда...");
       let mbankQrPath = currentSiteProfile.mbankQrPath || ""; let obankQrPath = currentSiteProfile.obankQrPath || "";
@@ -451,7 +509,7 @@
             const result = await api(`/api/materials/${encodeURIComponent(itemId)}/replace-file`, { method: "POST", body: JSON.stringify({ storagePath, fileName: file.name }) });
             storagePath = ""; alert(result.message); await Promise.all([loadMyMaterials(), loadPublicMarket()]);
           } catch (e) { alert(e.message); if (storagePath) { try { await api("/api/uploads", { method: "DELETE", body: JSON.stringify({ storagePath }) }); } catch {} } }
-          finally { replaceButton.disabled = false; replaceButton.textContent = "Файлды купуя сактагычка кайра жүктөө"; }
+          finally { replaceButton.disabled = false; replaceButton.textContent = "Файлды кайра жүктөө"; }
         }); input.click(); return;
       }
       const button = event.target.closest("[data-delete-material]"); if (!button) return;
@@ -460,22 +518,26 @@
       try { const result = await api(`/api/materials/${encodeURIComponent(button.dataset.deleteMaterial)}`, { method: "DELETE" }); alert(result.message); await Promise.all([loadMyMaterials(), loadPublicMarket()]); }
       catch (e) { alert(e.message); button.disabled = false; }
     });
+
     $("myPurchasesList").addEventListener("click", async (event) => {
       const download = event.target.closest("[data-download]"); const check = event.target.closest("[data-check-order]");
       if (download) { download.disabled = true; try { await downloadMaterial(download.dataset.download, download.dataset.order, download.dataset.file); } catch (e) { alert(e.message); } finally { download.disabled = false; } }
       if (check) { try { const result = await api(`/api/payments/status?orderId=${encodeURIComponent(check.dataset.checkOrder)}`); alert(result.message); await loadPurchases(); } catch (e) { alert(e.message); } }
     });
+
     $("btnRefreshPurchases").addEventListener("click", loadPurchases);
     $("btnRefreshAdmin").addEventListener("click", async () => { if (isAdminUser) await Promise.all([loadAdminProfile(), loadAdminPayments()]); });
+    
     $("btnMigrateCycles").addEventListener("click", async () => {
       if (!isAdminUser) return;
-      const accepted = confirm("Бул аракет эски payment_orders ичиндеги бекитилген сатууларды ар бир мугалим боюнча бириктирип, жаңы жалпы сатуу эсептегичин түзөт. Бул көчүрүү бир гана жолу жасалат. Улантасызбы?");
+      const accepted = confirm("Бул аракет эски сатуу тарыхын көчүрөт. Улантасызбы?");
       if (!accepted) return;
       const button = $("btnMigrateCycles"); button.disabled = true; button.textContent = "Көчүрүлүүдө...";
       try { const result = await api("/api/admin/migrate-sale-cycles", { method: "POST", body: "{}" }); alert(result.message || "Көчүрүү аяктады."); }
       catch (e) { alert(e.message); }
       finally { button.disabled = false; button.textContent = "Эски сатуу тарыхын бир жолу көчүрүү"; }
     });
+
     $("adminQrPayments").addEventListener("click", async (event) => {
       const approve = event.target.closest("[data-payment-approve]"); const reject = event.target.closest("[data-payment-reject]"); const btn = approve || reject; if (!btn) return;
       btn.disabled = true;
@@ -502,11 +564,8 @@
       } catch (e) { console.error(e); }
     });
 
-    // Public catalog can be shown before sign-in; refresh it even when Auth is not ready yet.
-    try {
-      const response = await fetch(`${API_BASE}/api/materials`, { cache: "no-store" });
-      if (response.ok) { const data = await response.json(); publicItems = data.items || []; populateFilters(); renderPublicMarket(); }
-    } catch { /* Auth listener will retry after login. */ }
+    // Витринаны кирбей туруп да көрүүгө мүмкүндүк берүү
+    loadPublicMarket();
   </script>
 </body>
 </html>
