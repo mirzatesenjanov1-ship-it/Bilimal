@@ -273,10 +273,15 @@
       el.classList.toggle("text-slate-400", !err);
     }
 
+    // Админди коопсуз текшерүү
     async function checkAdmin(user) {
       if (!user) return false;
-      const adminSnap = await get(ref(db, `admins/${user.uid}`));
-      return adminSnap.exists() && adminSnap.val() === true;
+      try {
+        const adminSnap = await get(ref(db, `admins/${user.uid}`));
+        return adminSnap.exists() && adminSnap.val() === true;
+      } catch (e) {
+        return false;
+      }
     }
 
     async function loadPublicMarket() {
@@ -582,7 +587,6 @@
       }
     });
 
-    // РЕКВИЗИТТИ САКТОО (Timeout жана тез сактоо коргоосу менен)
     $("teacherProfileForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector("button");
@@ -781,17 +785,20 @@
       $("authSection").classList.add("hidden");
       $("userEmailDisplay").textContent = user.email;
 
-      isAdminUser = await checkAdmin(user);
-      $("adminSection").classList.toggle("hidden", !isAdminUser);
-
+      // Баракты тоңдурбай дароо жүктөй турган асинхрондук иштетүү
       loadPublicMarket();
       loadMyMaterials();
       loadPurchases();
       loadTeacherProfile();
-      if (isAdminUser) {
-        loadAdminProfile();
-        loadAdminPayments();
-      }
+
+      checkAdmin(user).then(isAdm => {
+        isAdminUser = isAdm;
+        $("adminSection").classList.toggle("hidden", !isAdminUser);
+        if (isAdminUser) {
+          loadAdminProfile();
+          loadAdminPayments();
+        }
+      });
     });
 
     $("marketSearch").oninput = renderPublicMarket;
