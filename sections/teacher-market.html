@@ -75,7 +75,7 @@
           <option>Лабораториялык иш</option><option>БЖБ/ТЖБ</option><option>Олимпиадалык тапшырмалар</option>
           <option>Электрондук китеп</option><option>Видео сабак</option><option>HTML окуу оюну</option>
           <option>Интерактивдүү тапшырма</option><option>Виртуалдык лаборатория / симуляция</option><option>Дизайн жана жасалгалоо</option>
-          <option>Класс жетекчилик / ата-эне менен иштөө</option><option>Башка окуу материалы</option>
+          <option>Класс жетекчилик / ата-эне менен иштөө</option><option>Башка окуу материаласы</option>
         </select>
       </div>
       <p id="marketStatus" class="status-line text-xs text-slate-400" role="status" aria-live="polite">Материалдар жүктөлүүдө...</p>
@@ -133,8 +133,8 @@
             <p class="text-[11px] text-slate-500 mt-1">Ар бир алтынчы жарыяланган материалыңыз бекер бонус болуп белгиленет.</p>
           </div>
           <div>
-            <label class="small-label" for="matDesc">Сүрөттөмө</label>
-            <textarea id="matDesc" maxlength="1000" rows="3" class="input-field w-full p-3 rounded-xl text-sm" placeholder="Материалдын мазмуну, колдонуу жолу..."></textarea>
+            <label class="small-label" for="matDesc">Сүрөттөмө же Материалдын толук тексти</label>
+            <textarea id="matDesc" maxlength="10000" rows="5" class="input-field w-full p-3 rounded-xl text-sm" placeholder="Материалдын толук мазмунун, сабактын планын же сүрөттөмөсүн бул жерге жазыңыз..."></textarea>
           </div>
           <!-- ЖҮКТӨӨ ЫКМАСЫ -->
           <div class="border border-slate-700/80 p-3 rounded-xl bg-slate-900/50 space-y-3">
@@ -571,7 +571,7 @@
             const oRef = sRef(storage, `qrs/${currentUser.uid}_obank_${oFile.name}`);
             const uploadP = uploadBytes(oRef, oFile).then(() => getDownloadURL(oRef));
             const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Timeout")), 5000));
-            obankUrl = await Promise.race([uploadP, timeoutP]);
+            obankUrl = await Promise.race([uploadP, oFile]);
           } catch (oErr) {
             obankUrl = DEFAULT_SITE_PROFILE.obankUrl;
           }
@@ -657,10 +657,13 @@
           if (!file) throw new Error("Файл тандалган жок.");
           fileName = file.name;
           
-          const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
-          const uploadPromise = uploadBytes(fRef, file).then(() => getDownloadURL(fRef));
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Firebase Storage жүктөө убактысы бүтүдү. Интернетиңизди текшериңиз.")), 25000));
-          fileUrl = await Promise.race([uploadPromise, timeoutPromise]);
+          try {
+            const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
+            await uploadBytes(fRef, file);
+            fileUrl = await getDownloadURL(fRef);
+          } catch (stErr) {
+            fileUrl = "DATA_EMBEDDED";
+          }
         } else {
           fileUrl = $("matExternalLink").value.trim();
           fileName = "Сырткы шилтеме (Гугл Диск)";
