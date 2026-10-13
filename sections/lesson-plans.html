@@ -19,26 +19,46 @@
     
     .blur-preview-container {
       position: relative;
-      overflow: hidden;
+      max-height: 160px;
+      overflow-y: auto;
       border-radius: 0.75rem;
       background: #111827;
+      padding: 0.75rem;
+    }
+    .blur-preview-container::-webkit-scrollbar {
+      width: 4px;
+    }
+    .blur-preview-container::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 4px;
     }
     .blur-preview-text {
       filter: blur(4px);
       user-select: none;
-      opacity: 0.5;
+      opacity: 0.4;
       pointer-events: none;
     }
     .blur-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to bottom, rgba(17, 24, 39, 0.1), rgba(17, 24, 39, 0.96));
+      background: linear-gradient(to bottom, rgba(17, 24, 39, 0.2), rgba(17, 24, 39, 0.95));
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 1rem;
       text-align: center;
+    }
+    .unlocked-content-box {
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .unlocked-content-box::-webkit-scrollbar {
+      width: 4px;
+    }
+    .unlocked-content-box::-webkit-scrollbar-thumb {
+      background: #059669;
+      border-radius: 4px;
     }
   </style>
 </head>
@@ -112,7 +132,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система аны автоматтык түрдө анализдеп, 1 күнгө (24 саатка) уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун тиркеңиз. Система аны автоматтык түрдө тастыктап, 1 күнгө уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -204,6 +224,8 @@
           const isUnlocked = isFree || purchasedItemIds.has(item.id);
           const matType = item.type || "Сабактын планы";
           const fullDesc = item.description || "Бул материал предмет боюнча толук түшүндүрмөлөрдү, көнүгүүлөрдү жана методикалык көрсөтмөлөрдү камтыйт.";
+          const safeFileUrl = item.fileUrl || "#";
+          const safeFileName = item.fileName || "material.docx";
 
           return `
           <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
@@ -221,24 +243,26 @@
               <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
             </div>
 
-            <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30' : 'blur-preview-container min-h-[120px] p-3 text-xs text-slate-300 space-y-1'}">
-              <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1">
-                📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Документтин үзүндүсү (1/3 бөлүгү):'}
+            <!-- МЫШКАНЫН ДӨҢГӨЛӨГҮ МЕНЕН СКРОЛЛ КЫЛЫП КӨРҮҮ БӨЛҮГҮ -->
+            <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30 unlocked-content-box' : 'blur-preview-container'}">
+              <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1 text-xs">
+                📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Документтин үзүндүсү (мышка менен жылдырып көрүңүз):'}
               </div>
-              <p class="text-slate-300 leading-relaxed font-medium">
+              <p class="text-xs text-slate-300 leading-relaxed font-medium">
                 1. Теманын негизги максаты: ${item.title} түшүнүгүн өздөштүрүү жана практикада колдонуу жолдорун үйрөнүү...
               </p>
 
-              <div class="${isUnlocked ? 'space-y-1 pt-1' : 'blur-preview-text space-y-1 pt-1'}">
+              <div class="${isUnlocked ? 'space-y-1 pt-1 text-xs text-slate-200' : 'blur-preview-text space-y-1 pt-1 text-xs text-slate-300'}">
                 <p>2. Теориялык бөлүк жана негизги формулар:</p>
                 <p>${fullDesc}</p>
-                <p>3. Практикалык көнүгүүлөр жана суроолор...</p>
+                <p>3. Практикалык көнүгүүлөр, суроолор жана тапшырмалар...</p>
+                <p>4. Сабактын жүрүшү, мугалим үчүн методикалык көрсөтмөлөр жана кошумча материалдар...</p>
               </div>
 
               ${!isUnlocked ? `
               <div class="blur-overlay">
                 <i class="fa-solid fa-lock text-amber-400 text-lg mb-1"></i>
-                <span class="text-[11px] font-bold text-amber-200">Толук нускасын ачуу үчүн сатып алыңыз</span>
+                <span class="text-[11px] font-bold text-amber-200">Толук нускасын ачуу үчүн себетке кошуп сатып алыңыз</span>
                 <span class="text-[10px] text-slate-300 mt-0.5">Толук Word/PDF форматы берилет</span>
               </div>` : ''}
             </div>
@@ -247,7 +271,7 @@
               <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (1 күн)' : `${money(item.price)} сом`}</span>
               
               ${isUnlocked ? `
-                <a href="${item.fileUrl}" target="_blank" download="${item.fileName || 'material'}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white">
+                <a href="${safeFileUrl}" target="_blank" download="${safeFileName}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
                   <i class="fa-solid fa-download"></i> Жүктөп алуу
                 </a>` : `
                 <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
@@ -372,7 +396,7 @@
     if ($("btnOpenCart")) $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     if ($("btnCloseCart")) $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ТЕКШЕРҮҮ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ
+    // ЧЕКТИ ТЕКШЕРҮҮ ЖАНА 1 КҮНГӨ ТОЛУК ДОСТУП АЧУУ
     if ($("cartSubmitForm")) {
       $("cartSubmitForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -380,7 +404,7 @@
         btn.disabled = true;
         if ($("cartStatus")) {
           $("cartStatus").className = "text-xs text-slate-400 text-center";
-          $("cartStatus").textContent = "Чек талдоого алынууда жана автоматтык түрдө текшерилүүдө...";
+          $("cartStatus").textContent = "Чек талдоого алынууда жана уруксат ачылууда...";
         }
 
         try {
@@ -425,7 +449,7 @@
           }
 
           if ($("cartStatus")) {
-            $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү анализделип тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
+            $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Бардык материалдардын кулпусу 1 күнгө ачылды.</span>`;
           }
           cart = [];
           renderShowcase();
