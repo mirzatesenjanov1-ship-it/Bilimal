@@ -370,19 +370,18 @@
     $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРҮҮ (ID МИЛДЭТТҮҮ ЭМЕС)
+    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРҮҮ ЖАНА 1 КҮНГӨ КУЛПУНУ АЧУУ
     $("cartSubmitForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("btnSubmitCartOrder");
       btn.disabled = true;
-      $("cartStatustextContent = "Чек текшерилүүдө жана талдоого алынууда...";
+      $("cartStatus").textContent = "Чек текшерилүүдө жана талдоого алынууда...";
 
       try {
         const email = $("buyerEmailInput").value.trim();
         const receiptFile = $("cartReceiptFile").files[0];
         if (!receiptFile) throw new Error("Төлөм чектин скриншотун тиркеңиз.");
 
-        // Чектин файлынын уникалдуулугун текшерүү (used_receipts аркылуу)
         const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
         const hashKey = btoa(receiptHash).replace(/[/+=]/g, '');
         const usedSnap = await get(ref(db, `used_receipts/${hashKey}`));
@@ -391,7 +390,6 @@
           throw new Error("Бул чек буга чейин колдонулган! Башка чек колдонуңуз.");
         }
 
-        // Чектин убактысын текшерүү (2 сааттан эски чектер кабыл алынбайт)
         const fileTime = receiptFile.lastModified || Date.now();
         const now = Date.now();
         const twoHoursMs = 2 * 60 * 60 * 1000;
@@ -400,18 +398,15 @@
           throw new Error("Чектин убактысы эскирген (2 сааттан мурунку чектер кабыл алынбайт).");
         }
 
-        // Чекти Storage'га жүктөө
         const receiptRef = sRef(storage, `receipts/AUTO_${now}_${receiptFile.name}`);
         await uploadBytes(receiptRef, receiptFile);
         const receiptUrl = await getDownloadURL(receiptRef);
 
-        // Чекти колдонулган деп сактоо
         await set(ref(db, `used_receipts/${hashKey}`), {
           usedAt: now,
           email
         });
 
-        // 1 күнгө (24 саатка) уруксат берүү
         const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000;
         const expiresAt = now + ACCESS_DURATION_MS;
 
@@ -424,7 +419,6 @@
             status: "approved_automatically", createdAt: now
           });
 
-          // Сатуу циклин жаңыртуу
           try {
             const cycleRef = ref(db, `payment_cycles/${item.authorUid}`);
             const cSnap = await get(cycleRef);
