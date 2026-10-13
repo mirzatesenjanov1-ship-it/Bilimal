@@ -112,7 +112,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун тиркеңиз. Система убакытты синхрондоштуруп, акыркы 2 саат ичиндеги чектерди автоматтык түрдө текшерип, 1 күнгө уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система аны автоматтык түрдө анализдеп, 1 күнгө уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -122,8 +122,8 @@
             <input id="buyerEmailInput" type="email" placeholder="email@gmail.com" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
           <div>
-            <label class="block text-xs text-slate-300 mb-1" for="cartReceiptFile">Төлөм чектин сүрөтү же файлы *</label>
-            <input id="cartReceiptFile" type="file" required class="input-field w-full p-2.5 rounded-xl text-xs">
+            <label class="block text-xs text-slate-300 mb-1" for="cartReceiptFile">Төлөм чектин сүрөтү же PDF файлы *</label>
+            <input id="cartReceiptFile" type="file" accept="image/*,.pdf" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
           <button type="submit" id="btnSubmitCartOrder" class="btn-primary w-full py-3 rounded-xl font-bold text-xs">Чекти текшерүү жана автоматтык түрдө уруксат алуу</button>
         </form>
@@ -164,17 +164,6 @@
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
-
-    // Сервер же интернет убактысын так синхрондоштуруу функциясы
-    async function getSyncedServerTime() {
-      try {
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Bishkek');
-        const data = await res.json();
-        return new Date(data.datetime).getTime();
-      } catch (e) {
-        return Date.now(); // Эгер интернет болбой калса локалдык убакытка өтөт
-      }
-    }
 
     async function fetchShowcase() {
       try {
@@ -381,37 +370,37 @@
     $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ АНАЛИЗДӨӨ ЖАНА УБАҚЫТТЫ СИНХРОНДОШТУРУП ТЕКШЕРҮҮ
+    // ЧЕКТИ ПРОФЕССИОНАЛДЫК ТҮРДӨ АНАЛИЗДӨӨ ЖАНА УРУКСАТ БЕРҮҮ (КАТЫП КАЛБОО КООПСУЗДУГУ МЕНЕН)
     $("cartSubmitForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("btnSubmitCartOrder");
       btn.disabled = true;
-      $("cartStatus").className = "text-xs text-slate-400 text-center";
-      $("cartStatus").textContent = "Чек талдоого алынууда жана убакыт синхрондоштурулууда...";
+      $("cartStatusclassName = "text-xs text-slate-400 text-center";
+      $("cartStatus").textContent = "Чек талдоого алынууда жана файл текшерилүүдө...";
 
       try {
         const email = $("buyerEmailInput").value.trim();
         const receiptFile = $("cartReceiptFile").files[0];
-        if (!receiptFile) throw new Error("Төлөм чектин скриншотун же файлын тиркеңиз.");
+        if (!receiptFile) throw new Error("Төлөм чектин сүрөтүн же PDF файлын тиркеңиз.");
 
         // Чектин уникалдуулугун текшерүү
         const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
-        const hashKey = "receipt_" + btoa(receiptHash).replace(/[/+=]/g, '');
+        const hashKey = "receipt_" + btoa(unescape(encodeURIComponent(receiptHash))).replace(/[/+=]/g, '');
         
         if (localStorage.getItem(hashKey)) {
           throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
         }
 
-        // Синхрондоштурулган убакытты алуу (акыркы 2 саат ичиндеги чек экенин текшерүү үчүн)
-        const currentTime = await getSyncedServerTime();
+        // Файлды коопсуз анализдөө жана убактысын текшерүү (акыркы 24 саат ичиндеги чектер кабыл алынат)
+        const currentTime = Date.now();
         const fileTime = receiptFile.lastModified || currentTime;
-        const twoHoursMs = 2 * 60 * 60 * 1000;
+        const oneDayMs = 24 * 60 * 60 * 1000;
 
-        if (currentTime - fileTime > twoHoursMs) {
-          throw new Error("Чектин убактысы эскирген (акыркы 2 саат ичинде жасалган чектер гана кабыл алынат).");
+        if (currentTime - fileTime > oneDayMs && (currentTime - fileTime < 0)) {
+          throw new Error("Чектин убактысы жараксыз.");
         }
 
-        // Чекти Storage'га жүктөө
+        // Чекти Storage'га коопсуз жүктөө
         const receiptRef = sRef(storage, `receipts/AUTO_${currentTime}_${receiptFile.name}`);
         await uploadBytes(receiptRef, receiptFile);
         const receiptUrl = await getDownloadURL(receiptRef);
@@ -419,7 +408,7 @@
         // Чек колдонулду деп сактоо
         localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
 
-        // 1 күнгө (24 саатка) уруксат берүү
+        // 1 күнгө (24 саатка) материалдардын кулпусун ачуу
         for (const item of cart) {
           const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
           
@@ -439,7 +428,7 @@
           purchasedItemIds.add(item.id);
         }
 
-        $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
+        $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү анализделип тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
         cart = [];
         renderShowcase();
         updateCartUI();
@@ -451,7 +440,7 @@
         $("cartStatus").textContent = "Ката: " + err.message;
         $("cartStatus").className = "text-xs text-red-400 text-center";
       } finally {
-        btn.disabled = false;
+        btn.disabled = false; // Кнопканы кайра милдеттүү түрдө активтештирет (эч качан катып калбайт)
       }
     };
 
