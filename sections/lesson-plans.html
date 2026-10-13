@@ -112,7 +112,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун гана тиркеңиз. Сайт чектерди автоматтык түрдө текшерип, туура болсо 1 күнгө (24 саатка) уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун тиркеңиз. Система убакытты синхрондоштуруп, акыркы 2 саат ичиндеги чектерди автоматтык түрдө текшерип, 1 күнгө уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -164,6 +164,17 @@
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
+
+    // Сервер же интернет убактысын так синхрондоштуруу функциясы
+    async function getSyncedServerTime() {
+      try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Bishkek');
+        const data = await res.json();
+        return new Date(data.datetime).getTime();
+      } catch (e) {
+        return Date.now(); // Эгер интернет болбой калса локалдык убакытка өтөт
+      }
+    }
 
     async function fetchShowcase() {
       try {
@@ -370,20 +381,20 @@
     $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ЭҢ ЖОГОРКУ ДЕҢГЭЭЛДЕ АВТОМАТТЫК АНАЛИЗДӨӨ ЖАНА ДОСТУП БЕРҮҮ
+    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ АНАЛИЗДӨӨ ЖАНА УБАҚЫТТЫ СИНХРОНДОШТУРУП ТЕКШЕРҮҮ
     $("cartSubmitForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("btnSubmitCartOrder");
       btn.disabled = true;
       $("cartStatus").className = "text-xs text-slate-400 text-center";
-      $("cartStatus"].textContent = "Чек талдоого алынууда жана автоматтык түрдө текшерилүүдө...";
+      $("cartStatus").textContent = "Чек талдоого алынууда жана убакыт синхрондоштурулууда...";
 
       try {
         const email = $("buyerEmailInput").value.trim();
         const receiptFile = $("cartReceiptFile").files[0];
-        if (!receiptFile) throw new Error("Төлөм чектин файлын же скриншотун тиркеңиз.");
+        if (!receiptFile) throw new Error("Төлөм чектин скриншотун же файлын тиркеңиз.");
 
-        // Чектин уникалдуулугун текшерүү (localStorage аркылуу)
+        // Чектин уникалдуулугун текшерүү
         const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
         const hashKey = "receipt_" + btoa(receiptHash).replace(/[/+=]/g, '');
         
@@ -391,31 +402,31 @@
           throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
         }
 
-        // Чектин убактысын анализдеп текшерүү (2 сааттан эски чектер кабыл алынбайт)
-        const fileTime = receiptFile.lastModified || Date.now();
-        const now = Date.now();
+        // Синхрондоштурулган убакытты алуу (акыркы 2 саат ичиндеги чек экенин текшерүү үчүн)
+        const currentTime = await getSyncedServerTime();
+        const fileTime = receiptFile.lastModified || currentTime;
         const twoHoursMs = 2 * 60 * 60 * 1000;
 
-        if (now - fileTime > twoHoursMs) {
+        if (currentTime - fileTime > twoHoursMs) {
           throw new Error("Чектин убактысы эскирген (акыркы 2 саат ичинде жасалган чектер гана кабыл алынат).");
         }
 
-        // Чекти Storage'га коопсуз жүктөө
-        const receiptRef = sRef(storage, `receipts/AUTO_${now}_${receiptFile.name}`);
+        // Чекти Storage'га жүктөө
+        const receiptRef = sRef(storage, `receipts/AUTO_${currentTime}_${receiptFile.name}`);
         await uploadBytes(receiptRef, receiptFile);
         const receiptUrl = await getDownloadURL(receiptRef);
 
         // Чек колдонулду деп сактоо
-        localStorage.setItem(hashKey, JSON.stringify({ usedAt: now, email }));
+        localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
 
-        // 1 күнгө (24 саатка) уруксат берүү жана буйрутманы жазуу
+        // 1 күнгө (24 саатка) уруксат берүү
         for (const item of cart) {
-          const orderId = "AUTO_" + now + "_" + Math.floor(Math.random()*1000);
+          const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
           
           await set(ref(db, `payment_orders/${orderId}`), {
             orderId, productId: item.id, title: item.title, price: item.price,
             buyerEmail: email, teacherUid: item.authorUid, receiptUrl,
-            status: "approved_automatically", createdAt: now
+            status: "approved_automatically", createdAt: currentTime
           });
 
           try {
