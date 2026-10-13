@@ -184,6 +184,33 @@
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
+    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ФАЙЛДЫ КАТАСЫЗ ЖҮКТӨӨ ФУНКЦИЯСЫ
+    async function downloadFileSafely(fileUrl, fileName) {
+      if (!fileUrl || fileUrl === "#") {
+        alert("Файл шилтемеси табылган жок.");
+        return;
+      }
+      
+      try {
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error("Тармактык ката");
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName || "material";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        // Эгер CORS же башка чектөө болсо, шилтемени жаңы өтмөктө ачуу
+        window.open(fileUrl, "_blank");
+      }
+    }
+    window.downloadFileSafely = downloadFileSafely;
+
     async function fetchShowcase() {
       try {
         const snap = await get(ref(db, "market_items"));
@@ -226,7 +253,7 @@
           const matType = item.type || "Окуу материалы";
           const rawDesc = item.description || "Бул материал үчүн сүрөттөмө жазылган эмес.";
           const safeFileUrl = item.fileUrl || "#";
-          const safeFileName = item.fileName || "material";
+          const safeFileName = item.fileName || "material.docx";
 
           return `
           <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
@@ -244,7 +271,7 @@
               <p class="text-[11px] text-purple-300">Мугалим: ${escapeHtml(item.authorName || 'Мугалим')}</p>
             </div>
 
-            <!-- МЫШКАНЫН ДӨҢГӨЛӨГҮ МЕНЕН СКРОЛЛ КЫЛЫП КӨРҮҮ БӨЛҮГҮ (МУГАЛИМ ЖҮКТӨГӨН ЧЫНЫГЫ МАЗМУН) -->
+            <!-- МЫШКАНЫН ДӨҢГӨЛӨГҮ МЕНЕН СКРОЛЛ КЫЛЫП КӨРҮҮ БӨЛҮГҮ -->
             <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30 unlocked-content-box' : 'blur-preview-container'}">
               <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1 text-xs flex justify-between items-center">
                 <span>📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Материалдын мазмуну (мышка менен жылдырып көрүңүз):'}</span>
@@ -265,9 +292,9 @@
               <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (1 күн)' : `${money(item.price)} сом`}</span>
               
               ${isUnlocked ? `
-                <a href="${safeFileUrl}" target="_blank" download="${safeFileName}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
+                <button type="button" onclick="window.downloadFileSafely('${safeFileUrl}', '${safeFileName}')" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
                   <i class="fa-solid fa-download"></i> Жүктөп алуу
-                </a>` : `
+                </button>` : `
                 <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
                   <i class="fa-solid ${inCart ? 'fa-check' : 'fa-cart-plus'}"></i>
                   ${inCart ? 'Себетте' : 'Себетке кошуу'}
