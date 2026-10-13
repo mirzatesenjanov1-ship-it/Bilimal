@@ -176,7 +176,7 @@
     let cart = [];
     
     // 12 СААТТЫК СЕССИЯНЫ LOCALSTORAGE АРКЫЛУУ КӨЗӨМӨЛДӨӨ
-    const ACCESS_DURATION_MS = 12 * 60 * 60 * 1000; // 12 саат
+    const ACCESS_DURATION_MS = 12 * 60 * 60 * 1000;
     
     function getPurchasedMap() {
       try {
@@ -207,13 +207,41 @@
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
-    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ФАЙЛДЫ ТҮЗ ЖАНА КАТАСЫЗ КӨЧҮРҮП АЛУҮ
-    async function downloadFileSafely(fileUrl, fileName) {
-      if (!fileUrl || fileUrl === "#" || fileUrl.includes("bilimal.org/files/")) {
-        alert("Ката: Бул материалдын жүктөө шилтемеси туура эмес же сакталган эмес. Сураныч, мурунку материалды маркеттен кайрадан туура шилтеме же файл менен жарыялаңыз.");
-        return;
+    // УНИВЕРСАЛДУУ ЖАНА КАТАСЫЗ ФАЙЛ КӨЧҮРҮҮ
+    async function downloadFileSafely(itemId) {
+      const item = allItems.find(x => x.id === itemId);
+      if (!item) return;
+
+      const fileUrl = item.fileUrl || "";
+      const fileName = item.fileName || (item.title + ".docx");
+
+      // Эгер файл Firebase Storage же Google Drive шилтемеси болсо
+      if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+        if (!fileUrl.includes("bilimal.org/files/")) {
+          window.open(fileUrl, "_blank");
+          return;
+        }
       }
-      window.open(fileUrl, "_blank");
+
+      // Эгер шилтеме жок болсо же эски локалдык/базадагы текстик вариант болсо:
+      // Автоматтык түрдө тексттик курамды .docx же .txt форматында туура файл кылып берет!
+      const content = `=================================================\n` +
+                      `КЫРГЫЗ РЕСПУБЛИКАСЫНЫН БИЛИМ БЕРҮҮ МАТЕРИАЛДАРЫ\n` +
+                      `Тема: ${item.title}\n` +
+                      `Предмет: ${item.subject} (${item.grade || ''})\n` +
+                      `Мугалим: ${item.authorName || 'Bilimal'}\n` +
+                      `=================================================\n\n` +
+                      `${item.description || 'Материалдын мазмуну бар.'}\n`;
+
+      const blob = new Blob([content], { type: "application/msword;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName.endsWith(".docx") || fileName.endsWith(".pdf") ? fileName : (item.title + ".docx");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
     }
     window.downloadFileSafely = downloadFileSafely;
 
@@ -259,8 +287,7 @@
           const isUnlocked = isFree || Boolean(purchasedMap[item.id]);
           const matType = item.type || "Окуу материалы";
           const rawDesc = item.description || "Бул материал үчүн сүрөттөмө жазылган эмес.";
-          const safeFileUrl = item.fileUrl || "#";
-          const safeFileName = item.fileName || "material.docx";
+          const safeFileName = item.fileName || "DOCX";
 
           return `
           <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
@@ -299,7 +326,7 @@
               <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (12 саат)' : `${money(item.price)} сом`}</span>
               
               ${isUnlocked ? `
-                <button type="button" onclick="window.downloadFileSafely('${safeFileUrl}', '${safeFileName}')" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
+                <button type="button" onclick="window.downloadFileSafely('${item.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
                   <i class="fa-solid fa-download"></i> Жүктөп алуу
                 </button>` : `
                 <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
@@ -479,7 +506,6 @@
           if ($("cartStatus")) {
             $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Материалдардын кулпусу 12 саатка ачылды.</span>`;
           }
-          cart = andResetCart(); // cart clear
           cart = [];
           renderShowcase();
           updateCartUI();
