@@ -382,11 +382,11 @@
         const receiptFile = $("cartReceiptFile").files[0];
         if (!receiptFile) throw new Error("Төлөм чектин скриншотун тиркеңиз.");
 
+        // Чектин уникалдуулугун браузердин сактагычы аркылуу текшерүү (Permission denied алдын алуу)
         const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
-        const hashKey = btoa(receiptHash).replace(/[/+=]/g, '');
-        const usedSnap = await get(ref(db, `used_receipts/${hashKey}`));
+        const hashKey = "receipt_" + btoa(receiptHash).replace(/[/+=]/g, '');
         
-        if (usedSnap.exists()) {
+        if (localStorage.getItem(hashKey)) {
           throw new Error("Бул чек буга чейин колдонулган! Башка чек колдонуңуз.");
         }
 
@@ -402,13 +402,7 @@
         await uploadBytes(receiptRef, receiptFile);
         const receiptUrl = await getDownloadURL(receiptRef);
 
-        await set(ref(db, `used_receipts/${hashKey}`), {
-          usedAt: now,
-          email
-        });
-
-        const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000;
-        const expiresAt = now + ACCESS_DURATION_MS;
+        localStorage.setItem(hashKey, JSON.stringify({ usedAt: now, email }));
 
         for (const item of cart) {
           const orderId = "AUTO_" + now + "_" + Math.floor(Math.random()*1000);
