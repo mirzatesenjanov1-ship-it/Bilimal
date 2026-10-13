@@ -372,7 +372,7 @@
     if ($("btnOpenCart")) $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     if ($("btnCloseCart")) $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ЖӨГОРКУ ТАКТЫКТА АНАЛИЗДӨӨ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ (CORS КАТАСЫ ЖОК)
+    // ЧЕКТИ ТЕКШЕРҮҮ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ
     if ($("cartSubmitForm")) {
       $("cartSubmitForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -388,7 +388,6 @@
           const receiptFile = $("cartReceiptFile").files[0];
           if (!receiptFile) throw new Error("Төлөм чектин сүрөтүн же PDF файлын тиркеңиз.");
 
-          // Чектин уникалдуулугун локалдык сактагыч аркылуу текшерүү
           const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
           const hashKey = "receipt_" + btoa(unescape(encodeURIComponent(receiptHash))).replace(/[/+=]/g, '');
           
@@ -396,7 +395,6 @@
             throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
           }
 
-          // Убакытты так текшерүү (24 саат ичиндеги чектер кабыл алынат)
           const currentTime = Date.now();
           const fileTime = receiptFile.lastModified || currentTime;
           const maxAllowedAgeMs = 24 * 60 * 60 * 1000;
@@ -405,10 +403,8 @@
             throw new Error("Чектин убактысы жараксыз.");
           }
 
-          // Чекти колдонулду деп сактоо
           localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
 
-          // 1 күнгө уруксат берүү жана байма-бай жазуу
           for (const item of cart) {
             const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
             
@@ -444,7 +440,7 @@
             $("cartStatus").className = "text-xs text-red-400 text-center";
           }
         } finally {
-          btn.disabled = false; // Кнопка милдеттүү түрдө кайра иштетилет
+          btn.disabled = false;
         }
       };
     }
