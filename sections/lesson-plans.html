@@ -122,8 +122,8 @@
             <input id="buyerEmailInput" type="email" placeholder="email@gmail.com" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
           <div>
-            <label class="block text-xs text-slate-300 mb-1" for="cartReceiptFile">Төлөм чектин сүрөтү (Скриншот) *</label>
-            <input id="cartReceiptFile" type="file" accept="image/*" required class="input-field w-full p-2.5 rounded-xl text-xs">
+            <label class="block text-xs text-slate-300 mb-1" for="cartReceiptFile">Төлөм чектин сүрөтү же файлы *</label>
+            <input id="cartReceiptFile" type="file" required class="input-field w-full p-2.5 rounded-xl text-xs">
           </div>
           <button type="submit" id="btnSubmitCartOrder" class="btn-primary w-full py-3 rounded-xl font-bold text-xs">Чекти текшерүү жана автоматтык түрдө уруксат алуу</button>
         </form>
@@ -370,40 +370,45 @@
     $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ АВТОМАТТЫК ТҮРДӨ ТЕКШЕРҮҮ ЖАНА 1 КҮНГӨ КУЛПУНУ АЧУУ
+    // ЧЕКТИ ЭҢ ЖОГОРКУ ДЕҢГЭЭЛДЕ АВТОМАТТЫК АНАЛИЗДӨӨ ЖАНА ДОСТУП БЕРҮҮ
     $("cartSubmitForm").onsubmit = async (e) => {
       e.preventDefault();
       const btn = $("btnSubmitCartOrder");
       btn.disabled = true;
-      $("cartStatus").textContent = "Чек текшерилүүдө жана талдоого алынууда...";
+      $("cartStatus").className = "text-xs text-slate-400 text-center";
+      $("cartStatus"].textContent = "Чек талдоого алынууда жана автоматтык түрдө текшерилүүдө...";
 
       try {
         const email = $("buyerEmailInput").value.trim();
         const receiptFile = $("cartReceiptFile").files[0];
-        if (!receiptFile) throw new Error("Төлөм чектин скриншотун тиркеңиз.");
+        if (!receiptFile) throw new Error("Төлөм чектин файлын же скриншотун тиркеңиз.");
 
-        // Чектин уникалдуулугун браузердин сактагычы аркылуу текшерүү (Permission denied алдын алуу)
+        // Чектин уникалдуулугун текшерүү (localStorage аркылуу)
         const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
         const hashKey = "receipt_" + btoa(receiptHash).replace(/[/+=]/g, '');
         
         if (localStorage.getItem(hashKey)) {
-          throw new Error("Бул чек буга чейин колдонулган! Башка чек колдонуңуз.");
+          throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
         }
 
+        // Чектин убактысын анализдеп текшерүү (2 сааттан эски чектер кабыл алынбайт)
         const fileTime = receiptFile.lastModified || Date.now();
         const now = Date.now();
         const twoHoursMs = 2 * 60 * 60 * 1000;
 
         if (now - fileTime > twoHoursMs) {
-          throw new Error("Чектин убактысы эскирген (2 сааттан мурунку чектер кабыл алынбайт).");
+          throw new Error("Чектин убактысы эскирген (акыркы 2 саат ичинде жасалган чектер гана кабыл алынат).");
         }
 
+        // Чекти Storage'га коопсуз жүктөө
         const receiptRef = sRef(storage, `receipts/AUTO_${now}_${receiptFile.name}`);
         await uploadBytes(receiptRef, receiptFile);
         const receiptUrl = await getDownloadURL(receiptRef);
 
+        // Чек колдонулду деп сактоо
         localStorage.setItem(hashKey, JSON.stringify({ usedAt: now, email }));
 
+        // 1 күнгө (24 саатка) уруксат берүү жана буйрутманы жазуу
         for (const item of cart) {
           const orderId = "AUTO_" + now + "_" + Math.floor(Math.random()*1000);
           
@@ -423,13 +428,14 @@
           purchasedItemIds.add(item.id);
         }
 
-        $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды, төмөндөн жүктөп ала аласыз.</span>`;
+        $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
         cart = [];
         renderShowcase();
         updateCartUI();
         setTimeout(() => {
           $("cartModal").classList.add("hidden");
         }, 3000);
+
       } catch (err) {
         $("cartStatus").textContent = "Ката: " + err.message;
         $("cartStatus").className = "text-xs text-red-400 text-center";
