@@ -182,6 +182,7 @@
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
     async function fetchShowcase() {
       try {
@@ -222,48 +223,41 @@
           const inCart = cart.some(c => c.id === item.id);
           const isFree = Number(item.price) === 0;
           const isUnlocked = isFree || purchasedItemIds.has(item.id);
-          const matType = item.type || "Сабактын планы";
-          const fullDesc = item.description || "Бул материал предмет боюнча толук түшүндүрмөлөрдү, көнүгүүлөрдү жана методикалык көрсөтмөлөрдү камтыйт.";
+          const matType = item.type || "Окуу материалы";
+          const rawDesc = item.description || "Бул материал үчүн сүрөттөмө жазылган эмес.";
           const safeFileUrl = item.fileUrl || "#";
-          const safeFileName = item.fileName || "material.docx";
+          const safeFileName = item.fileName || "material";
 
           return `
           <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
             <div class="space-y-2">
               <div class="flex justify-between items-center text-[11px]">
-                <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/30">${item.subject}</span>
-                <span class="text-slate-400 font-medium">${item.grade || ''}</span>
+                <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/30">${escapeHtml(item.subject)}</span>
+                <span class="text-slate-400 font-medium">${escapeHtml(item.grade || '')}</span>
               </div>
               
               <div class="space-y-1">
-                <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">${matType}</span>
-                <h3 class="font-bold text-base text-slate-100">${item.title}</h3>
+                <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">${escapeHtml(matType)}</span>
+                <h3 class="font-bold text-base text-slate-100">${escapeHtml(item.title)}</h3>
               </div>
 
-              <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
+              <p class="text-[11px] text-purple-300">Мугалим: ${escapeHtml(item.authorName || 'Мугалим')}</p>
             </div>
 
-            <!-- МЫШКАНЫН ДӨҢГӨЛӨГҮ МЕНЕН СКРОЛЛ КЫЛЫП КӨРҮҮ БӨЛҮГҮ -->
+            <!-- МЫШКАНЫН ДӨҢГӨЛӨГҮ МЕНЕН СКРОЛЛ КЫЛЫП КӨРҮҮ БӨЛҮГҮ (МУГАЛИМ ЖҮКТӨГӨН ЧЫНЫГЫ МАЗМУН) -->
             <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30 unlocked-content-box' : 'blur-preview-container'}">
-              <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1 text-xs">
-                📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Документтин үзүндүсү (мышка менен жылдырып көрүңүз):'}
+              <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1 text-xs flex justify-between items-center">
+                <span>📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Материалдын мазмуну (мышка менен жылдырып көрүңүз):'}</span>
+                <span class="text-[10px] text-slate-400">${escapeHtml(safeFileName.split('.').pop().toUpperCase())}</span>
               </div>
-              <p class="text-xs text-slate-300 leading-relaxed font-medium">
-                1. Теманын негизги максаты: ${item.title} түшүнүгүн өздөштүрүү жана практикада колдонуу жолдорун үйрөнүү...
-              </p>
 
-              <div class="${isUnlocked ? 'space-y-1 pt-1 text-xs text-slate-200' : 'blur-preview-text space-y-1 pt-1 text-xs text-slate-300'}">
-                <p>2. Теориялык бөлүк жана негизги формулар:</p>
-                <p>${fullDesc}</p>
-                <p>3. Практикалык көнүгүүлөр, суроолор жана тапшырмалар...</p>
-                <p>4. Сабактын жүрүшү, мугалим үчүн методикалык көрсөтмөлөр жана кошумча материалдар...</p>
-              </div>
+              <div class="${isUnlocked ? 'space-y-1 pt-1 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap' : 'blur-preview-text space-y-1 pt-1 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap'}">${escapeHtml(rawDesc)}</div>
 
               ${!isUnlocked ? `
               <div class="blur-overlay">
                 <i class="fa-solid fa-lock text-amber-400 text-lg mb-1"></i>
-                <span class="text-[11px] font-bold text-amber-200">Толук нускасын ачуу үчүн себетке кошуп сатып алыңыз</span>
-                <span class="text-[10px] text-slate-300 mt-0.5">Толук Word/PDF форматы берилет</span>
+                <span class="text-[11px] font-bold text-amber-200">Толук нускасын жана файлын жүктөө үчүн сатып алыңыз</span>
+                <span class="text-[10px] text-slate-300 mt-0.5">Форматы: ${escapeHtml(safeFileName)}</span>
               </div>` : ''}
             </div>
 
@@ -299,8 +293,8 @@
         $("cartItemsList").innerHTML = cart.map(item => `
           <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
             <div>
-              <b class="text-slate-200">${item.title}</b>
-              <p class="text-slate-400 text-[11px]">${item.subject} · ${money(item.price)} сом</p>
+              <b class="text-slate-200">${escapeHtml(item.title)}</b>
+              <p class="text-slate-400 text-[11px]">${escapeHtml(item.subject)} · ${money(item.price)} сом</p>
             </div>
             <button data-removecart="${item.id}" class="text-red-400 hover:text-red-300 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
           </div>`).join("");
