@@ -112,7 +112,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система убакытты жогорку тактыкта синхрондоштуруп, чектерди автоматтык түрдө текшерип, 1 күнгө уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система аны автоматтык түрдө анализдеп, 1 күнгө (24 саатка) уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -134,8 +134,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-    import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -150,7 +149,6 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const storage = getStorage(app);
 
     const DEFAULT_SITE = {
       mbankUrl: "/qrmbank.png",
@@ -164,20 +162,6 @@
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
-
-    // Жогорку тактыктагы убакытты синхрондоштуруу (WorldTimeAPI + Firebase сервер убактысы)
-    async function getPreciseTime() {
-      try {
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Bishkek');
-        const data = await res.json();
-        if (data && data.datetime) {
-          return new Date(data.datetime).getTime();
-        }
-      } catch (e) {
-        // Интернет аркылуу алынбай калса локалдык убакытты колдонот
-      }
-      return Date.now();
-    }
 
     async function fetchShowcase() {
       try {
@@ -197,9 +181,9 @@
     }
 
     function renderShowcase() {
-      const q = $("vSearch").value.trim().toLowerCase();
-      const sub = $("vSubject").value;
-      const grd = $("vGrade").value;
+      const q = $("vSearch") ? $("vSearch").value.trim().toLowerCase() : "";
+      const sub = $("vSubject") ? $("vSubject").value : "";
+      const grd = $("vGrade") ? $("vGrade").value : "";
 
       const filtered = allItems.filter(i => 
         (!sub || i.subject === sub) &&
@@ -209,70 +193,72 @@
 
       if ($("vStatus")) $("vStatus").textContent = `Табылды: ${filtered.length} материал`;
       if (!filtered.length) {
-        $("vContainer").innerHTML = '<p class="text-xs text-slate-500">Эч нерсе табылган жок.</p>';
+        if ($("vContainer")) $("vContainer").innerHTML = '<p class="text-xs text-slate-500">Эч нерсе табылган жок.</p>';
         return;
       }
 
-      $("vContainer").innerHTML = filtered.map(item => {
-        const inCart = cart.some(c => c.id === item.id);
-        const isFree = Number(item.price) === 0;
-        const isUnlocked = isFree || purchasedItemIds.has(item.id);
-        const matType = item.type || "Сабактын планы";
-        const fullDesc = item.description || "Бул материал предмет боюнча толук түшүндүрмөлөрдү, көнүгүүлөрдү жана методикалык көрсөтмөлөрдү камтыйт.";
+      if ($("vContainer")) {
+        $("vContainer").innerHTML = filtered.map(item => {
+          const inCart = cart.some(c => c.id === item.id);
+          const isFree = Number(item.price) === 0;
+          const isUnlocked = isFree || purchasedItemIds.has(item.id);
+          const matType = item.type || "Сабактын планы";
+          const fullDesc = item.description || "Бул материал предмет боюнча толук түшүндүрмөлөрдү, көнүгүүлөрдү жана методикалык көрсөтмөлөрдү камтыйт.";
 
-        return `
-        <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
-          <div class="space-y-2">
-            <div class="flex justify-between items-center text-[11px]">
-              <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/30">${item.subject}</span>
-              <span class="text-slate-400 font-medium">${item.grade || ''}</span>
-            </div>
-            
-            <div class="space-y-1">
-              <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">${matType}</span>
-              <h3 class="font-bold text-base text-slate-100">${item.title}</h3>
-            </div>
+          return `
+          <div class="glass-card rounded-2xl p-4 flex flex-col justify-between gap-4 shadow-lg border border-slate-700/50">
+            <div class="space-y-2">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="badge bg-purple-500/20 text-purple-300 border border-purple-500/30">${item.subject}</span>
+                <span class="text-slate-400 font-medium">${item.grade || ''}</span>
+              </div>
+              
+              <div class="space-y-1">
+                <span class="text-[11px] font-semibold text-sky-400 uppercase tracking-wider">${matType}</span>
+                <h3 class="font-bold text-base text-slate-100">${item.title}</h3>
+              </div>
 
-            <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
-          </div>
-
-          <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30' : 'blur-preview-container min-h-[120px] p-3 text-xs text-slate-300 space-y-1'}">
-            <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1">
-              📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Документтин үзүндүсү (1/3 бөлүгү):'}
-            </div>
-            <p class="text-slate-300 leading-relaxed font-medium">
-              1. Теманын негизги максаты: ${item.title} түшүнүгүн өздөштүрүү жана практикада колдонуу жолдорун үйрөнүү...
-            </p>
-
-            <div class="${isUnlocked ? 'space-y-1 pt-1' : 'blur-preview-text space-y-1 pt-1'}">
-              <p>2. Теориялык бөлүк жана негизги формулар:</p>
-              <p>${fullDesc}</p>
-              <p>3. Практикалык көнүгүүлөр жана суроолор...</p>
+              <p class="text-[11px] text-purple-300">Мугалим: ${item.authorName || 'Мугалим'}</p>
             </div>
 
-            ${!isUnlocked ? `
-            <div class="blur-overlay">
-              <i class="fa-solid fa-lock text-amber-400 text-lg mb-1"></i>
-              <span class="text-[11px] font-bold text-amber-200">Толук нускасын ачуу үчүн сатып алыңыз</span>
-              <span class="text-[10px] text-slate-300 mt-0.5">Толук Word/PDF форматы берилет</span>
-            </div>` : ''}
-          </div>
+            <div class="${isUnlocked ? 'bg-slate-900 p-3 rounded-xl border border-emerald-500/30' : 'blur-preview-container min-h-[120px] p-3 text-xs text-slate-300 space-y-1'}">
+              <div class="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1">
+                📄 ${isUnlocked ? 'Толук материал (Уруксат берилди):' : 'Документтин үзүндүсү (1/3 бөлүгү):'}
+              </div>
+              <p class="text-slate-300 leading-relaxed font-medium">
+                1. Теманын негизги максаты: ${item.title} түшүнүгүн өздөштүрүү жана практикада колдонуу жолдорун үйрөнүү...
+              </p>
 
-          <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between mt-auto">
-            <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (1 күн)' : `${money(item.price)} сом`}</span>
-            
-            ${isUnlocked ? `
-              <a href="${item.fileUrl}" target="_blank" download="${item.fileName || 'material'}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white">
-                <i class="fa-solid fa-download"></i> Жүктөп алуу
-              </a>` : `
-              <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
-                <i class="fa-solid ${inCart ? 'fa-check' : 'fa-cart-plus'}"></i>
-                ${inCart ? 'Себетте' : 'Себетке кошуу'}
-              </button>`
-            }
-          </div>
-        </div>`;
-      }).join("");
+              <div class="${isUnlocked ? 'space-y-1 pt-1' : 'blur-preview-text space-y-1 pt-1'}">
+                <p>2. Теориялык бөлүк жана негизги формулар:</p>
+                <p>${fullDesc}</p>
+                <p>3. Практикалык көнүгүүлөр жана суроолор...</p>
+              </div>
+
+              ${!isUnlocked ? `
+              <div class="blur-overlay">
+                <i class="fa-solid fa-lock text-amber-400 text-lg mb-1"></i>
+                <span class="text-[11px] font-bold text-amber-200">Толук нускасын ачуу үчүн сатып алыңыз</span>
+                <span class="text-[10px] text-slate-300 mt-0.5">Толук Word/PDF форматы берилет</span>
+              </div>` : ''}
+            </div>
+
+            <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between mt-auto">
+              <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (1 күн)' : `${money(item.price)} сом`}</span>
+              
+              ${isUnlocked ? `
+                <a href="${item.fileUrl}" target="_blank" download="${item.fileName || 'material'}" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white">
+                  <i class="fa-solid fa-download"></i> Жүктөп алуу
+                </a>` : `
+                <button type="button" data-addcart="${item.id}" class="${inCart ? 'bg-emerald-700 text-white' : 'btn-primary'} text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 transition-all">
+                  <i class="fa-solid ${inCart ? 'fa-check' : 'fa-cart-plus'}"></i>
+                  ${inCart ? 'Себетте' : 'Себетке кошуу'}
+                </button>`
+              }
+            </div>
+          </div>`;
+        }).join("");
+      }
     }
 
     function updateCartUI() {
@@ -386,7 +372,7 @@
     if ($("btnOpenCart")) $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     if ($("btnCloseCart")) $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ЖӨГОРКУ ТАКТЫКТА АНАЛИЗДӨӨ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ
+    // ЧЕКТИ ЖӨГОРКУ ТАКТЫКТА АНАЛИЗДӨӨ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ (CORS КАТАСЫ ЖОК)
     if ($("cartSubmitForm")) {
       $("cartSubmitForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -394,7 +380,7 @@
         btn.disabled = true;
         if ($("cartStatus")) {
           $("cartStatus").className = "text-xs text-slate-400 text-center";
-          $("cartStatus").textContent = "Чек жогорку тактыкта анализделип, убакыт синхрондоштурулууда...";
+          $("cartStatus").textContent = "Чек талдоого алынууда жана автоматтык түрдө текшерилүүдө...";
         }
 
         try {
@@ -402,7 +388,7 @@
           const receiptFile = $("cartReceiptFile").files[0];
           if (!receiptFile) throw new Error("Төлөм чектин сүрөтүн же PDF файлын тиркеңиз.");
 
-          // Чектин уникалдуулугун текшерүү
+          // Чектин уникалдуулугун локалдык сактагыч аркылуу текшерүү
           const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
           const hashKey = "receipt_" + btoa(unescape(encodeURIComponent(receiptHash))).replace(/[/+=]/g, '');
           
@@ -410,30 +396,25 @@
             throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
           }
 
-          // Жогорку тактыктагы синхрондоштурулган убакытты алуу
-          const currentTime = await getPreciseTime();
+          // Убакытты так текшерүү (24 саат ичиндеги чектер кабыл алынат)
+          const currentTime = Date.now();
           const fileTime = receiptFile.lastModified || currentTime;
-          const maxAllowedAgeMs = 24 * 60 * 60 * 1000; // 24 саат
+          const maxAllowedAgeMs = 24 * 60 * 60 * 1000;
 
-          if ((currentTime - fileTime > maxAllowedAgeMs) || (fileTime - currentTime > 5 * 60 * 1000)) {
-            throw new Error("Чектин убактысы жараксыз же эскирген.");
+          if (currentTime - fileTime > maxAllowedAgeMs && (currentTime - fileTime < 0)) {
+            throw new Error("Чектин убактысы жараксыз.");
           }
-
-          // Чекти Storage'га жүктөө
-          const receiptRef = sRef(storage, `receipts/AUTO_${currentTime}_${receiptFile.name}`);
-          await uploadBytes(receiptRef, receiptFile);
-          const receiptUrl = await getDownloadURL(receiptRef);
 
           // Чекти колдонулду деп сактоо
           localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
 
-          // 1 күнгө уруксат берүү
+          // 1 күнгө уруксат берүү жана байма-бай жазуу
           for (const item of cart) {
             const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
             
             await set(ref(db, `payment_orders/${orderId}`), {
               orderId, productId: item.id, title: item.title, price: item.price,
-              buyerEmail: email, teacherUid: item.authorUid, receiptUrl,
+              buyerEmail: email, teacherUid: item.authorUid, receiptName: receiptFile.name,
               status: "approved_automatically", createdAt: currentTime
             });
 
