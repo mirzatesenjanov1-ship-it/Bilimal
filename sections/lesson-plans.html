@@ -207,41 +207,21 @@
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
-    // УНИВЕРСАЛДУУ ЖАНА КАТАСЫЗ ФАЙЛ КӨЧҮРҮҮ
+    // ТҮПНУСКА ФАЙЛДЫ ФОРМАТЫН БУЗБАЙ ТҮЗ ЖҮКТӨП АЛУҮ
     async function downloadFileSafely(itemId) {
       const item = allItems.find(x => x.id === itemId);
       if (!item) return;
 
       const fileUrl = item.fileUrl || "";
-      const fileName = item.fileName || (item.title + ".docx");
+      const fileName = item.fileName || "document.docx";
 
-      // Эгер файл Firebase Storage же Google Drive шилтемеси болсо
-      if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
-        if (!fileUrl.includes("bilimal.org/files/")) {
-          window.open(fileUrl, "_blank");
-          return;
-        }
+      if (!fileUrl || fileUrl === "DATA_EMBEDDED" || fileUrl.includes("bilimal.org/files/")) {
+        alert("Ката: Бул материалдын чыныгы файл шилтемеси сакталган эмес. Сураныч, мугалим маркетинен файлды кайрадан туура форматында (.docx, .pdf ж.б.) жүктөңүз.");
+        return;
       }
 
-      // Эгер шилтеме жок болсо же эски локалдык/базадагы текстик вариант болсо:
-      // Автоматтык түрдө тексттик курамды .docx же .txt форматында туура файл кылып берет!
-      const content = `=================================================\n` +
-                      `КЫРГЫЗ РЕСПУБЛИКАСЫНЫН БИЛИМ БЕРҮҮ МАТЕРИАЛДАРЫ\n` +
-                      `Тема: ${item.title}\n` +
-                      `Предмет: ${item.subject} (${item.grade || ''})\n` +
-                      `Мугалим: ${item.authorName || 'Bilimal'}\n` +
-                      `=================================================\n\n` +
-                      `${item.description || 'Материалдын мазмуну бар.'}\n`;
-
-      const blob = new Blob([content], { type: "application/msword;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = fileName.endsWith(".docx") || fileName.endsWith(".pdf") ? fileName : (item.title + ".docx");
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
+      // Файлды брузер аркылуу түздөн-түз шилтемеден ачуу (Форматы 100% сакталат)
+      window.open(fileUrl, "_blank");
     }
     window.downloadFileSafely = downloadFileSafely;
 
