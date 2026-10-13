@@ -94,15 +94,11 @@
       <select id="vSubject" class="input-field p-3 rounded-xl text-sm">
         <option value="">Бардык предметтер</option>
         <option>Физика</option><option>Астрономия</option><option>Математика</option><option>Алгебра</option><option>Геометрия</option>
-        <option>Кыргыз тили</option><option>Кыргыз адабияты</option><option>Орус тили</option><option>Англис тили</option>
-        <option>Тарых</option><option>География</option><option>Биология</option><option>Химия</option><option>Информатика</option>
-        <option>Башталгыч класс</option><option>Музыка</option><option>Сүрөт / СӨТ</option><option>Дене тарбия</option><option>Башка</option>
+        <option>Кыргыз тили</option><option>Кыргыз адабияты</option><option>Орус тили</option><option>Англис тили</option><option>Тарых</option><option>География</option><option>Биология</option><option>Химия</option><option>Информатика</option><option>Башталгыч класс</option><option>Музыка</option><option>Сүрөт / СӨТ</option><option>Дене тарбия</option><option>Башка</option>
       </select>
       <select id="vGrade" class="input-field p-3 rounded-xl text-sm">
         <option value="">Бардык класстар</option>
-        <option>1-класс</option><option>2-класс</option><option>3-класс</option><option>4-класс</option>
-        <option>5-класс</option><option>6-класс</option><option>7-класс</option><option>8-класс</option>
-        <option>9-класс</option><option>10-класс</option><option>11-класс</option><option>Мугалимдер үчүн</option>
+        <option>1-класс</option><option>2-класс</option><option>3-класс</option><option>4-класс</option><option>5-класс</option><option>6-класс</option><option>7-класс</option><option>8-класс</option><option>9-класс</option><option>10-класс</option><option>11-класс</option><option>Мугалимдер үчүн</option>
       </select>
     </div>
 
@@ -132,7 +128,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун тиркеңиз. Система аны автоматтык түрдө тастыктап, 1 күнгө уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун тиркеңиз. Система аны автоматтык түрдө тастыктап, 12 саатка уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -178,35 +174,46 @@
 
     let allItems = [];
     let cart = [];
-    let purchasedItemIds = new Set();
+    
+    // 12 СААТТЫК СЕССИЯНЫ LOCALSTORAGE АРКЫЛУУ КӨЗӨМӨЛДӨӨ
+    const ACCESS_DURATION_MS = 12 * 60 * 60 * 1000; // 12 саат
+    
+    function getPurchasedMap() {
+      try {
+        const raw = localStorage.getItem("bilimal_unlocked_items");
+        if (!raw) return {};
+        const data = JSON.parse(raw);
+        const now = Date.now();
+        const active = {};
+        for (const [id, expiry] of Object.entries(data)) {
+          if (Number(expiry) > now) {
+            active[id] = expiry;
+          }
+        }
+        localStorage.setItem("bilimal_unlocked_items", JSON.stringify(active));
+        return active;
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function savePurchasedItem(id) {
+      const data = getPurchasedMap();
+      data[id] = Date.now() + ACCESS_DURATION_MS;
+      localStorage.setItem("bilimal_unlocked_items", JSON.stringify(data));
+    }
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
-    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ФАЙЛДЫ ТҮЗ ЖАНА ТУУРА КӨЧҮРҮП АЛУУ
+    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ФАЙЛДЫ ТҮЗ ЖАНА КАТАСЫЗ КӨЧҮРҮП АЛУҮ
     async function downloadFileSafely(fileUrl, fileName) {
-      if (!fileUrl || fileUrl === "#" || fileUrl.includes("bilimal.org/files/")) {
-        alert("Ката: Бул материалдын шилтемеси туура эмес же толук жүктөлгөн эмес. Сураныч, материалды Маркеттен кайрадан жарыялаңыз.");
+      if (!fileUrl || fileUrl === "#") {
+        alert("Ката: Бул материалдын жүктөө шилтемеси табылган жок.");
         return;
       }
-      
-      try {
-        const response = await fetch(fileUrl);
-        if (!response.ok) throw new Error("Тармактык ката");
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        
-        const link = document.createElement("a");
-        link.href = blobUrl;
-        link.download = fileName || "material";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(blobUrl);
-      } catch (e) {
-        window.open(fileUrl, "_blank");
-      }
+      window.open(fileUrl, "_blank");
     }
     window.downloadFileSafely = downloadFileSafely;
 
@@ -231,6 +238,7 @@
       const q = $("vSearch") ? $("vSearch").value.trim().toLowerCase() : "";
       const sub = $("vSubject") ? $("vSubject").value : "";
       const grd = $("vGrade") ? $("vGrade").value : "";
+      const purchasedMap = getPurchasedMap();
 
       const filtered = allItems.filter(i => 
         (!sub || i.subject === sub) &&
@@ -248,7 +256,7 @@
         $("vContainer").innerHTML = filtered.map(item => {
           const inCart = cart.some(c => c.id === item.id);
           const isFree = Number(item.price) === 0;
-          const isUnlocked = isFree || purchasedItemIds.has(item.id);
+          const isUnlocked = isFree || Boolean(purchasedMap[item.id]);
           const matType = item.type || "Окуу материалы";
           const rawDesc = item.description || "Бул материал үчүн сүрөттөмө жазылган эмес.";
           const safeFileUrl = item.fileUrl || "#";
@@ -288,7 +296,7 @@
             </div>
 
             <div class="pt-2 border-t border-slate-700/80 flex items-center justify-between mt-auto">
-              <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (1 күн)' : `${money(item.price)} сом`}</span>
+              <span class="text-lg font-extrabold ${isUnlocked ? 'text-emerald-400' : 'text-purple-300'}">${isUnlocked ? 'Ачылды (12 саат)' : `${money(item.price)} сом`}</span>
               
               ${isUnlocked ? `
                 <button type="button" onclick="window.downloadFileSafely('${safeFileUrl}', '${safeFileName}')" class="bg-emerald-600 hover:bg-emerald-500 text-xs px-3.5 py-2 rounded-xl font-bold flex items-center gap-1.5 text-white shadow-lg">
@@ -416,7 +424,7 @@
     if ($("btnOpenCart")) $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
     if ($("btnCloseCart")) $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ТЕКШЕРҮҮ ЖАНА 1 КҮНГӨ ТОЛУК ДОСТУП АЧУУ
+    // ЧЕКТИ ТЕКШЕРҮҮ ЖАНА 12 СААТКА ДОСТУП АЧУУ
     if ($("cartSubmitForm")) {
       $("cartSubmitForm").onsubmit = async (e) => {
         e.preventDefault();
@@ -465,11 +473,11 @@
               await set(cycleRef, { count: (cVal.count || 0) + 1 });
             } catch(err) {}
 
-            purchasedItemIds.add(item.id);
+            savePurchasedItem(item.id);
           }
 
           if ($("cartStatus")) {
-            $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Бардык материалдардын кулпусу 1 күнгө ачылды.</span>`;
+            $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү тастыкталды! Материалдардын кулпусу 12 саатка ачылды.</span>`;
           }
           cart = [];
           renderShowcase();
