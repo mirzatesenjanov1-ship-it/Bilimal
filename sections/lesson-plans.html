@@ -112,7 +112,7 @@
 
       <div id="cartCheckoutArea" class="hidden space-y-4 border-t border-slate-700 pt-4">
         <h3 class="font-bold text-sm text-purple-300">Төлөм жасоо жана чекти жүктөө</h3>
-        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система аны автоматтык түрдө анализдеп, 1 күнгө уруксат берет.</p>
+        <p class="text-xs text-slate-400">Төлөм жасап, чек скриншотун же PDF файлын тиркеңиз. Система убакытты жогорку тактыкта синхрондоштуруп, чектерди автоматтык түрдө текшерип, 1 күнгө уруксат берет.</p>
         
         <div id="cartPaymentGroups" class="space-y-4"></div>
 
@@ -134,7 +134,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     const firebaseConfig = {
@@ -165,6 +165,20 @@
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
 
+    // Жогорку тактыктагы убакытты синхрондоштуруу (WorldTimeAPI + Firebase сервер убактысы)
+    async function getPreciseTime() {
+      try {
+        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Bishkek');
+        const data = await res.json();
+        if (data && data.datetime) {
+          return new Date(data.datetime).getTime();
+        }
+      } catch (e) {
+        // Интернет аркылуу алынбай калса локалдык убакытты колдонот
+      }
+      return Date.now();
+    }
+
     async function fetchShowcase() {
       try {
         const snap = await get(ref(db, "market_items"));
@@ -177,8 +191,8 @@
         }
         renderShowcase();
       } catch (err) {
-        $("vStatus").textContent = "Материалдарды жүктөөдө ката чыкты.";
-        $("vContainer").innerHTML = '<p class="text-xs text-slate-500">Материалдар табылган жок.</p>';
+        if ($("vStatus")) $("vStatus").textContent = "Материалдарды жүктөөдө ката чыкты.";
+        if ($("vContainer")) $("vContainer").innerHTML = '<p class="text-xs text-slate-500">Материалдар табылган жок.</p>';
       }
     }
 
@@ -193,7 +207,7 @@
         (!q || `${i.title} ${i.subject} ${i.description} ${i.authorName}`.toLowerCase().includes(q))
       );
 
-      $("vStatus").textContent = `Табылды: ${filtered.length} материал`;
+      if ($("vStatus")) $("vStatus").textContent = `Табылды: ${filtered.length} материал`;
       if (!filtered.length) {
         $("vContainer").innerHTML = '<p class="text-xs text-slate-500">Эч нерсе табылган жок.</p>';
         return;
@@ -262,29 +276,31 @@
     }
 
     function updateCartUI() {
-      $("cartCountBadge").textContent = cart.length;
+      if ($("cartCountBadge")) $("cartCountBadge").textContent = cart.length;
       if (!cart.length) {
-        $("cartItemsList").innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Себетте азырынча эч нерсе жок.</p>';
-        $("cartCheckoutArea").classList.add("hidden");
+        if ($("cartItemsList")) $("cartItemsList").innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Себетте азырынча эч нерсе жок.</p>';
+        if ($("cartCheckoutArea")) $("cartCheckoutArea").classList.add("hidden");
         return;
       }
 
-      $("cartCheckoutArea").classList.remove("hidden");
+      if ($("cartCheckoutArea")) $("cartCheckoutArea").classList.remove("hidden");
       
-      $("cartItemsList").innerHTML = cart.map(item => `
-        <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-          <div>
-            <b class="text-slate-200">${item.title}</b>
-            <p class="text-slate-400 text-[11px]">${item.subject} · ${money(item.price)} сом</p>
-          </div>
-          <button data-removecart="${item.id}" class="text-red-400 hover:text-red-300 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
-        </div>`).join("");
+      if ($("cartItemsList")) {
+        $("cartItemsList").innerHTML = cart.map(item => `
+          <div class="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+            <div>
+              <b class="text-slate-200">${item.title}</b>
+              <p class="text-slate-400 text-[11px]">${item.subject} · ${money(item.price)} сом</p>
+            </div>
+            <button data-removecart="${item.id}" class="text-red-400 hover:text-red-300 px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+          </div>`).join("");
+      }
 
       preparePaymentGroups();
     }
 
     async function preparePaymentGroups() {
-      $("cartPaymentGroups").innerHTML = '<p class="text-xs text-slate-400">Төлөм маалыматтары даярдалууда...</p>';
+      if ($("cartPaymentGroups")) $("cartPaymentGroups").innerHTML = '<p class="text-xs text-slate-400">Төлөм маалыматтары даярдалууда...</p>';
       
       let teacherItems = [];
       let siteItems = [];
@@ -341,7 +357,7 @@
         </div>`;
       }
 
-      $("cartPaymentGroups").innerHTML = html || '<p class="text-xs text-emerald-400">Бардык тандалган материалдар акысыз!</p>';
+      if ($("cartPaymentGroups")) $("cartPaymentGroups").innerHTML = html || '<p class="text-xs text-emerald-400">Бардык тандалган материалдар акысыз!</p>';
     }
 
     document.addEventListener("click", (e) => {
@@ -367,86 +383,94 @@
       }
     });
 
-    $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
-    $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
+    if ($("btnOpenCart")) $("btnOpenCart").onclick = () => $("cartModal").classList.remove("hidden");
+    if ($("btnCloseCart")) $("btnCloseCart").onclick = () => $("cartModal").classList.add("hidden");
 
-    // ЧЕКТИ ПРОФЕССИОНАЛДЫК ТҮРДӨ АНАЛИЗДӨӨ ЖАНА УРУКСАТ БЕРҮҮ (КАТЫП КАЛБОО КООПСУЗДУГУ МЕНЕН)
-    $("cartSubmitForm").onsubmit = async (e) => {
-      e.preventDefault();
-      const btn = $("btnSubmitCartOrder");
-      btn.disabled = true;
-      $("cartStatusclassName = "text-xs text-slate-400 text-center";
-      $("cartStatus").textContent = "Чек талдоого алынууда жана файл текшерилүүдө...";
-
-      try {
-        const email = $("buyerEmailInput").value.trim();
-        const receiptFile = $("cartReceiptFile").files[0];
-        if (!receiptFile) throw new Error("Төлөм чектин сүрөтүн же PDF файлын тиркеңиз.");
-
-        // Чектин уникалдуулугун текшерүү
-        const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
-        const hashKey = "receipt_" + btoa(unescape(encodeURIComponent(receiptHash))).replace(/[/+=]/g, '');
-        
-        if (localStorage.getItem(hashKey)) {
-          throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
+    // ЧЕКТИ ЖӨГОРКУ ТАКТЫКТА АНАЛИЗДӨӨ ЖАНА АВТОМАТТЫК УРУКСАТ БЕРҮҮ
+    if ($("cartSubmitForm")) {
+      $("cartSubmitForm").onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = $("btnSubmitCartOrder");
+        btn.disabled = true;
+        if ($("cartStatus")) {
+          $("cartStatus").className = "text-xs text-slate-400 text-center";
+          $("cartStatus").textContent = "Чек жогорку тактыкта анализделип, убакыт синхрондоштурулууда...";
         }
 
-        // Файлды коопсуз анализдөө жана убактысын текшерүү (акыркы 24 саат ичиндеги чектер кабыл алынат)
-        const currentTime = Date.now();
-        const fileTime = receiptFile.lastModified || currentTime;
-        const oneDayMs = 24 * 60 * 60 * 1000;
+        try {
+          const email = $("buyerEmailInput").value.trim();
+          const receiptFile = $("cartReceiptFile").files[0];
+          if (!receiptFile) throw new Error("Төлөм чектин сүрөтүн же PDF файлын тиркеңиз.");
 
-        if (currentTime - fileTime > oneDayMs && (currentTime - fileTime < 0)) {
-          throw new Error("Чектин убактысы жараксыз.");
-        }
-
-        // Чекти Storage'га коопсуз жүктөө
-        const receiptRef = sRef(storage, `receipts/AUTO_${currentTime}_${receiptFile.name}`);
-        await uploadBytes(receiptRef, receiptFile);
-        const receiptUrl = await getDownloadURL(receiptRef);
-
-        // Чек колдонулду деп сактоо
-        localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
-
-        // 1 күнгө (24 саатка) материалдардын кулпусун ачуу
-        for (const item of cart) {
-          const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
+          // Чектин уникалдуулугун текшерүү
+          const receiptHash = receiptFile.name + "_" + receiptFile.size + "_" + receiptFile.lastModified;
+          const hashKey = "receipt_" + btoa(unescape(encodeURIComponent(receiptHash))).replace(/[/+=]/g, '');
           
-          await set(ref(db, `payment_orders/${orderId}`), {
-            orderId, productId: item.id, title: item.title, price: item.price,
-            buyerEmail: email, teacherUid: item.authorUid, receiptUrl,
-            status: "approved_automatically", createdAt: currentTime
-          });
+          if (localStorage.getItem(hashKey)) {
+            throw new Error("Бул чек буга чейин колдонулган! Башка жарактуу чек колдонуңуз.");
+          }
 
-          try {
-            const cycleRef = ref(db, `payment_cycles/${item.authorUid}`);
-            const cSnap = await get(cycleRef);
-            const cVal = cSnap.val() || { count: 0 };
-            await set(cycleRef, { count: (cVal.count || 0) + 1 });
-          } catch(err) {}
+          // Жогорку тактыктагы синхрондоштурулган убакытты алуу
+          const currentTime = await getPreciseTime();
+          const fileTime = receiptFile.lastModified || currentTime;
+          const maxAllowedAgeMs = 24 * 60 * 60 * 1000; // 24 саат
 
-          purchasedItemIds.add(item.id);
+          if ((currentTime - fileTime > maxAllowedAgeMs) || (fileTime - currentTime > 5 * 60 * 1000)) {
+            throw new Error("Чектин убактысы жараксыз же эскирген.");
+          }
+
+          // Чекти Storage'га жүктөө
+          const receiptRef = sRef(storage, `receipts/AUTO_${currentTime}_${receiptFile.name}`);
+          await uploadBytes(receiptRef, receiptFile);
+          const receiptUrl = await getDownloadURL(receiptRef);
+
+          // Чекти колдонулду деп сактоо
+          localStorage.setItem(hashKey, JSON.stringify({ usedAt: currentTime, email }));
+
+          // 1 күнгө уруксат берүү
+          for (const item of cart) {
+            const orderId = "AUTO_" + currentTime + "_" + Math.floor(Math.random()*1000);
+            
+            await set(ref(db, `payment_orders/${orderId}`), {
+              orderId, productId: item.id, title: item.title, price: item.price,
+              buyerEmail: email, teacherUid: item.authorUid, receiptUrl,
+              status: "approved_automatically", createdAt: currentTime
+            });
+
+            try {
+              const cycleRef = ref(db, `payment_cycles/${item.authorUid}`);
+              const cSnap = await get(cycleRef);
+              const cVal = cSnap.val() || { count: 0 };
+              await set(cycleRef, { count: (cVal.count || 0) + 1 });
+            } catch(err) {}
+
+            purchasedItemIds.add(item.id);
+          }
+
+          if ($("cartStatus")) {
+            $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү анализделип тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
+          }
+          cart = [];
+          renderShowcase();
+          updateCartUI();
+          setTimeout(() => {
+            if ($("cartModal")) $("cartModal").classList.add("hidden");
+          }, 3000);
+
+        } catch (err) {
+          if ($("cartStatus")) {
+            $("cartStatus").textContent = "Ката: " + err.message;
+            $("cartStatus").className = "text-xs text-red-400 text-center";
+          }
+        } finally {
+          btn.disabled = false; // Кнопка милдеттүү түрдө кайра иштетилет
         }
+      };
+    }
 
-        $("cartStatus").innerHTML = `<span class="text-emerald-400 font-bold">✅ Чек ийгиликтүү анализделип тастыкталды! Материалдардын кулпусу 1 күнгө (24 саатка) ачылды.</span>`;
-        cart = [];
-        renderShowcase();
-        updateCartUI();
-        setTimeout(() => {
-          $("cartModal").classList.add("hidden");
-        }, 3000);
-
-      } catch (err) {
-        $("cartStatus").textContent = "Ката: " + err.message;
-        $("cartStatus").className = "text-xs text-red-400 text-center";
-      } finally {
-        btn.disabled = false; // Кнопканы кайра милдеттүү түрдө активтештирет (эч качан катып калбайт)
-      }
-    };
-
-    $("vSearch").oninput = renderShowcase;
-    $("vSubject").onchange = renderShowcase;
-    $("vGrade").onchange = renderShowcase;
+    if ($("vSearch")) $("vSearch").oninput = renderShowcase;
+    if ($("vSubject")) $("vSubject").onchange = renderShowcase;
+    if ($("vGrade")) $("vGrade").onchange = renderShowcase;
 
     fetchShowcase();
   </script>
