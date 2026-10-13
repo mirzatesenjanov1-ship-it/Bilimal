@@ -184,17 +184,28 @@
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
 
-    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ТУУРА ШИЛТЕМЕ МЕНЕН КАТАСЫЗ ЖҮКТӨӨ
+    // ТЕЛЕФОНГО ЖАНА КОМПЬЮТЕРГЕ ФАЙЛДЫ ТҮЗ ЖАНА ТУУРА КӨЧҮРҮП АЛУУ
     async function downloadFileSafely(fileUrl, fileName) {
       if (!fileUrl || fileUrl === "#" || fileUrl.includes("bilimal.org/files/")) {
-        alert("Ката: Бул материалдын чыныгы жүктөө шилтеси сакталган эмес. Сураныч, материалды Маркеттен кайрадан туура шилтеме же файл менен жүктөп жарыялаңыз.");
+        alert("Ката: Бул материалдын шилтемеси туура эмес же толук жүктөлгөн эмес. Сураныч, материалды Маркеттен кайрадан жарыялаңыз.");
         return;
       }
       
       try {
-        window.open(fileUrl, "_blank");
+        const response = await fetch(fileUrl);
+        if (!response.ok) throw new Error("Тармактык ката");
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName || "material";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
       } catch (e) {
-        window.location.href = fileUrl;
+        window.open(fileUrl, "_blank");
       }
     }
     window.downloadFileSafely = downloadFileSafely;
