@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Атомдун жана Кварктардын 3D Илимий Модели — BiliMal</title>
+  <title id="page-meta-title">Физика 3D Симуляторлору — BiliMal</title>
   
   <!-- Three.js жана OrbitControls -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -14,242 +14,274 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Poppins', sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background-color: #04060c; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: hidden; }
 
-    body {
-      background-color: #04060c;
-      color: #ffffff;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-      overflow-x: hidden;
-    }
+    .top-header { width: 100%; max-width: 1100px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 20px; background: rgba(17, 24, 39, 0.8); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 16px; backdrop-filter: blur(10px); flex-wrap: wrap; gap: 15px; }
+    .btn-back { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; }
+    .btn-back:hover { transform: translateX(-3px); }
+    .page-title { font-size: 1.15rem; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    /* Жогорку банер */
-    .top-header {
-      width: 100%;
-      max-width: 1100px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      padding: 15px 20px;
-      background: rgba(17, 24, 39, 0.8);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      border-radius: 16px;
-      backdrop-filter: blur(10px);
-    }
+    .lang-select { background: #111827; border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; }
 
-    .btn-back {
-      color: #38bdf8;
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: 0.3s;
-    }
-
-    .btn-back:hover {
-      color: #38bdf8;
-      transform: translateX(-3px);
-    }
-
-    .page-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
+    /* Меню карточкалары контейнери */
+    .menu-container { width: 100%; max-width: 1100px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+    .menu-card { background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; transition: 0.3s; cursor: pointer; }
+    .menu-card:hover { border-color: rgba(56, 189, 248, 0.8); transform: translateY(-4px); box-shadow: 0 10px 30px rgba(56, 189, 248, 0.15); }
 
     /* 3D Симуляция Контейнери */
-    .sim-wrapper {
-      width: 100%;
-      max-width: 1100px;
-      display: grid;
-      grid-template-columns: 3fr 1fr;
-      gap: 20px;
-    }
+    .sim-wrapper { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .sim-wrapper { grid-template-columns: 1fr; } }
 
-    @media (max-width: 900px) {
-      .sim-wrapper {
-        grid-template-columns: 1fr;
-      }
-    }
+    #canvas-container { width: 100%; height: 580px; background: radial-gradient(circle at center, #0b1329 0%, #02050b 100%); border-radius: 20px; position: relative; overflow: hidden; border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 35px rgba(56, 189, 248, 0.15); }
+    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(0, 0, 0, 0.7); padding: 10px 15px; border-radius: 10px; font-size: 0.8rem; color: #38bdf8; pointer-events: none; border: 1px solid rgba(56, 189, 248, 0.2); line-height: 1.5; }
 
-    #canvas-container {
-      width: 100%;
-      height: 580px;
-      background: radial-gradient(circle at center, #0b1329 0%, #02050b 100%);
-      border-radius: 20px;
-      position: relative;
-      overflow: hidden;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      box-shadow: 0 0 35px rgba(56, 189, 248, 0.15);
-    }
+    .info-panel { display: flex; flex-direction: column; gap: 15px; }
+    .info-card { background: rgba(17, 24, 39, 0.85); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; }
+    .info-card h3 { font-size: 0.95rem; color: #38bdf8; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .legend-list { list-style: none; font-size: 0.83rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 
-    .sim-hint {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      background: rgba(0, 0, 0, 0.7);
-      padding: 10px 15px;
-      border-radius: 10px;
-      font-size: 0.8rem;
-      color: #38bdf8;
-      pointer-events: none;
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      line-height: 1.5;
-    }
-
-    /* Информатика Панели */
-    .info-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .info-card {
-      background: rgba(17, 24, 39, 0.85);
-      border: 1px solid #1f2937;
-      border-radius: 16px;
-      padding: 18px;
-    }
-
-    .info-card h3 {
-      font-size: 0.95rem;
-      color: #38bdf8;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .legend-list {
-      list-style: none;
-      font-size: 0.83rem;
-      color: #cbd5e1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-
-    .btn-ctrl {
-      width: 100%;
-      padding: 10px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: white;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: 0.3s;
-      margin-top: 8px;
-    }
-
-    .btn-ctrl:hover {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
-    }
+    .btn-ctrl { width: 100%; padding: 10px; border-radius: 10px; border: none; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.3s; margin-top: 8px; }
+    .btn-ctrl:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
   </style>
 </head>
 <body>
 
   <!-- Жогорку навигация -->
-  <div class="top-header">
-    <a href="lab-works.html" class="btn-back">
-      <i class="fa-solid fa-arrow-left"></i> Артка кайтуу
-    </a>
-    <div class="page-title">
-      <i class="fa-solid fa-atom"></i> Атомдун, Ядронун жана Кварктардын 3D Модели
+  <header class="top-header">
+    <div class="flex items-center gap-4">
+      <a href="3d-simulators.html" id="backLinkBtn" class="btn-back">
+        <i class="fa-solid fa-arrow-left"></i> <span id="ui-back">Бөлүмгө кайтуу</span>
+      </a>
     </div>
-    <button class="btn-ctrl" style="width: auto; padding: 6px 16px;" onclick="openSmartlink()">
-      🚀 Кабинетке кирүү
-    </button>
+    <div class="page-title" id="ui-maintitle">Физика 3D Симуляторлору</div>
+    <div class="flex items-center gap-3">
+      <select id="langSelector" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="ky">🇰🇬 Кыргызча</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <button class="btn-ctrl" style="width: auto; padding: 6px 16px; margin: 0;" onclick="openSmartlink()">
+        🚀 <span id="ui-cabinet">Кабинет</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 1. ФИЗИКА 3D СИМУЛЯТОРЛОР МЕНЮСУ (Башында көрүнөт) -->
+  <div id="simMenuSection" class="menu-container">
+    <div class="menu-card" onclick="openSimulator('atom')">
+      <div class="space-y-3">
+        <div class="w-12 h-12 rounded-xl bg-sky-500/20 flex items-center justify-center text-sky-400 text-xl">
+          <i class="fa-solid fa-atom"></i>
+        </div>
+        <h2 id="ui-menu-atom-title" class="text-lg font-bold text-slate-100">Атомдун, Ядронун жана Кварктардын 3D Модели</h2>
+        <p id="ui-menu-atom-desc" class="text-slate-400 text-xs sm:text-sm leading-relaxed">
+          Протондор, нейтрондор жана кварктардын кванттык түзүлүшүн 3D мейкиндикте изилдеңиз.
+        </p>
+      </div>
+      <button class="btn-ctrl text-center py-2.5 rounded-xl text-xs font-bold">
+        <span id="ui-menu-atom-btn">Симуляторду ачуу</span> →
+      </button>
+    </div>
+
+    <!-- Башка кошумча физикалык симуляторлор үчүн даяр орун -->
+    <div class="menu-card opacity-60">
+      <div class="space-y-3">
+        <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 text-xl">
+          <i class="fa-solid fa-solar-system"></i>
+        </div>
+        <h2 id="ui-menu-solar-title" class="text-lg font-bold text-slate-100">Күн системасы жана Гравитация 3D</h2>
+        <p id="ui-menu-solar-desc" class="text-slate-400 text-xs sm:text-sm leading-relaxed">
+          Планеталардын орбиталык кыймылдары жана гравитациялык талаалар (Жакында кошулат).
+        </p>
+      </div>
+      <button disabled class="bg-slate-800 text-slate-500 w-full py-2.5 rounded-xl text-xs font-bold cursor-not-allowed">
+        <span id="ui-menu-soon">Жакында</span>
+      </button>
+    </div>
   </div>
 
-  <!-- 3D Контейнер жана Панель -->
-  <div class="sim-wrapper">
-    
+  <!-- 2. АТОМ ЖАНА КВАРКТАР 3D СИМУЛЯТОРУ (Башында жашыруун, менюдан тандаганда ачылат) -->
+  <div id="atomSimSection" class="sim-wrapper" style="display: none;">
     <div id="canvas-container">
-      <div class="sim-hint">
+      <div class="sim-hint" id="ui-hint">
         🔍 <b>Жакындатуу / Алыстатуу:</b> Чычкан дөңгөлөгүн же экранды чоңойтуңуз<br>
         🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
         💡 <i>Атомдун ичине жакындап, Кварктарды байкаңыз!</i>
       </div>
     </div>
 
-    <!-- Информатика жана илимий маалыматтар -->
     <div class="info-panel">
-      
       <div class="info-card">
-        <h3><i class="fa-solid fa-layer-group"></i> Субатомдук Бөлүкчөлөр</h3>
+        <h3 id="ui-sub-title"><i class="fa-solid fa-layer-group"></i> Субатомдук Бөлүкчөлөр</h3>
         <ul class="legend-list">
-          <li class="legend-item">
-            <span class="dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
-            <b>Протон (p+):</b> u-u-d кварктар
-          </li>
-          <li class="legend-item">
-            <span class="dot" style="background: #3b82f6; box-shadow: 0 0 8px #3b82f6;"></span>
-            <b>Нейтрон (n0):</b> u-d-d кварктар
-          </li>
-          <li class="legend-item">
-            <span class="dot" style="background: #00f0ff; box-shadow: 0 0 8px #00f0ff;"></span>
-            <b>Электрон (e-):</b> Лептон
-          </li>
-          <li class="legend-item">
-            <span class="dot" style="background: #facc15; box-shadow: 0 0 8px #facc15;"></span>
-            <b>Up (u) Кварк:</b> Заряды +2/3
-          </li>
-          <li class="legend-item">
-            <span class="dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span>
-            <b>Down (d) Кварк:</b> Заряды -1/3
-          </li>
+          <li class="legend-item"><span class="dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span> <span id="ui-p-proton"><b>Протон (p+):</b> u-u-d кварктар</span></li>
+          <li class="legend-item"><span class="dot" style="background: #3b82f6; box-shadow: 0 0 8px #3b82f6;"></span> <span id="ui-p-neutron"><b>Нейтрон (n0):</b> u-d-d кварктар</span></li>
+          <li class="legend-item"><span class="dot" style="background: #00f0ff; box-shadow: 0 0 8px #00f0ff;"></span> <span id="ui-p-electron"><b>Электрон (e-):</b> Лептон</span></li>
+          <li class="legend-item"><span class="dot" style="background: #facc15; box-shadow: 0 0 8px #facc15;"></span> <span id="ui-p-up"><b>Up (u) Кварк:</b> Заряды +2/3</span></li>
+          <li class="legend-item"><span class="dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span> <span id="ui-p-down"><b>Down (d) Кварк:</b> Заряды -1/3</span></li>
         </ul>
       </div>
 
       <div class="info-card">
-        <h3><i class="fa-solid fa-microscope"></i> Кванттык Структура</h3>
-        <p style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">
-          Адрондор (протон жана нейтрон) дагы да майда элементардык бөлүкчөлөрдөн — <b>Кварктардан</b> турат. Кварктар бири-бири менен <b>Глюондор</b> аркылуу күчтүү өз ара аракеттенүүдө кармалып турат.
+        <h3 id="ui-quant-title"><i class="fa-solid fa-microscope"></i> Кванттык Структура</h3>
+        <p id="ui-quant-desc" style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">
+          Адрондор (протон жана нейтрон) дагы да майда элементардык бөлүкчөлөрдөн — Кварктардан турат. Глюондор аркылуу кармалып турат.
         </p>
-        <button class="btn-ctrl" onclick="focusNucleus()">🔬 Ядрого жакындап көрүү</button>
-        <button class="btn-ctrl" style="background: #374151;" onclick="resetCamera()">🌌 Толук Атомду көрүү</button>
+        <button class="btn-ctrl" onclick="focusNucleus()"><span id="ui-btn-focus">🔬 Ядрого жакындап көрүү</span></button>
+        <button class="btn-ctrl" style="background: #374151;" onclick="resetCamera()"><span id="ui-btn-reset">🌌 Толук Атомду көрүү</span></button>
       </div>
-
     </div>
-
   </div>
 
   <script>
-    // Monetag Smartlink шилтемелери
+    // 3 Тилдин котормо базасы
+    const translations = {
+      ky: {
+        metaTitle: "Физика 3D Симуляторлору — BiliMal",
+        backMenu: "Бөлүмгө кайтуу",
+        backLab: "Лабораторияга кайтуу",
+        mainTitle: "Физика 3D Симуляторлору",
+        cabinet: "Кабинет",
+        menuAtomTitle: "Атомдун, Ядронун жана Кварктардын 3D Модели",
+        menuAtomDesc: "Протондор, нейтрондор жана кварктардын кванттык түзүлүшүн 3D мейкиндикте изилдеңиз.",
+        menuAtomBtn: "Симуляторду ачуу",
+        menuSolarTitle: "Күн системасы жана Гравитация 3D",
+        menuSolarDesc: "Планеталардын орбиталык кыймылдары жана гравитациялык талаалар (Жакында кошулат).",
+        menuSoon: "Жакында",
+        hintText: "🔍 <b>Жакындатуу / Алыстатуу:</b> Чычкан дөңгөлөгүн же экранды чоңойтуңуз<br>🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>💡 <i>Атомдун ичине жакындап, Кварктарды байкаңыз!</i>",
+        subTitle: "Субатомдук Бөлүкчөлөр",
+        proton: "<b>Протон (p+):</b> u-u-d кварктар",
+        neutron: "<b>Нейтрон (n0):</b> u-d-d кварктар",
+        electron: "<b>Электрон (e-):</b> Лептон",
+        upQuark: "<b>Up (u) Кварк:</b> Заряды +2/3",
+        downQuark: "<b>Down (d) Кварк:</b> Заряды -1/3",
+        quantTitle: "Кванттык Структура",
+        quantDesc: "Адрондор (протон жана нейтрон) дагы да майда элементардык бөлүкчөлөрдөн — Кварктардан турат. Глюондор аркылуу кармалып турат.",
+        btnFocus: "🔬 Ядрого жакындап көрүү",
+        btnReset: "🌌 Толук Атомду көрүү"
+      },
+      ru: {
+        metaTitle: "Физические 3D Симуляторы — BiliMal",
+        backMenu: "Назад в раздел",
+        backLab: "Назад в лабораторию",
+        mainTitle: "Физические 3D Симуляторы",
+        cabinet: "Кабинет",
+        menuAtomTitle: "3D Модель Атома, Ядра и Кварков",
+        menuAtomDesc: "Изучайте квантовую структуру протонов, нейтронов и кварков в 3D пространстве.",
+        menuAtomBtn: "Открыть симулятор",
+        menuSolarTitle: "Солнечная система и Гравитация 3D",
+        menuSolarDesc: "Орбитальные движения планет и гравитационные поля (Скоро).",
+        menuSoon: "Скоро",
+        hintText: "🔍 <b>Зум:</b> Колесико мыши<br>🔄 <b>Вращение:</b> Зажмите левую кнопку мыши<br>💡 <i>Приблизьте внутрь ядра!</i>",
+        subTitle: "Субатомные частицы",
+        proton: "<b>Протон (p+):</b> u-u-d кварки",
+        neutron: "<b>Нейтрон (n0):</b> u-d-d кварки",
+        electron: "<b>Электрон (e-):</b> Лептон",
+        upQuark: "<b>Up (u) Кварк:</b> Заряд +2/3",
+        downQuark: "<b>Down (d) Кварк:</b> Заряд -1/3",
+        quantTitle: "Квантовая структура",
+        quantDesc: "Адроны состоят из кварков, удерживаемых глюонами.",
+        btnFocus: "🔬 Приблизить ядро",
+        btnReset: "🌌 Весь атом"
+      },
+      en: {
+        metaTitle: "Physics 3D Simulators — BiliMal",
+        backMenu: "Back to Section",
+        backLab: "Back to Lab",
+        mainTitle: "Physics 3D Simulators",
+        cabinet: "Dashboard",
+        menuAtomTitle: "3D Model of Atom, Nucleus & Quarks",
+        menuAtomDesc: "Explore the quantum structure of protons, neutrons, and quarks in 3D space.",
+        menuAtomBtn: "Open Simulator",
+        menuSolarTitle: "Solar System & Gravity 3D",
+        menuSolarDesc: "Orbital planetary motions and gravitational fields (Coming soon).",
+        menuSoon: "Coming Soon",
+        hintText: "🔍 <b>Zoom:</b> Mouse wheel<br>🔄 <b>Rotate:</b> Drag with left mouse button<br>💡 <i>Zoom inside the nucleus!</i>",
+        subTitle: "Subatomic Particles",
+        proton: "<b>Proton (p+):</b> u-u-d quarks",
+        neutron: "<b>Neutron (n0):</b> u-d-d quarks",
+        electron: "<b>Electron (e-):</b> Lepton",
+        upQuark: "<b>Up (u) Quark:</b> Charge +2/3",
+        downQuark: "<b>Down (d) Quark:</b> Charge -1/3",
+        quantTitle: "Quantum Structure",
+        quantDesc: "Hadrons consist of quarks held together by gluons.",
+        btnFocus: "🔬 Zoom into Nucleus",
+        btnReset: "🌌 View Full Atom"
+      }
+    };
+
+    let currentLang = 'ky';
+    let isSimulationActive = false;
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+
+      document.getElementById('page-meta-title').innerText = t.metaTitle;
+      document.getElementById('ui-maintitle').innerText = t.mainTitle;
+      document.getElementById('ui-cabinet').innerText = t.cabinet;
+      document.getElementById('ui-menu-atom-title').innerText = t.menuAtomTitle;
+      document.getElementById('ui-menu-atom-desc').innerText = t.menuAtomDesc;
+      document.getElementById('ui-menu-atom-btn').innerText = t.menuAtomBtn;
+      document.getElementById('ui-menu-solar-title').innerText = t.menuSolarTitle;
+      document.getElementById('ui-menu-solar-desc').innerText = t.menuSolarDesc;
+      document.getElementById('ui-menu-soon').innerText = t.menuSoon;
+
+      document.getElementById('ui-hint').innerHTML = t.hintText;
+      document.getElementById('ui-sub-title').innerHTML = `<i class="fa-solid fa-layer-group"></i> ${t.subTitle}`;
+      document.getElementById('ui-p-proton').innerHTML = t.proton;
+      document.getElementById('ui-p-neutron').innerHTML = t.neutron;
+      document.getElementById('ui-p-electron').innerHTML = t.electron;
+      document.getElementById('ui-p-up').innerHTML = t.upQuark;
+      document.getElementById('ui-p-down').innerHTML = t.downQuark;
+      document.getElementById('ui-quant-title').innerHTML = `<i class="fa-solid fa-microscope"></i> ${t.quantTitle}`;
+      document.getElementById('ui-quant-desc').innerText = t.quantDesc;
+      document.getElementById('ui-btn-focus').innerText = t.btnFocus;
+      document.getElementById('ui-btn-reset').innerText = t.btnReset;
+
+      if (!isSimulationActive) {
+        document.getElementById('ui-back').innerText = translations[lang].backLab;
+      } else {
+        document.getElementById('ui-back').innerText = translations[lang].backMenu;
+      }
+    }
+
+    // Симуляторду ачуу функциясы
+    function openSimulator(type) {
+      if (type === 'atom') {
+        isSimulationActive = true;
+        document.getElementById('simMenuSection').style.display = 'none';
+        document.getElementById('atomSimSection').style.display = 'grid';
+        document.getElementById('ui-back').innerText = translations[currentLang].backMenu;
+        document.getElementById('backLinkBtn').setAttribute('href', '#');
+        document.getElementById('backLinkBtn').onclick = (e) => {
+          e.preventDefault();
+          closeSimulator();
+        };
+
+        // Three.js инициализациясын баштоо
+        if (!scene) {
+          initThree();
+        }
+      }
+    }
+
+    function closeSimulator() {
+      isSimulationActive = false;
+      document.getElementById('atomSimSection').style.display = 'none';
+      document.getElementById('simMenuSection').style.display = 'grid';
+      document.getElementById('ui-back').innerText = translations[currentLang].backLab;
+      document.getElementById('backLinkBtn').setAttribute('href', '3d-simulators.html');
+      document.getElementById('backLinkBtn').onclick = null;
+    }
+
+    // Monetag Smartlink
     const SMARTLINK_EFFICIENT = "https://uplcm.com/4/11977316";
     const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
 
-    // Баракчага киргенде Popunder жарнама
     document.addEventListener('click', function(e) {
       if (!sessionStorage.getItem('monetag_atom_opened')) {
         window.open(SMARTLINK_LOVEY, '_blank');
@@ -261,29 +293,23 @@
       window.open(SMARTLINK_EFFICIENT, '_blank');
     }
 
-    // Three.js Негизги өзгөрмөлөрү
+    // Three.js өзгөрмөлөрү
     let scene, camera, renderer, controls;
     let atomGroup, nucleusGroup, electronsGroup = [];
     const container = document.getElementById('canvas-container');
 
-    function init() {
-      // 1. Сахна
+    function initThree() {
       scene = new THREE.Scene();
 
-      // 2. Камера
       camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
       camera.position.set(0, 15, 35);
 
-      // 3. Рендерер
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setSize(container.clientWidth, container.clientHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
       container.appendChild(renderer.domElement);
 
-      // 4. Жарыктар
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
-      scene.add(ambientLight);
-
+      scene.add(new THREE.AmbientLight(0xffffff, 0.9));
       const pointLight = new THREE.PointLight(0x00f0ff, 2, 100);
       pointLight.position.set(0, 0, 0);
       scene.add(pointLight);
@@ -292,144 +318,82 @@
       dirLight.position.set(20, 30, 20);
       scene.add(dirLight);
 
-      // 5. Controls
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
-      controls.minDistance = 2; // Ядронун ичине чейин жакындатуу
+      controls.minDistance = 2;
       controls.maxDistance = 100;
 
-      // Башкы Атом тобу
       atomGroup = new THREE.Group();
       scene.add(atomGroup);
 
-      // 6. Атом Ядросун түзүү (Протондор, Нейтрондор жана Кварктар)
       createNucleus();
-
-      // 7. Электрондук Орбиталдарды жана Электрондорду түзүү
       createElectronShells();
-
-      // 8. Фонго космостук нурларды/жылдыздарды кошуу
       createBackgroundParticles();
-
       animate();
     }
 
-    // ПРОТОН, НЕЙТРОН ЖАНА КВАРКТАРДЫ ТҮЗҮҮ
     function createNucleus() {
       nucleusGroup = new THREE.Group();
-
-      const numProtons = 6;  // Көмүртек (Carbon) атомунун модели
+      const numProtons = 6;
       const numNeutrons = 6;
-      const nucleons = [];
 
-      // Протондорду жана Нейтрондорду жайгаштыруу
       for (let i = 0; i < numProtons + numNeutrons; i++) {
         const isProton = i < numProtons;
         const nucleonGroup = new THREE.Group();
-
-        // Протон же Нейтрон сферасы (Жаркырак)
         const color = isProton ? 0xef4444 : 0x3b82f6;
+
         const geo = new THREE.SphereGeometry(0.7, 32, 32);
-        const mat = new THREE.MeshPhysicalMaterial({
-          color: color,
-          emissive: color,
-          emissiveIntensity: 0.2,
-          roughness: 0.2,
-          transparent: true,
-          opacity: 0.85
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        nucleonGroup.add(mesh);
+        const mat = new THREE.MeshPhysicalMaterial({ color, emissive: color, emissiveIntensity: 0.2, roughness: 0.2, transparent: true, opacity: 0.85 });
+        nucleonGroup.add(new THREE.Mesh(geo, mat));
 
-        // Ичине 3 КВАРК Кошуу
-        // Протон = Up (+2/3), Up (+2/3), Down (-1/3)
-        // Нейтрон = Up (+2/3), Down (-1/3), Down (-1/3)
         const quarkTypes = isProton ? [0xfacc15, 0xfacc15, 0xa855f7] : [0xfacc15, 0xa855f7, 0xa855f7];
-        
         quarkTypes.forEach((qColor, idx) => {
-          const quarkGeo = new THREE.SphereGeometry(0.18, 16, 16);
-          const quarkMat = new THREE.MeshBasicMaterial({ color: qColor });
-          const quarkMesh = new THREE.Mesh(quarkGeo, quarkMat);
-
+          const quarkMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshBasicMaterial({ color: qColor }));
           const angle = (idx / 3) * Math.PI * 2;
           quarkMesh.position.set(Math.cos(angle) * 0.35, Math.sin(angle) * 0.35, (Math.random() - 0.5) * 0.2);
           nucleonGroup.add(quarkMesh);
         });
 
-        // Ядронун ичиндеги кокустук орун
         const phi = Math.acos(-1 + (2 * i) / (numProtons + numNeutrons));
         const theta = Math.sqrt((numProtons + numNeutrons) * Math.PI) * phi;
         const r = 1.3;
-
-        nucleonGroup.position.set(
-          r * Math.cos(theta) * Math.sin(phi),
-          r * Math.sin(theta) * Math.sin(phi),
-          r * Math.cos(phi)
-        );
-
+        nucleonGroup.position.set(r * Math.cos(theta) * Math.sin(phi), r * Math.sin(theta) * Math.sin(phi), r * Math.cos(phi));
         nucleusGroup.add(nucleonGroup);
       }
-
       atomGroup.add(nucleusGroup);
     }
 
-    // ЭЛЕКТРОНДОРДУ ЖАНА КВАНТТЫК ОРБИТАЛДАРДЫ ТҮЗҮҮ
     function createElectronShells() {
       const shellRadii = [6, 10, 14];
       const electronCounts = [2, 4, 2];
 
       shellRadii.forEach((radius, sIdx) => {
-        // Орбитал шакекчеси
-        const ringGeo = new THREE.RingGeometry(radius - 0.03, radius + 0.03, 64);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.2 });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-
-        // Орбитаны ар кандай бурчка кыйшайтуу
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(radius - 0.03, radius + 0.03, 64), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.2 }));
         const rotX = (sIdx + 1) * 0.6;
         const rotY = (sIdx + 1) * 0.8;
         ringMesh.rotation.x = rotX;
         ringMesh.rotation.y = rotY;
         atomGroup.add(ringMesh);
 
-        // Электрондор
         const count = electronCounts[sIdx];
         for (let e = 0; e < count; e++) {
-          const electronMat = new THREE.MeshBasicMaterial({ color: 0x00f0ff });
-          const electronGeo = new THREE.SphereGeometry(0.25, 16, 16);
-          const electronMesh = new THREE.Mesh(electronGeo, electronMat);
-
-          electronsGroup.push({
-            mesh: electronMesh,
-            radius: radius,
-            speed: 0.02 + (sIdx * 0.01),
-            angle: (e / count) * Math.PI * 2,
-            rotX: rotX,
-            rotY: rotY
-          });
-
+          const electronMesh = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), new THREE.MeshBasicMaterial({ color: 0x00f0ff }));
+          electronsGroup.push({ mesh: electronMesh, radius, speed: 0.02 + (sIdx * 0.01), angle: (e / count) * Math.PI * 2, rotX, rotY });
           scene.add(electronMesh);
         }
       });
     }
 
-    // КОСМОСТОГУ ЖЫЛДЫЗДАРДЫ / ПАРТИКЛДАРДЫ ТҮЗҮҮ
     function createBackgroundParticles() {
       const geo = new THREE.BufferGeometry();
       const count = 500;
       const posArray = new Float32Array(count * 3);
-
-      for (let i = 0; i < count * 3; i++) {
-        posArray[i] = (Math.random() - 0.5) * 150;
-      }
-
+      for (let i = 0; i < count * 3; i++) posArray[i] = (Math.random() - 0.5) * 150;
       geo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-      const mat = new THREE.PointsMaterial({ size: 0.3, color: 0x38bdf8, transparent: true, opacity: 0.5 });
-      const particles = new THREE.Points(geo, mat);
-      scene.add(particles);
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.3, color: 0x38bdf8, transparent: true, opacity: 0.5 })));
     }
 
-    // КАМЕРАНЫ ЯДРОГО ЖАКЫНДАТУУ
     function focusNucleus() {
       openSmartlink();
       controls.target.set(0, 0, 0);
@@ -441,43 +405,32 @@
       camera.position.set(0, 15, 35);
     }
 
-    // АНИМАЦИЯ ЖАНА КЫЙМЫЛДАР
     function animate() {
       requestAnimationFrame(animate);
-
-      // Ядронун жай айлануусу
       if (nucleusGroup) {
         nucleusGroup.rotation.y += 0.005;
         nucleusGroup.rotation.x += 0.003;
       }
-
-      // Электрондордун кванттык кыймылы
-      electronsGroup.forEach(e => {
-        e.angle += e.speed;
-        const x = Math.cos(e.angle) * e.radius;
-        const z = Math.sin(e.angle) * e.radius;
-
-        // Орбитанын бурчтарына жараша математикалык вектордук айландыруу
+      electronsGroup.forEach(el => {
+        el.angle += el.speed;
+        const x = Math.cos(el.angle) * el.radius;
+        const z = Math.sin(el.angle) * el.radius;
         const pos = new THREE.Vector3(x, 0, z);
-        pos.applyAxisAngle(new THREE.Vector3(1, 0, 0), e.rotX);
-        pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), e.rotY);
-
-        e.mesh.position.copy(pos);
+        pos.applyAxisAngle(new THREE.Vector3(1, 0, 0), el.rotX);
+        pos.applyAxisAngle(new THREE.Vector3(0, 1, 0), el.rotY);
+        el.mesh.position.copy(pos);
       });
-
-      controls.update();
-      renderer.render(scene, camera);
+      if (controls) controls.update();
+      if (renderer && scene && camera) renderer.render(scene, camera);
     }
 
     window.addEventListener('resize', () => {
-      if (container && camera && renderer) {
+      if (container && camera && renderer && isSimulationActive) {
         camera.aspect = container.clientWidth / container.clientHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(container.clientWidth, container.clientHeight);
       }
     });
-
-    window.onload = init;
   </script>
 </body>
 </html>
