@@ -166,12 +166,30 @@
       <section class="glass-card p-5 rounded-2xl space-y-4">
         <h2 class="text-base font-bold flex items-center gap-2"><i class="fa-solid fa-wallet text-emerald-400"></i> Менин төлөм реквизиттерим</h2>
         <form id="teacherProfileForm" class="space-y-3">
-          <div><label class="small-label" for="teacherMbankFile">Менин MBank QR сүрөтүм</label><input id="teacherMbankFile" type="file" accept="image/*" class="input-field w-full p-3 rounded-xl text-sm"><img id="teacherMbankPreview" class="hidden mt-2 max-h-36 rounded-xl bg-white p-2" alt="MBank QR"></div>
-          <div><label class="small-label" for="teacherObankFile">Менин O!Bank QR сүрөтүм</label><input id="teacherObankFile" type="file" accept="image/*" class="input-field w-full p-3 rounded-xl text-sm"><img id="teacherObankPreview" class="hidden mt-2 max-h-36 rounded-xl bg-white p-2" alt="O!Bank QR"></div>
-          <div><label class="small-label" for="teacherObalance">Менин O!Balance номерим</label><input id="teacherObalance" maxlength="30" class="input-field w-full p-3 rounded-xl text-sm" placeholder="+996..."></div>
+          <div>
+            <label class="small-label" for="teacherMbankFile">Менин MBank QR сүрөтүм</label>
+            <input id="teacherMbankFile" type="file" accept="image/*" class="input-field w-full p-3 rounded-xl text-sm">
+            <div id="mbankBox" class="hidden flex items-center gap-2 mt-2">
+              <img id="teacherMbankPreview" class="max-h-36 rounded-xl bg-white p-2" alt="MBank QR">
+              <button type="button" id="btnDeleteMbank" class="bg-red-900/80 hover:bg-red-800 text-xs px-3 py-2 rounded-lg text-white font-bold"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
+            </div>
+          </div>
+          <div>
+            <label class="small-label" for="teacherObankFile">Менин O!Bank QR сүрөтүм</label>
+            <input id="teacherObankFile" type="file" accept="image/*" class="input-field w-full p-3 rounded-xl text-sm">
+            <div id="obankBox" class="hidden flex items-center gap-2 mt-2">
+              <img id="teacherObankPreview" class="max-h-36 rounded-xl bg-white p-2" alt="O!Bank QR">
+              <button type="button" id="btnDeleteObank" class="bg-red-900/80 hover:bg-red-800 text-xs px-3 py-2 rounded-lg text-white font-bold"><i class="fa-solid fa-trash"></i> Өчүрүү</button>
+            </div>
+          </div>
+          <div>
+            <label class="small-label" for="teacherObalance">Менин O!Balance номерим</label>
+            <input id="teacherObalance" maxlength="30" class="input-field w-full p-3 rounded-xl text-sm" placeholder="+996...">
+          </div>
           <p id="teacherProfileStatus" class="status-line text-xs text-slate-400"></p>
           <button id="btnSaveTeacherProfile" type="submit" class="bg-emerald-600 hover:bg-emerald-500 w-full py-3 rounded-xl font-bold text-sm">Реквизиттерди сактоо</button>
         </form>
+
         <div class="border-t border-slate-700 pt-4 space-y-2">
           <div class="flex justify-between items-center"><h3 class="font-bold text-sm">Менин материалдарым</h3><span id="materialCount" class="text-xs text-slate-400">0 материал</span></div>
           <div id="myMaterialsList" class="space-y-3"><p class="text-xs text-slate-500">Материалдар жүктөлүүдө...</p></div>
@@ -227,6 +245,7 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
     const storage = getStorage(app);
+
     setPersistence(auth, browserLocalPersistence).catch(err => console.error(err));
 
     const ACCESS_DURATION_MS = 24 * 60 * 60 * 1000;
@@ -243,19 +262,19 @@
     let myItems = [];
     let myPurchases = [];
     let activeItem = null;
-    let currentTeacherQr = null;
+    let currentSavedProfile = { mbankUrl: "", obankUrl: "", obalance: "" };
 
     const $ = id => document.getElementById(id);
     const money = n => new Intl.NumberFormat("ky-KG", { maximumFractionDigits: 2 }).format(Number(n || 0));
     const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
-    
+
     function setMessage(id, msg, err = false) {
       const el = $(id); if (!el) return;
       el.textContent = msg || "";
       el.classList.toggle("text-red-400", Boolean(err));
       el.classList.toggle("text-slate-400", !err);
     }
-    
+
     async function checkAdmin(user) {
       if (!user) return false;
       try {
@@ -263,6 +282,111 @@
         return adminSnap.exists() && adminSnap.val() === true;
       } catch (e) { return false; }
     }
+
+    // РЕКВИЗИТТЕРДИ ЖҮКТӨӨ (Реквизиттер өчпөстөн сакталып турат)
+    async function loadTeacherProfile() {
+      if (!currentUser) return;
+      try {
+        const profSnap = await get(ref(db, `users/${currentUser.uid}/paymentProfile`));
+        if (profSnap.exists()) {
+          currentSavedProfile = profSnap.val() || {};
+          $("teacherObalance").value = currentSavedProfile.obalance || "";
+          
+          if (currentSavedProfile.mbankUrl) {
+            $("teacherMbankPreview").src = currentSavedProfile.mbankUrl;
+            $("mbankBox").classList.remove("hidden");
+          } else {
+            $("mbankBox").classList.add("hidden");
+          }
+
+          if (currentSavedProfile.obankUrl) {
+            $("teacherObankPreview").src = currentSavedProfile.obankUrl;
+            $("obankBox").classList.remove("hidden");
+          } else {
+            $("obankBox").classList.add("hidden");
+          }
+        }
+      } catch (e) { console.error("Profile load err:", e); }
+    }
+
+    // РЕКВИЗИТТЕРДИ САКТОО ФУНКЦИЯСЫ
+    $("teacherProfileForm").onsubmit = async (e) => {
+      e.preventDefault();
+      if (!currentUser) return;
+      const btn = $("btnSaveTeacherProfile");
+      btn.disabled = true;
+      btn.textContent = "Сакталууда...";
+      setMessage("teacherProfileStatus", "Реквизиттер сакталууда...");
+
+      try {
+        let mbankUrl = currentSavedProfile.mbankUrl || "";
+        let obankUrl = currentSavedProfile.obankUrl || "";
+
+        // Эгер жаңы MBank сүрөт тандалган болсо
+        const mFile = $("teacherMbankFile").files[0];
+        if (mFile) {
+          try {
+            const mRef = sRef(storage, `profiles/${currentUser.uid}_mbank_${Date.now()}_${mFile.name}`);
+            await uploadBytes(mRef, mFile);
+            mbankUrl = await getDownloadURL(mRef);
+          } catch (stErr) {
+            mbankUrl = await new Promise((res) => {
+              const r = new FileReader();
+              r.onload = (evt) => res(evt.target.result);
+              r.readAsDataURL(mFile);
+            });
+          }
+        }
+
+        // Эгер жаңы O!Bank сүрөт тандалган болсо
+        const oFile = $("teacherObankFile").files[0];
+        if (oFile) {
+          try {
+            const oRef = sRef(storage, `profiles/${currentUser.uid}_obank_${Date.now()}_${oFile.name}`);
+            await uploadBytes(oRef, oFile);
+            obankUrl = await getDownloadURL(oRef);
+          } catch (stErr) {
+            obankUrl = await new Promise((res) => {
+              const r = new FileReader();
+              r.onload = (evt) => res(evt.target.result);
+              r.readAsDataURL(oFile);
+            });
+          }
+        }
+
+        const obalance = $("teacherObalance").value.trim();
+
+        currentSavedProfile = { mbankUrl, obankUrl, obalance, updatedAt: Date.now() };
+        await set(ref(db, `users/${currentUser.uid}/paymentProfile`), currentSavedProfile);
+
+        setMessage("teacherProfileStatus", "Реквизиттер ийгиликтүү сакталды!");
+        $("teacherMbankFile").value = "";
+        $("teacherObankFile").value = "";
+        loadTeacherProfile();
+      } catch (err) {
+        setMessage("teacherProfileStatus", "Ката: " + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Реквизиттерди сактоо";
+      }
+    };
+
+    // АТАЙЫН ӨЧҮРҮҮ БАСКЫЧТАРЫ
+    $("btnDeleteMbank").onclick = async () => {
+      if (confirm("MBank QR сүрөтүн өчүрөсүзбү?")) {
+        currentSavedProfile.mbankUrl = "";
+        await update(ref(db, `users/${currentUser.uid}/paymentProfile`), { mbankUrl: "" });
+        loadTeacherProfile();
+      }
+    };
+
+    $("btnDeleteObank").onclick = async () => {
+      if (confirm("O!Bank QR сүрөтүн өчүрөсүзбү?")) {
+        currentSavedProfile.obankUrl = "";
+        await update(ref(db, `users/${currentUser.uid}/paymentProfile`), { obankUrl: "" });
+        loadTeacherProfile();
+      }
+    };
 
     async function loadPublicMarket() {
       try {
@@ -537,7 +661,7 @@
       }
     });
 
-    // ФАЙЛДЫ САКТОО ЖАНА FIREBASE TIMEOUT КАТАСЫН ТОЛУК ЖОЮУ (FALLBACK BASE64)
+    // ФАЙЛДЫ САКТОО ЖАНА FIREBASE TIMEOUT КАТАСЫН ТОЛУК ЖОЮУ
     $("addMaterialForm").onsubmit = async (e) => {
       e.preventDefault();
       if (!currentUser) return;
@@ -546,7 +670,6 @@
       btn.textContent = "Жүктөлүүдө...";
       $("uploadProgress").style.width = "40%";
       setMessage("materialFormStatus", "Файл сакталууда...");
-
       try {
         let fileUrl = "", fileName = "";
         const isFile = document.querySelector('input[name="uploadSource"]:checked').value === 'file';
@@ -556,14 +679,12 @@
           if (!file) throw new Error("Файл тандалган жок.");
           fileName = file.name;
           
-          // Файлды коопсуз Base64 форматына же Storage'ка жүктөө (Fallback механизм)
           try {
             const fRef = sRef(storage, `materials/${currentUser.uid}_${Date.now()}_${file.name}`);
             const uploadP = uploadBytes(fRef, file).then(() => getDownloadURL(fRef));
             const timeoutP = new Promise((_, rej) => setTimeout(() => rej(new Error("Storage timeout")), 12000));
             fileUrl = await Promise.race([uploadP, timeoutP]);
           } catch (stErr) {
-            // Эгер Firebase Storage убактысы бүтсө же интернет жай болсо — файлды заматта Base64 Data URL кылып конвертациялайт (Ката чыкпайт!)
             fileUrl = await new Promise((resolve) => {
               const reader = new FileReader();
               reader.onload = (evt) => resolve(evt.target.result);
@@ -575,7 +696,6 @@
           fileName = "Сырткы шилтеме";
           if (!fileUrl) throw new Error("Шилтемени киргизиңиз.");
         }
-
         $("uploadProgress").style.width = "90%";
         const price = Number($("matPrice").value);
         const newRef = push(ref(db, "market_items"));
@@ -594,7 +714,6 @@
           status: "published",
           createdAt: Date.now()
         });
-
         $("uploadProgress").style.width = "100%";
         setMessage("materialFormStatus", "Материал ийгиликтүү жарыяланды!");
         $("addMaterialForm").reset();
@@ -638,9 +757,13 @@
       }
       $("authSection").classList.add("hidden");
       $("userEmailDisplay").textContent = user.email;
+      
+      // БАРДЫК ДАЙЫНДАРДЫ ДАРОО ЖҮКТӨӨ
+      loadTeacherProfile();
       loadPublicMarket();
       loadMyMaterials();
       loadPurchases();
+
       checkAdmin(user).then(isAdm => {
         isAdminUser = isAdm;
         $("adminSection").classList.toggle("hidden", !isAdminUser);
@@ -649,7 +772,9 @@
     });
 
     $("marketSearch").oninput = renderPublicMarket;
-    ["filterSubject", "filterGrade", "filterType"].forEach(id => $(id).onchange = renderPublicMarket);$("publicMarketItems").onclick = (e) => {
+    ["filterSubject", "filterGrade", "filterType"].forEach(id => $(id).onchange = renderPublicMarket);
+
+    $("publicMarketItems").onclick = (e) => {
       const btn = e.target.closest("[data-buy]");
       if (btn) {
         const item = publicItems.find(x => x.id === btn.dataset.buy);
