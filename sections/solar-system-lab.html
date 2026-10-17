@@ -26,7 +26,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 40px 16px 24px 16px; /* 2-сүрөттөгү үстүнкү кесилип калууну оңдоо үчүн отступ кошулду */
+      padding: 30px 16px 24px 16px;
     }
 
     .header-nav {
@@ -106,7 +106,7 @@
       backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 20px;
-      padding: 32px; /* 2-сүрөттөгү кысылып калууну оңдоо үчүн отступ кеңейтилди */
+      padding: 28px;
       margin-bottom: 24px;
     }
 
@@ -127,15 +127,16 @@
       margin-bottom: 20px;
     }
 
+    /* 3D VIEWPORT */
     .viewport-3d {
       width: 100%;
-      height: 520px;
-      background: #000000;
+      height: 540px;
+      background: #02040a;
       border-radius: 16px;
       border: 1px solid rgba(56, 189, 248, 0.3);
       position: relative;
       overflow: hidden;
-      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
     }
 
     #webglCanvas {
@@ -148,29 +149,47 @@
       position: absolute;
       top: 15px;
       left: 15px;
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.15);
       padding: 8px 14px;
       border-radius: 8px;
       font-size: 0.78rem;
       color: #38bdf8;
       pointer-events: none;
+      backdrop-filter: blur(8px);
+      z-index: 10;
     }
 
-    /* Тандалган объекттин аты 3D экранда чыгуучу стили */
-    .planet-label-overlay {
+    /* Объекттин үстүндөгү кичинекей 3D калкып чыгуучу жазуу */
+    .planet-3d-label {
       position: absolute;
-      bottom: 20px;
-      right: 20px;
+      transform: translate(-50%, -100%);
       background: rgba(15, 23, 42, 0.85);
-      border: 1px solid #c084fc;
-      padding: 10px 18px;
-      border-radius: 12px;
-      font-size: 1rem;
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
       font-weight: 700;
-      color: #c084fc;
+      white-space: nowrap;
       pointer-events: none;
-      box-shadow: 0 4px 20px rgba(192, 132, 252, 0.3);
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.4);
+      backdrop-filter: blur(4px);
+      transition: opacity 0.2s ease;
+      z-index: 5;
+    }
+
+    .planet-3d-label::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 5px 5px 0;
+      border-style: solid;
+      border-color: #38bdf8 transparent;
+      display: block;
+      width: 0;
     }
 
     .controls-panel {
@@ -227,7 +246,7 @@
     }
 
     .data-val {
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
       color: #4ade80;
       margin-top: 4px;
@@ -319,10 +338,11 @@
     </div>
 
     <!-- 3D WEBGL VIEWPORT -->
-    <div class="viewport-3d">
+    <div class="viewport-3d" id="viewport3D">
       <canvas id="webglCanvas"></canvas>
       <div class="view-hint" data-i18n="viewHint">🖱️ 3D Камера: Сол баскыч — айландыруу | Оң баскыч — жылдыруу | Скролл — жакындатуу</div>
-      <div class="planet-label-overlay" id="planetNameOverlay">Жер (Earth)</div>
+      <!-- Объекттин үстүндө калкып жүрүүчү кичинекей маркер-этикетка -->
+      <div class="planet-3d-label" id="floatingLabel">☀️ Күн</div>
     </div>
 
     <div class="controls-panel">
@@ -334,7 +354,7 @@
           <option value="venus">♀ Чолпон / Венера (Venus)</option>
           <option value="earth" selected>♁ Жер жана Ай (Earth & Moon)</option>
           <option value="mars">♂ Марс (Mars)</option>
-          <option value="jupiter">♃ Юпитер жана Спутниктери (Jupiter)</option>
+          <option value="jupiter">♃ Юпитер (Jupiter)</option>
           <option value="saturn">♄ Сатурн (Saturn)</option>
           <option value="uranus">♅ Уран (Uranus)</option>
           <option value="neptune">♆ Нептун (Neptune)</option>
@@ -467,88 +487,116 @@
     }
 
     // -------------------------------------------------------------
-    // THREE.JS 3D КОСМОСТУК СИМУЛЯЦИЯ (ОРБИТАЛЫК СЫЗЫКТАР ЖОК)
+    // THREE.JS 3D РЕАЛДУУ КОСМОС СИМУЛЯЦИЯСЫ
     // -------------------------------------------------------------
     const canvas3D = document.getElementById('webglCanvas');
+    const viewport3D = document.getElementById('viewport3D');
+    const floatingLabel = document.getElementById('floatingLabel');
+
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, canvas3D.clientWidth / canvas3D.clientHeight, 0.1, 2000);
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true });
+    const camera = new THREE.PerspectiveCamera(45, canvas3D.clientWidth / canvas3D.clientHeight, 0.1, 2500);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true, alpha: true });
 
     renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
 
-    camera.position.set(0, 120, 220);
+    camera.position.set(0, 130, 240);
 
+    // Космостук Жылдыздар (Realistic Starfield)
     const starsGeo = new THREE.BufferGeometry();
-    const starsCount = 3000;
+    const starsCount = 4000;
     const starPositions = new Float32Array(starsCount * 3);
     for(let i = 0; i < starsCount * 3; i++) {
-      starPositions[i] = (Math.random() - 0.5) * 1500;
+      starPositions[i] = (Math.random() - 0.5) * 1800;
     }
     starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-    const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+    const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, transparent: true, opacity: 0.8 });
     scene.add(new THREE.Points(starsGeo, starsMat));
 
-    scene.add(new THREE.AmbientLight(0x333333));
-    const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
+    // Космостук фондук жука жарык
+    scene.add(new THREE.AmbientLight(0x222233));
+
+    // Күндүн негизги жарыгы (PointLight)
+    const sunLight = new THREE.PointLight(0xfffaed, 2.2, 1200);
     scene.add(sunLight);
 
     const astroData = {
-      sun: { name: "☀️ Күн (Sun)", mass: "1.989 × 10³⁰ кг", dist: "0.00 АР", period: "—", speed: "—", size: 14, color: 0xffaa00, orbitR: 0 },
-      mercury: { name: "☿ Меркурий (Mercury)", mass: "3.301 × 10²³ кг", dist: "0.387 АР", period: "0.241 жыл", speed: "47.36 км/сек", size: 2.2, color: 0xaaaaaa, orbitR: 28 },
-      venus: { name: "♀ Чолпон (Venus)", mass: "4.867 × 10²⁴ кг", dist: "0.723 АР", period: "0.615 жыл", speed: "35.02 км/сек", size: 3.5, color: 0xe3bb76, orbitR: 42 },
-      earth: { name: "♁ Жер жана Ай (Earth & Moon)", mass: "5.972 × 10²⁴ кг", dist: "1.000 АР", period: "1.000 жыл", speed: "29.78 км/сек", size: 3.8, color: 0x2b82c5, orbitR: 58, hasMoon: true },
-      mars: { name: "♂ Марс (Mars)", mass: "6.417 × 10²³ кг", dist: "1.524 АР", period: "1.881 жыл", speed: "24.07 км/сек", size: 2.8, color: 0xc1440e, orbitR: 76 },
-      jupiter: { name: "♃ Юпитер жана Спутниктери (Jupiter)", mass: "1.898 × 10²⁷ кг", dist: "5.204 АР", period: "11.86 жыл", speed: "13.07 км/сек", size: 8.5, color: 0xb07f35, orbitR: 105, hasMoons: true },
-      saturn: { name: "♄ Сатурн (Saturn)", mass: "5.683 × 10²⁶ кг", dist: "9.582 АР", period: "29.46 жыл", speed: "9.68 км/сек", size: 7.2, color: 0xe2bf7d, orbitR: 135, ring: true },
-      uranus: { name: "♅ Уран (Uranus)", mass: "8.681 × 10²⁵ кг", dist: "19.20 АР", period: "84.01 жыл", speed: "6.80 км/сек", size: 5.0, color: 0x4b70dd, orbitR: 165 },
-      neptune: { name: "♆ Нептун (Neptune)", mass: "1.024 × 10²⁶ кг", dist: "30.05 АР", period: "164.8 жыл", speed: "5.43 км/сек", size: 4.8, color: 0x274687, orbitR: 195 }
+      sun: { name: "☀️ Күн (Sun)", label: "☀️ Күн", mass: "1.989 × 10³⁰ кг", dist: "0.00 АР", period: "—", speed: "—", size: 14, color: 0xffaa00, orbitR: 0 },
+      mercury: { name: "☿ Меркурий (Mercury)", label: "☿ Меркурий", mass: "3.301 × 10²³ кг", dist: "0.387 АР", period: "0.241 жыл", speed: "47.36 км/сек", size: 2.2, color: 0xb5b5b5, orbitR: 30 },
+      venus: { name: "♀ Чолпон (Venus)", label: "♀ Чолпон", mass: "4.867 × 10²⁴ кг", dist: "0.723 АР", period: "0.615 жыл", speed: "35.02 км/сек", size: 3.5, color: 0xe3bb76, orbitR: 46 },
+      earth: { name: "♁ Жер жана Ай (Earth & Moon)", label: "♁ Жер", mass: "5.972 × 10²⁴ кг", dist: "1.000 АР", period: "1.000 жыл", speed: "29.78 км/сек", size: 3.8, color: 0x2b82c5, orbitR: 64, hasMoon: true },
+      mars: { name: "♂ Марс (Mars)", label: "♂ Марс", mass: "6.417 × 10²³ кг", dist: "1.524 АР", period: "1.881 жыл", speed: "24.07 км/сек", size: 2.8, color: 0xc1440e, orbitR: 82 },
+      jupiter: { name: "♃ Юпитер (Jupiter)", label: "♃ Юпитер", mass: "1.898 × 10²⁷ кг", dist: "5.204 АР", period: "11.86 жыл", speed: "13.07 км/сек", size: 8.5, color: 0xc99b5d, orbitR: 112, hasMoons: true },
+      saturn: { name: "♄ Сатурн (Saturn)", label: "♄ Сатурн", mass: "5.683 × 10²⁶ кг", dist: "9.582 АР", period: "29.46 жыл", speed: "9.68 км/сек", size: 7.2, color: 0xe2bf7d, orbitR: 142, ring: true },
+      uranus: { name: "♅ Уран (Uranus)", label: "♅ Уран", mass: "8.681 × 10²⁵ кг", dist: "19.20 АР", period: "84.01 жыл", speed: "6.80 км/сек", size: 5.0, color: 0x5181e0, orbitR: 172, ringUranus: true },
+      neptune: { name: "♆ Нептун (Neptune)", label: "♆ Нептун", mass: "1.024 × 10²⁶ кг", dist: "30.05 АР", period: "164.8 жыл", speed: "5.43 км/сек", size: 4.8, color: 0x274687, orbitR: 202 }
     };
 
     const meshes = {};
 
+    // Күн (Плазмалык жаркыроо менен)
     const sunGeo = new THREE.SphereGeometry(astroData.sun.size, 32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({ color: astroData.sun.color });
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
     meshes.sun = new THREE.Mesh(sunGeo, sunMat);
     scene.add(meshes.sun);
+
+    // Күндүн сырткы жаркыроо коронасы (Glow Effect)
+    const glowGeo = new THREE.SphereGeometry(astroData.sun.size * 1.25, 32, 32);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.25 });
+    const sunGlow = new THREE.Mesh(glowGeo, glowMat);
+    meshes.sun.add(sunGlow);
 
     for (let key in astroData) {
       if (key === 'sun') continue;
       let p = astroData[key];
 
-      const pGeo = new THREE.SphereGeometry(p.size, 24, 24);
-      const pMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.8 });
+      const pGeo = new THREE.SphereGeometry(p.size, 32, 32);
+      const pMat = new THREE.MeshStandardMaterial({ 
+        color: p.color, 
+        roughness: 0.7, 
+        metalness: 0.1 
+      });
       const pMesh = new THREE.Mesh(pGeo, pMat);
       pMesh.position.x = p.orbitR;
       scene.add(pMesh);
 
-      // Сатурн шакеги
+      // Сатурндун шакеги
       if (p.ring) {
-        const ringGeo = new THREE.RingGeometry(p.size + 2, p.size + 6, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xa3885f, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const ringGeo = new THREE.RingGeometry(p.size + 2.5, p.size + 7, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xc4a372, side: THREE.DoubleSide, transparent: true, opacity: 0.75 });
         const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        ringMesh.rotation.x = Math.PI / 3;
+        ringMesh.rotation.x = Math.PI / 2.5;
         pMesh.add(ringMesh);
       }
 
-      // Жердин спутниги (Ай)
+      // Урандын шакеги
+      if (p.ringUranus) {
+        const ringGeo = new THREE.RingGeometry(p.size + 1.5, p.size + 3.5, 64);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x88bbff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 1.8;
+        pMesh.add(ringMesh);
+      }
+
+      // Жердин Спутниги (Ай)
       if (p.hasMoon) {
         const moonGeo = new THREE.SphereGeometry(0.9, 16, 16);
-        const moonMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+        const moonMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 });
         const moonMesh = new THREE.Mesh(moonGeo, moonMat);
         moonMesh.name = "moon";
         pMesh.add(moonMesh);
       }
 
-      // Юпитердин спутниктери
+      // Юпитердин Спутниктери
       if (p.hasMoons) {
         for(let m = 0; m < 3; m++) {
           const mGeo = new THREE.SphereGeometry(0.6, 12, 12);
-          const mMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+          const mMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
           const mMesh = new THREE.Mesh(mGeo, mMat);
           mMesh.name = "jmoon_" + m;
           pMesh.add(mMesh);
@@ -575,7 +623,6 @@
       if (targetMesh) {
         controls.target.copy(targetMesh.position);
       }
-      document.getElementById('planetNameOverlay').innerText = astroData[selectedKey].name;
     }
 
     function updateDataDisplay() {
@@ -584,6 +631,31 @@
       document.getElementById('valDist').innerText = d.dist;
       document.getElementById('valPeriod').innerText = d.period;
       document.getElementById('valSpeed').innerText = d.speed;
+    }
+
+    // 3D Объекттин үстүнө калкып жүрүүчү маркерди эсептөө (Project 3D to 2D Screen)
+    const tempV = new THREE.Vector3();
+    function updateFloatingLabel() {
+      let targetMesh = meshes[selectedKey];
+      if (!targetMesh) return;
+
+      targetMesh.getWorldPosition(tempV);
+      tempV.y += (astroData[selectedKey].size || 10) + 3; // Планетанын үстүнөн саал өйдө
+
+      tempV.project(camera);
+
+      const x = (tempV.x *  .5 + .5) * viewport3D.clientWidth;
+      const y = (tempV.y * -.5 + .5) * viewport3D.clientHeight;
+
+      floatingLabel.style.transform = `translate(-50%, -100%) translate(${x}px,${y}px)`;
+      floatingLabel.innerText = astroData[selectedKey].label;
+
+      // Эгер камера планетага өтө жакындаса же артында калса көрсөтпөө
+      if (tempV.z > 1) {
+        floatingLabel.style.opacity = '0';
+      } else {
+        floatingLabel.style.opacity = '1';
+      }
     }
 
     function animate() {
@@ -596,10 +668,10 @@
         let p = astroData[key];
         let mesh = meshes[key];
 
-        mesh.angle += (0.015 / Math.sqrt(p.orbitR)) * timeScale;
+        mesh.angle += (0.012 / Math.sqrt(p.orbitR)) * timeScale;
         mesh.position.x = p.orbitR * Math.cos(mesh.angle);
         mesh.position.z = p.orbitR * Math.sin(mesh.angle);
-        mesh.rotation.y += 0.01;
+        mesh.rotation.y += 0.008;
 
         // Спутниктердин кыймылы
         if (p.hasMoon) {
@@ -615,7 +687,7 @@
             let jm = mesh.getObjectByName("jmoon_" + m);
             if(jm) {
               let jAngle = Date.now() * 0.002 * (m + 1) * timeScale;
-              let dist = 10 + m * 4;
+              let dist = 11 + m * 4;
               jm.position.x = Math.cos(jAngle) * dist;
               jm.position.z = Math.sin(jAngle) * dist;
             }
@@ -623,14 +695,22 @@
         }
       }
 
+      // Тандалган объектти камера менен туруктуу ээрчүү
+      if (selectedKey !== 'sun' && meshes[selectedKey]) {
+        controls.target.copy(meshes[selectedKey].position);
+      } else {
+        controls.target.set(0, 0, 0);
+      }
+
       controls.update();
       renderer.render(scene, camera);
+      updateFloatingLabel();
     }
 
     window.addEventListener('resize', () => {
-      camera.aspect = canvas3D.clientWidth / canvas3D.clientHeight;
+      camera.aspect = viewport3D.clientWidth / viewport3D.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
+      renderer.setSize(viewport3D.clientWidth, viewport3D.clientHeight);
     });
 
     function generateLabDoc() {
@@ -683,8 +763,6 @@
       document.body.removeChild(a);
     }
 
-    // Баштапкы маанини коюу
-    document.getElementById('planetNameOverlay').innerText = astroData['earth'].name;
     animate();
   </script>
 </body>
