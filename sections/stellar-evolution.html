@@ -295,7 +295,7 @@
     <!-- 3D VIEWPORT -->
     <div class="viewport-3d" id="viewport3D">
       <canvas id="webglCanvas"></canvas>
-      <div class="view-hint">🖱️ 3D Камера: Сол баскыч - айландыруу | Оң баскыч - жылдыруу | Скролл - жакындатуу</div>
+      <div class="view-hint">🖱️ 3D Камера: Сол баскыч — айландыруу | Оң баскыч — жылдыруу | Скролл — жакындатуу</div>
       <div class="star-3d-label" id="floatingLabel">🌟 Негизги ырааттуулук (Күн)</div>
     </div>
 
@@ -373,44 +373,54 @@
   </div>
 
   <script>
-    // 3D КОСМОСТУК СИМУЛЯЦИЯ
-    const canvas3D = document.getElementById('webglCanvas');
-    const viewport3D = document.getElementById('viewport3D');
-    const floatingLabel = document.getElementById('floatingLabel');
+    // 3D КОСМОСТУК СИМУЛЯЦИЯ (WINDOW LOAD МЕНЕН ТОЛУК ИШКЕ КИРГИЗҮҮ)
+    let scene, camera, renderer, controls, currentGroup, floatingLabel, viewport3D;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, viewport3D.clientWidth / viewport3D.clientHeight, 0.1, 3000);
-    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true, alpha: true });
+    window.addEventListener('load', () => {
+      const canvas3D = document.getElementById('webglCanvas');
+      viewport3D = document.getElementById('viewport3D');
+      floatingLabel = document.getElementById('floatingLabel');
 
-    renderer.setSize(viewport3D.clientWidth, viewport3D.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      const width = viewport3D.clientWidth;
+      const height = viewport3D.clientHeight;
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enableRotate = true;
-    controls.rotateSpeed = 1.0;
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 3000);
+      renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true, alpha: true });
 
-    camera.position.set(0, 25, 90);
-    controls.update();
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    // Космостук майда чаңдар
-    const particleGeo = new THREE.BufferGeometry();
-    const particleCount = 4000;
-    const posArray = new Float32Array(particleCount * 3);
-    for(let i = 0; i < particleCount * 3; i++) {
-      posArray[i] = (Math.random() - 0.5) * 1500;
-    }
-    particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
-    scene.add(new THREE.Points(particleGeo, particleMat));
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.enableRotate = true;
+      controls.rotateSpeed = 1.0;
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    const mainLight = new THREE.PointLight(0xffffff, 2, 1000);
-    scene.add(mainLight);
+      camera.position.set(0, 25, 90);
+      controls.update();
 
-    let currentGroup = new THREE.Group();
-    scene.add(currentGroup);
+      // Космостук майда чаңдар
+      const particleGeo = new THREE.BufferGeometry();
+      const particleCount = 4000;
+      const posArray = new Float32Array(particleCount * 3);
+      for(let i = 0; i < particleCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 1500;
+      }
+      particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+      const particleMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.7, transparent: true, opacity: 0.8 });
+      scene.add(new THREE.Points(particleGeo, particleMat));
+
+      scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+      const mainLight = new THREE.PointLight(0xffffff, 2, 1000);
+      scene.add(mainLight);
+
+      currentGroup = new THREE.Group();
+      scene.add(currentGroup);
+
+      createStarObject('main_sequence');
+      animate();
+    });
 
     const stagesData = {
       protostar: { name: "1. Протожылдыз", class: "Protostar", temp: "2 500 K", lum: "0.1 Lsun", life: "100 миң жыл" },
@@ -422,6 +432,7 @@
     };
 
     function createStarObject(stageKey) {
+      if (!currentGroup) return;
       while(currentGroup.children.length > 0){ 
         currentGroup.remove(currentGroup.children[0]); 
       }
@@ -512,7 +523,9 @@
         currentGroup.add(disk);
       }
 
-      floatingLabel.innerText = stagesData[stageKey].name;
+      if (floatingLabel) {
+        floatingLabel.innerText = stagesData[stageKey].name;
+      }
     }
 
     function changeStarStage() {
@@ -545,7 +558,7 @@
 
     const tempV = new THREE.Vector3();
     function updateFloatingLabel() {
-      if (!currentGroup) return;
+      if (!currentGroup || !floatingLabel || !viewport3D) return;
       currentGroup.getWorldPosition(tempV);
       tempV.y += 15;
       tempV.project(camera);
@@ -561,15 +574,20 @@
       if (currentGroup) {
         currentGroup.rotation.y += 0.01;
       }
-      controls.update();
-      renderer.render(scene, camera);
+      if (controls) controls.update();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
       updateFloatingLabel();
     }
 
     window.addEventListener('resize', () => {
-      camera.aspect = viewport3D.clientWidth / viewport3D.clientHeight;
+      if (!viewport3D || !renderer || !camera) return;
+      const width = viewport3D.clientWidth;
+      const height = viewport3D.clientHeight;
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(viewport3D.clientWidth, viewport3D.clientHeight);
+      renderer.setSize(width, height);
     });
 
     function generateLabDoc() {
@@ -606,9 +624,6 @@
       a.click();
       document.body.removeChild(a);
     }
-
-    createStarObject('main_sequence');
-    animate();
   </script>
 </body>
 </html>
