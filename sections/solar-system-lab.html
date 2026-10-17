@@ -3,10 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Күн системасы — Виртуалдык Лаборатория</title>
+  <title>Күн системасы — Тереңдетилген 3D Виртуалдык Лаборатория</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   
+  <!-- Three.js жана OrbitControls (3D Космостук Симуляция үчүн) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
   <style>
     * {
       box-sizing: border-box;
@@ -16,10 +20,7 @@
     }
 
     body {
-      background-color: #070a13;
-      background-image: 
-        radial-gradient(at 15% 15%, rgba(56, 189, 248, 0.08) 0px, transparent 50%),
-        radial-gradient(at 85% 85%, rgba(168, 85, 247, 0.08) 0px, transparent 50%);
+      background-color: #050811;
       color: #f8fafc;
       min-height: 100vh;
       display: flex;
@@ -30,23 +31,22 @@
 
     .header-nav {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1250px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
-      background: rgba(17, 24, 39, 0.85);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(16px);
       padding: 16px 24px;
       border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(56, 189, 248, 0.2);
     }
 
     .back-btn {
       background: rgba(30, 41, 59, 0.7);
       color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.2);
+      border: 1px solid rgba(56, 189, 248, 0.3);
       padding: 10px 18px;
       border-radius: 12px;
       text-decoration: none;
@@ -59,14 +59,12 @@
     }
 
     .back-btn:hover {
-      background: rgba(56, 189, 248, 0.15);
+      background: rgba(56, 189, 248, 0.2);
       color: #fff;
-      border-color: #38bdf8;
-      transform: translateX(-2px);
     }
 
     .page-title {
-      font-size: 1.2rem;
+      font-size: 1.25rem;
       color: #38bdf8;
       font-weight: 700;
       display: flex;
@@ -74,7 +72,6 @@
       gap: 10px;
     }
 
-    /* Тил которгуч */
     .lang-switcher {
       display: flex;
       background: rgba(15, 23, 42, 0.9);
@@ -102,20 +99,15 @@
       box-shadow: 0 2px 10px rgba(124, 58, 237, 0.4);
     }
 
-    .lang-btn:hover:not(.active) {
-      color: #fff;
-    }
-
     .lab-container {
       width: 100%;
-      max-width: 1200px;
+      max-width: 1250px;
       background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 20px;
-      padding: 32px;
+      padding: 28px;
       margin-bottom: 24px;
-      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
     }
 
     .lab-title {
@@ -132,153 +124,154 @@
       color: #94a3b8;
       font-size: 0.92rem;
       line-height: 1.6;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
-    .sim-box {
-      background: rgba(7, 10, 19, 0.95);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      border-radius: 16px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    /* Чоңураак 3D Canvas экраны */
-    .canvas-container {
+    /* 3D WEBGL CONTAINER */
+    .viewport-3d {
       width: 100%;
-      height: 440px;
-      background: #020617;
+      height: 520px;
+      background: #000000;
       border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.3);
       position: relative;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.9);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
     }
 
-    canvas {
+    #webglCanvas {
+      width: 100%;
+      height: 100%;
       display: block;
     }
 
-    .controls-grid {
+    .view-hint {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      pointer-events: none;
+    }
+
+    .controls-panel {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 20px;
+      margin-top: 20px;
     }
 
-    @media(max-width: 768px) {
-      .controls-grid { grid-template-columns: 1fr; }
-    }
-
-    .control-group {
+    .control-card {
+      background: rgba(30, 41, 59, 0.5);
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      background: rgba(30, 41, 59, 0.5);
-      padding: 16px 20px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      gap: 10px;
     }
 
-    .control-group label {
-      font-size: 0.9rem;
+    .control-card label {
+      font-size: 0.88rem;
       color: #38bdf8;
       font-weight: 600;
     }
 
     select, input[type="range"] {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       background: #0f172a;
       border: 1px solid rgba(56, 189, 248, 0.3);
       color: #fff;
-      border-radius: 10px;
-      font-size: 0.92rem;
-      cursor: pointer;
+      border-radius: 8px;
+      font-size: 0.9rem;
     }
 
-    .results-grid {
+    /* ИЛИМИЙ ДАЙЫНДАР ТАБЛИЦАСЫ ЖАНА МЕЛДЕШ ФОРМУЛАЛАР */
+    .data-display {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 16px;
+      margin-top: 20px;
     }
 
-    .result-card {
-      background: rgba(30, 41, 59, 0.4);
-      border-radius: 14px;
-      padding: 18px;
+    .data-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 12px;
+      padding: 16px;
       text-align: center;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      transition: all 0.3s ease;
     }
 
-    .result-card:hover {
-      border-color: rgba(56, 189, 248, 0.4);
-      transform: translateY(-2px);
-    }
-
-    .result-label {
-      font-size: 0.82rem;
+    .data-title {
+      font-size: 0.8rem;
       color: #94a3b8;
-      font-weight: 500;
     }
 
-    .result-value {
+    .data-val {
       font-size: 1.25rem;
       font-weight: 700;
       color: #4ade80;
-      margin-top: 6px;
+      margin-top: 4px;
     }
 
-    /* Лабораториялык документ бөлүмү */
-    .doc-section {
-      background: rgba(17, 24, 39, 0.9);
+    /* ЛАБОРАТОРИЯЛЫК ИШТИН МЕТОДИКАЛЫК БӨЛҮМҮ */
+    .lab-guide-box {
+      background: rgba(15, 23, 42, 0.9);
       border: 1px solid rgba(168, 85, 247, 0.3);
       border-radius: 16px;
-      padding: 24px;
+      padding: 28px;
       margin-top: 24px;
+      line-height: 1.7;
     }
 
-    .doc-section h3 {
-      font-size: 1.1rem;
+    .guide-header {
+      font-size: 1.2rem;
       color: #c084fc;
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+      font-weight: 700;
       display: flex;
       align-items: center;
       gap: 10px;
     }
 
-    .doc-section p, .doc-section li {
-      font-size: 0.88rem;
-      color: #94a3b8;
-      line-height: 1.6;
+    .formula-badge {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      margin: 12px 0;
+      display: inline-block;
     }
 
-    .doc-section ul {
-      padding-left: 20px;
-      margin: 10px 0;
+    .guide-step {
+      margin-bottom: 14px;
+      color: #cbd5e1;
+      font-size: 0.92rem;
     }
 
     .download-btn {
       background: linear-gradient(135deg, #7c3aed, #d946ef);
       color: #fff;
       border: none;
-      padding: 12px 24px;
+      padding: 14px 28px;
       border-radius: 12px;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      margin-top: 16px;
-      transition: all 0.3s ease;
+      margin-top: 20px;
       box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
-      text-decoration: none;
+      transition: all 0.3s ease;
     }
 
     .download-btn:hover {
@@ -294,139 +287,155 @@
       <i class="fa-solid fa-arrow-left"></i> <span data-i18n="backBtn">Астрофизикага кайтуу</span>
     </a>
     <div class="page-title">
-      <i class="fa-solid fa-globe"></i> <span data-i18n="mainHeader">Күн системасы — Виртуалдык Лаборатория</span>
+      <i class="fa-solid fa-atom"></i> <span data-i18n="mainHeader">Күн системасы — Тереңдетилген 3D Лаборатория</span>
     </div>
     
-    <!-- Тил которгуч -->
     <div class="lang-switcher">
       <button class="lang-btn active" onclick="setLanguage('ky')">KG</button>
       <button class="lang-btn" onclick="setLanguage('ru')">RU</button>
-      <button class="lang-btn" onclick="enLang()">EN</button>
+      <button class="lang-btn" onclick="setLanguage('en')">EN</button>
     </div>
   </div>
 
   <div class="lab-container">
     <div class="lab-title">
-      <i class="fa-solid fa-solar-system"></i> <span data-i18n="labTitle">Виртуалдык лаборатория: Планеталардын 3D Орбиталык Кыймылы</span>
+      <i class="fa-solid fa-globe"></i> <span data-i18n="labTitle">Виртуалдык 3D Интерактивдүү Астрономиялык Модель</span>
     </div>
     <div class="lab-desc" id="labDescText">
-      Бул лабораториялык иш Күн системасындагы планеталардын Кеплер закондоруна ылайык Күндү айлануу ылдамдыгын, орбиталык радиусун жана мезгилдерин изилдөөгө арналган. 3D симуляция аркылуу реалдуу астрономиялык процесстерди байкаңыз.
+      Бул лабораториялык иш Күн системасындагы планеталардын гравитациялык өз ара аракеттенүүсүн, орбиталык параметрлерин жана Кеплер мыйзамдарын тереңдетип изилдөөгө багытталган. Чычканды (мышканы) колдонуп космостук 3D камераны бардык тарапка айландырып, жакындатып изилдеңиз.
     </div>
 
-    <div class="sim-box">
-      <!-- Кеңейтилген 3D Canvas -->
-      <div class="canvas-container">
-        <canvas id="solarCanvas" width="1120" height="440"></canvas>
+    <!-- 3D WEBGL VIEWPORT -->
+    <div class="viewport-3d">
+      <canvas id="webglCanvas"></canvas>
+      <div class="view-hint" data-i18n="viewHint">🖱️ 3D Камера: Сол баскыч — айландыруу | Оң баскыч — жылдыруу | Скролл — жакындатуу</div>
+    </div>
+
+    <div class="controls-panel">
+      <div class="control-card">
+        <label for="planetSelect" data-i18n="selectLabel">Изилдөөчү объектти тандаңыз:</label>
+        <select id="planetSelect" onchange="focusPlanet()">
+          <option value="sun">Күн (Sun)</option>
+          <option value="mercury">Меркурий (Mercury)</option>
+          <option value="venus">Чолпон / Венера (Venus)</option>
+          <option value="earth" selected>Жер (Earth)</option>
+          <option value="mars">Марс (Mars)</option>
+          <option value="jupiter">Юпитер (Jupiter)</option>
+          <option value="saturn">Сатурн (Saturn)</option>
+          <option value="uranus">Уран (Uranus)</option>
+          <option value="neptune">Нептун (Neptune)</option>
+        </select>
       </div>
 
-      <div class="controls-grid">
-        <div class="control-group">
-          <label for="planetSelect" data-i18n="selectLabel">Изилдөөчү планетаны тандаңыз:</label>
-          <select id="planetSelect" onchange="selectPlanet()">
-            <option value="mercury">Меркурий (Mercury)</option>
-            <option value="venus">Чолпон / Венера (Venus)</option>
-            <option value="earth" selected>Жер / Earth</option>
-            <option value="mars">Марс (Mars)</option>
-            <option value="jupiter">Юпитер (Jupiter)</option>
-          </select>
-        </div>
-
-        <div class="control-group">
-          <label for="speedRange"><span data-i18n="speedControl">Симуляция ылдамдыгы:</span> <span id="speedValText" style="color: #38bdf8;">1x</span></label>
-          <input type="range" id="speedRange" min="0.2" max="3" step="0.1" value="1" oninput="updateSpeed()">
-        </div>
-      </div>
-
-      <div class="results-grid">
-        <div class="result-card">
-          <div class="result-label" data-i18n="resDist">Күндөн болгон аралык:</div>
-          <div class="result-value" id="distVal">1.00 АР (149.6 млн км)</div>
-        </div>
-        <div class="result-card">
-          <div class="result-label" data-i18n="resPeriod">Жылдык айлануу мезгили:</div>
-          <div class="result-value" id="periodVal" style="color: #38bdf8;">365.25 күн</div>
-        </div>
-        <div class="result-card">
-          <div class="result-label" data-i18n="resSpeed">Орбиталык ылдамдык:</div>
-          <div class="result-value" id="speedVal" style="color: #c084fc;">29.78 км/сек</div>
-        </div>
+      <div class="control-card">
+        <label for="timeScale"><span data-i18n="timeScaleText">Убакыттын ылдамдыгы (Time Scale):</span> <span id="timeScaleVal" style="color:#38bdf8;">1x</span></label>
+        <input type="range" id="timeScale" min="0" max="5" step="0.1" value="1" oninput="updateTimeScale()">
       </div>
     </div>
 
-    <!-- Лабораториялык иштин документи -->
-    <div class="doc-section">
-      <h3 data-i18n="docTitle"><i class="fa-solid fa-file-lines"></i> Лабораториялык иш боюнча методикалык көрсөтмө</h3>
-      <p><b data-i18n="docGoalTitle">Иштин максаты:</b> <span data-i18n="docGoalText">Кеплердин үчүнчү законун текшерүү ($T^2 / R^3 = \text{const}$) жана планеталардын орбиталык мүнөздөмөлөрүн аныктоо.</span></p>
-      <br>
-      <p><b data-i18n="docStepsTitle">Иштин жүрүшү:</b></p>
-      <ul>
-        <li><span data-i18n="step1">1. Симуляциядан ар бир планетаны кезек менен тандап, алардын Күндөн болгон аралыктарын ($R$) жазып алыңыз.</span></li>
-        <li><span data-i18n="step2">2. Ар бир планетанын Күндү толук айлануу мезгилин ($T$) аныктаңыз.</span></li>
-        <li><span data-i18n="step3">3. Алынган маалыматтарды колдонуп, Кеплердин катышын эсептеп, жыйынтык чыгарыңыз.</span></li>
-      </ul>
-      <a href="#" class="download-btn" onclick="downloadLabDoc()"><i class="fa-solid fa-download"></i> <span data-i18n="downloadBtn">Лабораториялык отчетту жүктөп алуу (.doc)</span></a>
+    <!-- ИЛИМИЙ ПАРАМЕТРЛЕР -->
+    <div class="data-display">
+      <div class="data-box">
+        <div class="data-title" data-i18n="paramMass">Объекттин массасы (M):</div>
+        <div class="data-val" id="valMass">5.972 × 10²⁴ кг</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title" data-i18n="paramDist">Орбиталык чоң жарым огу (a):</div>
+        <div class="data-val" id="valDist" style="color:#38bdf8;">1.000 АР (149.6 млн км)</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title" data-i18n="paramPeriod">Орбиталык мезгил (T):</div>
+        <div class="data-val" id="valPeriod" style="color:#c084fc;">1.000 жыл (365.25 күн)</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title" data-i18n="paramSpeed">Орбиталык ылдамдык (v):</div>
+        <div class="data-val" id="valSpeed" style="color:#f43f5e;">29.78 км/сек</div>
+      </div>
+    </div>
+
+    <!-- ТЕРЕҢДЕТИЛГЕН МЕТОДИКАЛЫК ЛАБОРАТОРИЯЛЫК ИШ -->
+    <div class="lab-guide-box">
+      <div class="guide-header"><i class="fa-solid fa-graduation-cap"></i> <span data-i18n="guideTitle">Лабораториялык иштин тапшырмасы жана тартиби</span></div>
+      
+      <p><b data-i18n="labGoal">Иштин максаты:</b> <span data-i18n="labGoalText">Планеталардын Күндү айлануу физикалык мыйзам ченемдүүлүктөрүн Кеплердин III закону жана Бүткүл дүйнөлүк тартылуу закону аркылуу сандык эсептөөлөр менен далилдөө.</span></p>
+
+      <div class="formula-badge">
+        1) Кеплердин 3-закону: T² / a³ = K = 1 (АР³ / жыл²)<br>
+        2) Гравитациялык күч: F = G · (M_sun · m) / r²<br>
+        3) Орбиталык ылдамдык: v = √(G · M_sun / r)
+      </div>
+
+      <div class="guide-step"><b data-i18n="taskHeader">Окуучулар үчүн эсептөө тапшырмасы:</b></div>
+      <div class="guide-step" data-i18n="task1">1. Тандалган планетанын Күндөн болгон аралыгын (a) жана мезгилин (T) колдонуп, Кеплер константасын (K = T² / a³) эсептеп, анын бардык планеталар үчүн туруктуу экендигин текшериңиз.</div>
+      <div class="guide-step" data-i18n="task2">2. Күндүн массасын ($M_{sun} = 1.989 \times 10^{30} \text{ кг}$) жана гравитациялык туруктуулукту ($G = 6.674 \times 10^{-11} \text{ Н·м²/кг²}$) колдонуп, Жердин сызыктуу орбиталык ылдамдыгын теориялык түрдө эсептеп, симуляциядагы көрсөткүч менен салыштырыңыз.</div>
+      <div class="guide-step" data-i18n="task3">3. Алынган бардык натыйжаларды таблицага толтуруп, жыйынтык чыгарыңыз.</div>
+
+      <button class="download-btn" onclick="generateLabDoc()"><i class="fa-solid fa-file-word"></i> <span data-i18n="docBtn">Толук Лабораториялык Документти Жүктөп Алуу (.doc)</span></button>
     </div>
   </div>
 
   <script>
-    // Тилдер базасы (KG, RU, EN)
-    const translations = {
+    // ТИЛДЕР БАЗАСЫ (KG, RU, EN)
+    const i18n = {
       ky: {
         backBtn: "Астрофизикага кайтуу",
-        mainHeader: "Күн системасы — Виртуалдык Лаборатория",
-        labTitle: "Виртуалдык лаборатория: Планеталардын 3D Орбиталык Кыймылы",
-        labDesc: "Бул лабораториялык иш Күн системасындагы планеталардын Кеплер закондоруна ылайык Күндү айлануу ылдамдыгын, орбиталык радиусун жана мезгилдерин изилдөөгө арналган. 3D симуляция аркылуу реалдуу астрономиялык процесстерди байкаңыз.",
-        selectLabel: "Изилдөөчү планетаны тандаңыз:",
-        speedControl: "Симуляция ылдамдыгы:",
-        resDist: "Күндөн болгон аралык:",
-        resPeriod: "Жылдык айлануу мезгили:",
-        resSpeed: "Орбиталык ылдамдык:",
-        docTitle: "Лабораториялык иш боюнча методикалык көрсөтмө",
-        docGoalTitle: "Иштин максаты:",
-        docGoalText: "Кеплердин үчүнчү законун текшерүү (T² / R³ = const) жана планеталардын орбиталык мүнөздөмөлөрүн аныктоо.",
-        docStepsTitle: "Иштин жүрүшү:",
-        step1: "1. Симуляциядан ар бир планетаны кезек менен тандап, алардын Күндөн болгон аралыктарын (R) жазып алыңыз.",
-        step2: "2. Ар бир планетанын Күндү толук айлануу мезгилин (T) аныктаңыз.",
-        step3: "3. Алынган маалыматтарды колдонуп, Кеплердин катышын эсептеп, жыйынтык чыгарыңыз.",
-        downloadBtn: "Лабораториялык отчетту жүктөп алуу (.doc)"
+        mainHeader: "Күн системасы — Тереңдетилген 3D Лаборатория",
+        labTitle: "Виртуалдык 3D Интерактивдүү Астрономиялык Модель",
+        viewHint: "🖱️ 3D Камера: Сол баскыч — айландыруу | Оң баскыч — жылдыруу | Скролл — жакындатуу",
+        selectLabel: "Изилдөөчү объектти тандаңыз:",
+        timeScaleText: "Убакыттын ылдамдыгы (Time Scale):",
+        paramMass: "Объекттин массасы (M):",
+        paramDist: "Орбиталык чоң жарым огу (a):",
+        paramPeriod: "Орбиталык мезгил (T):",
+        paramSpeed: "Орбиталык ылдамдык (v):",
+        guideTitle: "Лабораториялык иштин тапшырмасы жана тартиби",
+        labGoal: "Иштин максаты:",
+        labGoalText: "Планеталардын Күндү айлануу физикалык мыйзам ченемдүүлүктөрүн Кеплердин III закону жана Бүткүл дүйнөлүк тартылуу закону аркылуу сандык эсептөөлөр менен далилдөө.",
+        taskHeader: "Окуучулар үчүн эсептөө тапшырмасы:",
+        task1: "1. Тандалган планетанын Күндөн болгон аралыгын (a) жана мезгилин (T) колдонуп, Кеплер константасын (K = T² / a³) эсептеп, анын бардык планеталар үчүн туруктуу экендигин текшериңиз.",
+        task2: "2. Күндүн массасын жана гравитациялык туруктуулукту колдонуп, Жердин сызыктуу орбиталык ылдамдыгын теориялык түрдө эсептеп, симуляциядагы көрсөткүч менен салыштырыңыз.",
+        task3: "3. Алынган бардык натыйжаларды таблицага толтуруп, жыйынтык чыгарыңыз.",
+        docBtn: "Толук Лабораториялык Документти Жүктөп Алуу (.doc)"
       },
       ru: {
         backBtn: "Вернуться к астрофизике",
-        mainHeader: "Солнечная система — Виртуальная Лаборатория",
-        labTitle: "Виртуальная лаборатория: 3D Орбитальное движение планет",
-        labDesc: "Данная лабораторная работа предназначена для исследования скорости обращения планет Солнечной системы вокруг Солнца, их орбитальных радиусов и периодов согласно законам Кеплера. Наблюдайте за реальными астрономическими процессами в 3D.",
-        selectLabel: "Выберите исследуемую планету:",
-        speedControl: "Скорость симуляции:",
-        resDist: "Расстояние от Солнца:",
-        resPeriod: "Период обращения (год):",
-        resSpeed: "Орбитальная скорость:",
-        docTitle: "Методические указания к лабораторной работе",
-        docGoalTitle: "Цель работы:",
-        docGoalText: "Проверка третьего закона Кеплера (T² / R³ = const) и определение орбитальных характеристик планет.",
-        docStepsTitle: "Ход работы:",
-        step1: "1. Последовательно выберите каждую планету в симуляции и запишите их расстояния от Солнца (R).",
-        step2: "2. Определите период полного обращения (T) каждой планеты вокруг Солнца.",
-        step3: "3. Используя полученные данные, вычислите отношение Кеплера и сделайте вывод.",
-        downloadBtn: "Скачать отчет по лабораторной работе (.doc)"
+        mainHeader: "Солнечная система — Углубленная 3D Лаборатория",
+        labTitle: "Виртуальная 3D Интерактивная Астрономическая Модель",
+        viewHint: "🖱️ 3D Камера: ЛКМ — вращение | ПКМ — перемещение | Колесико — зум",
+        selectLabel: "Выберите исследуемый объект:",
+        timeScaleText: "Скорость времени (Time Scale):",
+        paramMass: "Масса объекта (M):",
+        paramDist: "Большая полуось орбиты (a):",
+        paramPeriod: "Орбитальный период (T):",
+        paramSpeed: "Орбитальная скорость (v):",
+        guideTitle: "Задание и ход лабораторной работы",
+        labGoal: "Цель работы:",
+        labGoalText: "Подтвердить физические законы обращения планет вокруг Солнца с помощью III закона Кеплера и закона всемирного тяготения путем численных расчетов.",
+        taskHeader: "Вычислительное задание для учащихся:",
+        task1: "1. Используя расстояние от Солнца (a) и период (T), вычислите константу Кеплера (K = T² / a³) и проверьте ее постоянство для всех планет.",
+        task2: "2. Используя массу Солнца и гравитационную постоянную, рассчитайте теоретическую линейную скорость Земли и сравните её с моделью.",
+        task3: "3. Заполните полученные данные в таблицу и сделайте физический вывод.",
+        docBtn: "Скачать Полный Лабораторный Документ (.doc)"
       },
       en: {
         backBtn: "Back to Astrophysics",
-        mainHeader: "Solar System — Virtual Laboratory",
-        labTitle: "Virtual Laboratory: 3D Orbital Motion of Planets",
-        labDesc: "This laboratory work is designed to study the orbital speed, radius, and periods of planets in the Solar System in accordance with Kepler's laws. Observe realistic astronomical processes via 3D simulation.",
-        selectLabel: "Select planet to study:",
-        speedControl: "Simulation Speed:",
-        resDist: "Distance from Sun:",
-        resPeriod: "Orbital Period:",
-        resSpeed: "Orbital Speed:",
-        docTitle: "Methodological Guidelines for Laboratory Work",
-        docGoalTitle: "Objective:",
-        docGoalText: "Verify Kepler's third law (T² / R³ = const) and determine orbital characteristics of planets.",
-        docStepsTitle: "Procedure:",
-        step1: "1. Sequentially select each planet in the simulation and record their distances from the Sun (R).",
-        step2: "2. Determine the full orbital period (T) of each planet around the Sun.",
-        step3: "3. Using the obtained data, calculate Kepler's ratio and draw conclusions.",
-        downloadBtn: "Download Lab Report (.doc)"
+        mainHeader: "Solar System — Advanced 3D Laboratory",
+        labTitle: "Virtual 3D Interactive Astronomical Model",
+        viewHint: "🖱️ 3D Camera: Left Click — rotate | Right Click — pan | Scroll — zoom",
+        selectLabel: "Select object to study:",
+        timeScaleText: "Time Scale Speed:",
+        paramMass: "Object Mass (M):",
+        paramDist: "Semi-major axis (a):",
+        paramPeriod: "Orbital Period (T):",
+        paramSpeed: "Orbital Speed (v):",
+        guideTitle: "Laboratory Assignment and Procedure",
+        labGoal: "Objective:",
+        labGoalText: "Verify the physical laws of planetary orbits around the Sun using Kepler's 3rd Law and Newton's Law of Universal Gravitation through numerical calculations.",
+        taskHeader: "Calculation Task for Students:",
+        task1: "1. Using distance (a) and period (T), calculate Kepler's constant (K = T² / a³) and verify that it is constant across all planets.",
+        task2: "2. Using the Sun's mass and gravitational constant, theoretically calculate Earth's orbital speed and compare it with the simulation value.",
+        task3: "3. Complete the data table and write a detailed conclusion.",
+        docBtn: "Download Full Laboratory Document (.doc)"
       }
     };
 
@@ -434,165 +443,217 @@
 
     function setLanguage(lang) {
       currentLang = lang;
-      document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       event.target.classList.add('active');
 
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (translations[lang][key]) {
-          el.innerHTML = translations[lang][key];
-        }
+        if (i18n[lang][key]) el.innerHTML = i18n[lang][key];
       });
-      document.getElementById('labDescText').innerHTML = translations[lang].labDesc;
-      selectPlanet();
+      updateDataDisplay();
     }
 
-    function enLang() {
-      setLanguage('en');
+    // -------------------------------------------------------------
+    // THREE.JS 3D КОСМОСТУК СИМУЛЯЦИЯ
+    // -------------------------------------------------------------
+    const canvas3D = document.getElementById('webglCanvas');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, canvas3D.clientWidth / canvas3D.clientHeight, 0.1, 2000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true });
+
+    renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    camera.position.set(0, 120, 220);
+
+    // Космостогу Жылдыздар фону (Starfield)
+    const starsGeo = new THREE.BufferGeometry();
+    const starsCount = 3000;
+    const starPositions = new Float32Array(starsCount * 3);
+    for(let i = 0; i < starsCount * 3; i++) {
+      starPositions[i] = (Math.random() - 0.5) * 1500;
     }
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+    scene.add(new THREE.Points(starsGeo, starsMat));
 
-    const canvas = document.getElementById('solarCanvas');
-    const ctx = canvas.getContext('2d');
+    // Жарык булактары
+    const ambientLight = new THREE.AmbientLight(0x333333);
+    scene.add(ambientLight);
 
-    const planetsData = {
-      mercury: { name: "Меркурий", dist: 65, period: 88, speed: 47.4, color: "#94a3b8", radius: 6, distText: {ky: "0.39 АР (57.9 млн км)", ru: "0.39 АЭ (57.9 млн км)", en: "0.39 AU (57.9 mln km)"}, periodText: {ky: "88 күн", ru: "88 дней", en: "88 days"}, speedText: "47.4 км/сек" },
-      venus: { name: "Чолпон", dist: 100, period: 225, speed: 35.0, color: "#facc15", radius: 9, distText: {ky: "0.72 АР (108.2 млн км)", ru: "0.72 АЭ (108.2 млн км)", en: "0.72 AU (108.2 mln km)"}, periodText: {ky: "225 күн", ru: "225 дней", en: "225 days"}, speedText: "35.0 км/сек" },
-      earth: { name: "Жер", dist: 145, period: 365, speed: 29.8, color: "#38bdf8", radius: 10, distText: {ky: "1.00 АР (149.6 млн км)", ru: "1.00 АЭ (149.6 млн км)", en: "1.00 AU (149.6 mln km)"}, periodText: {ky: "365.25 күн", ru: "365.25 дней", en: "365.25 days"}, speedText: "29.78 км/сек" },
-      mars: { name: "Марс", dist: 190, period: 687, speed: 24.1, color: "#f43f5e", radius: 8, distText: {ky: "1.52 АР (227.9 млн км)", ru: "1.52 АЭ (227.9 млн км)", en: "1.52 AU (227.9 mln km)"}, periodText: {ky: "687 күн", ru: "687 дней", en: "687 days"}, speedText: "24.1 км/сек" },
-      jupiter: { name: "Юпитер", dist: 260, period: 4333, speed: 13.1, color: "#fb923c", radius: 16, distText: {ky: "5.20 АР (778.5 млн км)", ru: "5.20 АЭ (778.5 млн км)", en: "5.20 AU (778.5 mln km)"}, periodText: {ky: "11.9 жыл", ru: "11.9 лет", en: "11.9 years"}, speedText: "13.1 км/сек" }
+    const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
+    scene.add(sunLight);
+
+    // ПЛАНЕТАЛАР ДАЙЫНДАМАЛАРЫ (Физикалык так параметрлери менен)
+    const astroData = {
+      sun: { name: "Күн", mass: "1.989 × 10³⁰ кг", dist: "0.00 АР", period: "—", speed: "—", size: 14, color: 0xffaa00, orbitR: 0 },
+      mercury: { name: "Меркурий", mass: "3.301 × 10²³ кг", dist: "0.387 АР", period: "0.241 жыл", speed: "47.36 км/сек", size: 2.2, color: 0xaaaaaa, orbitR: 28 },
+      venus: { name: "Чолпон", mass: "4.867 × 10²⁴ кг", dist: "0.723 АР", period: "0.615 жыл", speed: "35.02 км/сек", size: 3.5, color: 0xe3bb76, orbitR: 42 },
+      earth: { name: "Жер", mass: "5.972 × 10²⁴ кг", dist: "1.000 АР", period: "1.000 жыл", speed: "29.78 км/сек", size: 3.8, color: 0x2b82c5, orbitR: 58 },
+      mars: { name: "Марс", mass: "6.417 × 10²³ кг", dist: "1.524 АР", period: "1.881 жыл", speed: "24.07 км/сек", size: 2.8, color: 0xc1440e, orbitR: 76 },
+      jupiter: { name: "Юпитер", mass: "1.898 × 10²⁷ кг", dist: "5.204 АР", period: "11.86 жыл", speed: "13.07 км/сек", size: 8.5, color: 0xb07f35, orbitR: 105 },
+      saturn: { name: "Сатурн", mass: "5.683 × 10²⁶ кг", dist: "9.582 АР", period: "29.46 жыл", speed: "9.68 км/сек", size: 7.2, color: 0xe2bf7d, orbitR: 135, ring: true },
+      uranus: { name: "Уран", mass: "8.681 × 10²⁵ кг", dist: "19.20 АР", period: "84.01 жыл", speed: "6.80 км/сек", size: 5.0, color: 0x4b70dd, orbitR: 165 },
+      neptune: { name: "Нептун", mass: "1.024 × 10²⁶ кг", dist: "30.05 АР", period: "164.8 жыл", speed: "5.43 км/сек", size: 4.8, color: 0x274687, orbitR: 195 }
     };
 
-    let currentKey = 'earth';
-    let angles = { mercury: 0, venus: 0, earth: 0, mars: 0, jupiter: 0 };
-    let simSpeedMultiplier = 1;
+    // 3D Объекттерди түзүү
+    const meshes = {};
 
-    function updateSpeed() {
-      simSpeedMultiplier = parseFloat(document.getElementById('speedRange').value);
-      document.getElementById('speedValText').innerText = simSpeedMultiplier.toFixed(1) + "x";
-    }
+    // Күн
+    const sunGeo = new THREE.SphereGeometry(astroData.sun.size, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: astroData.sun.color });
+    meshes.sun = new THREE.Mesh(sunGeo, sunMat);
+    scene.add(meshes.sun);
 
-    function selectPlanet() {
-      currentKey = document.getElementById('planetSelect').value;
-      const p = planetsData[currentKey];
-      document.getElementById('distVal').innerText = p.distText[currentKey === 'earth' ? currentLang : currentLang]; // Fallback
-      document.getElementById('distVal').innerText = p.distText[currentLang];
-      document.getElementById('periodVal').innerText = p.periodText[currentLang];
-      document.getElementById('speedVal').innerText = p.speedText;
-    }
+    // Планеталар & Орбиталар
+    for (let key in astroData) {
+      if (key === 'sun') continue;
+      let p = astroData[key];
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const cx = canvas.width / 2;
-      const cy = canvas.height / 2;
+      // Орбита сызыгы
+      const orbitGeo = new THREE.RingGeometry(p.orbitR - 0.2, p.orbitR + 0.2, 64);
+      const orbitMat = new THREE.MeshBasicMaterial({ color: 0x334155, side: THREE.DoubleSide });
+      const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+      orbitMesh.rotation.x = Math.PI / 2;
+      scene.add(orbitMesh);
 
-      // 3D реалдуу Күн (Жаркырак плазма эффектиси менен)
-      let sunGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, 45);
-      sunGlow.addColorStop(0, '#fffbeb');
-      sunGlow.addColorStop(0.4, '#f59e0b');
-      sunGlow.addColorStop(1, 'transparent');
+      // Планета
+      const pGeo = new THREE.SphereGeometry(p.size, 24, 24);
+      const pMat = new THREE.MeshStandardMaterial({ color: p.color, roughness: 0.8 });
+      const pMesh = new THREE.Mesh(pGeo, pMat);
+      pMesh.position.x = p.orbitR;
+      scene.add(pMesh);
 
-      ctx.fillStyle = sunGlow;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 45, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#fbbf24';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 24, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Орбиталар жана планеталар (Pseudo-3D tilt эллипс эффекттери)
-      for (let key in planetsData) {
-        let p = planetsData[key];
-        
-        // Орбита сызыгы
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        // Эллиптикалык кыймыл үчүн вертикалдык радиусту бир аз кысуу (3D тереңдик)
-        ctx.ellipse(cx, cy, p.dist + 20, (p.dist + 20) * 0.75, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Бурчтук ылдамдык (Кеплер мыйзамы боюнча аралыкка жараша өзгөрөт)
-        angles[key] += 0.015 * (60 / p.period) * simSpeedMultiplier;
-        let rx = p.dist + 20;
-        let ry = (p.dist + 20) * 0.75;
-        let x = cx + rx * Math.cos(angles[key]);
-        let y = cy + ry * Math.sin(angles[key]);
-
-        // Планетаны Күндүн артынан же алдынан өткөндөгү көлөкө эффекти (Реализм)
-        let zDepth = Math.sin(angles[key]); // -1 (аркада) до +1 (алдыда)
-
-        // Планетанын көлөкөсү/жарыгы
-        ctx.fillStyle = p.color;
-        ctx.shadowBlur = key === currentKey ? 18 : 8;
-        ctx.shadowColor = p.color;
-        ctx.beginPath();
-        ctx.arc(x, y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-
-        // Эгер тандалган планета болсо, тегерегине фокус алкак коюу
-        if (key === currentKey) {
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(x, y, p.radius + 5, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // Планетанын атын көрсөтүү
-          ctx.fillStyle = '#38bdf8';
-          ctx.font = '12px Inter, sans-serif';
-          ctx.fillText(p.name, x + 12, y + 4);
-        }
+      // Эгер Сатурн болсо, шакекчесин кошуу
+      if (p.ring) {
+        const ringGeo = new THREE.RingGeometry(p.size + 2, p.size + 6, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xa3885f, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = Math.PI / 3;
+        pMesh.add(ringMesh);
       }
 
-      requestAnimationFrame(draw);
+      meshes[key] = pMesh;
+      meshes[key].angle = Math.random() * Math.PI * 2;
     }
 
-    // Лабораториялык отчетту файл (.doc) катары жүктөп алуу функциясы
-    function downloadLabDoc() {
-      const docContent = `
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Лабораториялык отчет</title></head>
-        <body style="font-family: Arial; padding: 20px;">
-          <h2>BiliMal.org — Виртуалдык Лабораториялык Отчет</h2>
-          <h3>Тема: Күн системасындагы планеталардын орбиталык кыймылы</h3>
-          <p><b>Окуучунун аты-жөнү:</b> ___________________________ Класс: _______</p>
+    let selectedKey = 'earth';
+    let timeScale = 1;
+
+    function updateTimeScale() {
+      timeScale = parseFloat(document.getElementById('timeScale').value);
+      document.getElementById('timeScaleVal').innerText = timeScale.toFixed(1) + "x";
+    }
+
+    function focusPlanet() {
+      selectedKey = document.getElementById('planetSelect').value;
+      updateDataDisplay();
+
+      let targetMesh = meshes[selectedKey];
+      if (targetMesh) {
+        controls.target.copy(targetMesh.position);
+      }
+    }
+
+    function updateDataDisplay() {
+      let d = astroData[selectedKey];
+      document.getElementById('valMass').innerText = d.mass;
+      document.getElementById('valDist').innerText = d.dist;
+      document.getElementById('valPeriod').innerText = d.period;
+      document.getElementById('valSpeed').innerText = d.speed;
+    }
+
+    // 3D Анимациялык Цикл
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Күндүн айлануусу
+      meshes.sun.rotation.y += 0.002;
+
+      // Планеталардын Күндү айлануусу (Кеплер физикасына туура келтирилген)
+      for (let key in astroData) {
+        if (key === 'sun') continue;
+        let p = astroData[key];
+        let mesh = meshes[key];
+
+        mesh.angle += (0.015 / Math.sqrt(p.orbitR)) * timeScale;
+        mesh.position.x = p.orbitR * Math.cos(mesh.angle);
+        mesh.position.z = p.orbitR * Math.sin(mesh.angle);
+
+        mesh.rotation.y += 0.01;
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Терезе өлчөмү өзгөргөндө 3D Canvas да ыңгайлашат
+    window.addEventListener('resize', () => {
+      camera.aspect = canvas3D.clientWidth / canvas3D.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
+    });
+
+    // ТООЛУК ЛАБОРАТОРИЯЛЫК ДОКУМЕНТТИ DOCX ХАРАКТЕРИНДЕ ДАЯРДАП ЖҮКТӨӨ
+    function generateLabDoc() {
+      const docText = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>Лабораториялык Иш</title>
+        <style>body{font-family:'Calibri',sans-serif;} table{border-collapse:collapse;width:100%;} td,th{border:1px solid #000;padding:8px;text-align:center;}</style>
+        </head>
+        <body>
+          <h2 style="text-align:center;">BiliMal.org — Физика жана Астрономия боюнча Виртуалдык Лабораториялык Иш</h2>
+          <p><b>Тема:</b> Күн системасындагы планеталардын кыймылын Кеплердин мыйзамдары жана Ньютондун тартылуу закону аркылуу изилдөө</p>
+          <p><b>Окуучунун аты-жөнү:</b> ___________________________ <b>Класс:</b> _______ <b>Дата:</b> _________</p>
           <hr>
-          <h4>1. Иштин максаты:</h4>
-          <p>Кеплердин үчүнчү законун текшерүү жана планеталардын орбиталык ылдамдыгын, мезгилдерин аныктоо.</p>
-          <h4>2. Изилдөө жыйынтыктары (Таблица):</h4>
-          <table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
-            <tr style="background: #f0f0f0;">
-              <th>Планета</th>
-              <th>Күндөн аралык (АР)</th>
-              <th>Айлануу мезгили (Т)</th>
-              <th>Орбиталык ылдамдык (км/сек)</th>
-            </tr>
-            <tr><td>Меркурий</td><td>0.39 АР</td><td>88 күн</td><td>47.4 км/сек</td></tr>
-            <tr><td>Чолпон</td><td>0.72 АР</td><td>225 күн</td><td>35.0 км/сек</td></tr>
-            <tr><td>Жер</td><td>1.00 АР</td><td>365.25 күн</td><td>29.78 км/сек</td></tr>
-            <tr><td>Марс</td><td>1.52 АР</td><td>687 күн</td><td>24.1 км/сек</td></tr>
-            <tr><td>Юпитер</td><td>5.20 АР</td><td>11.9 жыл</td><td>13.1 км/сек</td></tr>
+          <h3>1. Теориялык маалымат жана Формулалар:</h3>
+          <p>1) <b>Кеплердин 3-закону:</b> $T^2 / a^3 = K = \text{const}$</p>
+          <p>2) <b>Орбиталык ылдамдык:</b> $v = \sqrt{\frac{G \cdot M_{sun}}{r}}$ (Мында $G = 6.674 \times 10^{-11} \text{ Н·м²/кг²}$, $M_{sun} = 1.989 \times 10^{30} \text{ кг}$)</p>
+          
+          <h3>2. Изилдөө Таблицасы (Алынган маалыматтарды толтуруңуз):</h3>
+          <table>
+            <thead>
+              <tr style="background-color:#f2f2f2;">
+                <th>Планета</th>
+                <th>Аралык $a$ (АР)</th>
+                <th>Мезгил $T$ (жыл)</th>
+                <th>$K = T^2 / a^3$ катышы</th>
+                <th>Теориялык ылдамдык $v$ (км/с)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Меркурий</td><td>0.387</td><td>0.241</td><td></td><td>47.36</td></tr>
+              <tr><td>Чолпон</td><td>0.723</td><td>0.615</td><td></td><td>35.02</td></tr>
+              <tr><td>Жер</td><td>1.000</td><td>1.000</td><td>1.000</td><td>29.78</td></tr>
+              <tr><td>Марс</td><td>1.524</td><td>1.881</td><td></td><td>24.07</td></tr>
+              <tr><td>Юпитер</td><td>5.204</td><td>11.86</td><td></td><td>13.07</td></tr>
+            </tbody>
           </table>
-          <h4>3. Корутунду:</h4>
-          <p>Симуляция аркылуу Күндөн алыстаган сайын планеталардын орбиталык ылдамдыгы азайып, ал эми айлануу мезгили кескин өсөөрүнө көз жеткиздик. Кеплердин мыйзамдары толук аткарылат.</p>
+
+          <h3>3. Физикалык Эсептөөлөр жана Корутунду:</h3>
+          <p><b>Эсептөө суроосу:</b> Кеплер константасы $K$ бардык планеталар үчүн эмне себептен бирдей мааниге ээ болот?</p>
+          <p>__________________________________________________________________________________________</p>
+          <p><b>Жыйынтыктоочу Корутунду:</b> __________________________________________________________________________________________</p>
         </body>
         </html>
       `;
-      const blob = new Blob(['\ufeff' + docContent], { type: 'application/msword' });
+
+      const blob = new Blob(['\ufeff' + docText], { type: 'application/msword' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'Solar_System_Lab_Report.doc';
+      a.download = 'Solar_System_Advanced_Lab_Report.doc';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
     }
 
-    draw();
+    animate();
   </script>
 </body>
 </html>
