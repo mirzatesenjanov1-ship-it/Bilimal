@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>№ 6 ЛАБОРАТОРИЯЛЫК ИШ — Жылдыздардын эволюциясы жана спектрлери</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js жана OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', 'Poppins', sans-serif;
+    }
+
+    body {
+      background-color: #050811;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 24px 16px;
+    }
+
+    .header-nav {
+      width: 100%;
+      max-width: 1250px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      padding: 16px 24px;
+      border-radius: 16px;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+
+    .back-btn {
+      background: rgba(30, 41, 59, 0.7);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 10px 18px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .back-btn:hover {
+      background: rgba(56, 189, 248, 0.2);
+      color: #fff;
+    }
+
+    .page-title {
+      font-size: 1.25rem;
+      color: #38bdf8;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lab-container {
+      width: 100%;
+      max-width: 1250px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 24px;
+    }
+
+    .lab-title {
+      font-size: 1.35rem;
+      color: #c084fc;
+      margin-bottom: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .lab-subtitle {
+      font-size: 1rem;
+      color: #38bdf8;
+      margin-bottom: 20px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .viewport-3d {
+      width: 100%;
+      height: 540px;
+      background: #02040a;
+      border-radius: 16px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+      margin-bottom: 20px;
+    }
+
+    #webglCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .view-hint {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      color: #38bdf8;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .star-3d-label {
+      position: absolute;
+      transform: translate(-50%, -100%);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      white-space: nowrap;
+      pointer-events: none;
+      box-shadow: 0 2px 10px rgba(56, 189, 248, 0.4);
+      z-index: 5;
+    }
+
+    .controls-panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .control-card {
+      background: rgba(30, 41, 59, 0.5);
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-card label {
+      font-size: 0.88rem;
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    select, input[type="range"] {
+      width: 100%;
+      padding: 10px;
+      background: #0f172a;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #fff;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .data-display {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 25px;
+    }
+
+    .data-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .data-title {
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+
+    .data-val {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #4ade80;
+      margin-top: 4px;
+    }
+
+    .section-block {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+
+    .section-block h3 {
+      font-size: 1.15rem;
+      color: #c084fc;
+      margin-bottom: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-block p, .section-block li {
+      color: #cbd5e1;
+      font-size: 0.92rem;
+      margin-bottom: 8px;
+    }
+
+    .section-block ul {
+      padding-left: 20px;
+    }
+
+    .formula-box {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 0.95rem;
+      margin: 12px 0;
+    }
+
+    .download-btn {
+      background: linear-gradient(135deg, #7c3aed, #d946ef);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 15px;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(124, 58, 237, 0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-nav">
+    <a href="physics-topics.html?section=astrophysics" class="back-btn">
+      <i class="fa-solid fa-arrow-left"></i> Астрофизикага кайтуу
+    </a>
+    <div class="page-title">
+      <i class="fa-solid fa-star"></i> № 6 Виртуалдык Лабораториялык Иш
+    </div>
+    <div style="width: 130px;"></div>
+  </div>
+
+  <div class="lab-container">
+    <div class="lab-title">№ 6 ЛАБОРАТОРИЯЛЫК ИШ</div>
+    <div class="lab-subtitle">Жылдыздардын эволюциясы, спектрдик класстары жана Герцшпрунг-Рассел диаграммасы</div>
+
+    <div class="section-block">
+      <h3><i class="fa-solid fa-bullseye"></i> Иштин максаты:</h3>
+      <p>Жылдыздардын пайда болуу процессинен тартып (протожылдыз), алардын массасына жараша ак эргежээлге, пульсарга (нейтрондук жылдыз) же кара тешикке айлануу эволициялык этаптарын, температуралык, жаркыроо жана спектрдик касиеттерин изилдөө.</p>
+    </div>
+
+    <!-- 3D VIEWPORT -->
+    <div class="viewport-3d" id="viewport3D">
+      <canvas id="webglCanvas"></canvas>
+      <div class="view-hint">🖱️ 3D Камера: Сол баскыч — айландыруу | Оң баскыч — жылдыруу | Скролл — жакындатуу</div>
+      <div class="star-3d-label" id="floatingLabel">🌟 Күн тибиндеги жылдыз</div>
+    </div>
+
+    <div class="controls-panel">
+      <div class="control-card">
+        <label for="starStageSelect">Жылдыздын эволюциялык этабын тандаңыз:</label>
+        <select id="starStageSelect" onchange="changeStarStage()">
+          <option value="protostar">1. Протожылдыз (Protostar)</option>
+          <option value="main_sequence" selected>2. Негизги ырааттуулук (Күн тиби)</option>
+          <option value="red_giant">3. Кызыл гигант (Red Giant)</option>
+          <option value="white_dwarf">4. Ак эргежээл (White Dwarf)</option>
+          <option value="pulsar">5. Пульсар / Нейтрон жылдызы (Pulsar)</option>
+          <option value="black_hole">6. Кара тешик (Black Hole)</option>
+        </select>
+      </div>
+
+      <div class="control-card">
+        <label for="starMass">Жылдыздын баштапкы массасы (M / M_sun): <span id="starMassVal" style="color:#38bdf8;">1.0 M☉</span></label>
+        <input type="range" id="starMass" min="0.1" max="50" step="0.5" value="1" oninput="updateMass()">
+      </div>
+    </div>
+
+    <div class="data-display">
+      <div class="data-box">
+        <div class="data-title">Спектрдик классы:</div>
+        <div class="data-val" id="valClass">G2V</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title">Беттик температурасы (T):</div>
+        <div class="data-val" id="valTemp" style="color:#38bdf8;">5 778 K</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title">Жаркыроосу (L / L☉):</div>
+        <div class="data-val" id="valLuminosity" style="color:#c084fc;">1.0 L☉</div>
+      </div>
+      <div class="data-box">
+        <div class="data-title">Акыркы баскыч өмүрү:</div>
+        <div class="data-val" id="valLife" style="color:#f43f5e;">~10 млрд жыл</div>
+      </div>
+    </div>
+
+    <!-- 1. ТЕОРИЯЛЫК МААЛЫМАТ -->
+    <div class="section-block">
+      <h3><i class="fa-solid fa-book"></i> 1. Теориялык маалымат</h3>
+      <p>Жылдыздар газдардын жана чаңдардын гравитациялык жыйрылуусунан пайда болот. Жылдыздын өмүрү жана анын акыркы тагдыры эң оболу анын <b>массасынан ($M$)</b> көз каранды:</p>
+      <div class="formula-box">
+        1) Стефан-Больцман закону (Жаркыроо): L = 4π · R² · σ · T⁴<br>
+        2) Масса жана Жаркыроо катышы: L ≈ M³.⁵ (Негизги ырааттуулуктагы жылдыздар үчүн)<br>
+        3) Виндин жылышуу закону: λ_max = b / T (b = 2.898 × 10⁻³ м·К)
+      </div>
+      <p>Массасы $M < 8 M_\odot$ болгон жылдыздар өмүрүн <b>Ак эргежээл</b> катары аякташат. Ал эми массасы $M > 8 M_\odot$ болгон эң оор жылдыздар Өтө жаңы жылдыз (Supernova) болуп жардырылып, <b>Нейтрондук жылдызга (Пульсарга)</b> же <b>Кара тешикке</b> айланат.</p>
+    </div>
+
+    <!-- 2. ИШТИН ЖҮРҮШҮ -->
+    <div class="section-block">
+      <h3><i class="fa-solid fa-list-check"></i> 2. Иштин жүрүшү (Окуучулар эмнелерди табуусу керек)</h3>
+      <p>Окуучулар 3D виртуалдык симуляция аркылуу төмөнкү изилдөөлөрдү жүргүзүшү керек:</p>
+      <ul>
+        <li><b>1-кадам:</b> Эволюциялык баскычтарды биринин артынан экинчисин тандап, жылдыздын түсүнүн, радиусунун жана температурасынын өзгөрүүсүн байкаңыз.</li>
+        <li><b>2-кадам:</b> Жылдыздын массасын өзгөртүү слайдери аркылуу $M = 0.5 M_\odot$, $M = 1.0 M_\odot$, $M = 10 M_\odot$ жана $M = 30 M_\odot$ маанилеринде кайсы акыркы эволюциялык этапка өтөрүн изилдеңиз.</li>
+        <li><b>3-кадам:</b> Виндин закону боюнча ар бир температура үчүн эң жогорку нурлануу толкун узундугун ($\lambda_{max}$) эсептеңиз.</li>
+        <li><b>4-кадам:</b> Натыйжаларды отчеттук таблицага толтуруңуз.</li>
+      </ul>
+    </div>
+
+    <!-- 3. ЖЫЙЫНТЫК ЖАНА КАТАЛЫКТАР -->
+    <div class="section-block">
+      <h3><i class="fa-solid fa-clipboard-check"></i> 3. Жыйынтык жана контролдук суроолор</h3>
+      <p><b>Контролдук суроолор:</b></p>
+      <ul>
+        <li>1. Жылдыздын эволюциялык өнүгүү жолун кайсы негизги физикалык чоңдук аныктайт?</li>
+        <li>2. Эмне үчүн Кызыл гиганттын бетинин температурасы төмөн болгонуна карабастан жаркыроосу жогору болот?</li>
+        <li>3. Нейтрондук жылдыз (Пульсар) менен Кара тешиктин пайда болуу шартындагы айырмачылыктар кандай?</li>
+        <li>4. Виндин законун колдонуп, температура жогорулаганда нурлануу түсү кандайча өзгөрөрүн түшүндүрүңүз.</li>
+      </ul>
+      <br>
+      <button class="download-btn" onclick="generateLabDoc()"><i class="fa-solid fa-file-word"></i> №6 Лабораториялык отчетту жүктөп алуу (.doc)</button>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // THREE.JS 3D ЖЫЛДЫЗДАР ЭВОЛЮЦИЯСЫ СИМУЛЯЦИЯСЫ
+    // -------------------------------------------------------------
+    const canvas3D = document.getElementById('webglCanvas');
+    const viewport3D = document.getElementById('viewport3D');
+    const floatingLabel = document.getElementById('floatingLabel');
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, canvas3D.clientWidth / canvas3D.clientHeight, 0.1, 2000);
+    const renderer = new THREE.WebGLRenderer({ canvas: canvas3D, antialias: true });
+
+    renderer.setSize(canvas3D.clientWidth, canvas3D.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+
+    camera.position.set(0, 20, 80);
+
+    // Космостук чаңдар / жылдыздар
+    const starsGeo = new THREE.BufferGeometry();
+    const starsCount = 3000;
+    const starPositions = new Float32Array(starsCount * 3);
+    for(let i = 0; i < starsCount * 3; i++) {
+      starPositions[i] = (Math.random() - 0.5) * 1200;
+    }
+    starsGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starsMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8 });
+    scene.add(new THREE.Points(starsGeo, starsMat));
+
+    scene.add(new THREE.AmbientLight(0x222233));
+    const starLight = new THREE.PointLight(0xffffff, 2, 800);
+    scene.add(starLight);
+
+    // Жылдыздын негизги 3D меши
+    let currentStarMesh = null;
+    let currentGlowMesh = null;
+
+    const stagesData = {
+      protostar: { name: "1. Протожылдыз", class: "Protostar", temp: "2 500 K", lum: "0.1 L☉", life: "100 миң жыл", color: 0xff4500, size: 12 },
+      main_sequence: { name: "2. Негизги ырааттуулук", class: "G2V", temp: "5 778 K", lum: "1.0 L☉", life: "~10 млрд жыл", color: 0xffcc00, size: 8 },
+      red_giant: { name: "3. Кызыл гигант", class: "M0III", temp: "3 200 K", lum: "2 000 L☉", life: "100 млн жыл", color: 0xff2200, size: 24 },
+      white_dwarf: { name: "4. Ак эргежээл", class: "DA", temp: "25 000 K", lum: "0.001 L☉", life: "Түбөлүктүү", color: 0x88ccff, size: 2.5 },
+      pulsar: { name: "5. Пульсар / Нейтрон жылдыз", class: "Pulsar", temp: "1 000 000 K", lum: "0.0001 L☉", life: "Миллиарддаган жыл", color: 0x00ffff, size: 1.5 },
+      black_hole: { name: "6. Кара тешик", class: "Black Hole", temp: "0 K", lum: "0 L☉", life: "Түбөлүктүү", color: 0x000000, size: 5 }
+    };
+
+    function buildStarMesh(stageKey) {
+      if (currentStarMesh) scene.remove(currentStarMesh);
+      if (currentGlowMesh) scene.remove(currentGlowMesh);
+
+      const st = stagesData[stageKey];
+
+      if (stageKey === 'black_hole') {
+        // Кара тешик Аккрециялык диск менен
+        const bhGeo = new THREE.SphereGeometry(st.size, 32, 32);
+        const bhMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        currentStarMesh = new THREE.Mesh(bhGeo, bhMat);
+
+        const diskGeo = new THREE.RingGeometry(st.size + 2, st.size + 14, 64);
+        const diskMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const diskMesh = new THREE.Mesh(diskGeo, diskMat);
+        diskMesh.rotation.x = Math.PI / 2.5;
+        currentStarMesh.add(diskMesh);
+      } else {
+        const geo = new THREE.SphereGeometry(st.size, 32, 32);
+        const mat = new THREE.MeshBasicMaterial({ color: st.color });
+        currentStarMesh = new THREE.Mesh(geo, mat);
+
+        // Жаркыроо коронасы
+        const glowGeo = new THREE.SphereGeometry(st.size * 1.25, 32, 32);
+        const glowMat = new THREE.MeshBasicMaterial({ color: st.color, transparent: true, opacity: 0.3 });
+        currentGlowMesh = new THREE.Mesh(glowGeo, glowMat);
+        currentStarMesh.add(currentGlowMesh);
+      }
+
+      scene.add(currentStarMesh);
+      floatingLabel.innerText = st.name;
+    }
+
+    function changeStarStage() {
+      const selected = document.getElementById('starStageSelect').value;
+      const st = stagesData[selected];
+
+      document.getElementById('valClass').innerText = st.class;
+      document.getElementById('valTemp').innerText = st.temp;
+      document.getElementById('valLuminosity').innerText = st.lum;
+      document.getElementById('valLife').innerText = st.life;
+
+      buildStarMesh(selected);
+    }
+
+    function updateMass() {
+      const mass = parseFloat(document.getElementById('starMass').value);
+      document.getElementById('starMassVal').innerText = mass.toFixed(1) + " M☉";
+
+      // Эгер масса жогору болсо автоматты түрдө Пульсар же Кара тешик этабы сунушталат
+      if (mass > 20) {
+        document.getElementById('starStageSelect').value = "black_hole";
+      } else if (mass > 8) {
+        document.getElementById('starStageSelect').value = "pulsar";
+      }
+      changeStarStage();
+    }
+
+    const tempV = new THREE.Vector3();
+    function updateFloatingLabel() {
+      if (!currentStarMesh) return;
+      currentStarMesh.getWorldPosition(tempV);
+      tempV.y += 12;
+      tempV.project(camera);
+
+      const x = (tempV.x *  .5 + .5) * viewport3D.clientWidth;
+      const y = (tempV.y * -.5 + .5) * viewport3D.clientHeight;
+
+      floatingLabel.style.transform = `translate(-50%, -100%) translate(${x}px,${y}px)`;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (currentStarMesh) {
+        currentStarMesh.rotation.y += 0.005;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+      updateFloatingLabel();
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = viewport3D.clientWidth / viewport3D.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(viewport3D.clientWidth, viewport3D.clientHeight);
+    });
+
+    // -------------------------------------------------------------
+    // WORD ДОКУМЕНТИН ЖҮКТӨӨ ФУНКЦИЯСЫ
+    // -------------------------------------------------------------
+    function generateLabDoc() {
+      const docText = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>№ 6 Лабораториялык Иш</title>
+        <style>
+          body{font-family:'Calibri',sans-serif; line-height: 1.6;} 
+          h2, h3{color: #4a148c;}
+          table{border-collapse:collapse;width:100%; margin-top: 10px;} 
+          td,th{border:1px solid #000;padding:8px;text-align:center;}
+          th{background-color: #f2f2f2;}
+        </style>
+        </head>
+        <body>
+          <h2 style="text-align:center;">№ 6 ЛАБОРАТОРИЯЛЫК ИШ</h2>
+          <h3 style="text-align:center;">Жылдыздардын эволюциясы, спектрдик класстары жана Герцшпрунг-Рассел диаграммасы</h3>
+          <p><b>Окуучунун аты-жөнү:</b> ___________________________ <b>Класс:</b> _______ <b>Дата:</b> _________</p>
+          <hr>
+          <h3>Иштин максаты:</h3>
+          <p>Жылдыздардын өнүгүү этаптарын, массага көз карандылыгын жана акыркы эволюциялык баскычтарын изилдөө.</p>
+          
+          <h3>1. Теориялык маалымат жана Формулалар:</h3>
+          <p>1) Стефан-Больцман закону: <b>L = 4π · R² · σ · T⁴</b></p>
+          <p>2) Виндин жылышуу закону: <b>λ_max = b / T</b></p>
+          
+          <h3>2. Изилдөө Таблицасы:</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Эволюциялык баскыч</th>
+                <th>Спектрдик классы</th>
+                <th>Температурасы T (K)</th>
+                <th>Жаркыроосу L (L☉)</th>
+                <th>Акыркы тагдыры</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Протожылдыз</td><td>Protostar</td><td>2 500 K</td><td>0.1 L☉</td><td>Жылдыздын тутануусу</td></tr>
+              <tr><td>Негизги ырааттуулук</td><td>G2V</td><td>5 778 K</td><td>1.0 L☉</td><td>Кызыл гигант</td></tr>
+              <tr><td>Кызыл гигант</td><td>M0III</td><td>3 200 K</td><td>2 000 L☉</td><td>Ак эргежээл / Өтө жаңы жылдыз</td></tr>
+              <tr><td>Ак эргежээл</td><td>DA</td><td>25 000 K</td><td>0.001 L☉</td><td>Муздаган көмүртек калдыгы</td></tr>
+              <tr><td>Пульсар / Нейтрон жылдыз</td><td>Pulsar</td><td>1 000 000 K</td><td>0.0001 L☉</td><td>Айлануучу нейтрон жылдызы</td></tr>
+              <tr><td>Кара тешик</td><td>Black Hole</td><td>0 K</td><td>0 L☉</td><td>Гравитациялык коллапс</td></tr>
+            </tbody>
+          </table>
+
+          <h3>3. Тапшырмалар жана Эсептөөлөр:</h3>
+          <p>1. Виндин законун колдонуп, температурасы 5778 K болгон Күндүн нурлануусунун максимуму кайсы толкун узундугуна дал келерин эсептеп жазгыла.</p>
+          <p>__________________________________________________________________________________________</p>
+          <p>2. Эмне үчүн массасы 10 M☉ болгон жылдыз Күнгө караганда тезирээк күйүп түтөйт?</p>
+          <p>__________________________________________________________________________________________</p>
+
+          <h3>4. Контролдук суроолор:</h3>
+          <p>1. Жылдыздын акыркы тагдырын кайсы физикалык чоңдук аныктайт?</p>
+          <p>__________________________________________________________________________________________</p>
+          <p>2. Кара тешик менен Нейтрондук жылдыздын пайда болуу процессиндеги айырмачылык эмнеде?</p>
+          <p>__________________________________________________________________________________________</p>
+
+          <h3>5. Жыйынтык:</h3>
+          <p>__________________________________________________________________________________________</p>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff' + docText], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'No6_Laboratoriyalyk_Ish_Jyldyzddar_Evolyuciyasy.doc';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    buildStarMesh('main_sequence');
+    animate();
+  </script>
+</body>
+</html>
