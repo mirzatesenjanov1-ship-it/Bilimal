@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-meta-title">Күн системасы 3D — BiliMal</title>
+  
+  <!-- Three.js жана OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Font Awesome жана Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background-color: #030408; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: hidden; }
+
+    .top-header { width: 100%; max-width: 1100px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 20px; background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 16px; backdrop-filter: blur(10px); flex-wrap: wrap; gap: 15px; }
+    .btn-back { color: #f59e0b; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; }
+    .btn-back:hover { transform: translateX(-3px); color: #fbbf24; }
+    .page-title { font-size: 1.15rem; font-weight: 700; background: linear-gradient(90deg, #f59e0b, #ef4444, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .lang-select { background: #111827; border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; }
+
+    .sim-wrapper { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .sim-wrapper { grid-template-columns: 1fr; } }
+
+    #canvas-container-solar { width: 100%; height: 600px; background: radial-gradient(circle at center, #080a15 0%, #000000 100%); border-radius: 20px; position: relative; overflow: hidden; border: 1px solid rgba(245, 158, 11, 0.3); box-shadow: 0 0 35px rgba(245, 158, 11, 0.15); }
+    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(0, 0, 0, 0.75); padding: 10px 15px; border-radius: 10px; font-size: 0.8rem; color: #fbbf24; pointer-events: none; border: 1px solid rgba(245, 158, 11, 0.2); line-height: 1.5; }
+
+    .info-panel { display: flex; flex-direction: column; gap: 15px; }
+    .info-card { background: rgba(17, 24, 39, 0.85); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; }
+    .info-card h3 { font-size: 0.95rem; color: #f59e0b; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .legend-list { list-style: none; font-size: 0.83rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 10px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+    .btn-ctrl { width: 100%; padding: 10px; border-radius: 10px; border: none; background: linear-gradient(135deg, #d97706, #b45309); color: white; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.3s; margin-top: 8px; }
+    .btn-ctrl:hover { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+
+    /* ЖАРНАМА ЭСКЕРТҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
+    .ad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 6, 12, 0.85); backdrop-filter: blur(8px); z-index: 20000; justify-content: center; align-items: center; }
+    .ad-modal-content { background: #111827; border: 2px solid #f59e0b; border-radius: 20px; padding: 30px 40px; box-shadow: 0 0 30px rgba(245, 158, 11, 0.4); text-align: center; max-width: 450px; width: 90%; }
+    .ad-modal-icon { font-size: 3rem; color: #f59e0b; margin-bottom: 15px; animation: spin 1.5s infinite linear; }
+    .ad-modal-title { font-size: 1.3rem; font-weight: bold; color: #fff; margin-bottom: 10px; }
+    .ad-modal-subtitle { font-size: 0.95rem; color: #cbd5e1; }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ЖАРНАМА ЭСКЕРТҮҮ ТЕРЕЗЕСИ -->
+  <div class="ad-modal" id="adNoticeModal">
+    <div class="ad-modal-content">
+      <div class="ad-modal-icon">⌛</div>
+      <div class="ad-modal-title" id="adNoticeTitle">Баракчага өтүүдө...</div>
+      <div class="ad-modal-subtitle" id="adNoticeSubtitle">Жарнама көрсөтүлүүдө (2 секунддан кийин ачылат)</div>
+    </div>
+  </div>
+
+  <!-- Жогорку навигация -->
+  <header class="top-header">
+    <div class="flex items-center gap-4">
+      <a onclick="handleBackNavigation()" id="backLinkBtn" class="btn-back">
+        <i class="fa-solid fa-arrow-left"></i> <span id="ui-back">Бөлүмгө кайтуу</span>
+      </a>
+    </div>
+    <div class="page-title" id="ui-maintitle">Күн системасы жана Гравитация 3D</div>
+    <div class="flex items-center gap-3">
+      <select id="langSelector" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="ky">🇰🇬 Кыргызча</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <a href="dashboard.html" class="btn-ctrl" style="width: auto; padding: 6px 16px; margin: 0; text-decoration: none; display: inline-block;">
+        🚀 <span id="ui-cabinet">Кабинет</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- КҮН СИСТЕМАСЫ 3D СИМУЛЯТОРУ -->
+  <div class="sim-wrapper">
+    <div id="canvas-container-solar">
+      <div class="sim-hint" id="ui-hint-solar">
+        ☀️ <b>Күн системасы:</b> Планеталардын Күндү айлануу модели<br>
+        🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
+        🔍 <b>Зум:</b> Чычкан дөңгөлөгү же экранды чоңойтуу
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <div class="info-card">
+        <h3><i class="fa-solid fa-globe"></i> <span id="ui-solar-legend-title">Планеталар</span></h3>
+        <ul class="legend-list">
+          <li class="legend-item"><span class="dot" style="background: #fbbf24; box-shadow: 0 0 8px #fbbf24;"></span> <span id="ui-s-sun"><b>Күн:</b> Борбордук жылдыз</span></li>
+          <li class="legend-item"><span class="dot" style="background: #94a3b8; box-shadow: 0 0 8px #94a3b8;"></span> <span id="ui-s-mercury"><b>Меркурий:</b> Эң жакын планета</span></li>
+          <li class="legend-item"><span class="dot" style="background: #f97316; box-shadow: 0 0 8px #f97316;"></span> <span id="ui-s-venus"><b>Венера:</b> Жаркырак планета</span></li>
+          <li class="legend-item"><span class="dot" style="background: #3b82f6; box-shadow: 0 0 8px #3b82f6;"></span> <span id="ui-s-earth"><b>Жер:</b> Биздин мекенибиз</span></li>
+          <li class="legend-item"><span class="dot" style="background: #ef4444; box-shadow: 0 0 8px #ef4444;"></span> <span id="ui-s-mars"><b>Марс:</b> Кызыл планета</span></li>
+          <li class="legend-item"><span class="dot" style="background: #d97706; box-shadow: 0 0 8px #d97706;"></span> <span id="ui-s-jupiter"><b>Юпитер:</b> Эң чоң планета</span></li>
+          <li class="legend-item"><span class="dot" style="background: #fde047; box-shadow: 0 0 8px #fde047;"></span> <span id="ui-s-saturn"><b>Сатурн:</b> Шмендрик шакектүү</span></li>
+          <li class="legend-item"><span class="dot" style="background: #22d3ee; box-shadow: 0 0 8px #22d3ee;"></span> <span id="ui-s-uranus"><b>Уран:</b> Муз гиганты</span></li>
+          <li class="legend-item"><span class="dot" style="background: #60a5fa; box-shadow: 0 0 8px #60a5fa;"></span> <span id="ui-s-neptune"><b>Нептун:</b> Шамалдуу планета</span></li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h3><i class="fa-solid fa-circle-info"></i> <span id="ui-solar-info-title">Гравитация</span></h3>
+        <p id="ui-solar-info-desc" style="font-size: 0.8rem; color: #94a3b8; line-height: 1.5;">
+          Бардык планеталар Күндүн күчтүү гравитациялык талаасынын таасири астында белгиленген орбиталар боюнча айланышат.
+        </p>
+        <button class="btn-ctrl" style="background: #d97706;" onclick="resetSolarCamera()"><span id="ui-btn-reset-solar">🌌 Күндү борборго келтирүү</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // SMARTLINK ЖАРНАМА КОНФИГУРАЦИЯСЫ (30 мүнөттүк чектөө менен)
+    const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
+    const AD_COOLDOWN_MS = 30 * 60 * 1000; // 30 мүнөт
+
+    const adNoticeTranslations = {
+      ky: { title: "Баракчага өтүүдө...", subtitle: "Жарнама көрсөтүлүүдө (2 секунддан кийин ачылат)" },
+      ru: { title: "Переход на страницу...", subtitle: "Показ рекламы (через 2 секунды)" },
+      en: { title: "Redirecting...", subtitle: "Showing advertisement (in 2 seconds)" }
+    };
+
+    function canShowAd() {
+      const lastAdTime = localStorage.getItem('monetag_solar_3d_last_ad_time');
+      if (!lastAdTime) return true;
+      const now = Date.now();
+      return (now - parseInt(lastAdTime, 10)) > AD_COOLDOWN_MS;
+    }
+
+    function recordAdShown() {
+      localStorage.setItem('monetag_solar_3d_last_ad_time', Date.now().toString());
+    }
+
+    function handleBackNavigation() {
+      const targetUrl = 'physics-3d-models.html';
+
+      if (canShowAd()) {
+        const modal = document.getElementById('adNoticeModal');
+        const titleElem = document.getElementById('adNoticeTitle');
+        const subElem = document.getElementById('adNoticeSubtitle');
+
+        titleElem.innerText = adNoticeTranslations[currentLang] ? adNoticeTranslations[currentLang].title : adNoticeTranslations['ky'].title;
+        subElem.innerText = adNoticeTranslations[currentLang] ? adNoticeTranslations[currentLang].subtitle : adNoticeTranslations['ky'].subtitle;
+        modal.style.display = 'flex';
+
+        setTimeout(() => {
+          recordAdShown();
+          window.open(SMARTLINK_LOVEY, '_blank');
+          window.location.href = targetUrl;
+        }, 2000);
+      } else {
+        window.location.href = targetUrl;
+      }
+    }
+
+    // Тилдердин котормо базасы
+    const translations = {
+      ky: {
+        metaTitle: "Күн системасы 3D — BiliMal",
+        backMenu: "Бөлүмгө кайтуу",
+        mainTitle: "Күн системасы жана Гравитация 3D",
+        cabinet: "Кабинет",
+        hintTextSolar: "☀️ <b>Күн системасы:</b> Планеталардын Күндү айлануу модели<br>🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>🔍 <b>Зум:</b> Чычкан дөңгөлөгү же экранды чоңойтуу",
+        solarLegendTitle: "Планеталар",
+        solarInfoTitle: "Гравитация",
+        solarInfoDesc: "Бардык планеталар Күндүн күчтүү гравитациялык талаасынын таасири астында белгиленген орбиталар боюнча айланышат.",
+        btnResetSolar: "🌌 Күндү борборго келтирүү"
+      },
+      ru: {
+        metaTitle: "Солнечная система 3D — BiliMal",
+        backMenu: "Назад в раздел",
+        mainTitle: "Солнечная система и Гравитация 3D",
+        cabinet: "Кабинет",
+        hintTextSolar: "☀️ <b>Солнечная система:</b> Модель обращения планет вокруг Солнца<br>🔄 <b>Вращение:</b> Зажмите левую кнопку мыши<br>🔍 <b>Зум:</b> Колесико мыши",
+        solarLegendTitle: "Планеты",
+        solarInfoTitle: "Гравитация",
+        solarInfoDesc: "Все планеты вращаются по орбитам под действием мощного гравитационного поля Солнца.",
+        btnResetSolar: "🌌 Центрировать Солнце"
+      },
+      en: {
+        metaTitle: "Solar System 3D — BiliMal",
+        backMenu: "Back to Section",
+        backLab: "Back to Lab",
+        mainTitle: "Solar System & Gravity 3D",
+        cabinet: "Dashboard",
+        hintTextSolar: "☀️ <b>Solar System:</b> Planetary motion around the Sun<br>🔄 <b>Rotate:</b> Drag with left mouse button<br>🔍 <b>Zoom:</b> Mouse wheel",
+        solarLegendTitle: "Planets",
+        solarInfoTitle: "Gravity",
+        solarInfoDesc: "All planets revolve in orbits under the powerful gravitational field of the Sun.",
+        btnResetSolar: "🌌 Center Sun"
+      }
+    };
+
+    let currentLang = 'ky';
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+
+      document.getElementById('page-meta-title').innerText = t.metaTitle;
+      document.getElementById('ui-maintitle').innerText = t.mainTitle;
+      document.getElementById('ui-cabinet').innerText = t.cabinet;
+      document.getElementById('ui-back').innerText = t.backMenu;
+
+      document.getElementById('ui-hint-solar').innerHTML = t.hintTextSolar;
+      document.getElementById('ui-solar-legend-title').innerText = t.solarLegendTitle;
+      document.getElementById('ui-solar-info-title').innerText = t.solarInfoTitle;
+      document.getElementById('ui-solar-info-desc').innerText = t.solarInfoDesc;
+      document.getElementById('ui-btn-reset-solar').innerText = t.btnResetSolar;
+    }
+
+    // --- КҮН СИСТЕМАСЫ 3D THREE.JS СИМУЛЯТОРУ ---
+    let sceneSolar, cameraSolar, rendererSolar, controlsSolar;
+    let planetsData = [];
+
+    function initSolarThree() {
+      const container = document.getElementById('canvas-container-solar');
+      sceneSolar = new THREE.Scene();
+
+      cameraSolar = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 2000);
+      cameraSolar.position.set(0, 50, 110);
+
+      rendererSolar = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      rendererSolar.setSize(container.clientWidth, container.clientHeight);
+      rendererSolar.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(rendererSolar.domElement);
+
+      sceneSolar.add(new THREE.AmbientLight(0xffffff, 0.4));
+      const sunLight = new THREE.PointLight(0xffffff, 2.5, 600);
+      sunLight.position.set(0, 0, 0);
+      sceneSolar.add(sunLight);
+
+      controlsSolar = new THREE.OrbitControls(cameraSolar, rendererSolar.domElement);
+      controlsSolar.enableDamping = true;
+      controlsSolar.dampingFactor = 0.05;
+
+      // Жылдыздуу фон
+      const bgGeo = new THREE.BufferGeometry();
+      const bgCount = 1200;
+      const bgPos = new Float32Array(bgCount * 3);
+      for (let i = 0; i < bgCount * 3; i++) bgPos[i] = (Math.random() - 0.5) * 800;
+      bgGeo.setAttribute('position', new THREE.BufferAttribute(bgPos, 3));
+      sceneSolar.add(new THREE.Points(bgGeo, new THREE.PointsMaterial({ size: 1.2, color: 0xffffff, transparent: true, opacity: 0.8 })));
+
+      // Күн (Sun)
+      const sunMesh = new THREE.Mesh(
+        new THREE.SphereGeometry(6.5, 32, 32),
+        new THREE.MeshBasicMaterial({ color: 0xffaa00 })
+      );
+      sceneSolar.add(sunMesh);
+
+      // Планеталар конфигурациясы
+      const pConfigs = [
+        { name: 'Mercury', r: 0.8, dist: 13, color: 0x94a3b8, speed: 0.03 },
+        { name: 'Venus', r: 1.4, dist: 19, color: 0xf97316, speed: 0.02 },
+        { name: 'Earth', r: 1.6, dist: 27, color: 0x3b82f6, speed: 0.015 },
+        { name: 'Mars', r: 1.1, dist: 36, color: 0xef4444, speed: 0.012 },
+        { name: 'Jupiter', r: 3.5, dist: 49, color: 0xd97706, speed: 0.008 },
+        { name: 'Saturn', r: 2.8, dist: 63, color: 0xfde047, speed: 0.006 },
+        { name: 'Uranus', r: 2.0, dist: 76, color: 0x22d3ee, speed: 0.004 },
+        { name: 'Neptune', r: 1.9, dist: 89, color: 0x60a5fa, speed: 0.003 }
+      ];
+
+      pConfigs.forEach(cfg => {
+        // Орбита линиясы
+        const orbitGeo = new THREE.RingGeometry(cfg.dist - 0.12, cfg.dist + 0.12, 64);
+        const orbitMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.1 });
+        const orbitMesh = new THREE.Mesh(orbitGeo, orbitMat);
+        orbitMesh.rotation.x = Math.PI / 2;
+        sceneSolar.add(orbitMesh);
+
+        // Планета
+        const pMesh = new THREE.Mesh(
+          new THREE.SphereGeometry(cfg.r, 32, 32),
+          new THREE.MeshStandardMaterial({ color: cfg.color, roughness: 0.6 })
+        );
+        sceneSolar.add(pMesh);
+
+        planetsData.push({ mesh: pMesh, dist: cfg.dist, speed: cfg.speed, angle: Math.random() * Math.PI * 2 });
+      });
+
+      animateSolar();
+    }
+
+    function resetSolarCamera() {
+      controlsSolar.target.set(0, 0, 0);
+      cameraSolar.position.set(0, 50, 110);
+    }
+
+    function animateSolar() {
+      requestAnimationFrame(animateSolar);
+      planetsData.forEach(p => {
+        p.angle += p.speed;
+        p.mesh.position.x = Math.cos(p.angle) * p.dist;
+        p.mesh.position.z = Math.sin(p.angle) * p.dist;
+        p.mesh.rotation.y += 0.02;
+      });
+      if (controlsSolar) controlsSolar.update();
+      if (rendererSolar && sceneSolar && cameraSolar) rendererSolar.render(sceneSolar, cameraSolar);
+    }
+
+    window.onload = () => {
+      initSolarThree();
+    };
+
+    window.addEventListener('resize', () => {
+      const container = document.getElementById('canvas-container-solar');
+      if (container && rendererSolar && cameraSolar) {
+        cameraSolar.aspect = container.clientWidth / container.clientHeight;
+        cameraSolar.updateProjectionMatrix();
+        rendererSolar.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
+  </script>
+</body>
+</html>
