@@ -6,9 +6,6 @@
     <title id="doc-title">Тамга Багы (Алиппе) — BiliMal</title>
     <meta name="description" content="Бала бакча жана кенже курактагы балдар үчүн кыргыз, орус жана англис тилдериндеги шайыр тамгалар багы оюну.">
 
-    <!-- 🚀 ADSTERRA: Social Bar Script -->
-    <script src="https://pl30202824.effectivecpmnetwork.com/2a/5b/af/2a5bafdd419add82a1af8ec0def99355.js"></script>
-
     <!-- Google Analytics (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9GSQV6QV0"></script>
     <script>
@@ -22,7 +19,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background: #060314; color: #fff; min-height: 100vh; padding: 30px 4%; text-align: center; }
         
-        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; float: left; transition: 0.3s; }
+        .back-btn { display: inline-block; padding: 10px 20px; background: rgba(0, 240, 255, 0.1); color: #00f0ff; border: 1px solid #00f0ff; border-radius: 8px; text-decoration: none; font-weight: bold; margin-bottom: 25px; float: left; transition: 0.3s; cursor: pointer; }
         .back-btn:hover { background: #00f0ff; color: #000; box-shadow: 0 0 15px rgba(0,240,255,0.4); }
 
         .title-box { clear: both; margin-top: 20px; margin-bottom: 30px; }
@@ -47,16 +44,33 @@
         .floating-btn:hover { background: rgba(255, 170, 0, 0.3); }
         .floating-btn.active { background: #ffaa00; color: #000; box-shadow: 0 0 10px rgba(255, 170, 0, 0.5); }
 
-        /* 🚀 ADSTERRA BANNER CONTAINER */
-        .adsterra-banner-container { max-width: 900px; margin: 30px auto; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 12px; display: flex; justify-content: center; align-items: center; overflow: hidden; min-height: 100px; }
+        /* ЖАРНАМА ЭСКЕРТҮҮ МOДАЛДЫК ТЕРЕЗЕСИ */
+        .ad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(6, 3, 20, 0.85); backdrop-filter: blur(8px); z-index: 20000; justify-content: center; align-items: center; }
+        .ad-modal-content { background: #130f35; border: 2px solid #ff0055; border-radius: 20px; padding: 30px 40px; box-shadow: 0 0 30px rgba(255, 0, 85, 0.5); text-align: center; max-width: 450px; width: 90%; }
+        .ad-modal-icon { font-size: 3rem; color: #ffaa00; margin-bottom: 15px; animation: spin 1.5s infinite linear; }
+        .ad-modal-title { font-size: 1.3rem; font-weight: bold; color: #fff; margin-bottom: 10px; }
+        .ad-modal-subtitle { font-size: 0.95rem; color: #cbd5e1; }
 
         @keyframes pop {
             0% { transform: scale(0.5); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+
+    <!-- ЖАРНАМА ЭСКЕРТҮҮ ТЕРЕЗЕСИ -->
+    <div class="ad-modal" id="adNoticeModal">
+        <div class="ad-modal-content">
+            <div class="ad-modal-icon">⌛</div>
+            <div class="ad-modal-title" id="adNoticeTitle">Баракчага өтүүдө...</div>
+            <div class="ad-modal-subtitle" id="adNoticeSubtitle">Жарнама көрсөтүлүүдө (2 секунддан кийин ачылат)</div>
+        </div>
+    </div>
 
     <div class="floating-lang-box">
         <button class="floating-btn active" id="btn-ky" onclick="changeLanguage('ky')">KG</button>
@@ -64,7 +78,7 @@
         <button class="floating-btn" id="btn-en" onclick="changeLanguage('en')">EN</button>
     </div>
 
-    <a href="kindergarten.html" class="back-btn" data-i18n="backBtn">← Артка кайт</a>
+    <a onclick="handleBackWithAd()" class="back-btn" data-i18n="backBtn">← Артка кайт</a>
 
     <div class="title-box">
         <h1 data-i18n="title">🍎 Тамга Багы дүйнөсү 🌳</h1>
@@ -84,21 +98,52 @@
         <div id="word-view" class="word-text" data-i18n="defaultWord">Тамганы бас!</div>
     </div>
 
-    <!-- 🚀 ADSTERRA: Banner 728x90 -->
-    <div class="adsterra-banner-container">
-        <script type="text/javascript">
-            atOptions = {
-                'key' : '230e338703bb44150336cce1f0832fe3',
-                'format' : 'iframe',
-                'height' : 90,
-                'width' : 728,
-                'params' : {}
-            };
-        </script>
-        <script type="text/javascript" src="https://www.highperformanceformat.com/230e338703bb44150336cce1f0832fe3/invoke.js"></script>
-    </div>
-
     <script>
+        // SMARTLINK ЖАРНАМА КOНФИГУРАЦИЯСЫ
+        const SMARTLINK_EFFICIENT = "https://uplcm.com/4/11977316";
+        const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
+        const AD_COOLDOWN_MS = 60 * 60 * 1000; // 1 саат
+
+        const adNoticeTranslations = {
+            ky: { title: "Баракчага өтүүдө...", subtitle: "Жарнама жүктөлүүдө (2 сек)" },
+            ru: { title: "Переход на страницу...", subtitle: "Показ рекламы (2 сек)" },
+            en: { title: "Redirecting...", subtitle: "Showing advertisement (2 sec)" }
+        };
+
+        function canShowAd() {
+            const lastAdTime = localStorage.getItem('monetag_garden_last_ad_time');
+            if (!lastAdTime) return true;
+            const now = Date.now();
+            return (now - parseInt(lastAdTime, 10)) > AD_COOLDOWN_MS;
+        }
+
+        function recordAdShown() {
+            localStorage.setItem('monetag_garden_last_ad_time', Date.now().toString());
+        }
+
+        function handleBackWithAd() {
+            const currentLang = localStorage.getItem('bilimal_lang') || 'ky';
+            const targetUrl = "kindergarten.html";
+
+            if (canShowAd()) {
+                const modal = document.getElementById('adNoticeModal');
+                const titleElem = document.getElementById('adNoticeTitle');
+                const subElem = document.getElementById('adNoticeSubtitle');
+
+                titleElem.innerText = adNoticeTranslations[currentLang].title;
+                subElem.innerText = adNoticeTranslations[currentLang].subtitle;
+                modal.style.display = 'flex';
+
+                setTimeout(() => {
+                    recordAdShown();
+                    window.open(SMARTLINK_LOVEY, '_blank');
+                    window.location.href = targetUrl;
+                }, 2000); // 2 секунддук эскертүү таймери
+            } else {
+                window.location.href = targetUrl;
+            }
+        }
+
         // UI Interface Translations
         const uiTranslations = {
             ky: {
@@ -179,7 +224,6 @@
                 container.appendChild(block);
             });
 
-            // Экрандагы текстти демейкиге кайтаруу
             document.getElementById('big-letter-view').innerText = '🍎';
             document.getElementById('word-view').innerText = uiTranslations[lang].defaultWord;
         }
@@ -202,7 +246,7 @@
                 let utterance = new SpeechSynthesisUtterance(speechText);
                 
                 if (lang === 'ky') {
-                    utterance.lang = 'ru-RU'; // Борбордук Азия региону үчүн эң туруктуу үн алгоритми
+                    utterance.lang = 'ru-RU';
                     utterance.rate = 0.85;
                 }
                 else if (lang === 'ru') utterance.lang = 'ru-RU';
@@ -218,7 +262,6 @@
             localStorage.setItem('bilimal_lang', lang);
             document.documentElement.lang = lang;
 
-            // UI Сөздүгүн жаңыртуу
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.getAttribute('data-i18n');
                 if (uiTranslations[lang][key]) {
@@ -228,12 +271,10 @@
 
             document.getElementById('doc-title').textContent = uiTranslations[lang].docTitle;
 
-            // Тил баскычтарынын стилин жаңыртуу
             document.querySelectorAll('.floating-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`btn-${lang}`);
             if (activeBtn) activeBtn.classList.add('active');
 
-            // Алиппе торчосун ушул тилде кайра жүктөө
             loadAlphabet(lang);
         }
 
