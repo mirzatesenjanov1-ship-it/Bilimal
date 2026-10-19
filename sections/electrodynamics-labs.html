@@ -32,9 +32,30 @@
     .card-desc { font-size: 0.85rem; color: #94a3b8; line-height: 1.5; margin-bottom: 18px; }
     .card-action { font-size: 0.85rem; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 6px; }
     .badge-lab { background: rgba(56, 189, 248, 0.15); border: 1px solid #38bdf8; color: #38bdf8; font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; margin-bottom: 10px; display: inline-block; width: fit-content; }
+
+    /* ЖАРНАМА ЭСКЕРТҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
+    .ad-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 6, 12, 0.85); backdrop-filter: blur(8px); z-index: 20000; justify-content: center; align-items: center; }
+    .ad-modal-content { background: #111827; border: 2px solid #38bdf8; border-radius: 20px; padding: 30px 40px; box-shadow: 0 0 30px rgba(56, 189, 248, 0.4); text-align: center; max-width: 450px; width: 90%; }
+    .ad-modal-icon { font-size: 3rem; color: #38bdf8; margin-bottom: 15px; animation: spin 1.5s infinite linear; }
+    .ad-modal-title { font-size: 1.3rem; font-weight: bold; color: #fff; margin-bottom: 10px; }
+    .ad-modal-subtitle { font-size: 0.95rem; color: #cbd5e1; }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
+
+  <!-- ЖАРНАМА ЭСКЕРТҮҮ ТЕРЕЗЕСИ -->
+  <div class="ad-modal" id="adNoticeModal">
+    <div class="ad-modal-content">
+      <div class="ad-modal-icon">⌛</div>
+      <div class="ad-modal-title">Жарнама жүктөлүүдө...</div>
+      <div class="ad-modal-subtitle">Сураныч тургула, 2 секунддан кийин лаборатория ачылат</div>
+    </div>
+  </div>
 
   <div class="header-nav">
     <a href="lab-works.html" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Башкы менюга кайтүү</a>
@@ -67,12 +88,39 @@
   </div>
 
   <script>
+    const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
+    const AD_COOLDOWN_MS = 30 * 60 * 1000; // 30 мүнөт (жарым саат)
+
+    function canShowAd() {
+      const lastAdTime = localStorage.getItem('monetag_electrodynamics_lab_last_ad_time');
+      if (!lastAdTime) return true;
+      const now = Date.now();
+      return (now - parseInt(lastAdTime, 10)) > AD_COOLDOWN_MS;
+    }
+
+    function recordAdShown() {
+      localStorage.setItem('monetag_electrodynamics_lab_last_ad_time', Date.now().toString());
+    }
+
     function openMagneticLab() {
       window.location.href = "magnetic-field-current-lab.html";
     }
 
     function openCircuitAcLab() {
-      window.location.href = "https://phet.colorado.edu/sims/html/circuit-construction-kit-ac-virtual-lab/latest/circuit-construction-kit-ac-virtual-lab_all.html";
+      const targetUrl = "https://phet.colorado.edu/sims/html/circuit-construction-kit-ac-virtual-lab/latest/circuit-construction-kit-ac-virtual-lab_all.html";
+
+      if (canShowAd()) {
+        const modal = document.getElementById('adNoticeModal');
+        modal.style.display = 'flex';
+
+        setTimeout(() => {
+          recordAdShown();
+          window.open(SMARTLINK_LOVEY, '_blank');
+          window.location.href = targetUrl;
+        }, 2000); // 2 секунддук эскертүү
+      } else {
+        window.location.href = targetUrl;
+      }
     }
   </script>
 </body>
