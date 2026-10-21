@@ -129,11 +129,21 @@
             margin-bottom: 15px; 
             line-height: 1.6;
         }
-        .test-image { max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(0,240,255,0.3); display: block; }
+        
+        /* СҮРӨТ ЖҮКТӨӨ ДИЗАЙНЫ ЖАНА АДАПТИВДҮҮЛҮК */
+        .test-image, img { 
+            max-width: 100% !important; 
+            height: auto !important; 
+            border-radius: 10px; 
+            margin: 15px auto; 
+            border: 1px solid rgba(0,240,255,0.4); 
+            display: block; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            object-fit: contain;
+        }
 
         .timer-badge { background:rgba(255,0,85,0.2); color:#ff0055; border:1px solid #ff0055; padding:6px 14px; border-radius:20px; font-weight:800; float:right; font-size: 0.95rem; }
 
-        /* ИНДЕКСТЕР ЖАНА ДАРАЖАЛАР ДАЙЫМА БҮТҮН САКТАЛУУСУ ҮЧҮН ОҢДОЛГОН СТИЛДЕР */
         #qText, .pisa-container, .q-option {
             word-break: normal !important;
             overflow-wrap: break-word !important;
@@ -141,7 +151,6 @@
             font-size: 1.1rem;
         }
 
-        /* ДАРАЖА ЖАНА ИНДЕКСТЕР САКТАЛУУЧУ ТЕГДЕРДИ БӨЛҮП ЖИБЕРБӨӨ */
         sup, sub, .MathJax, mjx-container {
             white-space: nowrap !important;
             display: inline-block !important;
@@ -164,7 +173,6 @@
             font-weight: 600;
         }
 
-        /* 2 СЕКУНДДУК ЖАРНАМА МОДАЛ ТЕРЕЗЕСИ */
         .ad-modal { 
             display: none; 
             position: fixed; 
@@ -260,7 +268,7 @@
     <!-- Smartlink ЖАРНАМА ЖАНА АНТИЧИТ ТЕҢШӨӨЛӨРҮ -->
     <script>
         const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
-        const AD_COOLDOWN_MS = 30 * 60 * 1000; // 30 мүнөт
+        const AD_COOLDOWN_MS = 30 * 60 * 1000;
 
         function canShowAd() {
             const lastAdTime = localStorage.getItem('monetag_test_last_ad_time');
@@ -272,7 +280,6 @@
             localStorage.setItem('monetag_test_last_ad_time', Date.now().toString());
         }
 
-        // ЖЫЙЫНТЫКТАН КИЙИН БАШКА ӨТМӨККӨ ӨТӨӨРДӨ ГАНА 2 СЕКУНДДУК ЭСКЕРТҮҮ МЕНЕН ЖАРНАМА АЧУУ
         function handleExitRedirect(targetUrl) {
             if (canShowAd()) {
                 const modal = document.getElementById('adNoticeModal');
@@ -282,19 +289,17 @@
                     recordAdShown();
                     window.open(SMARTLINK_LOVEY, '_blank');
                     window.location.href = targetUrl;
-                }, 2000); // 2 секунддук эскертүү
+                }, 2000);
             } else {
                 window.location.href = targetUrl;
             }
         }
 
-        // АНТИЧИТТИ ТОЛУГУ МЕНЕН ӨЧҮРҮҮ ФУНКЦИЯСЫ
         function disableAntiCheatCompletely() {
             window.isTestFinished = true;
             if (typeof window.stopAntiCheat === 'function') {
                 window.stopAntiCheat();
             }
-            // Бардык браузердик окуяларды толугу менен ажыратуу
             const events = ['visibilitychange', 'blur', 'focus', 'pagehide', 'beforeunload'];
             events.forEach(ev => {
                 window.removeEventListener(ev, window.handleAntiCheatEvent, true);
@@ -302,7 +307,6 @@
             });
         }
 
-        // ТЕСТ АЯКТАГАНДЫГЫН КӨЗӨМӨЛДӨӨЧҮ МУТАЦИЯ
         const finishObserver = new MutationObserver(() => {
             const testBox = document.querySelector('.test-box');
             if (testBox && (
@@ -312,10 +316,8 @@
                 testBox.innerText.includes('Ваш результат') || 
                 testBox.innerText.includes('Сиздин жыйынтык')
             )) {
-                // 1. Античитти дароо өчүрүү
                 disableAntiCheatCompletely();
 
-                // 2. Жыйынтык экранындагы баскычтарга жарнамалуу чыгуу шилтемесин байлоо
                 const actionBtns = testBox.querySelectorAll('button, a');
                 actionBtns.forEach(btn => {
                     if (!btn.dataset.adBound) {
@@ -486,11 +488,46 @@
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
 
-    <!-- ТЕКСТТЕГИ ИНДЕКС ЖАНА ГРАДУСТАРДЫ ТУУРА ОҢДОО СКИПТИ -->
+    <!-- СҮРӨТТӨРДҮ ЖҮКТӨӨ ЖАНА ТЕКСТТЕГИ ФОРМАТТАРДЫ ОҢДОО СКРИПТИ -->
     <script>
+        function convertDriveUrl(url) {
+            if (!url || typeof url !== 'string') return url;
+            let fileId = '';
+            const match1 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            const match2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+            
+            if (match1 && match1[1]) {
+                fileId = match1[1];
+            } else if (match2 && match2[1]) {
+                fileId = match2[2] || match2[1];
+            }
+
+            if (fileId) {
+                return `https://lh3.googleusercontent.com/d/${fileId}`;
+            }
+            return url;
+        }
+
+        // Сүрөттөрдү коопсуз автоматтык жүктөө жана Google Drive шилтемелерин иштетүү
+        function processImages(container) {
+            if (!container) return;
+            const imgs = container.querySelectorAll('img');
+            imgs.forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && (src.includes('drive.google.com') || src.includes('docs.google.com'))) {
+                    const converted = convertDriveUrl(src);
+                    if (src !== converted) {
+                        img.src = converted;
+                    }
+                }
+                img.onerror = function() {
+                    console.log("Сүрөттү жүктөөдө ката чыкты:", this.src);
+                };
+            });
+        }
+
         function fixDegreeFormatting(container) {
             if (!container) return;
-            // 0 ° C, 100 ° C же 0 ° сыяктуу бөлүнүп калган символдорду бирге туташтыруу
             const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
             let node;
             while (node = walker.nextNode()) {
@@ -507,6 +544,7 @@
             if (!target || target.style.display === 'none') return;
 
             isRendering = true;
+            processImages(target);
             fixDegreeFormatting(target);
 
             if (window.MathJax && window.MathJax.typesetPromise) {
