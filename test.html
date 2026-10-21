@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Онлайн Тест — BiliMal</title>
 
     <!-- AI ботторго баракчаны окууга тыюу салуу мета-тегдери -->
@@ -61,6 +61,8 @@
             user-select: none;
             overflow-x: hidden;
             width: 100%;
+            -webkit-overflow-scrolling: touch;
+            touch-action: manipulation;
         }
         .clean-banner-container {
             width: 100%;
@@ -108,7 +110,7 @@
             box-shadow: 0 0 8px rgba(0, 240, 255, 0.4);
         }
 
-        .btn-start { background:linear-gradient(45deg, #00f0ff, #7000ff); color:#fff; border:none; width:100%; padding:14px; border-radius:8px; font-weight:800; font-size:1.1rem; cursor:pointer; margin-top:15px; transition: 0.3s; }
+        .btn-start { background:linear-gradient(45deg, #00f0ff, #7000ff); color:#fff; border:none; width:100%; padding:14px; border-radius:8px; font-weight:800; font-size:1.1rem; cursor:pointer; margin-top:15px; transition: 0.3s; touch-action: manipulation; }
         .btn-start:hover { box-shadow: 0 0 20px rgba(0,240,255,0.5); transform: translateY(-2px); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
         .input-field { width:100%; padding:12px; margin-top:8px; background:#020208; border:1px solid rgba(0,240,255,0.3); border-radius:6px; color:#fff; font-size: 1rem; outline: none; transition: 0.3s; }
@@ -130,6 +132,7 @@
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
             max-width: 100% !important;
+            touch-action: manipulation;
         }
         .q-option:hover { border-color:#00f0ff; background:rgba(0,240,255,0.1); }
         .q-option input[type="radio"], .q-option input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #00f0ff; }
@@ -246,7 +249,7 @@
         </div>
     </div>
 
-    <!-- АКЫЛДУУ ЖАРНАМА ЛОГИКАСЫ (1 сааттык чектөө менен) -->
+    <!-- АКЫЛДУУ ЖАРНАМА ЛОГИКАСЫ ЖАНА АНТИЧИТТИ ТОКТОТУУ -->
     <script>
         const SMARTLINK_EFFICIENT = "https://uplcm.com/4/11977316";
         const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
@@ -263,19 +266,38 @@
             localStorage.setItem('monetag_test_last_ad_time', Date.now().toString());
         }
 
+        let adTriggered = false;
+
         function loadMonetagAd() {
+            if (adTriggered) return;
             if (canShowAd()) {
+                adTriggered = true;
                 recordAdShown();
-                // Окуучу тестти бүтүргөндө тажатпай тургандай ылайыктуу түрдө ачылат
                 window.open(SMARTLINK_LOVEY, '_blank');
             }
         }
 
-        // Тест аяктаганда экранынын өзгөрүшүн көзөмөлдөө
+        // Жыйынтык чыккандан кийин гана жарнама чыгаруу жана античитти өчүрүү
         const finishObserver = new MutationObserver((mutations) => {
             const testBox = document.querySelector('.test-box');
-            if (testBox && (testBox.innerText.includes('Тест аяктады') || testBox.innerText.includes('Тест завершен') || testBox.innerText.includes('Test completed') || testBox.innerText.includes('Ваш результат') || testBox.innerText.includes('Сиздин жыйынтык'))) {
+            if (testBox && (
+                testBox.innerText.includes('Тест аяктады') || 
+                testBox.innerText.includes('Тест завершен') || 
+                testBox.innerText.includes('Test completed') || 
+                testBox.innerText.includes('Ваш результат') || 
+                testBox.innerText.includes('Сиздин жыйынтык')
+            )) {
+                // Античитти толугу менен токтотуу (античит иштебей калат)
+                if (window.stopAntiCheat && typeof window.stopAntiCheat === 'function') {
+                    window.stopAntiCheat();
+                }
+                // Сторонняя проверка для принудительного снятия листенеров античита
+                window.isTestFinished = true;
+                document.dispatchEvent(new CustomEvent('testCompleted'));
+
+                // Жарнаманы көрсөтүү
                 loadMonetagAd();
+                finishObserver.disconnect();
             }
         });
 
@@ -435,6 +457,25 @@
 
     <script type="module" src="/js/public-test.js"></script>
     <script src="/js/anti-cheat.js"></script>
+
+    <!-- Кошумча коопсуздук: античит жыйынтык чыккандан кийин иштебеши үчүн бөгөттөө -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const originalStop = window.stopAntiCheat;
+            window.stopAntiCheat = function() {
+                if (typeof originalStop === 'function') originalStop();
+                // Бардык visibilitychange жана blur/focus угузуучуларын өчүрүү
+                window.isTestFinished = true;
+                try {
+                    eventsList = ['visibilitychange', 'blur', 'focus', 'pagehide', 'beforeunload'];
+                    eventsList.forEach(ev => {
+                        window.removeEventListener(ev, window.handleAntiCheatEvent);
+                        document.removeEventListener(ev, window.handleAntiCheatEvent);
+                    });
+                } catch(e) {}
+            };
+        });
+    </script>
 
     <script>
         function convertDriveUrl(url) {
