@@ -1,9 +1,13 @@
+// js/public-test.js - Толук иштеген жана жаңыртылган код
+
 import { db } from '../firebase/firebase-config.js';
 import { ref, get, child, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 let testData = null;
 let currentQIndex = 0;
 let userAnswers = {};
+let questionTimes = {};
+let questionStartTime = Date.now();
 let timerInterval = null;
 
 // Анти-чит өзгөрмөлөрү
@@ -118,12 +122,10 @@ function cleanName(str) {
     return str.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-// Формулалар эгер $ доллар белгисине салынбай калган болсо, аны тууралап берүүчү функция
 function prepareMathText(text) {
     if (!text) return '';
     let str = String(text);
     
-    // Эгер кошумча LaTeX командалары бар болуп, $ белгиси жок болсо, автоматтык түрдө кошуу
     if ((str.includes('\\text') || str.includes('\\frac') || str.includes('^')) && !str.includes('$')) {
         return `$${str}$`;
     }
@@ -132,6 +134,9 @@ function prepareMathText(text) {
 
 function renderQuestion() {
     if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
+
+    // Суроо алмашкан сайын убакытты эсептөөнү баштоо
+    questionStartTime = Date.now();
 
     const q = testData.questions[currentQIndex];
     document.getElementById('progress').innerText = `Суроо ${currentQIndex + 1} / ${testData.questions.length}`;
@@ -188,7 +193,6 @@ function renderQuestion() {
         });
     }
 
-    // MATHJAX РЕНДЕРЛӨӨ: Суроолор чыккандан кийин MathJax аны китептегидей иштеп чыгат
     if (window.MathJax) {
         if (typeof MathJax.typesetClear === 'function') {
             MathJax.typesetClear();
@@ -220,6 +224,10 @@ function nextQuestion() {
 function saveAnswer() {
     if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
     const q = testData.questions[currentQIndex];
+
+    // Суроого кеткен убакытты сактоо (секунд менен)
+    const timeSpentSeconds = Math.round((Date.now() - questionStartTime) / 1000);
+    questionTimes[currentQIndex] = timeSpentSeconds;
 
     if (q.type === 'matching') {
         const selects = document.querySelectorAll('#optionsContainer select');
@@ -265,24 +273,38 @@ async function finishTest(reason = 'normal') {
 
     let score = 0;
     const totalQ = (testData && testData.questions) ? testData.questions.length : 0;
+    const reviewList = [];
 
     if (totalQ > 0) {
         testData.questions.forEach((q, idx) => {
             const userAns = userAnswers[idx];
-            if (!userAns) return;
+            const options = q.options || [];
+            let isCorrect = false;
+            let correctDesc = "";
+            let userDesc = "Жооп берилген жок";
 
             if (q.type === 'matching') {
                 let correctCount = 0;
-                if (Array.isArray(q.options)) {
-                    q.options.forEach((pair, pIdx) => {
+                let userAnsObj = userAns || {};
+                let correctPairsStr = [];
+                let userPairsStr = [];
+
+                if (Array.isArray(options)) {
+                    options.forEach((pair, pIdx) => {
+                        const leftText = typeof pair === 'object' ? pair.left : pair;
                         const targetRight = typeof pair === 'object' ? pair.right : pair;
-                        if (userAns[pIdx] === targetRight) correctCount++;
+                        correctPairsStr.push(`${leftText} ➔ ${targetRight}`);
+                        userPairsStr.push(`${leftText} ➔ ${userAnsObj[pIdx] || 'Жок'}`);
+
+                        if (userAnsObj[pIdx] === targetRight) correctCount++;
                     });
-                    if (correctCount === q.options.length) score++;
                 }
-            } else if (Array.isArray(q.options)) {
+                isCorrect = (correctCount === options.length);
+                correctDesc = correctPairsStr.join('; ');
+                userDesc = userPairsStr.join('; ');
+            } else if (Array.isArray(options)) {
                 const correctIndices = [];
-                q.options.forEach((o, i) => {
+                options.forEach((o, i) => {
                     if (typeof o === 'object' && o !== null) {
                         if (o.isCorrect === true || o.correct === true) correctIndices.push(i);
                     } else if (q.correctAnswer !== undefined) {
@@ -293,9 +315,29 @@ async function finishTest(reason = 'normal') {
                 });
 
                 if (Array.isArray(userAns) && JSON.stringify(correctIndices.sort()) === JSON.stringify(userAns.sort())) {
-                    score++;
+                    isCorrect = true;
                 }
+
+                correctDesc = correctIndices.map(i => {
+                    const opt = options[i];
+                    return (typeof opt === 'object' && opt !== null) ? (opt.text || opt.label || '') : opt;
+                }).join(', ');
+
+                userDesc = Array.isArray(userAns) ? userAns.map(i => {
+                    const opt = options[i];
+                    return (typeof opt === 'object' && opt !== null) ? (opt.text || opt.label || '') : opt;
+                }).join(', ') : "Жооп берилген жок";
             }
+
+            if (isCorrect) score++;
+
+            reviewList.push({
+                questionText: q.text || '',
+                studentAnswer: userDesc,
+                correctAnswer: correctDesc,
+                isCorrect: isCorrect,
+                timeSpent: questionTimes[idx] || 0
+            });
         });
     }
 
@@ -304,6 +346,15 @@ async function finishTest(reason = 'normal') {
     const classInput = document.getElementById('studentClass');
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
+
+    // Мугалимдин уруксатын текшерүү (allowReview мугалим тарабынан күйгүзүлгөнүн текшерет)
+    const allowReview = testData.allowReview !== false;
+
+    if (allowReview) {
+        localStorage.setItem('student_test_review', JSON.stringify(reviewList));
+    } else {
+        localStorage.removeItem('student_test_review');
+    }
 
     try {
         const payload = {
@@ -339,23 +390,49 @@ async function finishTest(reason = 'normal') {
     const runningScreen = document.getElementById('runningScreen');
     if (runningScreen) {
         runningScreen.innerHTML = `
-            <div style="text-align:center; padding: 20px;">
-                <h2 style="color:#00f0ff; margin-bottom:15px;">🎉 Тест Аяктады!</h2>
+            <div class="result-card">
+                <div class="result-score-circle" style="--progress-deg: ${percent * 3.6}deg;">
+                    <div class="result-score-inner">
+                        <span class="result-score-value">${percent}%</span>
+                        <span style="font-size:0.75rem; color:#94a3b8;">Ийгилик</span>
+                    </div>
+                </div>
+
+                <h2 style="color:#00f0ff; margin-bottom:10px;">🎉 Тест Аяктады!</h2>
                 ${statusHtml}
-                <p style="font-size:1.2rem; margin-bottom:10px;">Сиздин жыйынтык: <strong>${score} / ${totalQ}</strong> (${percent}%)</p>
-                <p style="color:#a5b4fc; font-size:0.9rem; margin-bottom: 20px;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
+                <p style="font-size: 1.1rem; color: #e2e8f0; margin-bottom: 10px;">
+                    Сиздин жыйынтык: <strong>${score} / ${totalQ} (${percent}%)</strong>
+                </p>
+                <p style="color:#a5b4fc; font-size:0.9rem; margin-bottom: 15px;">Башка баракчага чыгуу аракети: <strong>${warningCount} жолу</strong></p>
                 
-                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-                    <h3 style="color: #38bdf8; margin-bottom: 10px; font-size: 1.1rem;"><i class="fa-solid fa-book-open"></i> Билимиңизди андан ары тереңдетиңиз!</h3>
-                    <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 15px; line-height: 1.5;">
-                        Тестти ийгиликтүү аяктадыңыз! Каалаган темаңыз боюнча билимиңизди улантуу жана кошумча адабияттарды окуу үчүн Биздин Электрондук Китепканага өтүңүз.
+                ${allowReview ? `
+                    <div style="background: rgba(0, 240, 255, 0.08); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 16px; margin: 15px 0; text-align: center;">
+                        <p style="color: #38bdf8; font-weight: 600; font-size: 0.95rem; margin-bottom: 12px;">
+                            <i class="fa-solid fa-circle-info"></i> Мугалим каталарыңызды көрүүгө уруксат берди. Кетирген каталарыңызды жана туура жоопторду толук талдап чыгыңыз!
+                        </p>
+                        <button type="button" class="btn-start" onclick="window.location.href='test-review.html'" style="background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%); width: 100%; margin-top:5px;">
+                            <i class="fa-solid fa-magnifying-glass-chart"></i> КАТАЛАРДЫ ЖАНА ТУУРА ЖООПТОРДУ КӨРҮҮ ➔
+                        </button>
+                    </div>
+                ` : `
+                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 14px; margin: 15px 0; text-align: center;">
+                        <p style="color: #fca5a5; font-size: 0.9rem;">
+                            <i class="fa-solid fa-lock"></i> Каталарды көрүү бул тест үчүн мугалим тарабынан чектелген.
+                        </p>
+                    </div>
+                `}
+
+                <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 12px; padding: 18px; margin: 15px 0; text-align: center;">
+                    <h3 style="color: #38bdf8; margin-bottom: 8px; font-size: 1.05rem;"><i class="fa-solid fa-book-open"></i> Билимиңизди андан ары тереңдетиңиз!</h3>
+                    <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 12px; line-height: 1.4;">
+                        Тестти ийгиликтүү аяктадыңыз! Кошумча адабияттарды окуу үчүн Электрондук Китепканага өтүңүз.
                     </p>
-                    <a href="/sections/ebooks1.html" class="btn-start" style="text-decoration:none; display:inline-block; width:auto; padding:12px 25px; background: linear-gradient(135deg, #00f0ff, #7000ff); color: #fff; font-weight: bold; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,240,255,0.3);">
+                    <a href="/sections/ebooks1.html" class="btn-start" style="text-decoration:none; display:inline-block; width:100%; padding:10px 20px; background: linear-gradient(135deg, #00f0ff, #7000ff); color: #fff; font-weight: bold; border-radius: 8px;">
                         <i class="fa-solid fa-graduation-cap"></i> Электрондук китепканага өтүү
                     </a>
                 </div>
 
-                <a href="tests-center.html" style="text-decoration:none; display:inline-block; color: #a5b4fc; font-size: 0.9rem; margin-top:10px;">Башкы баракчага кайтуу</a>
+                <a href="tests-center.html" style="text-decoration:none; display:inline-block; color: #a5b4fc; font-size: 0.9rem; margin-top:5px;">Башкы баракчага кайтуу</a>
             </div>
         `;
     }
