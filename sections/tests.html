@@ -162,7 +162,7 @@
             border: 1px solid #1e293b;
             border-radius: 12px;
             width: 100%;
-            max-width: 900px;
+            max-width: 1000px;
             max-height: 85vh;
             display: flex;
             flex-direction: column;
@@ -199,7 +199,6 @@
             color: #cbd5e1;
         }
 
-        /* Текшерилген окуучулардын саптары үчүн стилдер */
         .check-student-cb {
             width: 18px;
             height: 18px;
@@ -216,8 +215,36 @@
         }
         tr.checked-row td:first-child,
         tr.checked-row td:last-child {
-            text-decoration: none; /* Чекбокс жана аракет баскычтары чийилбейт */
+            text-decoration: none;
         }
+        
+        /* Мугалимдин уруксат берүүчү которгучу (switch) */
+        .allow-review-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #1e293b;
+            padding: 12px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #334155; transition: .3s; border-radius: 26px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #10b981; }
+        input:checked + .slider:before { transform: translateX(24px); }
     </style>
 </head>
 <body>
@@ -244,10 +271,22 @@
     <div class="modal-overlay" id="resultsModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modalTitle" style="color:#fff;">Жыйынтыктар</h3>
+                <h3 id="modalTitle" style="color:#fff;">Жыйынтыктар жана окуучулардын аракеттери</h3>
                 <button id="closeModal" style="background:none; border:none; color:#ef4444; font-size:1.5rem; cursor:pointer;">&times;</button>
             </div>
             <div class="modal-body">
+                <!-- Мугалимдин окуучуларга каталарды көрүүгө уруксат берүү кору -->
+                <div class="allow-review-box">
+                    <div>
+                        <strong>Окуучуларга каталарды жана жоопторду көрүүгө уруксат берүү</strong>
+                        <p style="font-size:0.8rem; color:#94a3b8;">Бул күйгүзүлгөндө окуучулар тестти аяктагандан кийин туура/ката жоопторун көрө алышат.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="allowReviewToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
                 <table>
                     <thead>
                         <tr>
@@ -259,7 +298,7 @@
                             <th>Пайыз</th>
                             <th>Көчүрүү</th>
                             <th>Убакыт</th>
-                            <th>Аракет</th>
+                            <th>Деталдуу аракеттер</th>
                         </tr>
                     </thead>
                     <tbody id="resultsTableBody">
@@ -284,7 +323,6 @@
             }
         });
 
-        // Чекбокстарды башкаруучу авто-скрипт (Observer аркылуу таблицага динамикалык түрдө чыккан саптарга чекбокс кошот)
         document.addEventListener('DOMContentLoaded', () => {
             const tbody = document.getElementById('resultsTableBody');
 
@@ -292,7 +330,7 @@
                 const observer = new MutationObserver(() => {
                     const rows = tbody.querySelectorAll('tr');
                     rows.forEach((row, idx) => {
-                        if (row.querySelector('.check-student-cb')) return; // Эгер чекбокс бар болсо кайра кошпойт
+                        if (row.querySelector('.check-student-cb')) return;
 
                         const resultId = row.dataset.id || row.getAttribute('id') || `row_${idx}_${row.cells[1]?.innerText || idx}`;
                         const isChecked = localStorage.getItem('checked_result_' + resultId) === 'true';
