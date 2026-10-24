@@ -366,7 +366,7 @@
         });
     </script>
 
-    <!-- ИШКЕ КИРИШҮҮЧҮ ГЛОБАЛДЫК FIREBASE КӨШҮМЧӨСҮ ЖАНА УРУКСАТТЫ САКТОО ЛОГИКАСЫ -->
+    <!-- FIREBASE УРУКСАТТЫ ОКУУ ЖАНА САКТОО ЛОГИКАСЫ -->
     <script type="module">
         import { db } from '../firebase/firebase-config.js';
         import { ref, get, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -375,9 +375,20 @@
             const reviewToggle = document.getElementById('allowReviewToggle');
             
             if (reviewToggle) {
+                // Модалдык терезе ачылганда же testId өзгөргөндө базадан allowReview абалын окуп келүү
+                window.syncAllowReviewToggle = async (testId) => {
+                    if (!testId) return;
+                    try {
+                        const snap = await get(ref(db, `tests/${testId}/allowReview`));
+                        reviewToggle.checked = snap.exists() ? snap.val() === true : false;
+                    } catch (err) {
+                        console.error("AllowReview маанисин жүктөөдө ката:", err);
+                    }
+                };
+
+                // Которгуч өзгөргөндө дароо Firebase базасына сактоо
                 reviewToggle.addEventListener('change', async (e) => {
                     const isAllowed = e.target.checked;
-                    // window.currentActiveTestId панель скрипти тарабынан модалдык терезе ачылганда берилиши керек
                     const testId = window.currentActiveTestId; 
 
                     if (testId) {
