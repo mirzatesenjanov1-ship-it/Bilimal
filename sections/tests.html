@@ -321,6 +321,7 @@
             }
         });
 
+        // ОКУУЧУЛАРДЫН КАТАРЛАРЫН ТЕКШЕРҮҮ ЖАНА ЛОКАЛДЫК САКТОО
         document.addEventListener('DOMContentLoaded', () => {
             const tbody = document.getElementById('resultsTableBody');
 
@@ -361,6 +362,35 @@
                 });
 
                 observer.observe(tbody, { childList: true });
+            }
+        });
+    </script>
+
+    <!-- ИШКЕ КИРИШҮҮЧҮ ГЛОБАЛДЫК FIREBASE КӨШҮМЧӨСҮ ЖАНА УРУКСАТТЫ САКТОО ЛОГИКАСЫ -->
+    <script type="module">
+        import { db } from '../firebase/firebase-config.js';
+        import { ref, get, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const reviewToggle = document.getElementById('allowReviewToggle');
+            
+            if (reviewToggle) {
+                reviewToggle.addEventListener('change', async (e) => {
+                    const isAllowed = e.target.checked;
+                    // window.currentActiveTestId панель скрипти тарабынан модалдык терезе ачылганда берилиши керек
+                    const testId = window.currentActiveTestId; 
+
+                    if (testId) {
+                        try {
+                            await update(ref(db, `tests/${testId}`), {
+                                allowReview: isAllowed
+                            });
+                            console.log("AllowReview мааниси базага сакталды:", isAllowed);
+                        } catch (err) {
+                            console.error("AllowReview сактоодо ката:", err);
+                        }
+                    }
+                });
             }
         });
     </script>
