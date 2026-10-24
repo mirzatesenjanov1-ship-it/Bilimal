@@ -1,4 +1,4 @@
-// js/public-test.js - Толук иштеген жана катасыз код
+// js/public-test.js - Толук иштеген жана катасыз код (Окуучунун кадамдары жана жооптору базага толук сакталат)
 
 import { db } from '../firebase/firebase-config.js';
 import { ref, get, child, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -365,7 +365,6 @@ async function finishTest(reason = 'normal') {
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
 
-    // МУГАЛИМДИН УРУКСАТЫН ТАК ТЕКШЕРҮҮ (allowReview true гана болсо уруксат берилет)
     const allowReview = testData.allowReview === true;
 
     if (allowReview) {
@@ -384,7 +383,8 @@ async function finishTest(reason = 'normal') {
             percent: percent,
             cheatedCount: warningCount,
             cheatingAttempt: reason === 'cheating',
-            date: new Date().toISOString()
+            date: new Date().toISOString(),
+            reviewList: reviewList // Окуучунун кадамдары жана деталдуу жооптору базага толук жазылат
         };
 
         const resultsRef = ref(db, `test_results/${testId}`);
