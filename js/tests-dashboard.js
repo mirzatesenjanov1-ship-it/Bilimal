@@ -292,14 +292,12 @@ async function viewResults(testId, title) {
 
     if (!modal || !titleEl || !tableBody) return;
 
-    // Учурдагы активдүү тесттин ID си сакталат (которгуч жаңыртылыш үчүн)
     window.currentActiveTestId = testId;
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
-    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
 
-    // FIREBASE БАЗАСЫНАН ТЕСТТИН `allowReview` АБАЛЫН ТАК ОКУП КЕЛҮҮ
     if (allowReviewToggle) {
         try {
             const testSnap = await get(child(ref(db), `tests/${testId}`));
@@ -341,11 +339,21 @@ async function viewResults(testId, title) {
                     <td>${r.cheatedCount > 0 ? `<span style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> ${r.cheatedCount} жолу</span>` : '<span style="color:#10b981;">Таза</span>'}</td>
                     <td>${r.date ? new Date(r.date).toLocaleString('ky-KG') : '-'}</td>
                     <td>
+                        <button class="btn-action btn-view-details" data-result-key="${key}" title="Деталдуу жоопторду көрүү" style="background:#1e293b; color:#38bdf8; border:1px solid #334155; padding:5px 10px; border-radius:6px; cursor:pointer;">
+                            <i class="fa-solid fa-eye"></i> Жооптор
+                        </button>
+                    </td>
+                    <td>
                         <button class="btn-delete-res" data-key="${key}" style="background:none; border:none; color:#ef4444; cursor:pointer;">
                             <i class="fa-solid fa-trash"></i>
                         </button>
                     </td>
                 `;
+
+                // Окуучунун жеке жоопторун деталдуу көрүү логикасы
+                tr.querySelector('.btn-view-details').addEventListener('click', () => {
+                    showStudentDetailsModal(r, studentName => studentName);
+                });
 
                 tr.querySelector('.btn-delete-res').addEventListener('click', async () => {
                     if (confirm("Жыйынтыкты өчүрүүнү каалайсызбы?")) {
@@ -358,11 +366,73 @@ async function viewResults(testId, title) {
                 tableBody.appendChild(tr);
             });
         } else {
-            tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Азырынча эч ким тапшыра элек.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:#94a3b8;">Азырынча эч ким тапшыра элек.</td></tr>';
         }
     } catch (err) {
-        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#ef4444;">Ката: ${err.message}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#ef4444;">Ката: ${err.message}</td></tr>`;
     }
+}
+
+// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН КӨРСӨТҮҮЧҮ МОДАЛДЫК ТЕРЕЗЕ
+function showStudentDetailsModal(resultData) {
+    let detailModal = document.getElementById('studentDetailModal');
+    if (!detailModal) {
+        detailModal = document.createElement('div');
+        detailModal.id = 'studentDetailModal';
+        detailModal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:2000; padding:20px;';
+        document.body.appendChild(detailModal);
+    }
+
+    // Реview тізмесин же деталдуу жоопторду текшерүү (public-test.js localStorage же Firebase'ге жазган reviewList)
+    // Эгер результат объектинде review же жооптор катышпаса localStorage'тен же башка жерден табуу мүмкүнчүлүгү
+    const studentName = resultData.studentName || 'Окуучу';
+    const studentClass = resultData.studentClass || '-';
+    const score = resultData.score || 0;
+    const total = resultData.totalQuestions || 0;
+    const percent = resultData.percent || 0;
+
+    // Студенттин сакталган жооптору (эгер результ объектинде reviewList же answers сакталса)
+    // Эгер public-test.js reviewListти сактабаган болсо, resultData ичинен издөө
+    const reviewItems = resultData.reviewList || resultData.answersDetails || [];
+
+    let itemsHtml = '';
+    if (reviewItems.length > 0) {
+        reviewItems.forEach((item, idx) => {
+            const isCorrect = item.isCorrect;
+            itemsHtml += `
+                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'};">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px;">${idx + 1}. ${escapeHtml(item.questionText || 'Суроо')}</div>
+                    <div style="font-size:0.9rem; margin-top:4px;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${escapeHtml(item.studentAnswer || 'Жок')}</div>
+                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px;"><strong style="color:#10b981">Туура жооп:</strong> ${escapeHtml(item.correctAnswer || '-')}</div>` : ''}
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">Убакыт: ${item.timeSpent || 0} сек</div>
+                </div>
+            `;
+        });
+    } else {
+        itemsHtml = `<p style="text-align:center; color:#94a3b8; padding:30px;">Бул жыйынтык үчүн деталдуу суроо-жооп маалыматтары сакталган эмес.</p>`;
+    }
+
+    detailModal.innerHTML = `
+        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:14px; width:100%; max-width:800px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,0.9);">
+            <div style="padding:15px 20px; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="color:#00f2fe; font-size:1.2rem;"><i class="fa-solid fa-user-graduate"></i> ${escapeHtml(studentName)} (${escapeHtml(studentClass)}) — Жооптордун талдоосу</h3>
+                <button id="closeDetailModal" style="background:none; border:none; color:#ef4444; font-size:1.5rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="padding:15px 20px; background:#1e293b; display:flex; gap:20px; font-size:0.95rem;">
+                <div>Упай: <strong>${score} / ${total}</strong></div>
+                <div>Пайыз: <strong style="color:#00f2fe;">${percent}%</strong></div>
+            </div>
+            <div style="padding:20px; overflow-y:auto; flex:1;">
+                ${itemsHtml}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('closeDetailModal').addEventListener('click', () => {
+        detailModal.style.display = 'none';
+    });
+
+    detailModal.style.display = 'flex';
 }
 
 function escapeHtml(str) {
