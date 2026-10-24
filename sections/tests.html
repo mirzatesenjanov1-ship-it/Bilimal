@@ -366,27 +366,35 @@
         });
     </script>
 
-    <!-- FIREBASE УРУКСАТТЫ ОКУУ ЖАНА САКТОО ЛОГИКАСЫ -->
+    <!-- FIREBASE УРУКСАТТЫ ОКУУ ЖАНА САКТОО ЛОГИКАСЫ (МУТАЦИЯ ЖАНА ИНТЕГРАЦИЯ) -->
     <script type="module">
         import { db } from '../firebase/firebase-config.js';
-        import { ref, get, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+        import { ref, get, update, onValue } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         document.addEventListener('DOMContentLoaded', () => {
             const reviewToggle = document.getElementById('allowReviewToggle');
+            let unsubscribeRT = null;
             
             if (reviewToggle) {
-                // Модалдык терезе ачылганда же testId өзгөргөндө базадан allowReview абалын окуп келүү
+                // Модалдык терезе ачылганда же testId берилгенде базадан allowReview абалын real-time угуу жана коюу
                 window.syncAllowReviewToggle = async (testId) => {
                     if (!testId) return;
-                    try {
-                        const snap = await get(ref(db, `tests/${testId}/allowReview`));
-                        reviewToggle.checked = snap.exists() ? snap.val() === true : false;
-                    } catch (err) {
-                        console.error("AllowReview маанисин жүктөөдө ката:", err);
+                    window.currentActiveTestId = testId;
+
+                    if (unsubscribeRT) {
+                        unsubscribeRT(); // Мурунку listener'ди тазалоо
                     }
+
+                    const testRef = ref(db, `tests/${testId}/allowReview`);
+                    unsubscribeRT = onValue(testRef, (snap) => {
+                        const val = snap.exists() ? snap.val() === true : false;
+                        reviewToggle.checked = val;
+                    }, (err) => {
+                        console.error("AllowReview угуу катасы:", err);
+                    });
                 };
 
-                // Которгуч өзгөргөндө дароо Firebase базасына сактоо
+                // Которгуч колдо тарабынан өзгөргөндө дароо Firebase базасына жазуу
                 reviewToggle.addEventListener('change', async (e) => {
                     const isAllowed = e.target.checked;
                     const testId = window.currentActiveTestId; 
@@ -396,7 +404,7 @@
                             await update(ref(db, `tests/${testId}`), {
                                 allowReview: isAllowed
                             });
-                            console.log("AllowReview мааниси базага сакталды:", isAllowed);
+                            console.log("AllowReview мааниси базага ийгиликтүү сакталды:", isAllowed);
                         } catch (err) {
                             console.error("AllowReview сактоодо ката:", err);
                         }
