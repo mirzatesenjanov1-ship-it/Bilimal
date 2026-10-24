@@ -1,4 +1,4 @@
-// js/public-test.js - Толук иштеген жана жаңыртылган код
+// js/public-test.js - Толук иштеген жана катасыз код
 
 import { db } from '../firebase/firebase-config.js';
 import { ref, get, child, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -15,6 +15,8 @@ let warningCount = 0;
 const MAX_WARNINGS = 3;
 let isTestFinished = false;
 let isViolationActive = false;
+let visibilityHandler = null;
+let blurHandler = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 const testId = urlParams.get('testId') || urlParams.get('id');
@@ -135,7 +137,6 @@ function prepareMathText(text) {
 function renderQuestion() {
     if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
 
-    // Суроо алмашкан сайын убакытты эсептөөнү баштоо
     questionStartTime = Date.now();
 
     const q = testData.questions[currentQIndex];
@@ -225,7 +226,6 @@ function saveAnswer() {
     if (!testData || !testData.questions || !testData.questions[currentQIndex]) return;
     const q = testData.questions[currentQIndex];
 
-    // Суроого кеткен убакытты сактоо (секунд менен)
     const timeSpentSeconds = Math.round((Date.now() - questionStartTime) / 1000);
     questionTimes[currentQIndex] = timeSpentSeconds;
 
@@ -261,12 +261,30 @@ function startTimer(seconds) {
     }, 1000);
 }
 
-async function finishTest(reason = 'normal') {
-    if (isTestFinished) return;
+// Античитти толук өчүрүү жана угуучуларды тазалоо функциясы
+function stopAntiCheat() {
     isTestFinished = true;
+    isViolationActive = false;
+
+    if (visibilityHandler) {
+        document.removeEventListener('visibilitychange', visibilityHandler);
+    }
+    if (blurHandler) {
+        window.removeEventListener('blur', blurHandler);
+    }
 
     const overlay = document.getElementById('ai-protection-overlay');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.remove();
+    }
+}
+
+async function finishTest(reason = 'normal') {
+    if (isTestFinished && reason !== 'cheating') return;
+    
+    // Античитти токтотобуз
+    stopAntiCheat();
 
     if (timerInterval) clearInterval(timerInterval);
     saveAnswer();
@@ -347,8 +365,8 @@ async function finishTest(reason = 'normal') {
     const name = nameInput ? nameInput.value.trim() : 'Аноним';
     const cls = classInput ? classInput.value.trim() : '-';
 
-    // Мугалимдин уруксатын текшерүү (allowReview мугалим тарабынан күйгүзүлгөнүн текшерет)
-    const allowReview = testData.allowReview !== false;
+    // МУГАЛИМДИН УРУКСАТЫН ТАК ТЕКШЕРҮҮ (allowReview true гана болсо уруксат берилет)
+    const allowReview = testData.allowReview === true;
 
     if (allowReview) {
         localStorage.setItem('student_test_review', JSON.stringify(reviewList));
@@ -509,13 +527,16 @@ function activateTabSwitchProtection() {
         }
     };
 
-    document.addEventListener('visibilitychange', () => {
+    visibilityHandler = () => {
         if (document.hidden) {
             triggerViolation();
         }
-    });
+    };
 
-    window.addEventListener('blur', () => {
+    blurHandler = () => {
         triggerViolation();
-    });
+    };
+
+    document.addEventListener('visibilitychange', visibilityHandler);
+    window.addEventListener('blur', blurHandler);
 }
