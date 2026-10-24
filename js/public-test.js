@@ -1,4 +1,4 @@
-// js/public-test.js - Толук иштеген жана катасыз код (Окуучунун кадамдары жана жооптору базага толук сакталат)
+// js/public-test.js - Толук иштеген жана катасыз код
 
 import { db } from '../firebase/firebase-config.js';
 import { ref, get, child, push } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
@@ -10,7 +10,6 @@ let questionTimes = {};
 let questionStartTime = Date.now();
 let timerInterval = null;
 
-// Анти-чит өзгөрмөлөрү
 let warningCount = 0;
 const MAX_WARNINGS = 3;
 let isTestFinished = false;
@@ -261,7 +260,6 @@ function startTimer(seconds) {
     }, 1000);
 }
 
-// Античитти толук өчүрүү жана угуучуларды тазалоо функциясы
 function stopAntiCheat() {
     isTestFinished = true;
     isViolationActive = false;
@@ -283,7 +281,6 @@ function stopAntiCheat() {
 async function finishTest(reason = 'normal') {
     if (isTestFinished && reason !== 'cheating') return;
     
-    // Античитти токтотобуз
     stopAntiCheat();
 
     if (timerInterval) clearInterval(timerInterval);
@@ -384,7 +381,8 @@ async function finishTest(reason = 'normal') {
             cheatedCount: warningCount,
             cheatingAttempt: reason === 'cheating',
             date: new Date().toISOString(),
-            reviewList: reviewList // Окуучунун кадамдары жана деталдуу жооптору базага толук жазылат
+            reviewList: reviewList,
+            userAnswers: userAnswers
         };
 
         const resultsRef = ref(db, `test_results/${testId}`);
