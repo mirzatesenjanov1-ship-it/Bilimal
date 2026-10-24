@@ -8,7 +8,6 @@ let isLoaded = false;
 document.addEventListener('DOMContentLoaded', () => {
     const firebaseAuth = auth || getAuth();
 
-    // Firebase Auth абалын көзөмөлдөө
     onAuthStateChanged(firebaseAuth, (user) => {
         if (user) {
             currentUser = {
@@ -21,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Тез арада табылбай калса LocalStorage текшерүү fallback
     setTimeout(() => {
         if (!isLoaded && !currentUser) {
             checkLocalStorageAuth();
@@ -36,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // МУГАЛИМДИН УРУКСАТ КОТОРГУЧУНУН ЛОГИКАСЫН ИНТЕГРАЦИЯЛӨӨ
     const allowReviewToggle = document.getElementById('allowReviewToggle');
     if (allowReviewToggle) {
         allowReviewToggle.addEventListener('change', async (e) => {
@@ -107,7 +104,6 @@ async function loadMyTests() {
             Object.keys(data).forEach((id) => {
                 const test = data[id];
 
-                // Бардык мүмкүн болгон автордук талаалар
                 const possibleEmails = [
                     test.authorEmail,
                     test.email,
@@ -126,17 +122,14 @@ async function loadMyTests() {
 
                 let isMyTest = false;
 
-                // 1. UID боюнча
                 if (currUid && possibleIds.includes(currUid)) {
                     isMyTest = true;
                 }
 
-                // 2. Email боюнча
                 if (!isMyTest && currEmail && possibleEmails.includes(currEmail)) {
                     isMyTest = true;
                 }
 
-                // 3. Браузердик fallback
                 const myLocalTests = JSON.parse(localStorage.getItem('my_created_tests') || '[]');
                 if (!isMyTest && myLocalTests.includes(id)) {
                     isMyTest = true;
@@ -325,6 +318,10 @@ async function viewResults(testId, title) {
             if (snap2.exists()) foundResultsObj = snap2.val();
         }
 
+        // Тесттин өзүн да алып келебиз (эгер суроолор боюнча кайра текшерүү керек болсо)
+        const testSnapForQuestions = await get(child(dbRef, `tests/${testId}`));
+        const testDataObject = testSnapForQuestions.exists() ? testSnapForQuestions.val() : null;
+
         if (foundResultsObj) {
             tableBody.innerHTML = '';
             let index = 1;
@@ -350,9 +347,8 @@ async function viewResults(testId, title) {
                     </td>
                 `;
 
-                // Окуучунун жеке жоопторун деталдуу көрүү логикасы
                 tr.querySelector('.btn-view-details').addEventListener('click', () => {
-                    showStudentDetailsModal(r, studentName => studentName);
+                    showStudentDetailsModal(r, testDataObject);
                 });
 
                 tr.querySelector('.btn-delete-res').addEventListener('click', async () => {
@@ -373,38 +369,47 @@ async function viewResults(testId, title) {
     }
 }
 
-// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН КӨРСӨТҮҮЧҮ МОДАЛДЫК ТЕРЕЗЕ
-function showStudentDetailsModal(resultData) {
+// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ДЕТАЛДУУ КӨРСӨТҮҮ
+function showStudentDetailsModal(resultData, testData) {
     let detailModal = document.getElementById('studentDetailModal');
     if (!detailModal) {
         detailModal = document.createElement('div');
         detailModal.id = 'studentDetailModal';
-        detailModal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:2000; padding:20px;';
+        detailModal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; justify-content:center; align-items:center; z-index:2000; padding:20px; box-sizing:border-box;';
         document.body.appendChild(detailModal);
     }
 
-    // Реview тізмесин же деталдуу жоопторду текшерүү (public-test.js localStorage же Firebase'ге жазган reviewList)
-    // Эгер результат объектинде review же жооптор катышпаса localStorage'тен же башка жерден табуу мүмкүнчүлүгү
     const studentName = resultData.studentName || 'Окуучу';
     const studentClass = resultData.studentClass || '-';
     const score = resultData.score || 0;
     const total = resultData.totalQuestions || 0;
     const percent = resultData.percent || 0;
 
-    // Студенттин сакталган жооптору (эгер результ объектинде reviewList же answers сакталса)
-    // Эгер public-test.js reviewListти сактабаган болсо, resultData ичинен издөө
-    const reviewItems = resultData.reviewList || resultData.answersDetails || [];
+    // Эгер результат объектинде reviewList же answersDetails болсо ошону колдонобуз
+    let reviewItems = resultData.reviewList || resultData.answersDetails || [];
 
+    // Эгер reviewList сакталбаган болсо, бирок тесттин суроолору болсо, резерв катары көрсөтүү
     let itemsHtml = '';
     if (reviewItems.length > 0) {
         reviewItems.forEach((item, idx) => {
             const isCorrect = item.isCorrect;
             itemsHtml += `
-                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'};">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px;">${idx + 1}. ${escapeHtml(item.questionText || 'Суроо')}</div>
-                    <div style="font-size:0.9rem; margin-top:4px;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${escapeHtml(item.studentAnswer || 'Жок')}</div>
-                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px;"><strong style="color:#10b981">Туура жооп:</strong> ${escapeHtml(item.correctAnswer || '-')}</div>` : ''}
-                    <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">Убакыт: ${item.timeSpent || 0} сек</div>
+                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'}; word-break:break-word;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(item.questionText || 'Суроо')}</div>
+                    <div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${escapeHtml(String(item.studentAnswer || 'Жок'))}</div>
+                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:#10b981">Туура жооп:</strong> ${escapeHtml(String(item.correctAnswer || '-'))}</div>` : ''}
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">Жумшалган убакыт: ${item.timeSpent || 0} сек</div>
+                </div>
+            `;
+        });
+    } else if (testData && testData.questions) {
+        // Эгер эски жыйынтыктарда reviewList жазылбай калган болсо, суроолордун тізмесин жалпы көрсөтүү
+        const questions = Array.isArray(testData.questions) ? testData.questions : Object.values(testData.questions);
+        questions.forEach((q, idx) => {
+            itemsHtml += `
+                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid #334155; word-break:break-word;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(q.text || 'Суроо')}</div>
+                    <div style="font-size:0.85rem; color:#94a3b8; font-style:italic;">(Бул мурунку сакталган жыйынтык, жеке талдоо маалыматтары толук эмес)</div>
                 </div>
             `;
         });
@@ -413,16 +418,16 @@ function showStudentDetailsModal(resultData) {
     }
 
     detailModal.innerHTML = `
-        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:14px; width:100%; max-width:800px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,0.9);">
+        <div style="background:#0f172a; border:1px solid #1e293b; border-radius:14px; width:100%; max-width:800px; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 0 40px rgba(0,0,0,0.9); box-sizing:border-box;">
             <div style="padding:15px 20px; border-bottom:1px solid #1e293b; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="color:#00f2fe; font-size:1.2rem;"><i class="fa-solid fa-user-graduate"></i> ${escapeHtml(studentName)} (${escapeHtml(studentClass)}) — Жооптордун талдоосу</h3>
-                <button id="closeDetailModal" style="background:none; border:none; color:#ef4444; font-size:1.5rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+                <h3 style="color:#00f2fe; font-size:1.1rem; word-break:break-word; padding-right:15px;"><i class="fa-solid fa-user-graduate"></i> ${escapeHtml(studentName)} (${escapeHtml(studentClass)}) — Жооптордун талдоосу</h3>
+                <button id="closeDetailModal" style="background:none; border:none; color:#ef4444; font-size:1.5rem; cursor:pointer; flex-shrink:0;"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div style="padding:15px 20px; background:#1e293b; display:flex; gap:20px; font-size:0.95rem;">
                 <div>Упай: <strong>${score} / ${total}</strong></div>
                 <div>Пайыз: <strong style="color:#00f2fe;">${percent}%</strong></div>
             </div>
-            <div style="padding:20px; overflow-y:auto; flex:1;">
+            <div style="padding:20px; overflow-y:auto; flex:1; box-sizing:border-box;">
                 ${itemsHtml}
             </div>
         </div>
