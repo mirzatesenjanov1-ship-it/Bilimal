@@ -318,7 +318,6 @@ async function viewResults(testId, title) {
             if (snap2.exists()) foundResultsObj = snap2.val();
         }
 
-        // Тесттин өзүн да алып келебиз (эгер суроолор боюнча кайра текшерүү керек болсо)
         const testSnapForQuestions = await get(child(dbRef, `tests/${testId}`));
         const testDataObject = testSnapForQuestions.exists() ? testSnapForQuestions.val() : null;
 
@@ -369,7 +368,19 @@ async function viewResults(testId, title) {
     }
 }
 
-// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ДЕТАЛДУУ КӨРСӨТҮҮ
+// ФОРМУЛА ЖАНА ТЕКСТТИ ИРЭЭТТҮҮ ФОРМАТТООЧУ ФУНКЦИЯ
+function prepareMathText(text) {
+    if (!text) return '';
+    let str = String(text);
+    // Градустарды LaTeX форматына келтирүү
+    str = str.replace(/(\d+)\s*°\s*([CС])?/g, '$1^\\circ\\text{$2}$');
+    if ((str.includes('\\text') || str.includes('\\frac') || str.includes('^')) && !str.includes('$')) {
+        return `$${str}$`;
+    }
+    return str;
+}
+
+// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ДЕТАЛДУУ ЖАНА ФОРМУЛАЛАР МЕНЕН КӨРСӨТҮҮ
 function showStudentDetailsModal(resultData, testData) {
     let detailModal = document.getElementById('studentDetailModal');
     if (!detailModal) {
@@ -385,31 +396,28 @@ function showStudentDetailsModal(resultData, testData) {
     const total = resultData.totalQuestions || 0;
     const percent = resultData.percent || 0;
 
-    // Эгер результат объектинде reviewList же answersDetails болсо ошону колдонобуз
     let reviewItems = resultData.reviewList || resultData.answersDetails || [];
 
-    // Эгер reviewList сакталбаган болсо, бирок тесттин суроолору болсо, резерв катары көрсөтүү
     let itemsHtml = '';
     if (reviewItems.length > 0) {
         reviewItems.forEach((item, idx) => {
             const isCorrect = item.isCorrect;
             itemsHtml += `
                 <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'}; word-break:break-word;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(item.questionText || 'Суроо')}</div>
-                    <div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${escapeHtml(String(item.studentAnswer || 'Жок'))}</div>
-                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:#10b981">Туура жооп:</strong> ${escapeHtml(String(item.correctAnswer || '-'))}</div>` : ''}
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${prepareMathText(item.questionText || 'Суроо')}</div>
+                    <div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${prepareMathText(String(item.studentAnswer || 'Жок'))}</div>
+                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:#10b981">Туура жооп:</strong> ${prepareMathText(String(item.correctAnswer || '-'))}</div>` : ''}
                     <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">Жумшалган убакыт: ${item.timeSpent || 0} сек</div>
                 </div>
             `;
         });
     } else if (testData && testData.questions) {
-        // Эгер эски жыйынтыктарда reviewList жазылбай калган болсо, суроолордун тізмесин жалпы көрсөтүү
         const questions = Array.isArray(testData.questions) ? testData.questions : Object.values(testData.questions);
         questions.forEach((q, idx) => {
             itemsHtml += `
                 <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid #334155; word-break:break-word;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(q.text || 'Суроо')}</div>
-                    <div style="font-size:0.85rem; color:#94a3b8; font-style:italic;">(Бул мурунку сакталган жыйынтык, жеке талдоо маалыматтары толук эмес)</div>
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${prepareMathText(q.text || 'Суроо')}</div>
+                    <div style="font-size:0.85rem; color:#94a3b8; font-style:italic;">(Бул сакталган мурунку жыйынтык)</div>
                 </div>
             `;
         });
@@ -427,7 +435,7 @@ function showStudentDetailsModal(resultData, testData) {
                 <div>Упай: <strong>${score} / ${total}</strong></div>
                 <div>Пайыз: <strong style="color:#00f2fe;">${percent}%</strong></div>
             </div>
-            <div style="padding:20px; overflow-y:auto; flex:1; box-sizing:border-box;">
+            <div id="detailModalContentBody" style="padding:20px; overflow-y:auto; flex:1; box-sizing:border-box;">
                 ${itemsHtml}
             </div>
         </div>
@@ -438,6 +446,13 @@ function showStudentDetailsModal(resultData, testData) {
     });
 
     detailModal.style.display = 'flex';
+
+    // MathJax формулаларын динамикалык түрдө кайра иштетүү (рендеринг)
+    setTimeout(() => {
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([document.getElementById('detailModalContentBody')]).catch((err) => console.error("MathJax error:", err));
+        }
+    }, 100);
 }
 
 function escapeHtml(str) {
