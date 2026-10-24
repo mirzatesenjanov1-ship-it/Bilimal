@@ -368,24 +368,34 @@ async function viewResults(testId, title) {
     }
 }
 
-// LaTeX тегдерин тазалап, окула турган форматка келтирүүчү функция
+// LaTeX тегдерин жана формула/даража/индекстерди профессионалдык деңгээлде HTML форматка которуу
 function cleanAndFormatText(text) {
     if (!text) return '';
     let str = String(text);
-    
-    // \text{...} мазмунун гана алып калуу же тазалоо
-    str = str.replace(/\\text\{([^}]*)\}/g, '$1');
-    // ^\circ же ^{\circ} Белгилерин ° кылып алмаштыруу
-    str = str.replace(/\^\{\\circ\}|\^\\circ/g, '°');
-    // ^0 градус же даража белгилерин оңдоо
-    str = str.replace(/\^0/g, '°');
-    // Калган ашыкча $ белгилерин тазалоо
+
+    // 1. \text{...} же \mathbf{...} тегдерин ички мазмуну менен алмаштыруу
+    str = str.replace(/\\(?:text|mathbf|mathrm)\{([^}]*)\}/g, '$1');
+
+    // 2. ^\circ, ^{\circ} же ^0 градус белгилерин ° кылып тазалоо
+    str = str.replace(/\^\{\\circ\}|\^\\circ|\^0/g, '°');
+
+    // 3. Калдык катардагы кашаалуу даражаларды супераскриптке которуу: ^{...} -> <sup>...</sup>
+    str = str.replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>');
+
+    // 4. Жөнөкөй даражаларды супераскриптке которуу: ^2 -> <sup>2</sup>
+    str = str.replace(/\^([0-9a-zA-Z\+\-]+)/g, '<sup>$1</sup>');
+
+    // 5. Төмөнкү индекстерди сабскриптке которуу: _{...} -> <sub>...</sub>
+    str = str.replace(/_\{([^}]+)\}/g, '<sub>$1</sub>');
+
+    // 6. Ашыкча калган LaTeX $ белгилерин жана бэкслештерди тазалоо
     str = str.replace(/\$/g, '');
-    
+    str = str.replace(/\\([a-zA-Z]+)/g, '$1');
+
     return str.trim();
 }
 
-// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ИРЭЭТТҮҮ ЖАНА ТАЗА КӨРСӨТҮҮ
+// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ТОЛУК ИРЭЭТТҮҮ КӨРСӨТҮҮ
 function showStudentDetailsModal(resultData, testData) {
     let detailModal = document.getElementById('studentDetailModal');
     if (!detailModal) {
@@ -412,10 +422,10 @@ function showStudentDetailsModal(resultData, testData) {
             const cAnswer = cleanAndFormatText(String(item.correctAnswer || '-'));
 
             itemsHtml += `
-                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'}; word-break:break-word;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(qText)}</div>
-                    <div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${escapeHtml(sAnswer)}</div>
-                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:#10b981">Туура жооп:</strong> ${escapeHtml(cAnswer)}</div>` : ''}
+                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid ${isCorrect ? '#10b981' : '#ef4444'}; word-break:break-word; line-height:1.5;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${qText}</div>
+                    <div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:${isCorrect ? '#10b981' : '#ef4444'}">Окуучунун жообу:</strong> ${sAnswer}</div>
+                    ${!isCorrect ? `<div style="font-size:0.9rem; margin-top:4px; word-break:break-word;"><strong style="color:#10b981">Туура жооп:</strong> ${cAnswer}</div>` : ''}
                     <div style="font-size:0.75rem; color:#64748b; margin-top:6px;">Жумшалган убакыт: ${item.timeSpent || 0} сек</div>
                 </div>
             `;
@@ -425,8 +435,8 @@ function showStudentDetailsModal(resultData, testData) {
         questions.forEach((q, idx) => {
             const qText = cleanAndFormatText(q.text || 'Суроо');
             itemsHtml += `
-                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid #334155; word-break:break-word;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${escapeHtml(qText)}</div>
+                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid #334155; word-break:break-word; line-height:1.5;">
+                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${qText}</div>
                     <div style="font-size:0.85rem; color:#94a3b8; font-style:italic;">(Бул сакталган мурунку жыйынтык)</div>
                 </div>
             `;
