@@ -35,6 +35,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (modal) modal.style.display = 'none';
         });
     }
+
+    // МУГАЛИМДИН УРУКСАТ КОТОРГУЧУНУН ЛОГИКАСЫН ИНТЕГРАЦИЯЛӨӨ
+    const allowReviewToggle = document.getElementById('allowReviewToggle');
+    if (allowReviewToggle) {
+        allowReviewToggle.addEventListener('change', async (e) => {
+            const isAllowed = e.target.checked;
+            const activeTestId = window.currentActiveTestId;
+            if (activeTestId) {
+                try {
+                    await update(ref(db, `tests/${activeTestId}`), {
+                        allowReview: isAllowed
+                    });
+                    console.log("AllowReview мааниси базага ийгиликтүү сакталды:", isAllowed);
+                } catch (err) {
+                    console.error("AllowReview сактоодо ката:", err);
+                }
+            }
+        });
+    }
 });
 
 function checkLocalStorageAuth() {
@@ -269,12 +288,32 @@ async function viewResults(testId, title) {
     const modal = document.getElementById('resultsModal');
     const titleEl = document.getElementById('modalTitle');
     const tableBody = document.getElementById('resultsTableBody');
+    const allowReviewToggle = document.getElementById('allowReviewToggle');
 
     if (!modal || !titleEl || !tableBody) return;
+
+    // Учурдагы активдүү тесттин ID си сакталат (которгуч жаңыртылыш үчүн)
+    window.currentActiveTestId = testId;
 
     titleEl.innerText = `Жыйынтыктар: ${title}`;
     tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;"><i class="fa-solid fa-spinner fa-spin"></i> Жүктөлүүдө...</td></tr>';
     modal.style.display = 'flex';
+
+    // FIREBASE БАЗАСЫНАН ТЕСТТИН `allowReview` АБАЛЫН ТАК ОКУП КЕЛҮҮ
+    if (allowReviewToggle) {
+        try {
+            const testSnap = await get(child(ref(db), `tests/${testId}`));
+            if (testSnap.exists()) {
+                const testData = testSnap.val();
+                allowReviewToggle.checked = testData.allowReview === true;
+            } else {
+                allowReviewToggle.checked = false;
+            }
+        } catch (e) {
+            console.error("AllowReview абалын окууда ката:", e);
+            allowReviewToggle.checked = false;
+        }
+    }
 
     try {
         const dbRef = ref(db);
