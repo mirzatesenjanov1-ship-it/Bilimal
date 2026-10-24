@@ -368,34 +368,23 @@ async function viewResults(testId, title) {
     }
 }
 
-// LaTeX тегдерин жана формула/даража/индекстерди профессионалдык деңгээлде HTML форматка которуу
+// LaTeX тегдерин тазалоо жана даража/индекстерди калыбына келтирүү
 function cleanAndFormatText(text) {
     if (!text) return '';
     let str = String(text);
-
-    // 1. \text{...} же \mathbf{...} тегдерин ички мазмуну менен алмаштыруу
+    
     str = str.replace(/\\(?:text|mathbf|mathrm)\{([^}]*)\}/g, '$1');
-
-    // 2. ^\circ, ^{\circ} же ^0 градус белгилерин ° кылып тазалоо
     str = str.replace(/\^\{\\circ\}|\^\\circ|\^0/g, '°');
-
-    // 3. Калдык катардагы кашаалуу даражаларды супераскриптке которуу: ^{...} -> <sup>...</sup>
     str = str.replace(/\^\{([^}]+)\}/g, '<sup>$1</sup>');
-
-    // 4. Жөнөкөй даражаларды супераскриптке которуу: ^2 -> <sup>2</sup>
     str = str.replace(/\^([0-9a-zA-Z\+\-]+)/g, '<sup>$1</sup>');
-
-    // 5. Төмөнкү индекстерди сабскриптке которуу: _{...} -> <sub>...</sub>
     str = str.replace(/_\{([^}]+)\}/g, '<sub>$1</sub>');
-
-    // 6. Ашыкча калган LaTeX $ белгилерин жана бэкслештерди тазалоо
     str = str.replace(/\$/g, '');
     str = str.replace(/\\([a-zA-Z]+)/g, '$1');
 
     return str.trim();
 }
 
-// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ТОЛУК ИРЭЭТТҮҮ КӨРСӨТҮҮ
+// ОКУУЧУНУН ЖЕКЕ ЖООПТОРУН ЖАНА КАДАМДАРЫН ТОЛУК КӨРСӨТҮҮ
 function showStudentDetailsModal(resultData, testData) {
     let detailModal = document.getElementById('studentDetailModal');
     if (!detailModal) {
@@ -411,7 +400,58 @@ function showStudentDetailsModal(resultData, testData) {
     const total = resultData.totalQuestions || 0;
     const percent = resultData.percent || 0;
 
-    let reviewItems = resultData.reviewList || resultData.answersDetails || [];
+    let reviewItems = resultData.reviewList || [];
+
+    // Эгер эски жыйынтыкта reviewList жок болсо, бирок testData.questions бар болсо — автоматтык түрдө курабыз
+    if (reviewItems.length === 0 && testData && testData.questions) {
+        const questions = Array.isArray(testData.questions) ? testData.questions : Object.values(testData.questions);
+        const studentAnsObj = resultData.userAnswers || resultData.answers || {};
+
+        questions.forEach((q, idx) => {
+            const qText = cleanAndFormatText(q.text || 'Суроо');
+            const options = q.options || [];
+            let correctDesc = "";
+            let userDesc = "Жооп берилген жок";
+            let isCorrect = false;
+
+            const uAns = studentAnsObj[idx];
+
+            if (Array.isArray(options)) {
+                const correctIndices = [];
+                options.forEach((o, i) => {
+                    if (typeof o === 'object' && o !== null) {
+                        if (o.isCorrect === true || o.correct === true) correctIndices.push(i);
+                    } else if (q.correctAnswer !== undefined) {
+                        if (q.correctAnswer === i || (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(i))) {
+                            correctIndices.push(i);
+                        }
+                    }
+                });
+
+                if (Array.isArray(uAns) && JSON.stringify(correctIndices.sort()) === JSON.stringify(uAns.sort())) {
+                    isCorrect = true;
+                }
+
+                correctDesc = correctIndices.map(i => {
+                    const opt = options[i];
+                    return (typeof opt === 'object' && opt !== null) ? (opt.text || opt.label || '') : opt;
+                }).join(', ');
+
+                userDesc = Array.isArray(uAns) ? uAns.map(i => {
+                    const opt = options[i];
+                    return (typeof opt === 'object' && opt !== null) ? (opt.text || opt.label || '') : opt;
+                }).join(', ') : (uAns !== undefined ? String(uAns) : "Жооп берилген жок");
+            }
+
+            reviewItems.push({
+                questionText: qText,
+                studentAnswer: userDesc,
+                correctAnswer: correctDesc,
+                isCorrect: isCorrect,
+                timeSpent: 0
+            });
+        });
+    }
 
     let itemsHtml = '';
     if (reviewItems.length > 0) {
@@ -430,19 +470,8 @@ function showStudentDetailsModal(resultData, testData) {
                 </div>
             `;
         });
-    } else if (testData && testData.questions) {
-        const questions = Array.isArray(testData.questions) ? testData.questions : Object.values(testData.questions);
-        questions.forEach((q, idx) => {
-            const qText = cleanAndFormatText(q.text || 'Суроо');
-            itemsHtml += `
-                <div style="background:rgba(2,2,8,0.7); border-radius:10px; padding:15px; margin-bottom:12px; border-left:5px solid #334155; word-break:break-word; line-height:1.5;">
-                    <div style="font-weight:bold; color:#fff; margin-bottom:8px; word-break:break-word;">${idx + 1}. ${qText}</div>
-                    <div style="font-size:0.85rem; color:#94a3b8; font-style:italic;">(Бул сакталган мурунку жыйынтык)</div>
-                </div>
-            `;
-        });
     } else {
-        itemsHtml = `<p style="text-align:center; color:#94a3b8; padding:30px;">Бул жыйынтык үчүн деталдуу суроо-жооп маалыматтары сакталган эмес.</p>`;
+        itemsHtml = `<p style="text-align:center; color:#94a3b8; padding:30px;">Бул жыйынтык үчүн суроо маалыматтары табылган жок.</p>`;
     }
 
     detailModal.innerHTML = `
