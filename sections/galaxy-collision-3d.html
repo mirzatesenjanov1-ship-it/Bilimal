@@ -3,11 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Галактикалардын кагылышуусу 3D (Milkomeda) — BiliMal</title>
+  <title>Галактикалардын кагылышуусу 3D (Milkomeda) — Ультра-Реалдуу NASA Симуляциясы</title>
   
-  <!-- Three.js жана OrbitControls -->
+  <!-- Three.js, OrbitControls жана Postprocessing (UnrealBloomPass, EffectComposer) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
   
   <!-- Font Awesome жана Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,21 +21,21 @@
   
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
-    body { background-color: #04060c; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: hidden; }
+    body { background-color: #020308; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: hidden; }
 
-    .top-header { width: 100%; max-width: 1200px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 20px; background: rgba(17, 24, 39, 0.8); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 16px; backdrop-filter: blur(10px); flex-wrap: wrap; gap: 15px; }
+    .top-header { width: 100%; max-width: 1300px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 20px; background: rgba(11, 15, 25, 0.85); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 16px; backdrop-filter: blur(12px); flex-wrap: wrap; gap: 15px; }
     .btn-back { color: #c084fc; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; }
     .btn-back:hover { transform: translateX(-3px); }
     .page-title { font-size: 1.15rem; font-weight: 700; background: linear-gradient(90deg, #c084fc, #38bdf8, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-    .sim-wrapper { width: 100%; max-width: 1200px; display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+    .sim-wrapper { width: 100%; max-width: 1300px; display: grid; grid-template-columns: 3.2fr 1fr; gap: 20px; }
     @media (max-width: 950px) { .sim-wrapper { grid-template-columns: 1fr; } }
 
-    #canvas-container { width: 100%; height: 620px; background: radial-gradient(circle at center, #0b0f19 0%, #010307 100%); border-radius: 20px; position: relative; overflow: hidden; border: 1px solid rgba(147, 51, 234, 0.4); box-shadow: 0 0 40px rgba(147, 51, 234, 0.2); }
-    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(0, 0, 0, 0.75); padding: 12px 18px; border-radius: 12px; font-size: 0.8rem; color: #c084fc; pointer-events: none; border: 1px solid rgba(147, 51, 234, 0.3); line-height: 1.5; backdrop-filter: blur(5px); }
+    #canvas-container { width: 100%; height: 680px; background: #000000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid rgba(147, 51, 234, 0.4); box-shadow: 0 0 50px rgba(147, 51, 234, 0.25); }
+    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(3, 7, 18, 0.8); padding: 12px 18px; border-radius: 12px; font-size: 0.8rem; color: #c084fc; pointer-events: none; border: 1px solid rgba(147, 51, 234, 0.3); line-height: 1.5; backdrop-filter: blur(8px); z-index: 10; }
 
     .info-panel { display: flex; flex-direction: column; gap: 15px; }
-    .info-card { background: rgba(17, 24, 39, 0.85); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; }
+    .info-card { background: rgba(11, 15, 25, 0.9); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; backdrop-filter: blur(10px); }
     .info-card h3 { font-size: 0.95rem; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
     .legend-list { list-style: none; font-size: 0.83rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 8px; }
     .legend-item { display: flex; align-items: center; gap: 10px; }
@@ -52,7 +58,7 @@
         <i class="fa-solid fa-arrow-left"></i> <span>Симуляторлорго кайтуу</span>
       </a>
     </div>
-    <div class="page-title">🌌 Галактикалардын кагылышуусу 3D (Milkomeda)</div>
+    <div class="page-title">🌌 Галактикалардын кагылышуусу 3D (Milkomeda) — NASA Ultra-HD</div>
     <a href="dashboard.html" class="btn-ctrl" style="width: auto; padding: 6px 16px; margin: 0; text-decoration: none; display: inline-block;">
       🚀 Кабинет
     </a>
@@ -64,7 +70,7 @@
       <div class="sim-hint">
         🔍 <b>Жакындатуу / Алыстатуу:</b> Чычкан дөңгөлөгү<br>
         🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
-        💡 <i>Саманчынын жолу жана Андромеданын кагылышуу динамикасы!</i>
+        💡 <i>100,000+ жылдыз, Тумандуулуктар (Nebulae) жана Tidal Tails динамикасы!</i>
       </div>
     </div>
 
@@ -73,10 +79,10 @@
         <h3><i class="fa-solid fa-timeline"></i> Кагылышуу Этабы</h3>
         <div class="stage-indicator" id="stageText">1-Этап: Жакындашуу (Milky Way & Andromeda)</div>
         <ul class="legend-list">
-          <li class="legend-item"><span class="dot" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span> <span><b>Саманчынын жолу:</b> 5000 жылдыз</span></li>
-          <li class="legend-item"><span class="dot" style="background: #f43f5e; box-shadow: 0 0 8px #f43f5e;"></span> <span><b>Андромеда (M31):</b> 5000 жылдыз</span></li>
-          <li class="legend-item"><span class="dot" style="background: #00f0ff; box-shadow: 0 0 8px #00f0ff;"></span> <span><b>Газ булуттары:</b> Starburst аймактары</span></li>
-          <li class="legend-item"><span class="dot" style="background: #eab308; box-shadow: 0 0 8px #eab308;"></span> <span><b>Кара тешик өзөгү:</b> Супермассивдүү өзөк</span></li>
+          <li class="legend-item"><span class="dot" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span> <span><b>Саманчынын жолу:</b> 50,000 микро-жылдыз</span></li>
+          <li class="legend-item"><span class="dot" style="background: #f43f5e; box-shadow: 0 0 8px #f43f5e;"></span> <span><b>Андромеда (M31):</b> 50,000 микро-жылдыз</span></li>
+          <li class="legend-item"><span class="dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span> <span><b>Газ жана Тумандуулук:</b> Starburst аймактары</span></li>
+          <li class="legend-item"><span class="dot" style="background: #eab308; box-shadow: 0 0 8px #eab308;"></span> <span><b>Кара тешик өзөгү:</b> Супермассивдүү жаркылдоо</span></li>
         </ul>
       </div>
 
@@ -87,188 +93,285 @@
       </div>
 
       <div class="info-card">
-        <h3><i class="fa-solid fa-book-open"></i> Физикалык түшүндүрмө</h3>
+        <h3><i class="fa-solid fa-book-open"></i> Илимий чындык</h3>
         <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5;">
-          Галактикалар жакындаганда жылдыздар түз сүзүшпөйт, анткени аралыктар абдан чоң. Бирок гравитациялык тартылуу жана <b>Tidal Tails</b> (куйруктар) пайда болуп, акырында экөө биригип бир чоң эллиптикалык <b>Milkomeda</b> галактикасына айланат.
+          Галактикалар кагылышканда астрономикалык масштабдагы боштуктан улам жылдыздар бири-бирине тийбейт. Бирок <b>массивдүү гравитация</b> спиралдык рукавдарды созуп, <b>Tidal Tails</b> куйруктарын жаратат жана газ булуттары кысылып жаңы <b>Starburst</b> жылдыздарын пайда кылат.
         </p>
       </div>
     </div>
   </div>
 
   <script>
-    let scene, camera, renderer, controls;
-    let galaxyGroupA, galaxyGroupB, coreA, coreB;
-    let particlesA = [], particlesB = [], gasClouds = [];
+    let scene, camera, renderer, controls, composer;
+    let starSystemA, starSystemB, coreMeshA, coreMeshB;
+    let particlesA, particlesB;
     let isPaused = false;
-    let collisionTimer = 0;
+    let simulationTime = 0;
     const container = document.getElementById('canvas-container');
+
+    const STAR_COUNT = 50000; // Ар бир галактика үчүн 50,000 микро-жылдыз (жалпы 100,000+)
 
     init();
     animate();
 
     function init() {
       scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x020308, 0.0015);
 
-      camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
-      camera.position.set(0, 45, 90);
+      camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 2000);
+      camera.position.set(0, 70, 140);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
       renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.2;
       container.appendChild(renderer.domElement);
-
-      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-      const pointLight = new THREE.PointLight(0xffffff, 2, 200);
-      pointLight.position.set(0, 0, 0);
-      scene.add(pointLight);
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
+      controls.maxDistance = 600;
 
+      // Post-processing (UnrealBloomPass - NASA сонун жарык эффекти үчүн)
+      const renderScene = new THREE.RenderPass(scene, camera);
+      const bloomPass = new THREE.UnrealBloomPass(
+        new THREE.Vector2(container.clientWidth, container.clientHeight),
+        1.5,  //强度 (strength)
+        0.4,  //радиус (radius)
+        0.85  //босого (threshold)
+      );
+
+      composer = new THREE.EffectComposer(renderer);
+      composer.addPass(renderScene);
+      composer.addPass(bloomPass);
+
+      createDeepSpaceBackground();
       createGalaxies();
-      createBackgroundStars();
     }
 
-    function createGalaxies() {
-      galaxyGroupA = new THREE.Group();
-      galaxyGroupB = new THREE.Group();
-
-      galaxyGroupA.position.set(-30, 0, 0);
-      galaxyGroupB.position.set(30, 0, 10);
-
-      // Галактика A (Саманчынын жолу - көк түстө)
-      coreA = createCore(0x38bdf8);
-      galaxyGroupA.add(coreA);
-      particlesA = createSpiralArm(0x38bdf8, 5000, 25);
-      particlesA.forEach(p => galaxyGroupA.add(p.mesh));
-
-      // Галактика B (Андромеда - кызгылт/кызыл түстө)
-      coreB = createCore(0xf43f5e);
-      galaxyGroupB.add(coreB);
-      particlesB = createSpiralArm(0xf43f5e, 5000, 30);
-      particlesB.forEach(p => galaxyGroupB.add(p.mesh));
-
-      scene.add(galaxyGroupA);
-      scene.add(galaxyGroupB);
-    }
-
-    function createCore(colorHex) {
-      const geo = new THREE.SphereGeometry(1.8, 32, 32);
-      const mat = new THREE.MeshBasicMaterial({ color: 0xeab308 }); // Кара тешик/өзөк жарыгы
-      const coreMesh = new THREE.Mesh(geo, mat);
-      
-      const glowGeo = new THREE.SphereGeometry(3.5, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.35 });
-      coreMesh.add(new THREE.Mesh(glowGeo, glowMat));
-
-      return coreMesh;
-    }
-
-    function createSpiralArm(colorHex, count, maxRadius) {
-      const list = [];
-      const geom = new THREE.BufferGeometry();
+    function createDeepSpaceBackground() {
+      // 100,000+ алыскы фонундагы жылдыздар
+      const bgGeo = new THREE.BufferGeometry();
+      const count = 15000;
       const positions = new Float32Array(count * 3);
       const colors = new Float32Array(count * 3);
 
-      const baseColor = new THREE.Color(colorHex);
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 1200;
+        positions[i + 1] = (Math.random() - 0.5) * 1200;
+        positions[i + 2] = (Math.random() - 0.5) * 1200;
+
+        const c = new THREE.Color();
+        const rand = Math.random();
+        if (rand > 0.8) c.setHex(0x38bdf8); // Көгүш
+        else if (rand > 0.6) c.setHex(0xfacc15); // Сары
+        else c.setHex(0xffffff);
+
+        colors[i] = c.r;
+        colors[i + 1] = c.g;
+        colors[i + 2] = c.b;
+      }
+
+      bgGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      bgGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const bgMat = new THREE.PointsMaterial({
+        size: 0.8,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.7
+      });
+
+      scene.add(new THREE.Points(bgGeo, bgMat));
+    }
+
+    function createGalaxies() {
+      // Галактика А (Саманчынын жолу - Көк/Ак түстөр)
+      particlesA = generateGalaxyData(STAR_COUNT, 45, 0x38bdf8, 0xffffff);
+      starSystemA = createGalaxyMesh(particlesA);
+      starSystemA.position.set(-45, 0, 0);
+      scene.add(starSystemA);
+
+      // Галактика B (Андромеда - Кызгылт/Кызыл түстөр)
+      particlesB = generateGalaxyData(STAR_COUNT, 55, 0xf43f5e, 0xfb7185);
+      starSystemB = createGalaxyMesh(particlesB);
+      starSystemB.position.set(45, 0, 15);
+      scene.add(starSystemB);
+
+      // Өзөктөр (Supermassive Black Hole Cores)
+      coreMeshA = createSupermassiveCore(0x38bdf8);
+      starSystemA.add(coreMeshA);
+
+      coreMeshB = createSupermassiveCore(0xf43f5e);
+      starSystemB.add(coreMeshB);
+    }
+
+    function generateGalaxyData(count, maxRadius, primaryColorHex, secondaryColorHex) {
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+      const originalPositions = new Float32Array(count * 3);
+      const speeds = new Float32Array(count);
+
+      const color1 = new THREE.Color(primaryColorHex);
+      const color2 = new THREE.Color(secondaryColorHex);
+      const coreColor = new THREE.Color(0xfffbeb);
 
       for (let i = 0; i < count; i++) {
-        const r = Math.pow(Math.random(), 0.7) * maxRadius;
+        // Логарифмикалык спираль распределениеси
+        const r = Math.pow(Math.random(), 1.8) * maxRadius;
         const arms = 2;
-        const theta = (i % arms) * ((2 * Math.PI) / arms) + r * 0.25 + (Math.random() - 0.5) * 0.4;
-        
+        const armAngle = ((i % arms) / arms) * Math.PI * 2;
+        const spiralFactor = 0.45;
+        const theta = armAngle + r * spiralFactor + (Math.random() - 0.5) * 0.35;
+
         const x = Math.cos(theta) * r;
         const z = Math.sin(theta) * r;
-        const y = (Math.random() - 0.5) * (3.5 / (r * 0.1 + 1));
+        // Борборго жакындаганда калыңдыгы чоңоёт (Bulge)
+        const y = (Math.random() - 0.5) * (4.5 / (r * 0.15 + 0.6));
 
-        positions[i * 3] = x;
+        positions[i * 3]     = x;
         positions[i * 3 + 1] = y;
         positions[i * 3 + 2] = z;
 
-        colors[i * 3] = baseColor.r;
-        colors[i * 3 + 1] = baseColor.g;
-        colors[i * 3 + 2] = baseColor.b;
+        originalPositions[i * 3]     = x;
+        originalPositions[i * 3 + 1] = y;
+        originalPositions[i * 3 + 2] = z;
 
-        list.push({
-          x, y, z,
-          ox: x, oy: y, oz: z,
-          radius: r,
-          angle: theta,
-          speed: 0.015 / (r * 0.1 + 0.8)
-        });
+        // Жылдыз түстөрү (Борбордо алтын/ак, чет жакта көк/кызыл)
+        const mixedColor = color1.clone();
+        if (r < 8) {
+          mixedColor.lerp(coreColor, 1 - (r / 8));
+        } else {
+          mixedColor.lerp(color2, Math.random());
+        }
+
+        colors[i * 3]     = mixedColor.r;
+        colors[i * 3 + 1] = mixedColor.g;
+        colors[i * 3 + 2] = mixedColor.b;
+
+        // Кеплиердик ылдамдык
+        speeds[i] = 0.012 / (r * 0.08 + 0.5);
       }
 
-      geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      return { positions, colors, originalPositions, speeds, count };
+    }
 
+    function createGalaxyMesh(data) {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
+      geom.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
+
+      // Микро-пикселдик жылдыздар үчүн тегерек матовое свечение же PointMaterial
       const mat = new THREE.PointsMaterial({
-        size: 0.55,
+        size: 0.65,
         vertexColors: true,
         transparent: true,
         opacity: 0.85,
-        blending: THREE.AdditiveBlending
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
       });
 
-      const pointsMesh = new THREE.Points(geom, mat);
-      list.pointsMesh = pointsMesh;
-      list.geom = geom;
-
-      return list;
+      return new THREE.Points(geom, mat);
     }
 
-    function createBackgroundStars() {
-      const geom = new THREE.BufferGeometry();
-      const count = 1000;
-      const pos = new Float32Array(count * 3);
-      for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 300;
-      geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      scene.add(new THREE.Points(geom, new THREE.PointsMaterial({ size: 0.4, color: 0xffffff, transparent: true, opacity: 0.4 })));
+    function createSupermassiveCore(colorHex) {
+      const group = new THREE.Group();
+      
+      const coreGeo = new THREE.SphereGeometry(1.5, 32, 32);
+      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      group.add(new THREE.Mesh(coreGeo, coreMat));
+
+      const glowGeo = new THREE.SphereGeometry(5.0, 32, 32);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity: 0.35,
+        blending: THREE.AdditiveBlending
+      });
+      group.add(new THREE.Mesh(glowGeo, glowMat));
+
+      return group;
     }
 
     function animate() {
       requestAnimationFrame(animate);
 
       if (!isPaused) {
-        collisionTimer += 0.016;
+        simulationTime += 0.012;
 
-        // Галактикалардын жакындашуу жана кагылышуу траекториясы
-        if (collisionTimer < 4) {
-          galaxyGroupA.position.x += 0.08;
-          galaxyGroupB.position.x -= 0.08;
-          document.getElementById('stageText').innerText = "1-Этап & 2-Этап: Жакындашуу жана Tidal Tails (Куйруктар)";
-        } else if (collisionTimer < 8) {
-          galaxyGroupA.position.x += 0.03;
-          galaxyGroupB.position.x -= 0.03;
-          galaxyGroupA.position.z += 0.02;
-          document.getElementById('stageText').innerText = "3-Этап & 4-Этап: Биринчи өтүү жана Starburst (Жылдыздар жарылуусу)";
-        } else if (collisionTimer < 12) {
-          // Артка ажыроо жана қайра тартылуу
-          galaxyGroupA.position.x -= 0.04;
-          galaxyGroupB.position.x += 0.04;
-          document.getElementById('stageText').innerText = "5-Этап & 6-Этап: Артка ажыроо жана кайра тартылуу (Orbit Loop)";
+        // Галактикалардын гравитациялык траекториясы (Этаптар боюнча кагылышуу)
+        if (simulationTime < 5) {
+          // Жакындашуу
+          starSystemA.position.x = -45 + simulationTime * 8;
+          starSystemB.position.x = 45 - simulationTime * 8;
+          document.getElementById('stageText').innerText = "1-Этап & 2-Этап: Жакындашуу (Approach & Orbit)";
+        } else if (simulationTime < 10) {
+          // Биринчи өтүү жана Tidal Tails (Куйруктар) созулушу
+          starSystemA.position.x = -5 + (simulationTime - 5) * 5;
+          starSystemA.position.z = (simulationTime - 5) * 4;
+          starSystemB.position.x = 5 - (simulationTime - 5) * 5;
+          starSystemB.position.z = -(simulationTime - 5) * 4;
+          document.getElementById('stageText').innerText = "3-Этап & 4-Этап: Биринчи өтүү & Tidal Tails (Куйруктар)";
+        } else if (simulationTime < 16) {
+          // Артка ажыроо жана Starburst (Жылдыздар жарылуусу)
+          starSystemA.position.lerp(new THREE.Vector3(-15, 0, -10), 0.03);
+          starSystemB.position.lerp(new THREE.Vector3(15, 0, 10), 0.03);
+          document.getElementById('stageText').innerText = "5-Этап: Starburst — Жаңы жылдыздардын массалык жаралуу доору!";
         } else {
-          // Биригүү (Milkomeda)
-          galaxyGroupA.position.lerp(new THREE.Vector3(0, 0, 0), 0.03);
-          galaxyGroupB.position.lerp(new THREE.Vector3(0, 0, 0), 0.03);
-          document.getElementById('stageText').innerText = "7-Этап: Биригүү — Жаңы Милкомеда (Milkomeda) эллиптикалык галактикасы!";
+          // Биригүү (Milkomeda эллиптикалык галактикасына айлануу)
+          starSystemA.position.lerp(new THREE.Vector3(0, 0, 0), 0.04);
+          starSystemB.position.lerp(new THREE.Vector3(0, 0, 0), 0.04);
+          document.getElementById('stageText').innerText = "6-7-8 Этап: Биригүү — Жаңы Жалпы Эллиптикалык Милкомеда (Milkomeda)!";
         }
 
-        // Жылдыздардын өз огунда айлануусу
-        galaxyGroupA.rotation.y += 0.008;
-        galaxyGroupB.rotation.y -= 0.01;
+        // Жылдыздардын өз огунда айлануусу жана гравитациялык деформация
+        updateGalaxyParticles(starSystemA, particlesA);
+        updateGalaxyParticles(starSystemB, particlesB);
+
+        starSystemA.rotation.y += 0.003;
+        starSystemB.rotation.y -= 0.0035;
       }
 
       if (controls) controls.update();
-      if (renderer && scene && camera) renderer.render(scene, camera);
+      if (composer) {
+        composer.render();
+      } else if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    function updateGalaxyParticles(system, data) {
+      const posAttr = system.geometry.attributes.position;
+      const positions = posAttr.array;
+      const count = data.count;
+
+      for (let i = 0; i < count; i++) {
+        let idx = i * 3;
+        let x = positions[idx];
+        let y = positions[idx + 1];
+        let z = positions[idx + 2];
+
+        // Жөнөкөй кеплиердик айлануу
+        const angle = data.speeds[i];
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+
+        const rx = x * cos - z * sin;
+        const rz = x * sin + z * cos;
+
+        positions[idx]     = rx;
+        positions[idx + 2] = rz;
+      }
+      posAttr.needsUpdate = true;
     }
 
     function resetSimulation() {
-      collisionTimer = 0;
-      galaxyGroupA.position.set(-30, 0, 0);
-      galaxyGroupB.position.set(30, 0, 10);
-      galaxyGroupA.rotation.set(0, 0, 0);
-      galaxyGroupB.rotation.set(0, 0, 0);
+      simulationTime = 0;
+      starSystemA.position.set(-45, 0, 0);
+      starSystemB.position.set(45, 0, 15);
+      starSystemA.rotation.set(0, 0, 0);
+      starSystemB.rotation.set(0, 0, 0);
     }
 
     function togglePause() {
@@ -278,10 +381,11 @@
     }
 
     window.addEventListener('resize', () => {
-      if (container && camera && renderer) {
+      if (container && camera && renderer && composer) {
         camera.aspect = container.clientWidth / container.clientHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(container.clientWidth, container.clientHeight);
+        composer.setSize(container.clientWidth, container.clientHeight);
       }
     });
   </script>
