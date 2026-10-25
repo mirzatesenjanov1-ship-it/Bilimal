@@ -1,430 +1,1315 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Галактикалардын кагылышуусу 3D (Milkomeda) — Space Engine & NASA Ultra-HD</title>
-  
-  <!-- Three.js жана Postprocessing китепканалары -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
-  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
-    body { background-color: #000103; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: hidden; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Саманчынын жолу менен Андромеданын кагылышуусу — Milkomeda 3D</title>
 
-    .top-header { width: 100%; max-width: 1350px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 15px 20px; background: rgba(7, 11, 18, 0.9); border: 1px solid rgba(147, 51, 234, 0.3); border-radius: 16px; backdrop-filter: blur(12px); flex-wrap: wrap; gap: 15px; }
-    .btn-back { color: #c084fc; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; }
-    .btn-back:hover { transform: translateX(-3px); }
-    .page-title { font-size: 1.15rem; font-weight: 700; background: linear-gradient(90deg, #c084fc, #38bdf8, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
 
-    .sim-wrapper { width: 100%; max-width: 1350px; display: grid; grid-template-columns: 3.2fr 1fr; gap: 20px; }
-    @media (max-width: 950px) { .sim-wrapper { grid-template-columns: 1fr; } }
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    #canvas-container { width: 100%; height: 700px; background: #000000; border-radius: 20px; position: relative; overflow: hidden; border: 1px solid rgba(147, 51, 234, 0.4); box-shadow: 0 0 70px rgba(147, 51, 234, 0.25); }
-    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(2, 6, 16, 0.88); padding: 12px 18px; border-radius: 12px; font-size: 0.8rem; color: #c084fc; pointer-events: none; border: 1px solid rgba(147, 51, 234, 0.3); line-height: 1.5; backdrop-filter: blur(8px); z-index: 10; }
-
-    .info-panel { display: flex; flex-direction: column; gap: 15px; }
-    .info-card { background: rgba(7, 11, 18, 0.92); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; backdrop-filter: blur(10px); }
-    .info-card h3 { font-size: 0.95rem; color: #c084fc; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-    .legend-list { list-style: none; font-size: 0.83rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 8px; }
-    .legend-item { display: flex; align-items: center; gap: 10px; }
-    .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-
-    .btn-ctrl { width: 100%; padding: 11px; border-radius: 10px; border: none; background: linear-gradient(135deg, #9333ea, #7e22ce); color: white; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.3s; margin-top: 8px; }
-    .btn-ctrl:hover { background: linear-gradient(135deg, #a855f7, #9333ea); box-shadow: 0 0 20px rgba(147, 51, 234, 0.5); }
-    .btn-secondary { background: #374151; }
-    .btn-secondary:hover { background: #4b5563; }
-
-    .stage-indicator { background: rgba(147, 51, 234, 0.15); border: 1px solid rgba(147, 51, 234, 0.4); border-radius: 10px; padding: 10px 14px; font-size: 0.85rem; color: #e9d5ff; margin-bottom: 10px; text-align: center; font-weight: 600; }
-  </style>
+<style>
+  :root{--bg:#000104;--panel:rgba(7,11,20,.94);--line:rgba(147,51,234,.38);--accent:#c084fc;--cyan:#38bdf8;--rose:#f43f5e;--gold:#fbbf24;--ok:#34d399}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Poppins',system-ui,sans-serif}
+  html,body{background:var(--bg);color:#e5e7eb}
+  body{min-height:100vh;padding:14px;overflow-x:hidden}
+  .top-header{max-width:1760px;margin:0 auto 14px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:12px 20px;background:var(--panel);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(12px)}
+  .btn-back{color:var(--accent);text-decoration:none;font-weight:600;font-size:.9rem;display:flex;align-items:center;gap:8px;transition:.25s}
+  .btn-back:hover{transform:translateX(-3px)}
+  .page-title{font-size:1.1rem;font-weight:700;background:linear-gradient(90deg,#c084fc,#38bdf8,#f43f5e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .layout{max-width:1760px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 410px;gap:14px}
+  @media(max-width:1150px){.layout{grid-template-columns:1fr}}
+  #viewport{position:relative;height:calc(100vh - 100px);min-height:560px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#000;
+    box-shadow:0 0 70px rgba(147,51,234,.22)}
+  #viewport canvas.main{display:block;width:100%;height:100%}
+  .glass{background:rgba(2,6,16,.72);border:1px solid rgba(147,51,234,.32);border-radius:12px;backdrop-filter:blur(8px)}
+  #hudTop{position:absolute;top:12px;left:12px;padding:10px 16px;pointer-events:none;z-index:5;max-width:min(520px,70%)}
+  #hudTime{font-size:1.5rem;font-weight:700;color:#fff;line-height:1.1}
+  #hudTime small{font-size:.8rem;font-weight:500;color:#a5b4fc;margin-left:6px}
+  #hudStage{font-size:.82rem;color:#e9d5ff;margin-top:4px}
+  #hudNote{position:absolute;bottom:12px;right:12px;padding:8px 12px;font-size:.72rem;color:#c4b5fd;z-index:5;pointer-events:none;line-height:1.5}
+  #scalebar{position:absolute;bottom:14px;left:14px;z-index:5;pointer-events:none;color:#cbd5e1;font-size:.75rem}
+  #scalebar i{display:block;height:6px;border:2px solid #cbd5e1;border-top:none;margin-bottom:3px}
+  .tag{position:absolute;z-index:4;pointer-events:none;white-space:nowrap;font-size:.74rem;font-weight:600;padding:3px 10px;border-radius:999px;
+    background:rgba(0,0,0,.55);border:1px solid currentColor;transform:translate(-50%,-160%)}
+  #loading{position:absolute;inset:0;z-index:20;background:#000104;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    color:#c4b5fd;font-weight:600;transition:opacity .5s}
+  #loading.hide{opacity:0;pointer-events:none}
+  .spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(192,132,252,.25);border-top-color:#c084fc;animation:sp 1s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .side{display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 100px);overflow-y:auto;padding-right:4px}
+  .side::-webkit-scrollbar{width:6px}.side::-webkit-scrollbar-thumb{background:#3b2a5e;border-radius:6px}
+  .card{background:var(--panel);border:1px solid #1f2937;border-radius:16px;padding:14px 16px}
+  .card h3{font-size:.92rem;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .phases{list-style:none;display:flex;flex-direction:column;gap:6px;font-size:.78rem}
+  .phases li{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:8px;color:#6b7280;border:1px solid transparent}
+  .phases li .ic{width:16px;flex:none;text-align:center;margin-top:1px}
+  .phases li.done{color:#9ca3af}.phases li.done .ic{color:var(--ok)}
+  .phases li.cur{color:#fff;background:rgba(147,51,234,.18);border-color:rgba(147,51,234,.5)}
+  .phases li small{display:block;color:#a78bfa;font-size:.7rem}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:rgba(255,255,255,.04);border-radius:10px;padding:8px 10px;font-size:.72rem;color:#9ca3af}
+  .stat b{display:block;font-size:.98rem;color:#fff;font-weight:600}
+  #sepChart{width:100%;height:120px;display:block;margin-top:10px;border-radius:10px;background:rgba(255,255,255,.03)}
+  .btn{padding:9px 10px;border-radius:10px;border:none;background:linear-gradient(135deg,#9333ea,#7e22ce);color:#fff;font-weight:600;font-size:.78rem;cursor:pointer;transition:.25s}
+  .btn:hover{background:linear-gradient(135deg,#a855f7,#9333ea);box-shadow:0 0 18px rgba(147,51,234,.45)}
+  .btn.sec{background:#374151}.btn.sec:hover{background:#4b5563;box-shadow:none}
+  .btn.act{background:linear-gradient(135deg,#0ea5e9,#2563eb)}
+  .btns{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px}
+  .btns.two{grid-template-columns:repeat(2,1fr)}
+  .row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.76rem;color:#cbd5e1}
+  .row label{flex:0 0 112px}
+  .row input[type=range]{flex:1;accent-color:#a855f7}
+  .row span.v{flex:0 0 52px;text-align:right;color:#fff}
+  select{width:100%;background:#0f172a;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:7px;font-size:.78rem}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.76rem;margin-top:8px}
+  .checks label{display:flex;gap:6px;align-items:center;cursor:pointer}
+  .note{font-size:.74rem;color:#94a3b8;line-height:1.55}
+  .note b{color:#e2e8f0}
+  .note p+p{margin-top:8px}
+</style>
 </head>
 <body>
 
-  <!-- Жогорку навигация -->
-  <header class="top-header">
-    <div class="flex items-center gap-4">
-      <a href="physics-3d-models.html" class="btn-back">
-        <i class="fa-solid fa-arrow-left"></i> <span>Симуляторлорго кайтуу</span>
-      </a>
+<header class="top-header">
+  <a href="physics-3d-models.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i><span>Симуляторлорго кайтуу</span></a>
+  <div class="page-title">🌌 Саманчынын жолу ✕ Андромеда — Milkomeda N-Body симуляциясы</div>
+  <a href="dashboard.html" class="btn" style="text-decoration:none">🚀 Кабинет</a>
+</header>
+
+<div class="layout">
+  <div id="viewport">
+    <div id="hudTop" class="glass">
+      <div id="hudTime">0 <small>млн жыл</small></div>
+      <div id="hudStage">—</div>
     </div>
-    <div class="page-title">🌌 Галактикалардын кагылышуусу 3D (Milkomeda) — Space Engine Simulation</div>
-    <a href="dashboard.html" class="btn-ctrl" style="width: auto; padding: 6px 16px; margin: 0; text-decoration: none; display: inline-block;">
-      🚀 Кабинет
-    </a>
-  </header>
-
-  <!-- 3D Симуляция Контейнери -->
-  <div class="sim-wrapper">
-    <div id="canvas-container">
-      <div class="sim-hint">
-        🔍 <b>Жакындатуу / Алыстатуу:</b> Чычкан дөңгөлөгү<br>
-        🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
-        💡 <i>500,000+ фонундагы жылдыздар, алыскы галактикалар жана Stellar Streams!</i>
-      </div>
-    </div>
-
-    <div class="info-panel">
-      <div class="info-card">
-        <h3><i class="fa-solid fa-timeline"></i> Кагылышуу Этабы</h3>
-        <div class="stage-indicator" id="stageText">1-Этап: Жакындашуу (Milky Way & Andromeda)</div>
-        <ul class="legend-list">
-          <li class="legend-item"><span class="dot" style="background: #38bdf8; box-shadow: 0 0 8px #38bdf8;"></span> <span><b>Саманчынын жолу:</b> 100,000 N-Body жылдыз</span></li>
-          <li class="legend-item"><span class="dot" style="background: #f43f5e; box-shadow: 0 0 8px #f43f5e;"></span> <span><b>Андромеда (M31):</b> 100,000 N-Body жылдыз</span></li>
-          <li class="legend-item"><span class="dot" style="background: #a855f7; box-shadow: 0 0 8px #a855f7;"></span> <span><b>Фондук космос:</b> 500,000+ жылдыз & галактикалар</span></li>
-          <li class="legend-item"><span class="dot" style="background: #eab308; box-shadow: 0 0 8px #eab308;"></span> <span><b>Милкомеда галосу:</b> Жаңы эллиптикалык түзүлүш</span></li>
-        </ul>
-      </div>
-
-      <div class="info-card">
-        <h3><i class="fa-solid fa-sliders"></i> Башкаруу панели</h3>
-        <button class="btn-ctrl" onclick="resetSimulation()"><i class="fa-solid fa-rotate"></i> Симуляцияны кайра баштоо</button>
-        <button class="btn-ctrl btn-secondary" onclick="togglePause()"><i class="fa-solid fa-pause" id="pauseIcon"></i> <span id="pauseText">Токтотуу / Улантуу</span></button>
-      </div>
-
-      <div class="info-card">
-        <h3><i class="fa-solid fa-book-open"></i> Космостук чындык</h3>
-        <p style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5;">
-          Бул симуляцияда фондук мейкиндик толугу менен жүз миңдеген алыскы жылдыздар, тумандуулуктар жана галактикалар менен толтурулган. Кагылышуу учурунда жылдыздар ак такка айланбай, жеке абалында калып, <b>Stellar Streams</b> жана кеңейген <b>Milkomeda</b> галосун түзөт.
-        </p>
-      </div>
-    </div>
+    <div id="hudNote" class="glass">🖱 Сол баскыч — айландыруу · Дөңгөлөк — жакындатуу · Оң баскыч — жылдыруу<br>⌨ Space — токтотуу · R — кайра баштоо · 1-6 — камера</div>
+    <div id="scalebar"><i id="sbLine"></i><span id="sbText">10 кпк</span></div>
+    <div class="tag" id="tagA" style="color:#38bdf8">Саманчынын жолу</div>
+    <div class="tag" id="tagB" style="color:#fb7185">Андромеда (M31)</div>
+    <div class="tag" id="tagS" style="color:#fbbf24;transform:translate(-50%,-50%)"></div>
+    <div id="loading"><div class="spin"></div><div id="loadText">Галактикалар түзүлүп жатат…</div></div>
   </div>
 
-  <script>
-    let scene, camera, renderer, controls, composer;
-    let galaxySystemA, galaxySystemB, coreA, coreB;
-    let dataA, dataB;
-    let isPaused = false;
-    let simulationTime = 0;
-    const container = document.getElementById('canvas-container');
+  <aside class="side">
+    <div class="card">
+      <h3><i class="fa-solid fa-timeline"></i> Кагылышуунун этаптары</h3>
+      <ol class="phases" id="phaseList"></ol>
+    </div>
 
-    const PARTICLE_COUNT = 100000; // Ар бир галактика үчүн 100,000 (жалпы 200,000+ жылдыз)
+    <div class="card">
+      <h3><i class="fa-solid fa-gauge-high"></i> Физикалык көрсөткүчтөр</h3>
+      <div class="grid2">
+        <div class="stat">Өзөктөрдүн ортосу<b id="rdSep">—</b></div>
+        <div class="stat">Салыштырма ылдамдык<b id="rdVel">—</b></div>
+        <div class="stat">Симуляция убактысы<b id="rdTime">—</b></div>
+        <div class="stat">Азыркыдан кийин<b id="rdNow">—</b></div>
+        <div class="stat">Чыныгы ылдамдык<b id="rdSpeed">—</b></div>
+        <div class="stat">Жылдыздар / FPS<b id="rdN">—</b></div>
+      </div>
+      <canvas id="sepChart" width="760" height="240"></canvas>
+    </div>
 
-    init();
-    animate();
+    <div class="card">
+      <h3><i class="fa-solid fa-sliders"></i> Башкаруу</h3>
+      <div class="btns">
+        <button class="btn" id="btnPause"><i class="fa-solid fa-pause"></i> Токтотуу</button>
+        <button class="btn sec" id="btnReset"><i class="fa-solid fa-rotate"></i> Кайра</button>
+        <button class="btn sec" id="btnSkip"><i class="fa-solid fa-forward-step"></i> Этап</button>
+      </div>
+      <div class="row"><label>Ылдамдык</label><input type="range" id="rngSpeed" min="0" max="100" value="48"><span class="v" id="vSpeed">—</span></div>
+      <div class="row"><label>Bloom</label><input type="range" id="rngBloom" min="0" max="200" value="85"><span class="v" id="vBloom">0.85</span></div>
+      <div class="row"><label>Экспозиция</label><input type="range" id="rngExp" min="30" max="300" value="110"><span class="v" id="vExp">1.10</span></div>
+      <div class="row"><label>Жылдыз өлчөмү</label><input type="range" id="rngSize" min="40" max="300" value="100"><span class="v" id="vSize">1.00</span></div>
+      <div class="row"><label>Динам. сүрүлүү</label><input type="range" id="rngDF" min="0" max="250" value="100"><span class="v" id="vDF">1.00×</span></div>
+      <div class="row"><label>Сапаты</label>
+        <select id="selQuality">
+          <option value="10000">Төмөн (≈27 миң бөлүкчө)</option>
+          <option value="25000" selected>Орто (≈68 миң)</option>
+          <option value="50000">Жогорку (≈135 миң)</option>
+          <option value="100000">Ультра (≈270 миң)</option>
+        </select></div>
+      <div class="row"><label>Дисктердин багыты</label>
+        <select id="selPreset">
+          <option value="real" selected>Реалдуу (van der Marel 2012)</option>
+          <option value="prograde">Програддык (узун куйруктар)</option>
+          <option value="retro">Ретроград (куйруксуз)</option>
+          <option value="polar">Полярдык</option>
+        </select></div>
+      <div class="checks">
+        <label><input type="checkbox" id="tgGas" checked> Газ жана HII</label>
+        <label><input type="checkbox" id="tgDust" checked> Чаң</label>
+        <label><input type="checkbox" id="tgHalo" checked> Жылдыз гасосу</label>
+        <label><input type="checkbox" id="tgTrails" checked> Орбита издери</label>
+        <label><input type="checkbox" id="tgLabels" checked> Жазуулар</label>
+      </div>
+    </div>
 
-    function init() {
-      scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x000103, 0.0006);
+    <div class="card">
+      <h3><i class="fa-solid fa-video"></i> Камера</h3>
+      <div class="btns">
+        <button class="btn act" id="camCine">1 Кино</button>
+        <button class="btn sec" id="camFree">2 Эркин</button>
+        <button class="btn sec" id="camMW">3 MW</button>
+        <button class="btn sec" id="camM31">4 M31</button>
+        <button class="btn sec" id="camTop">5 Жогортон</button>
+        <button class="btn sec" id="camSide">6 Капталдан</button>
+      </div>
+    </div>
 
-      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 5000);
-      camera.position.set(0, 100, 200);
+    <div class="card">
+      <h3><i class="fa-solid fa-book-open"></i> Илимий негиз</h3>
+      <div class="note">
+        <p><b>Модель:</b> чектелген N-body (Toomre &amp; Toomre, 1972). Ар галактика — Hernquist эбуу + Miyamoto–Nagai диск + кесилген NFW караңгы гало. Жылдыздар, газ жана чаң бөлүкчөлөрү эки галактиканын тартылуу талаасында leapfrog (DKD) методу менен интегралдалат.</p>
+        <p><b>Өзөктөр:</b> бири-бирин тартат жана <b>Chandrasekhar динамикалык сүрүлүүсү</b> аркылуу орбиталык энергиясын жоготот — ошондуктан алар акырында кошулат.</p>
+        <p><b>Убакыт:</b> симуляция аралык 220 кпк болгондон башталат. Андан мурдагы жакындашуу (780 → 220 кпк) өткөрүлүп жиберилген, анткени ал жерде толкун күчтөрү өтө аз. Биринчи өтүү ≈ 4.3 млрд жылдан кийин, кошулуу ≈ 6–7 млрд жылда болот.</p>
+        <p><b>Starburst:</b> жакындаган сайын газ кысылып, жаш көк жылдыздар жарык болот. Кошулгандан кийин газ түгөнүп, галактика кызарат («red and dead»).</p>
+      </div>
+    </div>
+  </aside>
+</div>
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-      renderer.setSize(container.clientWidth, container.clientHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.35;
-      container.appendChild(renderer.domElement);
+<script>
+(function(){
+'use strict';
+var TWO_PI=Math.PI*2;
 
-      controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.maxDistance = 1500;
+//#region PHYSICS
+/* ============================================================
+   БИРДИКТЕР: узундук — кпк, убакыт — Myr, массасы — 1e10 Күн массасы
+   ============================================================ */
+var G=0.044985;            // кпк^3 / (1e10 Msun * Myr^2)
+var KMS=977.79;            // 1 кпк/Myr = 977.79 км/с
+var EPS_STAR2=0.12*0.12;
+var EPS_CEN2=2.5*2.5;
 
-      // UnrealBloomPass пост-обработка (NASA сапаттуу жаркылдоо)
-      const renderScene = new THREE.RenderPass(scene, camera);
-      const bloomPass = new THREE.UnrealBloomPass(
-        new THREE.Vector2(container.clientWidth, container.clientHeight),
-        1.8,  // strength
-        0.4,  // radius
-        0.7   // threshold
-      );
+function erf(x){
+  var s=x<0?-1:1; x=Math.abs(x);
+  var t=1/(1+0.3275911*x);
+  var y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x);
+  return s*y;
+}
+function mFun(x){return Math.log(1+x)-x/(1+x);}
+function smoothstep(a,b,x){var t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);}
 
-      composer = new THREE.EffectComposer(renderer);
-      composer.addPass(renderScene);
-      composer.addPass(bloomPass);
+var GAL_DEFS={
+  mw:{id:'mw',name:'Саманчынын жолу',short:'MW',Mb:1.5,ab:0.7,Md:5.0,ad:3.0,bd:0.3,Mh:80,rs:20,rt:150,lnL:2.5,
+      Rd:2.6,zd:0.30,Rmax:26,bulgeFrac:0.14,nArms:4,pitch:13*Math.PI/180,armAmp:0.7,tint:[0.93,0.97,1.0]},
+  m31:{id:'m31',name:'Андромеда (M31)',short:'M31',Mb:3.0,ab:1.0,Md:7.0,ad:5.5,bd:0.3,Mh:120,rs:25,rt:190,lnL:2.5,
+      Rd:5.3,zd:0.40,Rmax:42,bulgeFrac:0.22,nArms:2,pitch:9*Math.PI/180,armAmp:0.6,tint:[1.0,0.96,0.90]}
+};
 
-      createDeepCosmosBackground();
-      createGalaxies();
+var PRESETS={
+  real:    {A:{theta:1.20,phi:0.5,spin:0.2},B:{theta:1.75,phi:3.4,spin:1.0}},
+  prograde:{A:{theta:0.22,phi:0.3,spin:0.0},B:{theta:0.42,phi:2.5,spin:0.0}},
+  retro:   {A:{theta:0.22,phi:0.3,spin:0.0},B:{theta:Math.PI-0.40,phi:2.5,spin:0.0}},
+  polar:   {A:{theta:0.30,phi:0.3,spin:0.0},B:{theta:Math.PI/2,phi:0.0,spin:0.0}}
+};
+
+function haloM(g,r){var x=Math.min(r,g.rt)/g.rs;return g.Mh*mFun(x)/g.mc;}
+
+function buildLUT(g){
+  var N=8001,dr=0.04;
+  var lut=new Float64Array(N+2);
+  for(var i=0;i<N+2;i++){
+    var r=Math.max(i*dr,0.05);
+    var ab=G*g.Mb/((r+g.ab)*(r+g.ab));
+    var ah=G*haloM(g,r)/(r*r);
+    lut[i]=ab+ah;
+  }
+  g.lut=lut; g.lutInv=1/dr; g.lutMax=(N-1)*dr; g.GMtail=G*(g.Mb+g.Mh);
+}
+
+function makeGalaxy(def){
+  var g={};
+  for(var k in def){ if(Object.prototype.hasOwnProperty.call(def,k)) g[k]=def[k]; }
+  g.GMd=G*g.Md; g.bd2=g.bd*g.bd;
+  g.mc=mFun(g.rt/g.rs);
+  g.rho0=g.Mh/(4*Math.PI*g.rs*g.rs*g.rs*g.mc);
+  g.total=g.Mb+g.Md+g.Mh;
+  g.meff=g.Mb+g.Md+g.Mh*mFun(40/g.rs)/g.mc;
+  g.sigma=0.16;
+  g.nx=0;g.ny=1;g.nz=0;
+  g.u=[1,0,0];g.v=[0,0,1];g.nvec=[0,1,0];
+  buildLUT(g);
+  return g;
+}
+
+function setOrientation(g,theta,phi,spin){
+  var nx=Math.sin(theta)*Math.cos(phi), ny=Math.cos(theta), nz=Math.sin(theta)*Math.sin(phi);
+  var rx=0,ry=0,rz=1;
+  if(Math.abs(nz)>0.9){rx=1;rz=0;}
+  var ux=ny*rz-nz*ry, uy=nz*rx-nx*rz, uz=nx*ry-ny*rx;
+  var l=Math.sqrt(ux*ux+uy*uy+uz*uz); ux/=l;uy/=l;uz/=l;
+  var vx=ny*uz-nz*uy, vy=nz*ux-nx*uz, vz=nx*uy-ny*ux;
+  var c=Math.cos(spin), s=Math.sin(spin);
+  var u2=[c*ux+s*vx, c*uy+s*vy, c*uz+s*vz];
+  var v2=[-s*ux+c*vx, -s*uy+c*vy, -s*uz+c*vz];
+  g.nx=nx;g.ny=ny;g.nz=nz;
+  g.nvec=[nx,ny,nz]; g.u=u2; g.v=v2;
+}
+
+var AX=0,AY=0,AZ=0;
+/* Бир галактиканын (диск + эбуу + гало) тартылуу ылдамдануусу; натыйжа AX,AY,AZ ичине кошулат */
+function addGalAcc(g,dx,dy,dz,eps2){
+  var z=dx*g.nx+dy*g.ny+dz*g.nz;
+  var r2=dx*dx+dy*dy+dz*dz;
+  var R2=r2-z*z; if(R2<0)R2=0;
+  var B=Math.sqrt(z*z+g.bd2);
+  var aB=g.ad+B;
+  var D2=R2+aB*aB;
+  var invD=1/Math.sqrt(D2);
+  var fd=-g.GMd*invD*invD*invD;
+  var zf=z*g.ad/B;
+  AX+=fd*(dx+zf*g.nx); AY+=fd*(dy+zf*g.ny); AZ+=fd*(dz+zf*g.nz);
+  var rs=Math.sqrt(r2+eps2);
+  var ar;
+  if(rs<g.lutMax){
+    var f=rs*g.lutInv; var i=f|0; var t=f-i;
+    ar=g.lut[i]*(1-t)+g.lut[i+1]*t;
+  } else {
+    ar=g.GMtail/(rs*rs);
+  }
+  var fr=-ar/rs;
+  AX+=fr*dx; AY+=fr*dy; AZ+=fr*dz;
+}
+
+var DFX=0,DFY=0,DFZ=0;
+/* Chandrasekhar динамикалык сүрүлүүсү: хост = host галактикасы, спутник = Msat массалуу өзөк */
+function dfAccel(host,Msat,k,dx,dy,dz,vx,vy,vz){
+  var v=Math.sqrt(vx*vx+vy*vy+vz*vz);
+  if(v<1e-6||k<=0){DFX=DFY=DFZ=0;return;}
+  var r=Math.sqrt(dx*dx+dy*dy+dz*dz);
+  var rr=Math.max(r,2.0);
+  var x=rr/host.rs;
+  var rho=host.rho0/(x*(1+x)*(1+x));
+  if(rr>host.rt) rho*=Math.exp(-(rr-host.rt)/(0.15*host.rt));
+  rho+=host.Mb*host.ab/(2*Math.PI*rr*Math.pow(rr+host.ab,3));
+  var X=v/(Math.SQRT2*host.sigma);
+  var F=erf(X)-2*X/Math.sqrt(Math.PI)*Math.exp(-X*X);
+  var c=-k*4*Math.PI*G*G*Msat*rho*host.lnL*F/(v*v*v);
+  DFX=c*vx;DFY=c*vy;DFZ=c*vz;
+}
+
+function makeSystem(gA,gB,dfK){
+  return {gA:gA,gB:gB,dfK:dfK,
+    A:{x:0,y:0,z:0,vx:0,vy:0,vz:0},
+    B:{x:0,y:0,z:0,vx:0,vy:0,vz:0},
+    a:[0,0,0,0,0,0]};
+}
+function centerAccels(S){
+  var A=S.A,B=S.B,a=S.a;
+  var dx=A.x-B.x,dy=A.y-B.y,dz=A.z-B.z;
+  AX=AY=AZ=0; addGalAcc(S.gB,dx,dy,dz,EPS_CEN2);
+  a[0]=AX;a[1]=AY;a[2]=AZ;
+  dfAccel(S.gB,S.gA.meff,S.dfK,dx,dy,dz,A.vx-B.vx,A.vy-B.vy,A.vz-B.vz);
+  a[0]+=DFX;a[1]+=DFY;a[2]+=DFZ;
+  AX=AY=AZ=0; addGalAcc(S.gA,-dx,-dy,-dz,EPS_CEN2);
+  a[3]=AX;a[4]=AY;a[5]=AZ;
+  dfAccel(S.gA,S.gB.meff,S.dfK,-dx,-dy,-dz,B.vx-A.vx,B.vy-A.vy,B.vz-A.vz);
+  a[3]+=DFX;a[4]+=DFY;a[5]+=DFZ;
+}
+function stepCenters(S,dt){
+  var n=Math.max(1,Math.ceil(dt/0.5)),h=dt/n;
+  var A=S.A,B=S.B,a=S.a;
+  for(var k=0;k<n;k++){
+    centerAccels(S);
+    A.vx+=a[0]*h*0.5;A.vy+=a[1]*h*0.5;A.vz+=a[2]*h*0.5;
+    B.vx+=a[3]*h*0.5;B.vy+=a[4]*h*0.5;B.vz+=a[5]*h*0.5;
+    A.x+=A.vx*h;A.y+=A.vy*h;A.z+=A.vz*h;
+    B.x+=B.vx*h;B.y+=B.vy*h;B.z+=B.vz*h;
+    centerAccels(S);
+    A.vx+=a[0]*h*0.5;A.vy+=a[1]*h*0.5;A.vz+=a[2]*h*0.5;
+    B.vx+=a[3]*h*0.5;B.vy+=a[4]*h*0.5;B.vz+=a[5]*h*0.5;
+  }
+}
+function sepOf(S){var dx=S.B.x-S.A.x,dy=S.B.y-S.A.y,dz=S.B.z-S.A.z;return Math.sqrt(dx*dx+dy*dy+dz*dz);}
+function radVel(S){
+  var dx=S.B.x-S.A.x,dy=S.B.y-S.A.y,dz=S.B.z-S.A.z;
+  var dvx=S.B.vx-S.A.vx,dvy=S.B.vy-S.A.vy,dvz=S.B.vz-S.A.vz;
+  var s=Math.sqrt(dx*dx+dy*dy+dz*dz)+1e-9;
+  return (dx*dvx+dy*dvy+dz*dvz)/s;
+}
+function relSpeed(S){
+  var dvx=S.B.vx-S.A.vx,dvy=S.B.vy-S.A.vy,dvz=S.B.vz-S.A.vz;
+  return Math.sqrt(dvx*dvx+dvy*dvy+dvz*dvz);
+}
+/* Орбитанын башталышы: COM системасында, орбита XZ тегиздигинде, L ‖ +Y */
+function initCenters(S,sep0,vr0,vt){
+  var M1=S.gA.total,M2=S.gB.total,Mt=M1+M2;
+  var relVx=-vr0,relVz=-vt;
+  S.A.x=-M2/Mt*sep0;S.A.y=0;S.A.z=0;
+  S.B.x= M1/Mt*sep0;S.B.y=0;S.B.z=0;
+  S.A.vx=-(M2/Mt)*relVx;S.A.vy=0;S.A.vz=-(M2/Mt)*relVz;
+  S.B.vx= (M1/Mt)*relVx;S.B.vy=0;S.B.vz= (M1/Mt)*relVz;
+}
+function firstPericenter(gA,gB,dfK,sep0,vr0,vt){
+  var S=makeSystem(gA,gB,dfK); initCenters(S,sep0,vr0,vt);
+  var t=0,prev=radVel(S);
+  for(var i=0;i<3000;i++){
+    stepCenters(S,1.0); t+=1;
+    var vr=radVel(S);
+    if(prev<0&&vr>=0) return {rp:sepOf(S),tp:t};
+    prev=vr;
+  }
+  return {rp:sepOf(S),tp:t};
+}
+function calibrateOrbit(gA,gB,dfK,sep0,vr0,targetRp){
+  var lo=0.0,hi=0.28;
+  for(var k=0;k<24;k++){
+    var mid=0.5*(lo+hi);
+    var r=firstPericenter(gA,gB,dfK,sep0,vr0,mid);
+    if(r.rp>targetRp) hi=mid; else lo=mid;
+  }
+  var vt=0.5*(lo+hi);
+  var res=firstPericenter(gA,gB,dfK,sep0,vr0,vt);
+  return {vt:vt,rp:res.rp,tp:res.tp};
+}
+
+/* Жылдыз бөлүкчөлөрүн интегралдоо (leapfrog DKD, жеке суб-кадамдар) */
+function integratePop(pop,dt,c0,c1,gA,gB){
+  var pos=pop.pos,vel=pop.vel,n=pop.n;
+  var mAx=(c0.ax+c1.ax)*0.5,mAy=(c0.ay+c1.ay)*0.5,mAz=(c0.az+c1.az)*0.5;
+  var mBx=(c0.bx+c1.bx)*0.5,mBy=(c0.by+c1.by)*0.5,mBz=(c0.bz+c1.bz)*0.5;
+  var dAx=c1.ax-c0.ax,dAy=c1.ay-c0.ay,dAz=c1.az-c0.az;
+  var dBx=c1.bx-c0.bx,dBy=c1.by-c0.by,dBz=c1.bz-c0.bz;
+  for(var i=0;i<n;i++){
+    var i3=i*3;
+    var x=pos[i3],y=pos[i3+1],z=pos[i3+2];
+    var vx=vel[i3],vy=vel[i3+1],vz=vel[i3+2];
+    var ex=x-mAx,ey=y-mAy,ez=z-mAz;
+    var d1=ex*ex+ey*ey+ez*ez;
+    ex=x-mBx;ey=y-mBy;ez=z-mBz;
+    var d2=ex*ex+ey*ey+ez*ez;
+    var dm=d1<d2?d1:d2;
+    var ns=dm<2.25?8:(dm<9?4:(dm<64?2:1));
+    var h=dt/ns;
+    x+=vx*h*0.5;y+=vy*h*0.5;z+=vz*h*0.5;
+    for(var s=0;s<ns;s++){
+      var f=(s+0.5)/ns;
+      var cAx=c0.ax+dAx*f,cAy=c0.ay+dAy*f,cAz=c0.az+dAz*f;
+      var cBx=c0.bx+dBx*f,cBy=c0.by+dBy*f,cBz=c0.bz+dBz*f;
+      AX=0;AY=0;AZ=0;
+      addGalAcc(gA,x-cAx,y-cAy,z-cAz,EPS_STAR2);
+      addGalAcc(gB,x-cBx,y-cBy,z-cBz,EPS_STAR2);
+      vx+=AX*h;vy+=AY*h;vz+=AZ*h;
+      if(s<ns-1){x+=vx*h;y+=vy*h;z+=vz*h;}
     }
+    x+=vx*h*0.5;y+=vy*h*0.5;z+=vz*h*0.5;
+    pos[i3]=x;pos[i3+1]=y;pos[i3+2]=z;
+    vel[i3]=vx;vel[i3+1]=vy;vel[i3+2]=vz;
+  }
+}
 
-    function createDeepCosmosBackground() {
-      // 500,000+ фондук жана тереңдиктеги жылдыздар
-      const bgGeo = new THREE.BufferGeometry();
-      const count = 120000;
-      const positions = new Float32Array(count * 3);
-      const colors = new Float32Array(count * 3);
+/* ---------- Баштапкы шарттар (IC) ---------- */
+function randn(){var u=0;while(u===0)u=Math.random();var v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(TWO_PI*v);}
+function gammaR(scale,rmax){var R;do{R=-scale*Math.log((Math.random()+1e-12)*(Math.random()+1e-12));}while(R>rmax||R<0.05);return R;}
+function sampleArmPhi(g,R,amp,sharp,off){
+  var m=g.nArms,tanp=Math.tan(g.pitch),R0=Math.max(g.Rd*0.5,0.8);
+  var arm=-Math.log(Math.max(R,0.1)/R0)/tanp+off;
+  for(var k=0;k<40;k++){
+    var phi=Math.random()*TWO_PI;
+    var w=(1-amp)+amp*Math.pow(0.5*(1+Math.cos(m*(phi-arm))),sharp);
+    if(Math.random()<w) return phi;
+  }
+  return Math.random()*TWO_PI;
+}
+function vcirc(gl,R){AX=0;AY=0;AZ=0;addGalAcc(gl,R,0,0,EPS_STAR2);return Math.sqrt(Math.max(R*(-AX),1e-6));}
+function atanhSafe(q){q=Math.min(1-2e-4,Math.max(2e-4,q));return 0.5*Math.log((1+q)/(1-q));}
 
-      for (let i = 0; i < count * 3; i += 3) {
-        positions[i] = (Math.random() - 0.5) * 4000;
-        positions[i + 1] = (Math.random() - 0.5) * 4000;
-        positions[i + 2] = (Math.random() - 0.5) * 4000;
-
-        const c = new THREE.Color();
-        const rand = Math.random();
-        if (rand > 0.82) c.setHex(0x38bdf8); // Көгүш
-        else if (rand > 0.65) c.setHex(0xfacc15); // Сары
-        else if (rand > 0.5) c.setHex(0xf43f5e); // Кызыл гигант
-        else c.setHex(0xffffff); // Ак
-
-        colors[i] = c.r;
-        colors[i + 1] = c.g;
-        colors[i + 2] = c.b;
+function genPopulation(g,kind,n){
+  var gl={};
+  for(var k in g){ if(Object.prototype.hasOwnProperty.call(g,k)) gl[k]=g[k]; }
+  gl.nx=0;gl.ny=0;gl.nz=1;
+  var pos=new Float32Array(n*3),vel=new Float32Array(n*3),col=new Float32Array(n*3);
+  var size=new Float32Array(n),young=new Float32Array(n);
+  var NT=400,Rm=g.Rmax*1.3,vcTab=new Float32Array(NT+1);
+  for(var q=0;q<=NT;q++) vcTab[q]=vcirc(gl,Math.max(q/NT*Rm,0.05));
+  function vcAt(R){var f=Math.min(R,Rm)/Rm*NT;var i=Math.min(NT-1,f|0);var t=f-i;return vcTab[i]*(1-t)+vcTab[i+1]*t;}
+  var tint=g.tint;
+  for(var i=0;i<n;i++){
+    var x,y,z,vx,vy,vz,cr,cg,cb,sz,yg=0,br;
+    if(kind==='stars'){
+      if(Math.random()<g.bulgeFrac){
+        var su=Math.sqrt(Math.random());
+        var r=g.ab*su/(1-su+1e-4);
+        if(r>12){i--;continue;}
+        var ct=2*Math.random()-1,st=Math.sqrt(1-ct*ct),ph=TWO_PI*Math.random();
+        x=r*st*Math.cos(ph);y=r*st*Math.sin(ph);z=r*ct*0.75;
+        var vcb=vcirc(gl,Math.max(r,0.3)),sg=0.5*vcb;
+        var Rxy=Math.sqrt(x*x+y*y)+1e-3;
+        vx=sg*randn()-0.2*vcb*y/Rxy;vy=sg*randn()+0.2*vcb*x/Rxy;vz=sg*randn()*0.8;
+        var sp=Math.sqrt(vx*vx+vy*vy+vz*vz),lim=1.9*vcb;
+        if(sp>lim){var sc=lim/sp;vx*=sc;vy*=sc;vz*=sc;}
+        var tb=Math.random();
+        br=0.75+0.5*Math.random();
+        cr=1.0;cg=0.80+0.08*tb;cb=0.55+0.15*tb;
+        sz=0.10+0.10*Math.random();
+      } else {
+        var R=gammaR(g.Rd,g.Rmax);
+        var isY=Math.random()<0.28;
+        var phi=sampleArmPhi(g,R,isY?0.92:0.35,isY?2.2:1.0,0);
+        z=g.zd*(isY?0.6:1.0)*atanhSafe(2*Math.random()-1);
+        var vc=vcAt(R);
+        var sR=0.09*vc*Math.exp(-R/(3*g.Rd))+0.008;
+        var kk=isY?0.3:1.0;
+        var vR=sR*randn()*kk;
+        var vph=Math.max(0.05,vc-0.5*sR*sR/vc)+0.7*sR*randn()*kk;
+        vz=0.5*sR*randn()*kk;
+        var cp=Math.cos(phi),sp2=Math.sin(phi);
+        x=R*cp;y=R*sp2;
+        vx=vR*cp-vph*sp2;vy=vR*sp2+vph*cp;
+        var tt=Math.min(1,R/(g.Rmax*0.8));
+        br=0.75+0.5*Math.random();
+        if(isY){cr=0.62+0.12*Math.random();cg=0.76+0.10*Math.random();cb=1.0;sz=0.18+0.20*Math.random();yg=1;br*=1.15;}
+        else{cr=1.0-0.18*tt;cg=0.88+0.02*tt;cb=0.72+0.22*tt;sz=0.09+0.10*Math.random();}
       }
-
-      bgGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-      bgGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-      const bgMat = new THREE.PointsMaterial({
-        size: 0.5,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.75
-      });
-
-      scene.add(new THREE.Points(bgGeo, bgMat));
-
-      // Алыскы галактикаларды фондо жайгаштыруу
-      const galGeo = new THREE.BufferGeometry();
-      const galCount = 300;
-      const galPos = new Float32Array(galCount * 3);
-      for (let i = 0; i < galCount * 3; i += 3) {
-        galPos[i] = (Math.random() - 0.5) * 3500;
-        galPos[i + 1] = (Math.random() - 0.5) * 3500;
-        galPos[i + 2] = (Math.random() - 0.5) * 3500;
-      }
-      galGeo.setAttribute('position', new THREE.BufferAttribute(galPos, 3));
-      const galMat = new THREE.PointsMaterial({ size: 2.2, color: 0xc084fc, transparent: true, opacity: 0.5 });
-      scene.add(new THREE.Points(galGeo, galMat));
+    } else if(kind==='halo'){
+      var a0=Math.pow(2,-0.5),b0=Math.pow(110,-0.5);
+      var rh=Math.pow(a0-Math.random()*(a0-b0),-2);
+      var ct2=2*Math.random()-1,st2=Math.sqrt(1-ct2*ct2),ph2=TWO_PI*Math.random();
+      x=rh*st2*Math.cos(ph2);y=rh*st2*Math.sin(ph2);z=rh*ct2;
+      var vch=vcirc(gl,Math.max(rh,0.5)),sgh=0.6*vch;
+      vx=sgh*randn();vy=sgh*randn();vz=sgh*randn();
+      var sph=Math.sqrt(vx*vx+vy*vy+vz*vz),limh=1.2*vch;
+      if(sph>limh){var sch=limh/sph;vx*=sch;vy*=sch;vz*=sch;}
+      br=0.45+0.3*Math.random();cr=1.0;cg=0.93;cb=0.82;sz=0.13;
+    } else if(kind==='gas'){
+      var Rg=gammaR(g.Rd*1.15,g.Rmax*0.95);
+      var phg=sampleArmPhi(g,Rg,0.95,2.4,0);
+      z=g.zd*0.18*atanhSafe(2*Math.random()-1);
+      var vcg=vcAt(Rg);
+      var vRg=0.03*vcg*randn(),vpg=vcg*0.995+0.03*vcg*randn();
+      vz=0.015*vcg*randn();
+      var cg1=Math.cos(phg),sg1=Math.sin(phg);
+      x=Rg*cg1;y=Rg*sg1;vx=vRg*cg1-vpg*sg1;vy=vRg*sg1+vpg*cg1;
+      br=0.7+0.6*Math.random();
+      if(Math.random()<0.25){cr=0.6;cg=0.75;cb=1.0;}
+      else{cr=1.0;cg=0.38+0.2*Math.random();cb=0.6+0.2*Math.random();}
+      sz=0.55+0.8*Math.random();yg=1;
+    } else {
+      var Rd2=gammaR(g.Rd*0.9,g.Rmax*0.9);
+      var phd=sampleArmPhi(g,Rd2,0.95,2.2,-0.16);
+      z=g.zd*0.12*atanhSafe(2*Math.random()-1);
+      var vcd=vcAt(Rd2);
+      var cd=Math.cos(phd),sd=Math.sin(phd);
+      x=Rd2*cd;y=Rd2*sd;vx=-vcd*sd;vy=vcd*cd;vz=0;
+      br=0.4+0.6*Math.random();cr=1;cg=1;cb=1;
+      sz=0.7+0.9*Math.random();
     }
+    var i3=i*3;
+    pos[i3]=x;pos[i3+1]=y;pos[i3+2]=z;
+    vel[i3]=vx;vel[i3+1]=vy;vel[i3+2]=vz;
+    if(kind==='dust'){col[i3]=br;col[i3+1]=0;col[i3+2]=0;}
+    else{col[i3]=cr*tint[0]*br;col[i3+1]=cg*tint[1]*br;col[i3+2]=cb*tint[2]*br;}
+    size[i]=sz;young[i]=yg;
+  }
+  return {kind:kind,n:n,pos:pos,vel:vel,col:col,size:size,young:young};
+}
+function placePopulation(pop,g,cx,cy,cz,cvx,cvy,cvz){
+  var u=g.u,v=g.v,w=g.nvec,n=pop.n,p=pop.pos,q=pop.vel;
+  for(var i=0;i<n;i++){
+    var i3=i*3;
+    var lx=p[i3],ly=p[i3+1],lz=p[i3+2];
+    p[i3]  =cx+lx*u[0]+ly*v[0]+lz*w[0];
+    p[i3+1]=cy+lx*u[1]+ly*v[1]+lz*w[1];
+    p[i3+2]=cz+lx*u[2]+ly*v[2]+lz*w[2];
+    var ax=q[i3],ay=q[i3+1],az=q[i3+2];
+    q[i3]  =cvx+ax*u[0]+ay*v[0]+az*w[0];
+    q[i3+1]=cvy+ax*u[1]+ay*v[1]+az*w[1];
+    q[i3+2]=cvz+ax*u[2]+ay*v[2]+az*w[2];
+  }
+}
+//#endregion
 
-    function createGalaxies() {
-      dataA = generateSpiralGalaxyData(PARTICLE_COUNT, 60, 0x38bdf8, 0xffffff);
-      galaxySystemA = createGalaxyMesh(dataA);
-      galaxySystemA.position.set(-70, 0, 0);
-      scene.add(galaxySystemA);
+/* ============================================================
+   СИМУЛЯЦИЯНЫН ПАРАМЕТРДЕРИ
+   ============================================================ */
+var STEP_DT=2;              // Myr
+var SEP0=220, VR0=0.26;     // кпк, кпк/Myr (ичкери)
+var TARGET_RP=26;           // биринчи перицентр (кпк)
+var FIRST_PERI_GYR=4.3;     // биринчи өтүү «азыркыдан кийин»
+var DF_BASE=1.0;
 
-      dataB = generateSpiralGalaxyData(PARTICLE_COUNT, 70, 0xf43f5e, 0xfb7185);
-      galaxySystemB = createGalaxyMesh(dataB);
-      galaxySystemB.position.set(70, 0, 30);
-      scene.add(galaxySystemB);
+var PHASES=[
+  'Жакындашуу — галактикалар бири-бирине тартылууда',
+  'Толкун күчтөрү — дисктер деформацияланат',
+  'Биринчи өтүү — Tidal Tails жана көпүрө',
+  'Апоцентр — кайра тартылуу',
+  'Экинчи өтүү — Starburst (жылдыздардын жарылуусу)',
+  'Өзөктөрдүн кошулушу (Coalescence)',
+  'Milkomeda — кызыл эллиптикалык галактика'
+];
 
-      coreA = createSupermassiveCore(0x38bdf8);
-      galaxySystemA.add(coreA);
+/* ============================================================
+   ОБЩИЙ ЖАБДУУ
+   ============================================================ */
+var $=function(id){return document.getElementById(id);};
+var container=$('viewport');
+var renderer,scene,camera,controls,composer,bloomPass,gradePass;
+var composerDev=false;
+var gA,gB,S,vtCal=0,tpCal=0,nowOffset=0;
+var pops=[],worldGroup,coreSprites={},trails={};
+var sky={},bgGroup;
+var simTime=0,accum=0,paused=false,ready=false,speedMyr=60,quality=25000,presetKey='real',dfMul=1;
+var periCount=0,apoCount=0,prevVr=0,mergedAt=null,mergeTimer=0,phase=0,maxPhase=0;
+var burst=0,gasLeft=1,events=[],histT=[],histS=[],lastHist=-1e9,lastTrail=-1e9;
+var turboTarget=-1;
+var actualSpeed=0,fps=60,frameCount=0,lastChart=0;
+var camMode='cine',cineAz=0.6,cineEl=0.45,cineDist=430,simClock=0;
+var toggles={gas:true,dust:true,halo:true,trails:true,labels:true};
 
-      coreB = createSupermassiveCore(0xf43f5e);
-      galaxySystemB.add(coreB);
+var U={
+  uScale:{value:800},uBurst:{value:0},uAging:{value:0},uYoungScale:{value:1},uSizeMul:{value:1}
+};
+var STAR_VS=[
+'attribute vec3 aColor; attribute float aSize; attribute float aYoung;',
+'uniform float uScale, uBurst, uAging, uYoungScale, uSizeMul, uBright, uMinPx, uMaxPx;',
+'varying vec3 vCol;',
+'void main(){',
+'  vec4 mv=modelViewMatrix*vec4(position,1.0);',
+'  float dist=max(0.5,-mv.z);',
+'  float s=aSize*uSizeMul*uScale/dist;',
+'  s*=1.0+0.3*aYoung*uBurst;',
+'  float px=clamp(s,uMinPx,uMaxPx);',
+'  float ratio=s/px;',
+'  float fl=min(ratio*ratio,4.0);',
+'  vec3 col=mix(aColor,aColor*vec3(1.0,0.80,0.58),uAging*(1.0-aYoung));',
+'  float b=uBright*mix(1.0,uYoungScale,aYoung);',
+'  vCol=col*b*fl;',
+'  gl_PointSize=px;',
+'  gl_Position=projectionMatrix*mv;',
+'}'].join('\n');
+var STAR_FS=[
+'uniform float uHard; varying vec3 vCol;',
+'void main(){',
+'  vec2 c=gl_PointCoord-0.5; float d2=dot(c,c)*4.0;',
+'  if(d2>1.0) discard;',
+'  float f=exp(-d2*uHard);',
+'  gl_FragColor=vec4(vCol*f,1.0);',
+'}'].join('\n');
+var DUST_VS=[
+'attribute vec3 aColor; attribute float aSize; attribute float aYoung;',
+'uniform float uScale, uSizeMul, uMinPx, uMaxPx, uAlpha;',
+'varying float vA;',
+'void main(){',
+'  vec4 mv=modelViewMatrix*vec4(position,1.0);',
+'  float dist=max(0.5,-mv.z);',
+'  float s=aSize*uSizeMul*uScale/dist;',
+'  float px=clamp(s,uMinPx,uMaxPx);',
+'  float ratio=s/px;',
+'  vA=uAlpha*aColor.x*min(ratio*ratio,4.0);',
+'  gl_PointSize=px;',
+'  gl_Position=projectionMatrix*mv;',
+'}'].join('\n');
+var DUST_FS=[
+'varying float vA;',
+'void main(){',
+'  vec2 c=gl_PointCoord-0.5; float d2=dot(c,c)*4.0;',
+'  if(d2>1.0) discard;',
+'  gl_FragColor=vec4(0.03,0.012,0.006,vA*exp(-d2*3.0));',
+'}'].join('\n');
+var SKY_VS=[
+'attribute vec3 aColor; attribute float aSize;',
+'uniform float uPR; varying vec3 vCol;',
+'void main(){ vCol=aColor; gl_PointSize=aSize*uPR; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }'
+].join('\n');
+var SKY_FS=[
+'varying vec3 vCol;',
+'void main(){ vec2 c=gl_PointCoord-0.5; float d2=dot(c,c)*4.0; if(d2>1.0) discard; gl_FragColor=vec4(vCol*exp(-d2*4.0),1.0); }'
+].join('\n');
+var NEB_VS=[
+'varying vec3 vDir;',
+'void main(){ vDir=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }'
+].join('\n');
+var NEB_FS=[
+'varying vec3 vDir; uniform float uInt;',
+'float hash(vec3 p){ p=fract(p*0.3183099+0.1); p*=17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }',
+'float noise(vec3 x){ vec3 i=floor(x); vec3 f=fract(x); f=f*f*(3.0-2.0*f);',
+'  return mix(mix(mix(hash(i+vec3(0,0,0)),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),',
+'             mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z); }',
+'float fbm(vec3 p){ float a=0.5; float s=0.0; for(int i=0;i<5;i++){ s+=a*noise(p); p*=2.03; a*=0.5; } return s; }',
+'void main(){',
+'  vec3 d=normalize(vDir);',
+'  vec3 bn=normalize(vec3(0.3,0.9,0.3));',
+'  float lat=dot(d,bn)/0.30; float band=exp(-lat*lat);',
+'  float n1=fbm(d*3.0+1.7); float n2=fbm(d*7.0-3.1); float n3=fbm(d*5.0+9.0);',
+'  vec3 col=mix(vec3(0.015,0.025,0.07),vec3(0.20,0.11,0.30),n1)*band*0.95;',
+'  col+=vec3(0.28,0.07,0.12)*smoothstep(0.55,0.85,n2)*band*0.55;',
+'  col+=vec3(0.04,0.08,0.20)*smoothstep(0.4,0.8,n2)*0.35;',
+'  col*=1.0-0.75*smoothstep(0.5,0.75,n3)*band;',
+'  col+=vec3(0.003,0.004,0.008);',
+'  gl_FragColor=vec4(col*uInt,1.0);',
+'}'].join('\n');
+var GradeShader={
+  uniforms:{tDiffuse:{value:null},uExposure:{value:1.1},uRes:{value:new THREE.Vector2(1,1)},uTime:{value:0}},
+  vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader:[
+  'uniform sampler2D tDiffuse; uniform float uExposure; uniform vec2 uRes; uniform float uTime; varying vec2 vUv;',
+  'vec3 aces(vec3 x){ float a=2.51; float b=0.03; float c=2.43; float d=0.59; float e=0.14; return clamp((x*(a*x+b))/(x*(c*x+d)+e),0.0,1.0); }',
+  'void main(){',
+  '  vec2 cc=vUv-0.5; float r2=dot(cc,cc);',
+  '  vec2 off=cc*r2*0.010;',
+  '  vec3 col;',
+  '  col.r=texture2D(tDiffuse,vUv+off).r; col.g=texture2D(tDiffuse,vUv).g; col.b=texture2D(tDiffuse,vUv-off).b;',
+  '  col*=uExposure;',
+  '  col=aces(col);',
+  '  col=pow(col,vec3(1.0/2.2));',
+  '  col*=1.0-0.5*smoothstep(0.12,0.62,r2);',
+  '  float n=fract(sin(dot(vUv*uRes+uTime,vec2(12.9898,78.233)))*43758.5453);',
+  '  col+=(n-0.5)*(1.6/255.0);',
+  '  gl_FragColor=vec4(col,1.0);',
+  '}'].join('\n')
+};
+
+/* ============================================================
+   THREE.JS ИНИЦИАЛИЗАЦИЯ
+   ============================================================ */
+function initThree(){
+  var w=container.clientWidth,h=container.clientHeight;
+  renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance',alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(w,h);
+  renderer.setClearColor(0x000000,1);
+  renderer.domElement.className='main';
+  container.insertBefore(renderer.domElement,container.firstChild);
+
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(42,w/h,0.5,30000);
+  camera.position.set(0,200,380);
+
+  controls=new THREE.OrbitControls(camera,renderer.domElement);
+  controls.enableDamping=true;controls.dampingFactor=0.06;
+  controls.minDistance=6;controls.maxDistance=3500;controls.zoomSpeed=1.1;
+  controls.enabled=false;
+
+  renderer.domElement.addEventListener('pointerdown',function(){ if(camMode==='cine') setCamMode('free'); });
+
+  setupComposer();
+  buildBackground();
+  onResize();
+}
+
+function setupComposer(){
+  composer=null;
+  try{
+    var pr=renderer.getPixelRatio();
+    var dw=Math.floor(container.clientWidth*pr),dh=Math.floor(container.clientHeight*pr);
+    var rt=null;
+    var hdr=renderer.capabilities.isWebGL2&&(renderer.extensions.has('EXT_color_buffer_float')||renderer.extensions.has('EXT_color_buffer_half_float'));
+    if(hdr){
+      rt=new THREE.WebGLRenderTarget(dw,dh,{minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat,type:THREE.HalfFloatType});
     }
+    composer=rt?new THREE.EffectComposer(renderer,rt):new THREE.EffectComposer(renderer);
+    composerDev=!!rt;
+    composer.addPass(new THREE.RenderPass(scene,camera));
+    bloomPass=new THREE.UnrealBloomPass(new THREE.Vector2(container.clientWidth,container.clientHeight),0.85,0.7,0.55);
+    composer.addPass(bloomPass);
+    gradePass=new THREE.ShaderPass(GradeShader);
+    composer.addPass(gradePass);
+  }catch(e){
+    console.warn('Composer жараксыз, түз render колдонулат:',e);
+    composer=null;
+  }
+}
 
-    function generateSpiralGalaxyData(count, maxRadius, primaryColorHex, secondaryColorHex) {
-      const positions = new Float32Array(count * 3);
-      const velocities = new Float32Array(count * 3);
-      const colors = new Float32Array(count * 3);
-      const origPositions = new Float32Array(count * 3);
+function makeGlowTexture(inner,outer,size){
+  var c=document.createElement('canvas');c.width=c.height=size||128;
+  var g=c.getContext('2d');var s=c.width/2;
+  var gr=g.createRadialGradient(s,s,0,s,s,s);
+  gr.addColorStop(0,inner);gr.addColorStop(0.18,outer);gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=gr;g.fillRect(0,0,c.width,c.height);
+  return new THREE.CanvasTexture(c);
+}
 
-      const color1 = new THREE.Color(primaryColorHex);
-      const color2 = new THREE.Color(secondaryColorHex);
-      const coreColor = new THREE.Color(0xfffbeb);
-
-      const arms = 4;
-
-      for (let i = 0; i < count; i++) {
-        const r = Math.pow(Math.random(), 1.25) * maxRadius;
-        const armIndex = i % arms;
-        const armOffset = (armIndex / arms) * Math.PI * 2;
-        const theta = armOffset + r * 0.14 + (Math.random() - 0.5) * 0.5;
-
-        const x = Math.cos(theta) * r;
-        const z = Math.sin(theta) * r;
-        const y = (Math.random() - 0.5) * (5.5 / (r * 0.08 + 0.35)) + (Math.random() - 0.5) * 1.5;
-
-        positions[i * 3]     = x;
-        positions[i * 3 + 1] = y;
-        positions[i * 3 + 2] = z;
-
-        origPositions[i * 3]     = x;
-        origPositions[i * 3 + 1] = y;
-        origPositions[i * 3 + 2] = z;
-
-        const speed = Math.sqrt(100 / (r + 3)) + (Math.random() - 0.5) * 0.08;
-        velocities[i * 3]     = -Math.sin(theta) * speed;
-        velocities[i * 3 + 1] = (Math.random() - 0.5) * 0.012;
-        velocities[i * 3 + 2] = Math.cos(theta) * speed;
-
-        const mixedColor = color1.clone();
-        if (r < 8) {
-          mixedColor.lerp(coreColor, 1 - (r / 8));
-        } else {
-          mixedColor.lerp(color2, Math.random() * 0.9);
-        }
-
-        colors[i * 3]     = mixedColor.r;
-        colors[i * 3 + 1] = mixedColor.g;
-        colors[i * 3 + 2] = mixedColor.b;
-      }
-
-      return { positions, origPositions, velocities, colors, count };
+function makeGalaxyTexture(type){
+  var s=128,c=document.createElement('canvas');c.width=c.height=s;
+  var g=c.getContext('2d');
+  g.translate(s/2,s/2);
+  g.rotate(Math.random()*Math.PI);
+  if(type==='ell'){
+    g.scale(1,0.45+Math.random()*0.5);
+    var gr=g.createRadialGradient(0,0,0,0,0,s*0.45);
+    gr.addColorStop(0,'rgba(255,225,180,1)');gr.addColorStop(0.25,'rgba(255,190,130,0.55)');gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr;g.fillRect(-s,-s,s*2,s*2);
+  } else if(type==='edge'){
+    g.scale(1,0.13);
+    var gr2=g.createRadialGradient(0,0,0,0,0,s*0.48);
+    gr2.addColorStop(0,'rgba(255,235,200,1)');gr2.addColorStop(0.3,'rgba(220,210,255,0.6)');gr2.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr2;g.fillRect(-s,-s*4,s*2,s*8);
+    g.setTransform(1,0,0,1,0,0);
+  } else {
+    g.scale(1,0.35+Math.random()*0.6);
+    var gr3=g.createRadialGradient(0,0,0,0,0,s*0.16);
+    gr3.addColorStop(0,'rgba(255,230,190,1)');gr3.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr3;g.fillRect(-s,-s,s*2,s*2);
+    var arms=2+Math.floor(Math.random()*2);
+    for(var i=0;i<1800;i++){
+      var r=Math.pow(Math.random(),0.65)*s*0.46;
+      var arm=i%arms;
+      var th=arm*(TWO_PI/arms)+r*0.055+(Math.random()-0.5)*0.55;
+      var x=Math.cos(th)*r,y=Math.sin(th)*r;
+      var blue=Math.random()<0.6;
+      g.fillStyle=blue?'rgba(170,200,255,'+(0.18+Math.random()*0.35)+')':'rgba(255,225,190,'+(0.15+Math.random()*0.3)+')';
+      g.fillRect(x,y,1.3,1.3);
     }
+  }
+  return new THREE.CanvasTexture(c);
+}
 
-    function createGalaxyMesh(data) {
-      const geom = new THREE.BufferGeometry();
-      geom.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
-      geom.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
-
-      const mat = new THREE.PointsMaterial({
-        size: 0.42,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.85,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-      });
-
-      return new THREE.Points(geom, mat);
+function buildBackground(){
+  bgGroup=new THREE.Group();bgGroup.frustumCulled=false;
+  // тумандуулук
+  var nebMat=new THREE.ShaderMaterial({uniforms:{uInt:{value:1.0}},vertexShader:NEB_VS,fragmentShader:NEB_FS,side:THREE.BackSide,depthWrite:false,depthTest:false});
+  var neb=new THREE.Mesh(new THREE.SphereGeometry(6000,48,32),nebMat);
+  neb.renderOrder=-100;neb.frustumCulled=false;bgGroup.add(neb);
+  // жылдыздар
+  var N=90000,pos=new Float32Array(N*3),col=new Float32Array(N*3),siz=new Float32Array(N);
+  var bn=new THREE.Vector3(0.3,0.9,0.3).normalize();
+  var e1=new THREE.Vector3().crossVectors(bn,new THREE.Vector3(0,0,1)).normalize();
+  var e2=new THREE.Vector3().crossVectors(bn,e1).normalize();
+  var palette=[[0.70,0.80,1.0],[1,1,1],[1.0,0.92,0.75],[1.0,0.72,0.52]];
+  var tmp=new THREE.Vector3();
+  for(var i=0;i<N;i++){
+    if(Math.random()<0.55){
+      var th=Math.random()*TWO_PI,lat=randn()*0.22;
+      tmp.set(0,0,0).addScaledVector(e1,Math.cos(th)).addScaledVector(e2,Math.sin(th)).addScaledVector(bn,lat).normalize();
+    } else {
+      var ct=2*Math.random()-1,st=Math.sqrt(1-ct*ct),ph=Math.random()*TWO_PI;
+      tmp.set(st*Math.cos(ph),ct,st*Math.sin(ph));
     }
+    pos[i*3]=tmp.x*4800;pos[i*3+1]=tmp.y*4800;pos[i*3+2]=tmp.z*4800;
+    var pc=palette[Math.floor(Math.pow(Math.random(),1.5)*4)];
+    var b=0.12+Math.pow(Math.random(),7)*2.4;
+    col[i*3]=pc[0]*b;col[i*3+1]=pc[1]*b;col[i*3+2]=pc[2]*b;
+    siz[i]=1.0+Math.pow(Math.random(),5)*2.2;
+  }
+  var geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aColor',new THREE.BufferAttribute(col,3));
+  geo.setAttribute('aSize',new THREE.BufferAttribute(siz,1));
+  sky.prUniform={value:renderer.getPixelRatio()};
+  var skyMat=new THREE.ShaderMaterial({uniforms:{uPR:sky.prUniform},vertexShader:SKY_VS,fragmentShader:SKY_FS,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending});
+  var pts=new THREE.Points(geo,skyMat);pts.frustumCulled=false;pts.renderOrder=-90;bgGroup.add(pts);
+  // алыскы галактикалар
+  var types=['spiral','spiral','ell','edge','spiral','ell'];
+  var texs=[];
+  for(var t=0;t<types.length;t++) texs.push(makeGalaxyTexture(types[t]));
+  for(var k=0;k<200;k++){
+    var ct2=2*Math.random()-1,st2=Math.sqrt(1-ct2*ct2),ph2=Math.random()*TWO_PI;
+    var mat=new THREE.SpriteMaterial({map:texs[k%texs.length],transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,
+      opacity:0.28+Math.random()*0.5,rotation:Math.random()*TWO_PI,fog:false});
+    var sp=new THREE.Sprite(mat);
+    sp.position.set(st2*Math.cos(ph2)*4400,ct2*4400,st2*Math.sin(ph2)*4400);
+    var sc=26+Math.pow(Math.random(),2)*150;
+    sp.scale.set(sc,sc,1);sp.renderOrder=-80;sp.frustumCulled=false;
+    bgGroup.add(sp);
+  }
+  scene.add(bgGroup);
+}
 
-    function createSupermassiveCore(colorHex) {
-      const group = new THREE.Group();
-      
-      const coreGeo = new THREE.SphereGeometry(1.9, 32, 32);
-      const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      group.add(new THREE.Mesh(coreGeo, coreMat));
+/* ============================================================
+   ДҮНЙӨНҮ КУРУУ
+   ============================================================ */
+function disposePops(){
+  for(var i=0;i<pops.length;i++){
+    var p=pops[i];
+    if(p.points){scene.remove(p.points);p.points.geometry.dispose();p.points.material.dispose();}
+  }
+  pops=[];
+  if(worldGroup){scene.remove(worldGroup);}
+  worldGroup=new THREE.Group();scene.add(worldGroup);
+}
 
-      const glowGeo = new THREE.SphereGeometry(7.0, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: colorHex,
-        transparent: true,
-        opacity: 0.42,
-        blending: THREE.AdditiveBlending
-      });
-      group.add(new THREE.Mesh(glowGeo, glowMat));
+function createPointsFor(pop,galIdx){
+  var geo=new THREE.BufferGeometry();
+  var pa=new THREE.BufferAttribute(pop.pos,3);pa.setUsage(THREE.DynamicDrawUsage);
+  geo.setAttribute('position',pa);
+  geo.setAttribute('aColor',new THREE.BufferAttribute(pop.col,3));
+  geo.setAttribute('aSize',new THREE.BufferAttribute(pop.size,1));
+  geo.setAttribute('aYoung',new THREE.BufferAttribute(pop.young,1));
+  var mat;
+  if(pop.kind==='dust'){
+    mat=new THREE.ShaderMaterial({
+      uniforms:{uScale:U.uScale,uSizeMul:U.uSizeMul,uMinPx:{value:3},uMaxPx:{value:64},uAlpha:{value:0.075}},
+      vertexShader:DUST_VS,fragmentShader:DUST_FS,transparent:true,depthWrite:false,depthTest:false,blending:THREE.NormalBlending});
+  } else {
+    var cfg={stars:{b:0.95,min:1.4,max:40,hard:4.5},halo:{b:0.55,min:1.2,max:20,hard:4.5},gas:{b:0.16,min:3.0,max:64,hard:2.0}}[pop.kind];
+    mat=new THREE.ShaderMaterial({
+      uniforms:{uScale:U.uScale,uBurst:U.uBurst,uAging:U.uAging,uYoungScale:U.uYoungScale,uSizeMul:U.uSizeMul,
+        uBright:{value:cfg.b},uMinPx:{value:cfg.min},uMaxPx:{value:cfg.max},uHard:{value:cfg.hard}},
+      vertexShader:STAR_VS,fragmentShader:STAR_FS,transparent:true,depthWrite:false,depthTest:false,blending:THREE.AdditiveBlending});
+  }
+  var pts=new THREE.Points(geo,mat);
+  pts.frustumCulled=false;
+  pts.renderOrder={stars:1,halo:1,gas:2,dust:3}[pop.kind];
+  worldGroup.add(pts);
+  pop.points=pts;pop.gal=galIdx;
+  pop.pos0=new Float32Array(pop.pos);pop.vel0=new Float32Array(pop.vel);
+  return pop;
+}
 
-      return group;
+function makeCoreObjects(){
+  var tex=makeGlowTexture('rgba(255,248,230,1)','rgba(255,200,140,0.45)',128);
+  var texB=makeGlowTexture('rgba(255,255,255,1)','rgba(255,255,255,0.25)',64);
+  ['A','B'].forEach(function(k){
+    var glow=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,color:k==='A'?0xaad4ff:0xffc8b0,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.55}));
+    glow.renderOrder=4;glow.frustumCulled=false;
+    var bh=new THREE.Sprite(new THREE.SpriteMaterial({map:texB,color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:false,opacity:0.9}));
+    bh.renderOrder=5;bh.frustumCulled=false;
+    worldGroup.add(glow);worldGroup.add(bh);
+    coreSprites[k]={glow:glow,bh:bh};
+  });
+  // орбита издери
+  ['A','B'].forEach(function(k){
+    var max=1600;
+    var arr=new Float32Array(max*3);
+    var geo=new THREE.BufferGeometry();
+    var at=new THREE.BufferAttribute(arr,3);at.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute('position',at);geo.setDrawRange(0,0);
+    var line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:k==='A'?0x38bdf8:0xfb7185,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending,depthTest:false,depthWrite:false}));
+    line.frustumCulled=false;line.renderOrder=6;
+    worldGroup.add(line);
+    trails[k]={arr:arr,n:0,max:max,geo:geo,line:line};
+  });
+}
+
+function buildWorld(){
+  ready=false;
+  disposePops();
+  for(var k in coreSprites) delete coreSprites[k];
+  trails={};
+  gA=makeGalaxy(GAL_DEFS.mw);gB=makeGalaxy(GAL_DEFS.m31);
+  var pr=PRESETS[presetKey]||PRESETS.real;
+  setOrientation(gA,pr.A.theta,pr.A.phi,pr.A.spin);
+  setOrientation(gB,pr.B.theta,pr.B.phi,pr.B.spin);
+  var cal=calibrateOrbit(gA,gB,DF_BASE*dfMul,SEP0,VR0,TARGET_RP);
+  vtCal=cal.vt;tpCal=cal.tp;
+  nowOffset=FIRST_PERI_GYR*1000-tpCal;
+  S=makeSystem(gA,gB,DF_BASE*dfMul);
+  initCenters(S,SEP0,VR0,vtCal);
+
+  var nS=quality;
+  var counts={stars:nS,halo:Math.round(nS*0.10),gas:Math.round(nS*0.16),dust:Math.round(nS*0.10)};
+  var kinds=['stars','halo','gas','dust'];
+  for(var gi=0;gi<2;gi++){
+    var g=gi===0?gA:gB,C=gi===0?S.A:S.B;
+    for(var ki=0;ki<kinds.length;ki++){
+      var kind=kinds[ki];
+      var pop=genPopulation(g,kind,counts[kind]);
+      placePopulation(pop,g,C.x,C.y,C.z,C.vx,C.vy,C.vz);
+      pops.push(createPointsFor(pop,gi));
     }
+  }
+  makeCoreObjects();
+  applyToggles();
+  resetState();
+  ready=true;
+}
 
-    function animate() {
-      requestAnimationFrame(animate);
+function resetState(){
+  simTime=0;accum=0;periCount=0;apoCount=0;mergedAt=null;mergeTimer=0;phase=0;maxPhase=0;
+  burst=0;gasLeft=1;events=[];histT=[];histS=[];lastHist=-1e9;lastTrail=-1e9;turboTarget=-1;
+  prevVr=radVel(S);
+  U.uBurst.value=0;U.uAging.value=0;U.uYoungScale.value=1;
+  for(var k in trails){trails[k].n=0;trails[k].geo.setDrawRange(0,0);}
+  for(var i=0;i<pops.length;i++){
+    var p=pops[i];
+    p.pos.set(p.pos0);p.vel.set(p.vel0);
+    p.points.geometry.attributes.position.needsUpdate=true;
+  }
+  var C=S;
+  var Mt=gA.total+gB.total;
+  cineAz=0.6;cineEl=0.45;cineDist=Math.max(120,Math.min(520,110+1.45*sepOf(S)));
+  void C;void Mt;
+  buildPhaseList();
+  updateReadouts(true);
+}
 
-      if (!isPaused) {
-        simulationTime += 0.012;
+/* ============================================================
+   СИМУЛЯЦИЯ КАДАМЫ
+   ============================================================ */
+var c0={ax:0,ay:0,az:0,bx:0,by:0,bz:0},c1={ax:0,ay:0,az:0,bx:0,by:0,bz:0};
+function simStep(){
+  c0.ax=S.A.x;c0.ay=S.A.y;c0.az=S.A.z;c0.bx=S.B.x;c0.by=S.B.y;c0.bz=S.B.z;
+  stepCenters(S,STEP_DT);
+  c1.ax=S.A.x;c1.ay=S.A.y;c1.az=S.A.z;c1.bx=S.B.x;c1.by=S.B.y;c1.bz=S.B.z;
+  for(var i=0;i<pops.length;i++){
+    if(!pops[i].points.visible) { /* көрүнбөгөн популяциялар да эсептелет (физика бузулбасын) */ }
+    integratePop(pops[i],STEP_DT,c0,c1,gA,gB);
+  }
+  simTime+=STEP_DT;
+  afterStep();
+}
 
-        let posA = galaxySystemA.position;
-        let posB = galaxySystemB.position;
+function afterStep(){
+  var sep=sepOf(S),vr=radVel(S);
+  if(prevVr<0&&vr>=0&&sep<90){
+    periCount++;
+    events.push({type:'peri',t:simTime,sep:sep,n:periCount});
+  } else if(prevVr>0&&vr<=0&&periCount>0&&sep>25){
+    apoCount++;
+    events.push({type:'apo',t:simTime,sep:sep,n:apoCount});
+  }
+  prevVr=vr;
+  if(periCount>=2&&sep<5&&!mergedAt){
+    mergeTimer+=STEP_DT;
+    if(mergeTimer>60){mergedAt=simTime;events.push({type:'merge',t:simTime,sep:sep});}
+  } else if(!mergedAt) mergeTimer=0;
 
-        // 10 этаптык кагылышуу жана Milkomeda формасына келиши
-        if (simulationTime < 5) {
-          posA.x = -70 + simulationTime * 11;
-          posB.x = 70 - simulationTime * 11;
-          document.getElementById('stageText').innerText = "1-2 Этап: Жакындашуу (Approach & Orbit)";
-        } else if (simulationTime < 11) {
-          posA.x = -15 + (simulationTime - 5) * 5.5;
-          posA.z = (simulationTime - 5) * 4.5;
-          posB.x = 15 - (simulationTime - 5) * 5.5;
-          posB.z = -(simulationTime - 5) * 4.5;
-          document.getElementById('stageText').innerText = "3-4 Этап: Биринчи өтүү & Tidal Tails (Куйруктар)";
-        } else if (simulationTime < 17) {
-          posA.lerp(new THREE.Vector3(-22, 0, -14), 0.03);
-          posB.lerp(new THREE.Vector3(22, 0, 14), 0.03);
-          document.getElementById('stageText').innerText = "5-6 Этап: Starburst & Stellar Streams агымдары";
-        } else if (simulationTime < 23) {
-          posA.lerp(new THREE.Vector3(-8, 0, -5), 0.035);
-          posB.lerp(new THREE.Vector3(8, 0, 5), 0.035);
-          document.getElementById('stageText').innerText = "7-8 Этап: Өзөктөрдүн ядролук жакындашуусу";
-        } else {
-          posA.lerp(new THREE.Vector3(0, 0, 0), 0.04);
-          posB.lerp(new THREE.Vector3(0, 0, 0), 0.04);
-          document.getElementById('stageText').innerText = "9-10 Этап: Milkomeda — Жалпы эллиптикалык галактика!";
-        }
+  var ph=0;
+  if(sep<150&&periCount===0) ph=1;
+  if(periCount>=1&&apoCount===0) ph=2;
+  if(apoCount>=1&&periCount===1) ph=3;
+  if(periCount>=2) ph=(sep<12)?5:4;
+  if(mergedAt) ph=6;
+  if(ph>maxPhase){maxPhase=ph;}
+  phase=Math.max(phase,ph);
+  if(ph<phase&&!mergedAt&&ph>=4) phase=ph;
 
-        updateNBodyParticles(galaxySystemA, dataA, posB, posA);
-        updateNBodyParticles(galaxySystemB, dataB, posA, posB);
+  var target=Math.pow(smoothstep(170,24,sep),1.3);
+  var rate=target>burst?0.014:0.0028;
+  burst+=(target-burst)*Math.min(1,rate*STEP_DT);
+  var consume=mergedAt?0.0016:burst*0.00030;
+  gasLeft=Math.max(0.04,gasLeft-consume*STEP_DT);
+  U.uBurst.value=burst*2.4;
+  U.uYoungScale.value=Math.pow(gasLeft,0.8)*(1+burst*1.2);
+  U.uAging.value=Math.min(1,(1-gasLeft)*1.05);
 
-        galaxySystemA.rotation.y += 0.002;
-        galaxySystemB.rotation.y -= 0.0023;
-      }
+  if(simTime-lastHist>=6){lastHist=simTime;histT.push(simTime);histS.push(sep);}
+  if(simTime-lastTrail>=6){
+    lastTrail=simTime;
+    pushTrail(trails.A,S.A);pushTrail(trails.B,S.B);
+  }
+}
+function pushTrail(tr,P){
+  if(!tr||tr.n>=tr.max) return;
+  tr.arr[tr.n*3]=P.x;tr.arr[tr.n*3+1]=P.y;tr.arr[tr.n*3+2]=P.z;
+  tr.n++;
+  tr.geo.setDrawRange(0,tr.n);
+  tr.geo.attributes.position.needsUpdate=true;
+}
 
-      if (controls) controls.update();
-      if (composer) {
-        composer.render();
-      } else if (renderer && scene && camera) {
-        renderer.render(scene, camera);
-      }
+function advanceSim(dtReal){
+  var spd=speedMyr,budget=11;
+  if(turboTarget>=0){spd=700;budget=36;}
+  accum+=spd*dtReal;
+  var t0=performance.now(),steps=0;
+  while(accum>=STEP_DT&&(performance.now()-t0)<budget){
+    simStep();accum-=STEP_DT;steps++;
+    if(turboTarget>=0&&phase>=turboTarget){turboTarget=-1;break;}
+  }
+  if(accum>STEP_DT*3) accum=STEP_DT*3;
+  if(steps>0){
+    for(var i=0;i<pops.length;i++) pops[i].points.geometry.attributes.position.needsUpdate=true;
+  }
+  var inst=steps*STEP_DT/Math.max(dtReal,1e-3);
+  actualSpeed=actualSpeed*0.9+inst*0.1;
+}
+
+/* ============================================================
+   ВИЗУАЛДАШТЫРУУ
+   ============================================================ */
+var tmpV=new THREE.Vector3(),tmpT=new THREE.Vector3(),tmpD=new THREE.Vector3();
+function updateVisuals(dt){
+  // өзөк жаркыроосу
+  var sepNow=sepOf(S);
+  var agn=mergedAt?0.6+0.4*Math.sin(simClock*3):0;
+  var pk=burst;
+  var ck=[['A',S.A],['B',S.B]];
+  for(var i=0;i<2;i++){
+    var cs=coreSprites[ck[i][0]],P=ck[i][1];
+    if(!cs) continue;
+    cs.glow.position.set(P.x,P.y,P.z);cs.bh.position.set(P.x,P.y,P.z);
+    var gs=(i===0?9:12)*(1+0.6*pk)+(mergedAt?6:0);
+    cs.glow.scale.set(gs,gs,1);
+    cs.glow.material.opacity=Math.min(0.9,0.45+0.35*pk+(mergedAt?0.15:0));
+    var bs=1.6+2.4*pk+agn*3;
+    cs.bh.scale.set(bs,bs,1);
+    cs.bh.material.opacity=Math.min(1,0.7+0.3*pk);
+  }
+  void sepNow;
+  // фонду камеранын артынан жылдыруу
+  bgGroup.position.copy(camera.position);
+  // камера
+  updateCamera(dt);
+  // масштаб
+  var h=renderer.domElement.height;
+  U.uScale.value=h/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov*0.5)));
+  if(gradePass){gradePass.uniforms.uTime.value=simClock%97;}
+  updateLabels();
+  updateScaleBar();
+}
+
+function updateCamera(dt){
+  var Mt=gA.total+gB.total;
+  var comX=(gA.total*S.A.x+gB.total*S.B.x)/Mt,comY=(gA.total*S.A.y+gB.total*S.B.y)/Mt,comZ=(gA.total*S.A.z+gB.total*S.B.z)/Mt;
+  if(camMode==='cine'){
+    tmpT.set(comX,comY,comZ);
+    var sep=sepOf(S);
+    var want=Math.max(120,Math.min(520,110+1.45*sep));
+    cineDist+=(want-cineDist)*Math.min(1,dt*0.7);
+    cineAz+=dt*0.05;
+    cineEl=0.42+0.20*Math.sin(simClock*0.06);
+    tmpD.set(Math.cos(cineEl)*Math.cos(cineAz),Math.sin(cineEl),Math.cos(cineEl)*Math.sin(cineAz)).multiplyScalar(cineDist).add(tmpT);
+    camera.position.lerp(tmpD,Math.min(1,dt*1.6));
+    controls.target.lerp(tmpT,Math.min(1,dt*2.5));
+    camera.lookAt(controls.target);
+  } else {
+    if(camMode==='mw') tmpT.set(S.A.x,S.A.y,S.A.z);
+    else if(camMode==='m31') tmpT.set(S.B.x,S.B.y,S.B.z);
+    else tmpT.set(comX,comY,comZ);
+    tmpD.copy(tmpT).sub(controls.target).multiplyScalar(Math.min(1,dt*3));
+    controls.target.add(tmpD);camera.position.add(tmpD);
+    controls.update();
+  }
+}
+
+function setCamMode(m){
+  camMode=m;
+  controls.enabled=(m!=='cine');
+  var map={cine:'camCine',free:'camFree',mw:'camMW',m31:'camM31'};
+  ['camCine','camFree','camMW','camM31','camTop','camSide'].forEach(function(id){
+    var b=$(id);b.className='btn '+((map[m]===id)?'act':'sec');
+  });
+  if(m!=='cine'){
+    camera.lookAt(controls.target);
+  }
+}
+function quickView(kind){
+  var dist=camera.position.distanceTo(controls.target);
+  controls.target.set(0,0,0);
+  if(kind==='top') camera.position.set(0.001,dist,0.001);
+  else camera.position.set(dist,0.001,0.001);
+  setCamMode('free');
+  ['camTop','camSide'].forEach(function(id){$(id).className='btn '+((kind==='top'&&id==='camTop')||(kind==='side'&&id==='camSide')?'act':'sec');});
+  ['camCine','camFree','camMW','camM31'].forEach(function(id){$(id).className='btn sec';});
+  camera.lookAt(controls.target);controls.update();
+}
+
+function updateLabels(){
+  var show=toggles.labels;
+  $('tagA').style.display=show?'':'none';$('tagB').style.display=show?'':'none';$('tagS').style.display=(show&&!mergedAt)?'':'none';
+  if(!show) return;
+  var w=container.clientWidth,h=container.clientHeight;
+  function place(el,x,y,z){
+    tmpV.set(x,y,z).project(camera);
+    if(tmpV.z>1||tmpV.z<-1){el.style.visibility='hidden';return;}
+    el.style.visibility='visible';
+    el.style.left=((tmpV.x*0.5+0.5)*w)+'px';
+    el.style.top=((-tmpV.y*0.5+0.5)*h)+'px';
+  }
+  place($('tagA'),S.A.x,S.A.y,S.A.z);
+  place($('tagB'),S.B.x,S.B.y,S.B.z);
+  place($('tagS'),(S.A.x+S.B.x)/2,(S.A.y+S.B.y)/2,(S.A.z+S.B.z)/2);
+  $('tagS').textContent='↔ '+sepOf(S).toFixed(0)+' кпк';
+  $('tagB').textContent=mergedAt?'Milkomeda':'Андромеда (M31)';
+}
+
+var SB_STEPS=[1,2,5,10,20,50,100,200,500,1000];
+function updateScaleBar(){
+  var dist=camera.position.distanceTo(controls.target);
+  var pxPerKpc=(container.clientHeight/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov*0.5))))/Math.max(dist,1);
+  var pick=SB_STEPS[0];
+  for(var i=0;i<SB_STEPS.length;i++){pick=SB_STEPS[i];if(SB_STEPS[i]*pxPerKpc>=90)break;}
+  $('sbLine').style.width=Math.min(260,pick*pxPerKpc)+'px';
+  $('sbText').textContent=pick+' кпк ≈ '+(pick*3.26).toFixed(pick<5?1:0)+' миң жарык жылы';
+}
+
+function applyToggles(){
+  for(var i=0;i<pops.length;i++){
+    var k=pops[i].kind;
+    pops[i].points.visible=(k==='gas'?toggles.gas:(k==='dust'?toggles.dust:(k==='halo'?toggles.halo:true)));
+  }
+  for(var t in trails){trails[t].line.visible=toggles.trails;}
+}
+
+/* ============================================================
+   UI: ЭТАПТАР, КӨРСӨТКҮЧТӨР, ГРАФИК
+   ============================================================ */
+function fmtMyr(m){return m>=1000?(m/1000).toFixed(2)+' млрд жыл':Math.round(m)+' млн жыл';}
+function buildPhaseList(){
+  var ol=$('phaseList');ol.innerHTML='';
+  for(var i=0;i<PHASES.length;i++){
+    var li=document.createElement('li');li.id='ph'+i;
+    li.innerHTML='<span class="ic"><i class="fa-regular fa-circle"></i></span><span>'+PHASES[i]+'<small></small></span>';
+    ol.appendChild(li);
+  }
+}
+function updatePhaseList(){
+  for(var i=0;i<PHASES.length;i++){
+    var li=$('ph'+i);if(!li) continue;
+    var cls=i<phase?'done':(i===phase?'cur':'');
+    if(li.className!==cls){
+      li.className=cls;
+      li.querySelector('.ic').innerHTML=i<phase?'<i class="fa-solid fa-circle-check"></i>':(i===phase?'<i class="fa-solid fa-circle-dot"></i>':'<i class="fa-regular fa-circle"></i>');
     }
+  }
+  var info={2:'peri',3:'apo',4:'peri',6:'merge'};
+  for(var k=0;k<events.length;k++){
+    var e=events[k],idx=-1;
+    if(e.type==='peri') idx=(e.n===1)?2:4;
+    else if(e.type==='apo'&&e.n===1) idx=3;
+    else if(e.type==='merge') idx=6;
+    if(idx<0) continue;
+    var sm=$('ph'+idx);if(!sm) continue;
+    sm=sm.querySelector('small');
+    sm.textContent='≈ +'+((nowOffset+e.t)/1000).toFixed(2)+' млрд жыл · '+e.sep.toFixed(0)+' кпк';
+  }
+  void info;
+}
+function updateReadouts(force){
+  var sep=sepOf(S);
+  $('rdSep').textContent=sep.toFixed(sep<10?1:0)+' кпк';
+  $('rdVel').textContent=Math.round(relSpeed(S)*KMS)+' км/с';
+  $('rdTime').textContent=fmtMyr(simTime);
+  $('rdNow').textContent='+'+((nowOffset+simTime)/1000).toFixed(2)+' млрд';
+  $('rdSpeed').textContent=Math.round(actualSpeed)+' млн/с';
+  var total=0;for(var i=0;i<pops.length;i++) total+=pops[i].n;
+  $('rdN').textContent=(total>=1000?Math.round(total/1000)+' миң':total)+' / '+Math.round(fps);
+  $('hudTime').innerHTML=((nowOffset+simTime)/1000).toFixed(2)+' <small>млрд жыл келечекте</small>';
+  $('hudStage').textContent=(phase+1)+'-этап: '+PHASES[phase];
+  updatePhaseList();
+  void force;
+}
+function drawChart(){
+  var cv=$('sepChart'),g=cv.getContext('2d');
+  var w=cv.width,h=cv.height;
+  g.clearRect(0,0,w,h);
+  var padL=44,padR=10,padT=12,padB=26;
+  var tMax=Math.max(3000,simTime*1.08),sMax=260;
+  function X(t){return padL+(t/tMax)*(w-padL-padR);}
+  function Y(s){return padT+(1-Math.min(s,sMax)/sMax)*(h-padT-padB);}
+  g.strokeStyle='rgba(255,255,255,.08)';g.fillStyle='#94a3b8';g.font='20px sans-serif';g.lineWidth=1;
+  for(var s=0;s<=250;s+=50){g.beginPath();g.moveTo(padL,Y(s));g.lineTo(w-padR,Y(s));g.stroke();g.fillText(String(s),6,Y(s)+6);}
+  for(var t=0;t<=tMax;t+=1000){g.beginPath();g.moveTo(X(t),padT);g.lineTo(X(t),h-padB);g.stroke();g.fillText((t/1000)+'г',X(t)-8,h-6);}
+  g.strokeStyle='#c084fc';g.lineWidth=3;g.beginPath();
+  for(var i=0;i<histT.length;i++){var px=X(histT[i]),py=Y(histS[i]);if(i===0)g.moveTo(px,py);else g.lineTo(px,py);}
+  g.stroke();
+  for(var k=0;k<events.length;k++){
+    var e=events[k];
+    g.fillStyle=e.type==='peri'?'#f43f5e':(e.type==='apo'?'#38bdf8':'#fbbf24');
+    g.beginPath();g.arc(X(e.t),Y(e.sep),6,0,TWO_PI);g.fill();
+  }
+  g.fillStyle='#fff';g.beginPath();g.arc(X(simTime),Y(sepOf(S)),6,0,TWO_PI);g.fill();
+}
 
-    function updateNBodyParticles(system, data, targetCenterPos, currentCenterPos) {
-      const posAttr = system.geometry.attributes.position;
-      const positions = posAttr.array;
-      const velocities = data.velocities;
-      const count = data.count;
+/* ============================================================
+   ГЛАВНЫЙ ЦИКЛ
+   ============================================================ */
+var lastTs=0;
+function animate(ts){
+  requestAnimationFrame(animate);
+  var dt=Math.min(0.1,Math.max(0.001,(ts-lastTs)/1000));
+  if(!lastTs) dt=0.016;
+  lastTs=ts;
+  fps=fps*0.95+(1/dt)*0.05;
+  if(!ready) return;
+  simClock+=dt;
+  if(!paused) advanceSim(dt);
+  updateVisuals(dt);
+  frameCount++;
+  if(frameCount%6===0){updateReadouts(false);}
+  if(frameCount%20===0){drawChart();}
+  if(composer){
+    try{composer.render(dt);}catch(e){console.warn(e);composer=null;}
+  } else {
+    renderer.render(scene,camera);
+  }
+}
 
-      for (let i = 0; i < count; i++) {
-        let idx = i * 3;
-        let x = positions[idx];
-        let y = positions[idx + 1];
-        let z = positions[idx + 2];
+function onResize(){
+  var w=container.clientWidth,h=container.clientHeight;
+  if(!w||!h) return;
+  camera.aspect=w/h;camera.updateProjectionMatrix();
+  renderer.setSize(w,h);
+  var pr=renderer.getPixelRatio();
+  if(composer){
+    if(composerDev) composer.setSize(Math.floor(w*pr),Math.floor(h*pr)); else composer.setSize(w,h);
+    if(bloomPass) bloomPass.resolution.set(w,h);
+    if(gradePass) gradePass.uniforms.uRes.value.set(w*pr,h*pr);
+  }
+  if(sky.prUniform) sky.prUniform.value=pr;
+}
 
-        const rSq = x*x + y*y + z*z + 40;
-        const accFactor = -0.011 / (rSq * Math.sqrt(rSq));
-        let ax = x * accFactor;
-        let ay = y * accFactor;
-        let az = z * accFactor;
+/* ============================================================
+   БАШКАРУУ ЭЛЕМЕНТТЕРИ
+   ============================================================ */
+function speedFromSlider(v){return 5*Math.pow(80,v/100);}   // 5 … 400 Myr/s
+function showLoading(on,txt){
+  var el=$('loading');
+  if(txt) $('loadText').textContent=txt;
+  if(on) el.classList.remove('hide'); else el.classList.add('hide');
+}
+function rebuild(txt){
+  showLoading(true,txt||'Галактикалар түзүлүп жатат…');
+  ready=false;
+  setTimeout(function(){
+    try{buildWorld();}catch(e){console.error(e);$('loadText').textContent='Ката: '+e.message;return;}
+    showLoading(false);
+  },40);
+}
+function bindUI(){
+  $('btnPause').addEventListener('click',togglePause);
+  $('btnReset').addEventListener('click',function(){if(ready)resetState();});
+  $('btnSkip').addEventListener('click',function(){if(ready&&phase<PHASES.length-1){turboTarget=phase+1;if(paused)togglePause();}});
+  var rs=$('rngSpeed');
+  function updSpeed(){speedMyr=speedFromSlider(+rs.value);$('vSpeed').textContent=Math.round(speedMyr)+' млн/с';}
+  rs.addEventListener('input',updSpeed);updSpeed();
+  $('rngBloom').addEventListener('input',function(){var v=this.value/100;if(bloomPass)bloomPass.strength=v;$('vBloom').textContent=v.toFixed(2);});
+  $('rngExp').addEventListener('input',function(){var v=this.value/100;if(gradePass)gradePass.uniforms.uExposure.value=v;$('vExp').textContent=v.toFixed(2);});
+  $('rngSize').addEventListener('input',function(){var v=this.value/100;U.uSizeMul.value=v;$('vSize').textContent=v.toFixed(2);});
+  $('rngDF').addEventListener('input',function(){dfMul=this.value/100;$('vDF').textContent=dfMul.toFixed(2)+'×';if(S)S.dfK=DF_BASE*dfMul;});
+  $('selQuality').addEventListener('change',function(){quality=+this.value;rebuild('Сапат өзгөрүүдө…');});
+  $('selPreset').addEventListener('change',function(){presetKey=this.value;rebuild('Дисктердин багыты өзгөрүүдө…');});
+  var map={tgGas:'gas',tgDust:'dust',tgHalo:'halo',tgTrails:'trails',tgLabels:'labels'};
+  Object.keys(map).forEach(function(id){
+    $(id).addEventListener('change',function(){toggles[map[id]]=this.checked;applyToggles();});
+  });
+  $('camCine').addEventListener('click',function(){setCamMode('cine');});
+  $('camFree').addEventListener('click',function(){setCamMode('free');});
+  $('camMW').addEventListener('click',function(){setCamMode('mw');});
+  $('camM31').addEventListener('click',function(){setCamMode('m31');});
+  $('camTop').addEventListener('click',function(){quickView('top');});
+  $('camSide').addEventListener('click',function(){quickView('side');});
+  window.addEventListener('keydown',function(e){
+    if(e.target&&(e.target.tagName==='SELECT'||e.target.tagName==='INPUT'&&e.target.type!=='range'&&e.target.type!=='checkbox')) return;
+    if(e.code==='Space'){e.preventDefault();togglePause();}
+    else if(e.key==='r'||e.key==='R'){if(ready)resetState();}
+    else if(e.key==='1')setCamMode('cine');
+    else if(e.key==='2')setCamMode('free');
+    else if(e.key==='3')setCamMode('mw');
+    else if(e.key==='4')setCamMode('m31');
+    else if(e.key==='5')quickView('top');
+    else if(e.key==='6')quickView('side');
+  });
+  window.addEventListener('resize',onResize);
+}
+function togglePause(){
+  paused=!paused;
+  $('btnPause').innerHTML=paused?'<i class="fa-solid fa-play"></i> Улантуу':'<i class="fa-solid fa-pause"></i> Токтотуу';
+}
 
-        const pDistX = targetCenterPos.x - (currentCenterPos.x + x);
-        const pDistY = targetCenterPos.y - (currentCenterPos.y + y);
-        const pDistZ = targetCenterPos.z - (currentCenterPos.z + z);
-        const pDistSq = pDistX*pDistX + pDistY*pDistY + pDistZ*pDistZ + 450;
+/* ============================================================
+   СТАРТ
+   ============================================================ */
+initThree();
+bindUI();
+setCamMode('cine');
+requestAnimationFrame(animate);
+rebuild('Галактикалар түзүлүп жатат…');
 
-        const extAcc = 24000 / (pDistSq * Math.sqrt(pDistSq));
-        ax += pDistX * extAcc;
-        ay += pDistY * extAcc;
-        az += pDistZ * extAcc;
-
-        velocities[idx]     += ax;
-        velocities[idx + 1] += ay;
-        velocities[idx + 2] += az;
-
-        velocities[idx]     *= 0.9985;
-        velocities[idx + 1] *= 0.9985;
-        velocities[idx + 2] *= 0.9985;
-
-        positions[idx]     += velocities[idx];
-        positions[idx + 1] += velocities[idx + 1];
-        positions[idx + 2] += velocities[idx + 2];
-      }
-      posAttr.needsUpdate = true;
-    }
-
-    function resetSimulation() {
-      simulationTime = 0;
-      galaxySystemA.position.set(-70, 0, 0);
-      galaxySystemB.position.set(70, 0, 30);
-      galaxySystemA.rotation.set(0, 0, 0);
-      galaxySystemB.rotation.set(0, 0, 0);
-
-      const posA = galaxySystemA.geometry.attributes.position.array;
-      posA.set(dataA.origPositions);
-      galaxySystemA.geometry.attributes.position.needsUpdate = true;
-
-      const posB = galaxySystemB.geometry.attributes.position.array;
-      posB.set(dataB.origPositions);
-      galaxySystemB.geometry.attributes.position.needsUpdate = true;
-    }
-
-    function togglePause() {
-      isPaused = !isPaused;
-      document.getElementById('pauseIcon').className = isPaused ? "fa-solid fa-play" : "fa-solid fa-pause";
-      document.getElementById('pauseText').innerText = isPaused ? "Улантуу" : "Токтотуу";
-    }
-
-    window.addEventListener('resize', () => {
-      if (container && camera && renderer && composer) {
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        composer.setSize(container.clientWidth, container.clientHeight);
-      }
-    });
-  </script>
+})();
+</script>
 </body>
 </html>
