@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="page-meta-title">Ааламдын жаралуу жана эволюция модели — BiliMal</title>
+  
+  <!-- Three.js жана OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <!-- Font Awesome жана Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background-color: #02040a; color: #ffffff; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+    /* Навигация */
+    .top-header { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: rgba(7, 11, 20, 0.9); border-bottom: 1px solid rgba(56, 189, 248, 0.2); backdrop-filter: blur(10px); z-index: 1000; flex-wrap: wrap; gap: 15px; }
+    .btn-back { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; }
+    .btn-back:hover { transform: translateX(-3px); }
+    .page-title { font-size: 1.15rem; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .lang-select { background: #111827; border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; outline: none; cursor: pointer; }
+
+    /* Негизги макет */
+    .main-layout { display: grid; grid-template-columns: 1fr 360px; height: calc(100vh - 75px); position: relative; }
+    @media (max-width: 1024px) { .main-layout { grid-template-columns: 1fr; height: auto; } }
+
+    /* 3D Сцена Контейнери */
+    #canvas-container { width: 100%; height: 100%; background: #000000; position: relative; overflow: hidden; min-height: 500px; }
+    .sim-hint { position: absolute; top: 15px; left: 15px; background: rgba(3, 7, 18, 0.85); padding: 12px 18px; border-radius: 12px; font-size: 0.8rem; color: #38bdf8; pointer-events: none; border: 1px solid rgba(56, 189, 248, 0.3); line-height: 1.5; backdrop-filter: blur(8px); z-index: 10; }
+
+    /* Оң тараптуу панель (Маалымат жана Эпохалар) */
+    .sidebar { background: rgba(7, 11, 20, 0.95); border-left: 1px solid rgba(56, 189, 248, 0.2); display: flex; flex-direction: column; overflow-y: auto; padding: 20px; gap: 20px; z-index: 10; }
+    .panel-card { background: rgba(17, 24, 39, 0.85); border: 1px solid #1f2937; border-radius: 16px; padding: 18px; }
+    .panel-card h3 { font-size: 0.95rem; color: #38bdf8; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .epoch-select { width: 100%; background: #111827; border: 1px solid rgba(56, 189, 248, 0.4); color: #ffffff; padding: 10px 14px; border-radius: 10px; font-weight: 600; font-size: 0.9rem; outline: none; cursor: pointer; margin-bottom: 10px; }
+    .sci-text { font-size: 0.82rem; color: #cbd5e1; line-height: 1.6; }
+
+    /* Башкаруу панели (Төмөндө) */
+    .controls-bar { position: absolute; bottom: 20px; left: 20px; background: rgba(7, 11, 20, 0.9); padding: 12px 20px; border-radius: 16px; border: 1px solid rgba(56, 189, 248, 0.3); display: flex; align-items: center; gap: 15px; backdrop-filter: blur(10px); z-index: 100; flex-wrap: wrap; }
+    .ctrl-btn { background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; color: white; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.3s; font-size: 0.9rem; }
+    .ctrl-btn:hover { transform: scale(1.08); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    .timeline-slider { flex-grow: 1; accent-color: #38bdf8; cursor: pointer; min-width: 150px; }
+    .time-display { font-size: 0.85rem; font-weight: 600; color: #38bdf8; min-width: 110px; text-align: center; }
+
+    /* Модалдык терезелер */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 4, 10, 0.85); backdrop-filter: blur(8px); z-index: 2000; justify-content: center; align-items: center; }
+    .modal-content { background: #111827; border: 2px solid #38bdf8; border-radius: 20px; padding: 30px; max-width: 600px; width: 90%; color: #fff; max-height: 80vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+  <!-- Жогорку навигация -->
+  <header class="top-header">
+    <div class="flex items-center gap-4">
+      <a href="physics-3d-models.html" class="btn-back">
+        <i class="fa-solid fa-arrow-left"></i> <span id="ui-back">Бөлүмгө кайтуу</span>
+      </a>
+    </div>
+    <div class="page-title" id="ui-maintitle">🌌 Ааламдын Эволюциясы жана Жралуу Модели</div>
+    <div class="flex items-center gap-3">
+      <select id="langSelector" class="lang-select" onchange="changeLanguage(this.value)">
+        <option value="ky">🇰🇬 Кыргызча</option>
+        <option value="ru">🇷🇺 Русский</option>
+        <option value="en">🇬🇧 English</option>
+      </select>
+      <a href="dashboard.html" class="ctrl-btn" style="text-decoration: none; border-radius: 10px; width: auto; padding: 0 15px;" title="Кабинет">
+        🚀 <span id="ui-cabinet">Кабинет</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Негизги макет -->
+  <div class="main-layout">
+    
+    <!-- 3D Сцена -->
+    <div id="canvas-container">
+      <div class="sim-hint" id="ui-hint">
+        🔍 <b>Жакындатуу:</b> Чычкан дөңгөлөгү<br>
+        🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>
+        💡 <i>Ааламдын 13.8 миллиард жылдык эволюциясы!</i>
+      </div>
+
+      <!-- Башкаруу панели (Төмөндө) -->
+      <div class="controls-bar">
+        <button class="ctrl-btn" id="playPauseBtn" onclick="togglePlay()"><i class="fa-solid fa-pause" id="playIcon"></i></button>
+        <button class="ctrl-btn" onclick="resetTimeline()"><i class="fa-solid fa-rotate-left"></i></button>
+        <input type="range" id="timeSlider" class="timeline-slider" min="0" max="16" value="0" step="1" oninput="onSliderChange(this.value)">
+        <div class="time-display" id="timeDisplay">Planck Epoch</div>
+      </div>
+    </div>
+
+    <!-- Оң тараптуу панель -->
+    <div class="sidebar">
+      <div class="panel-card">
+        <h3 id="ui-epoch-title"><i class="fa-solid fa-hourglass-start"></i> Космостук Эпоха</h3>
+        <select id="epochSelector" class="epoch-select" onchange="selectEpoch(parseInt(this.value))">
+          <option value="0">1. Планковдук эпоха (Planck Epoch)</option>
+          <option value="1">2. Инфляция мезгили (Inflation)</option>
+          <option value="2">3. Алгачкы бөлүкчөлөр (Reheating)</option>
+          <option value="3">4. Кварк-глюон плазмасы (QGP)</option>
+          <option value="4">5. Нуклеосинтез (Primordial Nucleosynthesis)</option>
+          <option value="5">6. Радиациялык доор (Radiation Dominated)</option>
+          <option value="6">7. Рекомбинация & CMB (380,000 жыл)</option>
+          <option value="7">8. Караңгы доор (Cosmic Dark Ages)</option>
+          <option value="8">9. Биринчи жылдыздар (First Stars)</option>
+          <option value="9">10. Реионизация (Reionization)</option>
+          <option value="10">11. Галактикалардын кагылышуусу (Mergers)</option>
+          <option value="11">12. Космостук желе (Cosmic Web)</option>
+          <option value="12">13. Жылдыздар эволюциясы (Stellar Evolution)</option>
+          <option value="13">14. Күн системасынын пайда болушу</option>
+          <option value="14">15. Жер жана Жашоо тарыхы</option>
+          <option value="15">16. Бүгүнкү Аалам (Present Universe)</option>
+          <option value="16">17. Келечектеги Аалам (Future Scenarios)</option>
+        </select>
+        <p class="sci-text" id="epochDescription">
+          Ааламдын башталышы: энергиянын чексиз тыгыздыгы жана физикалык мыйзамдардын иштебей калган чеги.
+        </p>
+      </div>
+
+      <div class="panel-card">
+        <h3 id="ui-param-title"><i class="fa-solid fa-chart-line"></i> Космостук Параметрлер</h3>
+        <div class="sci-text" id="cosmicParams" style="display: flex; flex-direction: column; gap: 6px;">
+          <div><b>Космостук жаш:</b> ~0 секунд</div>
+          <div><b>Температура:</b> 10³² К</div>
+          <div><b>Масштаб факторы (a):</b> 0.0001</div>
+          <div><b>Кызыл жылышуу (z):</b> ∞</div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h3 id="ui-source-title"><i class="fa-solid fa-book"></i> Илимий Булактар</h3>
+        <p class="sci-text" id="sourceText">
+          NASA, ESA Planck Mission, WMAP, COBE жана Lambda-CDM стандарттык космологиялык моделине негизделген.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- Космостук Эпохалар Маалымат Базасы ---
+    const epochsData = [
+      {
+        ky: { title: "1. Планковдук эпоха", desc: "Ааламдын жаралышынын эң биринчи мезгили (10⁻⁴³ секундга чейин). Гравитация кванттык механика менен бириккен чексиз тыгыз абал.", age: "~0 с", temp: "10³² K", scale: "10⁻³⁵ м", z: "∞" },
+        ru: { title: "1. Планковская эпоха", desc: "Самый ранний период (до 10⁻⁴³ секунд). Состояние бесконечной плотности, где квантовая гравитация играет главную роль.", age: "~0 с", temp: "10³² K", scale: "10⁻³⁵ м", z: "∞" },
+        en: { title: "1. Planck Epoch", desc: "The earliest period (up to 10⁻⁴³ seconds). Extreme density where quantum gravity unifies.", age: "~0 s", temp: "10³² K", scale: "10⁻³⁵ m", z: "∞" }
+      },
+      {
+        ky: { title: "2. Инфляция мезгили", desc: "Ааламдын секунданын бөлүктөрүндө эбегейсиз ылдамдыкта экспоненциалдык кеңейүүсү (Cosmic Inflation).", age: "10⁻³⁶ - 10⁻³² с", temp: "10²⁸ K", scale: "10⁻²⁸", z: "10⁵⁰" },
+        ru: { title: "2. Эпоха инфляции", desc: "Мгновенное экспоненциальное расширение Вселенной в доли секунды.", age: "10⁻³⁶ - 10⁻³² с", temp: "10²⁸ K", scale: "10⁻²⁸", z: "10⁵⁰" },
+        en: { title: "2. Inflationary Epoch", desc: "Rapid exponential expansion of space in a fraction of a second.", age: "10⁻³⁶ - 10⁻³² s", temp: "10²⁸ K", scale: "10⁻²⁸", z: "10⁵⁰" }
+      },
+      {
+        ky: { title: "3. Алгачкы бөлүкчөлөр", desc: "Инфляциядан кийинки ысык плазма жана энергиянын элементардык бөлүкчөлөргө айлануу процесси (Reheating).", age: "10⁻³² - 10⁻⁶ с", temp: "10¹⁵ K", scale: "10⁻¹⁰", z: "10¹²" },
+        ru: { title: "3. Ранние частицы (Reheating)", desc: "Горячая плазма и рождение элементарных частиц после инфляции.", age: "10⁻³² - 10⁻⁶ с", temp: "10¹⁵ K", scale: "10⁻¹⁰", z: "10¹²" },
+        en: { title: "3. Reheating & Particles", desc: "Hot primordial plasma and conversion of energy into elementary particles.", age: "10⁻³² - 10⁻⁶ s", temp: "10¹⁵ K", scale: "10⁻¹⁰", z: "10¹²" }
+      },
+      {
+        ky: { title: "4. Кварк-глюон плазмасы", desc: "Аалам кыйла муздап, кварктар биригип протон жана нейтрондорду (адрондорду) түзө баштаган доор.", age: "10⁻⁶ - 1 с", temp: "10¹² K", scale: "1 см", z: "10¹⁰" },
+        ru: { title: "4. Кварк-глюонная плазма", desc: "Охлаждение Вселенной и рождение протонов и нейтронов.", age: "10⁻⁶ - 1 с", temp: "10¹² K", scale: "1 см", z: "10¹⁰" },
+        en: { title: "4. Quark-Gluon Plasma", desc: "Cooling universe allows quarks to bind into protons and neutrons.", age: "10⁻⁶ - 1 s", temp: "10¹² K", scale: "1 cm", z: "10¹⁰" }
+      },
+      {
+        ky: { title: "5. Нуклеосинтез", desc: "Алгачкы жеңил ядролордун (суутектин изотоптору, гелий жана литий) пайда болуу процесси.", age: "1 с - 20 мүн", temp: "10⁹ K", scale: "10 км", z: "10⁹" },
+        ru: { title: "5. Нуклеосинтез", desc: "Образование первых легких атомных ядер (водород, гелий, литий).", age: "1 с - 20 мин", temp: "10⁹ K", scale: "10 км", z: "10⁹" },
+        en: { title: "5. Primordial Nucleosynthesis", desc: "Creation of light atomic nuclei (hydrogen, helium, lithium).", age: "1 s - 20 min", temp: "10⁹ K", scale: "10 km", z: "10⁹" }
+      },
+      {
+        ky: { title: "6. Радиациялык доор", desc: "Ааламдын массасынан нурлануу (фотондер) басымдуулук кылган мезгили.", age: "20 мүн - 380,000 жыл", temp: "3000 K", scale: "1 кпк", z: "1100" },
+        ru: { title: "6. Радиационная эпоха", desc: "Период, когда излучение доминирует над веществом во Вселенной.", age: "20 мин - 380,000 лет", temp: "3000 K", scale: "1 кпк", z: "1100" },
+        en: { title: "6. Radiation-Dominated Era", desc: "Epoch where radiation pressure exceeds matter density.", age: "20 min - 380,000 yrs", temp: "3000 K", scale: "1 kpc", z: "1100" }
+      },
+      {
+        ky: { title: "7. Рекомбинация & CMB", desc: "Нейтралдуу атомдор пайда болуп, фотондор эркин таралып, Космостук Микротолкундуу Фо фонду (CMB) жаралды.", age: "380,000 жыл", temp: "2725 K", scale: "1 Мпк", z: "1100" },
+        ru: { title: "7. Рекомбинация и CMB", desc: "Образование нейтральных атомов и реликтовое излучение (CMB).", age: "380,000 лет", temp: "2725 K", scale: "1 Мпк", z: "1100" },
+        en: { title: "7. Recombination & CMB", desc: "Formation of neutral atoms and release of the Cosmic Microwave Background.", age: "380,000 yrs", temp: "2725 K", scale: "1 Mpc", z: "1100" }
+      },
+      {
+        ky: { title: "8. Караңгы доор", desc: "Жылдыздар али жарала элек, тыгыз караңгы материя жана газ булуттары үстөмдүк кылган убакыт.", age: "380 тыс - 400 млн жыл", temp: "60 K", scale: "5 Мпк", z: "30" },
+        ru: { title: "8. Темные века", desc: "Период до рождения первых звезд, эра нейтрального водорода.", age: "380 тыс - 400 млн лет", temp: "60 K", scale: "5 Мпк", z: "30" },
+        en: { title: "8. Cosmic Dark Ages", desc: "Era before the first luminous stars, dominated by dark matter and gas.", age: "380k - 400M yrs", temp: "60 K", scale: "5 Mpc", z: "30" }
+      },
+      {
+        ky: { title: "9. Биринчи жылдыздар", desc: "Гравитациялык коллапс аркылуу алгачкы массивдүү жылдыздардын жана квазарлардын жаралышы (Population III).", age: "~400 млн жыл", temp: "20 K", scale: "20 Мпк", z: "15" },
+        ru: { title: "9. Первые звезды", desc: "Гравитационный коллапс и рождение первых массивных звезд.", age: "~400 млн лет", temp: "20 K", scale: "20 Мпк", z: "15" },
+        en: { title: "9. First Stars & Galaxies", desc: "Gravitational collapse creating the first luminous stellar populations.", age: "~400M yrs", temp: "20 K", scale: "20 Mpc", z: "15" }
+      },
+      {
+        ky: { title: "10. Реионизация", desc: "Алгачкы жылдыздардын УК нурлануусу газды кайрадан иондоштурган доор.", age: "500 млн - 1 млрд жыл", temp: "10 K", scale: "50 Мпк", z: "10" },
+        ru: { title: "10. Реионизация", desc: "УФ-излучение первых звезд ионизирует водород во Вселенной.", age: "500 млн - 1 млрд лет", temp: "10 K", scale: "50 Мпк", z: "10" },
+        en: { title: "10. Reionization", desc: "Ultraviolet radiation from early stars reionizing the intergalactic gas.", age: "500M - 1B yrs", temp: "10 K", scale: "50 Mpc", z: "10" }
+      },
+      {
+        ky: { title: "11. Галактикалардын кагылышуусу", desc: "Галактикалардын биригүү процесси, спиралдык жана эллиптикалык формалардын калыптанышы.", age: "1 - 10 млрд жыл", temp: "5 K", scale: "200 Мпк", z: "2" },
+        ru: { title: "11. Слияние галактик", desc: "Гравитационное взаимодействие и слияние галактик.", age: "1 - 10 млрд лет", temp: "5 K", scale: "200 Мпк", z: "2" },
+        en: { title: "11. Galaxy Mergers", desc: "Gravitational assembly and merging of spiral and elliptical galaxies.", age: "1 - 10B yrs", temp: "5 K", scale: "200 Mpc", z: "2" }
+      },
+      {
+        ky: { title: "12. Космостук желе (Cosmic Web)", desc: "Галактикалык жипчелер (filaments), боштуктар (voids) жана караңгы материянын ири масштабдуу тармагы.", age: "5 - 13 млрд жыл", temp: "3 K", scale: "500 Мпк", z: "1" },
+        ru: { title: "12. Космическая паутина", desc: "Крупномасштабная структура из филаментов и войдов.", age: "5 - 13 млрд лет", temp: "3 K", scale: "500 Мпк", z: "1" },
+        en: { title: "12. Cosmic Web", desc: "Large-scale distribution of matter into filaments, clusters, and voids.", age: "5 - 13B yrs", temp: "3 K", scale: "500 Mpc", z: "1" }
+      },
+      {
+        ky: { title: "13. Жылдыздар эволюциясы", desc: "Суперновлар, нейтрондук жылдыздар, кара тешиктер жана оор элементтердин (алтын, темир) жаралуу процесстери.", age: "2 - 13.8 млрд жыл", temp: "—", scale: "10 пк", z: "0.5" },
+        ru: { title: "13. Эволюция звезд", desc: "Взрывы сверхновых, черные дыры и синтез тяжелых элементов.", age: "2 - 13.8 млрд лет", temp: "—", scale: "10 пк", z: "0.5" },
+        en: { title: "13. Stellar Evolution", desc: "Supernovae, neutron stars, black holes, and heavy element synthesis.", age: "2 - 13.8B yrs", temp: "—", scale: "10 pc", z: "0.5" }
+      },
+      {
+        ky: { title: "14. Күн системасынын пайда болушу", desc: "4.6 миллиард жыл мурун протопланетардык булуттан Күн жана планеталардын аккрециясы.", age: "9.2 млрд жыл", temp: "—", scale: "100 а.е.", z: "0.2" },
+        ru: { title: "14. Рождение Солнечной системы", desc: "Аккреция протопланетного диска 4.6 миллиарда лет назад.", age: "9.2 млрд лет", temp: "—", scale: "100 AU", z: "0.2" },
+        en: { title: "14. Formation of Solar System", desc: "Accretion of the Sun and planets from a protoplanetary disk 4.6B years ago.", age: "9.2B yrs", temp: "—", scale: "100 AU", z: "0.2" }
+      },
+      {
+        ky: { title: "15. Жер жана Жашоо тарыхы", desc: "Алғачкы океандардын, биосферанын, көп клеткалуу организмдердин жана адамзаттын пайда болушу.", age: "13.4 млрд жыл", temp: "288 K", scale: "12,742 км", z: "0" },
+        ru: { title: "15. Земля и История Жизни", desc: "Появление биосферы, эволюция видов и цивилизации.", age: "13.4 млрд лет", temp: "288 K", scale: "12,742 km", z: "0" },
+        en: { title: "15. Earth & History of Life", desc: "Emergence of oceans, biosphere, multicellular organisms, and humanity.", age: "13.4B yrs", temp: "288 K", scale: "12,742 km", z: "0" }
+      },
+      {
+        ky: { title: "16. Бүгүнкү Аалам", desc: "Караңгы энергиянын таасири астында тездетилген кеңейүүдөгү азыркы байкалуучу аалам (13.8 млрд жыл).", age: "13.8 млрд жыл", temp: "2.725 K", scale: "93 млрд св.л.", z: "0" },
+        ru: { title: "16. Современная Вселенная", desc: "Ускоренное расширение под действием темной энергии (13.8 млрд лет).", age: "13.8 млрд лет", temp: "2.725 K", scale: "93 млрд св.л.", z: "0" },
+        en: { title: "16. Present Universe", desc: "Current observable universe undergoing accelerated expansion (13.8B years).", age: "13.8B yrs", temp: "2.725 K", scale: "93B ly", z: "0" }
+      },
+      {
+        ky: { title: "17. Келечектеги Аалам", desc: "Жылдыздардын өчүүсү, кара тешиктердин буулануусу жана 'Чоң Муздак' (Big Freeze) сценарийи.", age: "10¹⁴+ жыл", temp: "0 K", scale: "∞", z: "-1" },
+        ru: { title: "17. Будущее Вселенной", desc: "Угасание звезд, испарение черных дыр и сценарий 'Великого Замерзания'.", age: "10¹⁴+ лет", temp: "0 K", scale: "∞", z: "-1" },
+        en: { title: "17. Future Universe", desc: "Stellar extinction, evaporation of black holes, and the Big Freeze scenario.", age: "10¹⁴+ yrs", temp: "0 K", scale: "∞", z: "-1" }
+      }
+    ];
+
+    // --- Котормолор ---
+    const translations = {
+      ky: {
+        metaTitle: "Ааламдын жаралуу жана эволюция модели — BiliMal",
+        back: "Бөлүмгө кайтуу",
+        mainTitle: "🌌 Ааламдын Эволюциясы жана Жралуу Модели",
+        cabinet: "Кабинет",
+        epochHeader: "Космостук Эпоха",
+        paramHeader: "Космостук Параметрлер",
+        sourceHeader: "Илимий Булактар",
+        hint: "🔍 <b>Жакындатуу:</b> Чычкан дөңгөлөгү<br>🔄 <b>Айландыруу:</b> Сол баскычты басып жылдырыңыз<br>💡 <i>Эпохаларды которуп, Ааламдын тарыхын байкаңыз!</i>",
+        sourceText: "NASA, ESA Planck Mission, WMAP, COBE жана Lambda-CDM стандарттык космологиялык моделине негизделген."
+      },
+      ru: {
+        metaTitle: "Модель рождения и эволюции Вселенной — BiliMal",
+        back: "Назад в раздел",
+        mainTitle: "🌌 Эволюция и Рождение Вселенной",
+        cabinet: "Кабинет",
+        epochHeader: "Космическая Эпоха",
+        paramHeader: "Космические Параметры",
+        sourceHeader: "Научные Источники",
+        hint: "🔍 <b>Зум:</b> Колесико мыши<br>🔄 <b>Вращение:</b> Зажмите левую кнопку мыши<br>💡 <i>Переключайте эпохи и изучайте историю Вселенной!</i>",
+        sourceText: "Основано на данных NASA, ESA Planck Mission, WMAP, COBE и стандартной космологической модели Lambda-CDM."
+      },
+      en: {
+        metaTitle: "Universe Origin and Evolution Model — BiliMal",
+        back: "Back to Section",
+        mainTitle: "🌌 Universe Evolution & Origin Model",
+        cabinet: "Dashboard",
+        epochHeader: "Cosmic Epoch",
+        paramHeader: "Cosmic Parameters",
+        sourceHeader: "Scientific Sources",
+        hint: "🔍 <b>Zoom:</b> Mouse wheel<br>🔄 <b>Rotate:</b> Drag with left mouse button<br>💡 <i>Switch epochs and explore the history of the Universe!</i>",
+        sourceText: "Based on data from NASA, ESA Planck Mission, WMAP, COBE, and the standard Lambda-CDM cosmological model."
+      }
+    };
+
+    let currentLang = 'ky';
+    let currentEpochIndex = 0;
+    let isPlaying = true;
+    let playInterval;
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = translations[lang];
+      document.getElementById('page-meta-title').innerText = t.metaTitle;
+      document.getElementById('ui-back').innerText = t.back;
+      document.getElementById('ui-maintitle').innerText = t.mainTitle;
+      document.getElementById('ui-cabinet').innerText = t.cabinet;
+      document.getElementById('ui-epoch-title').innerHTML = `<i class="fa-solid fa-hourglass-start"></i> ${t.epochHeader}`;
+      document.getElementById('ui-param-title').innerHTML = `<i class="fa-solid fa-chart-line"></i> ${t.paramHeader}`;
+      document.getElementById('ui-source-title').innerHTML = `<i class="fa-solid fa-book"></i> ${t.sourceHeader}`;
+      document.getElementById('ui-hint').innerHTML = t.hint;
+      document.getElementById('sourceText').innerText = t.sourceText;
+      updateEpochUI();
+    }
+
+    function updateEpochUI() {
+      const data = epochsData[currentEpochIndex][currentLang];
+      document.getElementById('epochDescription').innerText = data.desc;
+      document.getElementById('epochSelector').value = currentEpochIndex;
+      document.getElementById('timeSlider').value = currentEpochIndex;
+      document.getElementById('timeDisplay').innerText = data.title.split('.')[1] || data.title;
+      
+      document.getElementById('cosmicParams').innerHTML = `
+        <div><b>Космостук жаш:</b> ${data.age}</div>
+        <div><b>Температура:</b> ${data.temp}</div>
+        <div><b>Масштаб факторы (a):</b> ${data.scale}</div>
+        <div><b>Кызыл жылышуу (z):</b> ${data.z}</div>
+      `;
+      updateSceneForEpoch(currentEpochIndex);
+    }
+
+    function selectEpoch(index) {
+      currentEpochIndex = index;
+      updateEpochUI();
+    }
+
+    function onSliderChange(val) {
+      currentEpochIndex = parseInt(val);
+      updateEpochUI();
+    }
+
+    function togglePlay() {
+      isPlaying = !isPlaying;
+      const icon = document.getElementById('playIcon');
+      if (isPlaying) {
+        icon.className = "fa-solid fa-pause";
+        startAutoPlay();
+      } else {
+        icon.className = "fa-solid fa-play";
+        clearInterval(playInterval);
+      }
+    }
+
+    function startAutoPlay() {
+      clearInterval(playInterval);
+      playInterval = setInterval(() => {
+        if (isPlaying) {
+          currentEpochIndex = (currentEpochIndex + 1) % epochsData.length;
+          updateEpochUI();
+        }
+      }, 5000);
+    }
+
+    function resetTimeline() {
+      currentEpochIndex = 0;
+      updateEpochUI();
+    }
+
+    // --- Three.js 3D Сцена ---
+    let scene, camera, renderer, controls;
+    let particleSystem, coreMesh;
+    const container = document.getElementById('canvas-container');
+
+    function initThree() {
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x02040a, 0.001);
+
+      camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 3000);
+      camera.position.set(0, 40, 100);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      // Жарыктар
+      scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const pointLight = new THREE.PointLight(0x38bdf8, 2, 200);
+      pointLight.position.set(0, 0, 0);
+      scene.add(pointLight);
+
+      createCosmicParticles();
+      animate();
+      startAutoPlay();
+    }
+
+    function createCosmicParticles() {
+      const count = 50000;
+      const geometry = new THREE.BufferGeometry();
+      const positions = new Float32Array(count * 3);
+      const colors = new Float32Array(count * 3);
+
+      for (let i = 0; i < count * 3; i += 3) {
+        positions[i] = (Math.random() - 0.5) * 150;
+        positions[i + 1] = (Math.random() - 0.5) * 150;
+        positions[i + 2] = (Math.random() - 0.5) * 150;
+
+        colors[i] = 0.2 + Math.random() * 0.8;
+        colors[i + 1] = 0.4 + Math.random() * 0.6;
+        colors[i + 2] = 1.0;
+      }
+
+      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      const material = new THREE.PointsMaterial({
+        size: 0.6,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+
+    particleSystem = new THREE.Points(geometry, material);
+    scene.add(particleSystem);
+    }
+
+    function updateSceneForEpoch(epochIndex) {
+      if (!particleSystem) return;
+      const positions = particleSystem.geometry.attributes.position.array;
+      const count = positions.length / 3;
+
+      let spread = 15 + epochIndex * 12;
+      if (epochIndex === 0) spread = 3; // Planck singularity
+      if (epochIndex === 1) spread = 80; // Inflation
+
+      for (let i = 0; i < count * 3; i += 3) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = u * 2.0 * Math.PI;
+        const phi = Math.acos(2.0 * v - 1.0);
+        let r = Math.cbrt(Math.random()) * spread;
+
+        if (epochIndex >= 8 && epochIndex <= 10) {
+          // Галактикалык диск формасы
+          positions[i] = (Math.random() - 0.5) * spread * 1.5;
+          positions[i + 1] = (Math.random() - 0.5) * 8;
+          positions[i + 2] = (Math.random() - 0.5) * spread * 1.5;
+        } else {
+          positions[i] = r * Math.sin(phi) * Math.cos(theta);
+          positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+          positions[i + 2] = r * Math.cos(phi);
+        }
+      }
+      particleSystem.geometry.attributes.position.needsUpdate = true;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (particleSystem) {
+        particleSystem.rotation.y += 0.0015;
+      }
+      if (controls) controls.update();
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    window.addEventListener('resize', () => {
+      if (container && camera && renderer) {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
+
+    // Инициализация
+    window.onload = () => {
+      initThree();
+      updateEpochUI();
+    };
+  </script>
+</body>
+</html>
