@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Виртуалдык Сыйкырдуу Аквариум — BiliMal</title>
+  
+  <!-- Font Awesome жана Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+    body { background-color: #020617; color: #ffffff; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* Жогорку навигация */
+    .top-header { position: absolute; top: 0; left: 0; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; background: rgba(2, 6, 23, 0.75); backdrop-filter: blur(10px); z-index: 100; border-bottom: 1px solid rgba(56, 189, 248, 0.2); }
+    .btn-back { color: #38bdf8; text-decoration: none; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; }
+    .btn-back:hover { transform: translateX(-3px); }
+    .page-title { font-size: 1.2rem; font-weight: 700; background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    /* Аквариум Кенеби (Canvas) */
+    #aquariumCanvas { display: block; width: 100vw; height: 100vh; background: linear-gradient(180deg, #0284c7 0%, #0369a1 40%, #0f172a 100%); position: absolute; top: 0; left: 0; z-index: 1; }
+
+    /* Башкаруу панели (Сүрөт жүктөө) */
+    .control-panel { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.4); backdrop-filter: blur(12px); padding: 15px 25px; border-radius: 20px; display: flex; align-items: center; gap: 15px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); flex-wrap: wrap; justify-content: center; }
+    
+    .upload-btn-label { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 10px 20px; border-radius: 12px; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s; box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4); }
+    .upload-btn-label:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6); }
+    #fishUploadInput { display: none; }
+
+    .hint-text { font-size: 0.8rem; color: #94a3b8; text-align: center; max-width: 300px; }
+
+    /* Модалдык терезе (Балыкка ат коюу) */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(8px); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: #0f172a; border: 2px solid #38bdf8; border-radius: 20px; padding: 30px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 0 30px rgba(56, 189, 248, 0.4); }
+    .modal-content h3 { color: #38bdf8; margin-bottom: 15px; font-size: 1.2rem; }
+    .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 3px solid #4ade80; margin-bottom: 15px; box-shadow: 0 0 15px rgba(74, 222, 128, 0.3); }
+    .modal-input { width: 100%; background: #020617; border: 1px solid #334155; color: #fff; padding: 10px 15px; border-radius: 10px; font-size: 0.9rem; outline: none; margin-bottom: 15px; text-align: center; }
+    .btn-submit { background: linear-gradient(135deg, #16a34a, #15803d); border: none; color: white; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; transition: 0.3s; }
+    .btn-submit:hover { transform: scale(1.02); }
+  </style>
+</head>
+<body>
+
+  <!-- Навигация -->
+  <header class="top-header">
+    <a href="kindergarten.html" class="btn-back">
+      <i class="fa-solid fa-arrow-left"></i> Бала бакчага кайтуу
+    </a>
+    <div class="page-title">🌊 Виртуалдык Сыйкырдуу Аквариум</div>
+    <a href="dashboard.html" class="btn-back" style="color: #4ade80;">Кабинет 🚀</a>
+  </header>
+
+  <!-- Аквариум сахнасы -->
+  <canvas id="aquariumCanvas"></canvas>
+
+  <!-- Башкаруу панели -->
+  <div class="control-panel">
+    <label for="fishUploadInput" class="upload-btn-label">
+      <i class="fa-solid fa-camera-retro"></i> Өз балыгыңды кошу (Сүрөт тартуу / Жүктөө)
+    </label>
+    <input type="file" id="fishUploadInput" accept="image/*" capture="environment" onchange="handleImageUpload(event)">
+    <div class="hint-text">💡 Кагазга тартылган балыктын сүрөтүн түшүрүп жүктөп, аны аквариумга кошуңуз!</div>
+  </div>
+
+  <!-- Балыктын атын коюу модалы -->
+  <div class="modal" id="fishModal">
+    <div class="modal-content">
+      <h3>🐟 Балыгыңыз даяр!</h3>
+      <img id="modalPreview" class="preview-img" src="" alt="Балык превью">
+      <input type="text" id="fishNameInput" class="modal-input" placeholder="Балыкка ат коюңуз (мис: Алтын балык)" value="Менин балыгым">
+      <button class="btn-submit" onclick="releaseFishIntoAquarium()">Аквариумга кое берүү 🌊</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('aquariumCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Балыктар массиви
+    let fishes = [];
+    let bubbles = [];
+    let plants = [];
+    let uploadedImageObj = null;
+
+    // Суу өсүмдүктөрүн түзүү
+    for (let i = 0; i < 8; i++) {
+      plants.push({
+        x: Math.random() * window.innerWidth,
+        height: 100 + Math.random() * 150,
+        width: 15 + Math.random() * 15,
+        speed: 0.02 + Math.random() * 0.03,
+        offset: Math.random() * Math.PI
+      });
+    }
+
+    // Көбүкчөлөрдү түзүү
+    for (let i = 0; i < 35; i++) {
+      bubbles.push({
+        x: Math.random() * window.innerWidth,
+        y: window.innerHeight + Math.random() * 200,
+        radius: 2 + Math.random() * 6,
+        speed: 1 + Math.random() * 2,
+        swing: Math.random() * 2
+      });
+    }
+
+    // Башталгыч демейдеги аквариум балыктарын кошуу
+    function initDefaultFishes() {
+      for (let i = 0; i < 6; i++) {
+        fishes.push({
+          x: Math.random() * window.innerWidth,
+          y: Math.random() * window.innerHeight * 0.7 + 50,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 0.6,
+          size: 50 + Math.random() * 30,
+          name: "Балык #" + (i + 1),
+          img: null, // демейдеги анимациялык балык
+          color: ['#f97316', '#eab308', '#06b6d4', '#ec4899'][Math.floor(Math.random() * 4)],
+          wobble: Math.random() * 100
+        });
+      }
+    }
+    initDefaultFishes();
+
+    // Сүрөт жүктөө логикасы
+    function handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            uploadedImageObj = img;
+            document.getElementById('modalPreview').src = e.target.result;
+            document.getElementById('fishModal').style.display = 'flex';
+          }
+          img.src = e.target.result;
+        }
+        reader.readAsDataURL(file);
+      }
+    }
+
+    // Аквариумга жаңы колдонуучу балыгын кошуу
+    function releaseFishIntoAquarium() {
+      const name = document.getElementById('fishNameInput').value || "Сыйкырдуу балык";
+      if (uploadedImageObj) {
+        fishes.push({
+          x: 50,
+          y: window.innerHeight / 2,
+          vx: 2 + Math.random() * 1.5,
+          vy: (Math.random() - 0.5) * 1,
+          size: 70,
+          name: name,
+          img: uploadedImageObj,
+          wobble: 0
+        });
+      }
+      document.getElementById('fishModal').style.display = 'none';
+      document.getElementById('fishUploadInput').value = '';
+    }
+
+    // Анимация циклы
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Суу өсүмдүктөрүн тартуу
+      ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+      plants.forEach(p => {
+        ctx.beginPath();
+        let wave = Math.sin(Date.now() * p.speed + p.offset) * 20;
+        ctx.moveTo(p.x, window.innerHeight);
+        ctx.quadraticCurveTo(p.x + wave, window.innerHeight - p.height / 2, p.x + wave / 2, window.innerHeight - p.height);
+        ctx.lineTo(p.x + p.width + wave / 2, window.innerHeight - p.height);
+        ctx.quadraticCurveTo(p.x + p.width + wave, window.innerHeight - p.height / 2, p.x + p.width, window.innerHeight);
+        ctx.fill();
+      });
+
+      // 2. Көбүкчөлөрдү тартуу
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      bubbles.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x + Math.sin(b.y * 0.05) * b.swing, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+        b.y -= b.speed;
+        if (b.y < -10) {
+          b.y = window.innerHeight + 10;
+          b.x = Math.random() * window.innerWidth;
+        }
+      });
+
+      // 3. Балыктарды кыймылдатуу жана тартуу
+      fishes.forEach(fish => {
+        fish.x += fish.vx;
+        fish.y += fish.vy + Math.sin(fish.wobble) * 0.2;
+        fish.wobble += 0.05;
+
+        // Четтеринен чыгып кетсе кайтаруу
+        if (fish.x < -100) { fish.x = window.innerWidth + 100; }
+        if (fish.x > window.innerWidth + 100) { fish.x = -100; }
+        if (fish.y < 50) { fish.vy = Math.abs(fish.vy); }
+        if (fish.y > window.innerHeight - 100) { fish.vy = -Math.abs(fish.vy); }
+
+        ctx.save();
+        ctx.translate(fish.x, fish.y);
+        if (fish.vx < 0) { ctx.scale(-1, 1); } // багытын каратуу
+
+        if (fish.img) {
+          // Жүктөлгөн колдонуучунун балыгы (круглый аватар түрүндө же сүрөт)
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(0, 0, fish.size / 2, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.drawImage(fish.img, -fish.size / 2, -fish.size / 2, fish.size, fish.size);
+          ctx.restore();
+          
+          // Тартылган сүрөттүн жээги жана куйругу
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, fish.size / 2, 0, Math.PI * 2);
+          ctx.stroke();
+        } else {
+          // Демейдеги анимациялык балык
+          ctx.fillStyle = fish.color;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, fish.size / 2, fish.size / 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Куйрук
+          ctx.beginPath();
+          ctx.moveTo(-fish.size / 2, 0);
+          ctx.lineTo(-fish.size, -fish.size / 3);
+          ctx.lineTo(-fish.size, fish.size / 3);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Балыктын атын жазуу
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '12px Poppins, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(fish.name, 0, fish.size / 2 + 18);
+
+        ctx.restore();
+      });
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
