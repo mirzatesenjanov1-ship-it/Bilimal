@@ -101,7 +101,7 @@ input[type=range]{accent-color:#53d9ed;width:130px}
         <input id="fishFile" type="file" accept="image/*">
         <div class="upload-tile">
           <div class="upload-icon">🖍️</div>
-          <div><strong>Кандай сүрөт жакшы иштейт?</strong><small>Балыкты кагаздын ортосуна чоңураак тарт. Сырткы контуру жабык жана даана болсун. Ак же ачык түстөгү кагаз фонун автоматтык тазалоо жеңилирээк.</small></div>
+          <div><strong>Кандай сүрөт жакшы иштейт?</strong><small>Сүрөт жүктөлгөндөн кийин балыктын сырткы четин манжа же чычкан менен толук айланып белгилеңиз. Кагаз жана стол контурдан тышкары калат.</small></div>
         </div>
         <div class="fish-list" id="fishList"><span class="muted">Сен кошкон балыктар бул жерде көрүнөт.</span></div>
         <div class="note">Эскертүү: сүрөттү бөлүп алуу үчүн контурду белгилөө талап кылынат. Сүрөт серверге жөнөтүлбөйт — браузердин ичинде иштетилет.</div>
@@ -212,16 +212,21 @@ function drawFish(f,t){
  if(f.image){
   const im=f.image,aspect=im.width/im.height;
   let dw=f.size*2.15,dh=dw/aspect;
-  // Сүрөттү тик тилкелерге бөлүп, арткы бөлүгүн куйрук сыяктуу көбүрөөк ийебиз.
-  const strips=28,sw=im.width/strips,dx=dw/strips;
+  // Өтө ичке/узун кесиндилерди экранга ылайык чектөө.
+  if(dh>f.size*2.25){dh=f.size*2.25;dw=dh*aspect;}
+  if(dw>f.size*3.2){dw=f.size*3.2;dh=dw/aspect;}
+  // Сүрөттү тилкелерге бөлүп деформациялоо: куйрук көбүрөөк,
+  // баш жагы азыраак кыймылдайт. Ар бир кадрда кайра тартылат.
+  const strips=40,sw=im.width/strips,dx=dw/strips;
   ctx.save();
   for(let i=0;i<strips;i++){
-   const u=i/(strips-1);
-   const tail=Math.pow(clamp((1-u-.02)/.98,0,1),1.25);
-   const wave=Math.sin(t*8.8+u*4.4+f.phase)*dh*.15*tail;
-   const bodyBreath=Math.sin(t*3.1+f.phase)*dh*.012*(1-tail);
+   const u=(i+.5)/strips;
+   const tail=Math.pow(clamp((.72-u)/.72,0,1),1.35);
+   const wave=Math.sin(t*9.2+u*5.2+f.phase)*dh*.19*tail;
+   const bodyBreath=Math.sin(t*3.4+f.phase)*dh*.014*(1-tail);
    ctx.drawImage(im,i*sw,0,sw+1,im.height,-dw/2+i*dx,-dh/2+wave+bodyBreath,dx+1,dh);
   }
+  // Кичинекей сүзгүч кыймылынын көлөкөсү.
   ctx.restore();
  }else{
   let s=f.size,tail=Math.sin(t*9+f.phase)*.28;
@@ -271,6 +276,42 @@ function updateFishList(){
  if(!customFish.length){box.innerHTML='<span class="muted">Сен кошкон балыктар бул жерде көрүнөт.</span>';return;}
  customFish.forEach((f,i)=>{let chip=document.createElement('span');chip.className='fish-chip';let label=document.createElement('span');label.textContent='🐠 '+(f.name||'Менин балыгым '+(i+1));let del=document.createElement('button');del.type='button';del.textContent='×';del.title='Балыкты алып салуу';del.onclick=()=>{fish=fish.filter(x=>x.customId!==f.id);customFish.splice(i,1);updateFishList();updateCount();};chip.append(label,del);box.append(chip);});
 }
+
+// Бардык негизги башкаруу баскычтарынын окуялары.
+$('fishFile').addEventListener('change',e=>{
+ const file=e.target.files && e.target.files[0];
+ if(file) processImage(file);
+ e.target.value='';
+});
+$('feedBtn').addEventListener('click',()=>{
+ for(let i=0;i<22;i++){
+  food.push({x:rand(W*.12,W*.88),y:rand(18,85),vy:rand(8,24),r:rand(2,4)});
+ }
+ toast('Жем берилди! Балыктар жемди көздөй сүзүп жатышат 🍃');
+});
+$('pauseBtn').addEventListener('click',()=>{
+ paused=!paused;
+ $('pauseBtn').textContent=paused?'▶ Улантуу':'⏸ Токтотуу';
+});
+$('bubbleBtn').addEventListener('click',()=>{
+ bubblesOn=!bubblesOn;
+ $('bubbleBtn').textContent=bubblesOn?'🫧 Көбүкчөлөр':'🫧 Көбүкчөлөр өчүк';
+ if(!bubblesOn) bubbles=[];
+});
+$('resetBtn').addEventListener('click',()=>{
+ fish=[];
+ customFish=[];
+ food=[];
+ bubbles=[];
+ createDefaultFish();
+ updateFishList();
+ updateCount();
+ paused=false;
+ $('pauseBtn').textContent='⏸ Токтотуу';
+ bubblesOn=true;
+ $('bubbleBtn').textContent='🫧 Көбүкчөлөр';
+ toast('Аквариум баштапкы абалга келди.');
+});
 let traceImage=null,tracePoints=[],traceCanvas=$('traceCanvas'),traceCtx=traceCanvas.getContext('2d'),traceView={scale:1,ox:0,oy:0,w:0,h:0},tracePointerDown=false;
 function processImage(file){
  if(!file||!file.type.startsWith('image/')){toast('Сүрөт файлын тандаңыз.');return;}
@@ -281,9 +322,11 @@ function processImage(file){
 }
 function openTraceEditor(img){
  traceImage=img;tracePoints=[];$('traceModal').classList.add('open');
- const rect=traceCanvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);
- const cssH=Math.min(window.innerHeight*.58,520);
- traceCanvas.style.height=cssH+'px';traceCanvas.width=Math.max(1,Math.round(rect.width*d));traceCanvas.height=Math.max(1,Math.round(cssH*d));
+ const d=Math.min(window.devicePixelRatio||1,2);
+ const cssH=Math.max(260,Math.min(window.innerHeight*.58,520));
+ traceCanvas.style.height=cssH+'px';
+ const rect=traceCanvas.getBoundingClientRect();
+ traceCanvas.width=Math.max(1,Math.round(rect.width*d));traceCanvas.height=Math.max(1,Math.round(cssH*d));
  traceCtx.setTransform(d,0,0,d,0,0);
  const cw=traceCanvas.width/d,ch=traceCanvas.height/d,scale=Math.min(cw/img.width,ch/img.height);
  const w=img.width*scale,h=img.height*scale;traceView={scale,ox:(cw-w)/2,oy:(ch-h)/2,w,h};drawTraceEditor();
@@ -320,6 +363,13 @@ traceCanvas.addEventListener('pointercancel',()=>tracePointerDown=false);
 $('traceUndo').onclick=()=>{tracePoints.splice(-1,1);drawTraceEditor();};
 $('traceClear').onclick=()=>{tracePoints=[];drawTraceEditor();};
 $('traceClose').onclick=()=>{$('traceModal').classList.remove('open');traceImage=null;};
+$('traceModal').addEventListener('click',e=>{if(e.target===$('traceModal')){$('traceModal').classList.remove('open');traceImage=null;}});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){
+  if($('cameraModal').classList.contains('open'))stopCamera();
+  if($('traceModal').classList.contains('open')){$('traceModal').classList.remove('open');traceImage=null;}
+ }
+});
 $('traceApply').onclick=()=>{
  if(!traceImage||tracePoints.length<8){toast('Балыктын сырткы четин толук айланып белгилеңиз.');return;}
  const scale=traceView.scale,ox=traceView.ox,oy=traceView.oy;
@@ -332,14 +382,9 @@ $('traceApply').onclick=()=>{
  const octx=out.getContext('2d');octx.save();octx.beginPath();
  poly.forEach((p,i)=>{const x=p.x-minX,y=p.y-minY;if(i===0)octx.moveTo(x,y);else octx.lineTo(x,y);});
  octx.closePath();octx.clip();octx.drawImage(traceImage,-minX,-minY);octx.restore();
- // Масканын четин бир аз жумшартуу.
- const pixels=octx.getImageData(0,0,out.width,out.height),data=pixels.data;
- for(let y=1;y<out.height-1;y++)for(let x=1;x<out.width-1;x++){
-  const k=(y*out.width+x)*4;if(data[k+3]===0)continue;
-  let edge=false;for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++)if(data[((y+yy)*out.width+x+xx)*4+3]===0)edge=true;
-  if(edge)data[k+3]=Math.min(data[k+3],220);
- }
- octx.putImageData(pixels,0,0);
+ // Контурдун ичиндеги оригиналдуу пикселдерди сактайбыз.
+ // Альфа-каналдын четин ашыкча азайтпайбыз: карандаш менен тартылган
+ // ичке сызыктар жоголуп кетпеши үчүн.
  const fishImg=new Image();
  fishImg.onload=()=>{
   const id=Date.now()+Math.random(),name='Менин балыгым '+(customFish.length+1);
@@ -347,8 +392,14 @@ $('traceApply').onclick=()=>{
   f.customId=id;f.vx=rand(24,48)*(Math.random()<.5?-1:1);f.size=clamp(Math.max(out.width,out.height)*.20,34,76);f.phase=rand(0,Math.PI*2);f.speed=rand(.85,1.2);
   fish.push(f);customFish.push({id,name});updateFishList();updateCount();toast('Сонун! Балыгың бөлүнүп алынды жана сүзүп баштады! 🐠');
  };
- fishImg.onerror=()=>toast('Балык сүрөтүн даярдоо ишке ашкан жок.');
- fishImg.src=out.toDataURL('image/png');$('traceModal').classList.remove('open');traceImage=null;
+ fishImg.onerror=()=>toast('Балык сүрөтүн даярдоо ишке ашкан жок. Сүрөттү кайра жүктөп көрүңүз.');
+ try{
+  fishImg.src=out.toDataURL('image/png');
+ }catch(err){
+  toast('Сүрөттү даярдоодо ката кетти. Башка сүрөт тандаңыз.');
+  return;
+ }
+ $('traceModal').classList.remove('open');traceImage=null;
 };
 async function openCamera(){
  try{
