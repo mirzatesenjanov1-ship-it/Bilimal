@@ -47,6 +47,7 @@
             background: #03030d; 
             color: #fff; 
             min-height: 100vh; 
+            min-height: 100dvh;
             display: flex; 
             flex-direction: column;
             justify-content: center; 
@@ -103,6 +104,7 @@
         .btn-start:hover { box-shadow: 0 0 20px rgba(0,240,255,0.5); transform: translateY(-2px); }
         .btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
         .input-field { width: 100%; padding: 12px; margin-top: 8px; background: #020208; border: 1px solid rgba(0,240,255,0.3); border-radius: 6px; color: #fff; font-size: 1rem; outline: none; transition: 0.3s; }
+        .input-field { -webkit-user-select: text; user-select: text; }
         .input-field:focus { border-color: #00f0ff; box-shadow: 0 0 10px rgba(0,240,255,0.2); }
         
         .q-option { 
@@ -300,10 +302,10 @@
 
             <div id="inputFormGroup" style="margin:20px 0">
                 <label style="color:#a5b4fc; font-weight:600;" id="lblStudentName" for="studentName">Ваше имя и фамилия:</label>
-                <input type="text" id="studentName" class="input-field" placeholder="Например: Асан Усенов" autocomplete="name">
+                <input type="text" id="studentName" class="input-field" maxlength="100" placeholder="Например: Асан Усенов" autocomplete="name">
                 <br><br>
                 <label style="color:#a5b4fc; font-weight:600;" id="lblStudentClass" for="studentClass">Ваш класс:</label>
-                <input type="text" id="studentClass" class="input-field" placeholder="Например: 8-А" autocomplete="off">
+                <input type="text" id="studentClass" class="input-field" maxlength="30" placeholder="Например: 8-А" autocomplete="off">
             </div>
 
             <div id="alreadyPassedContainer"></div>
@@ -329,14 +331,17 @@
         const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
         const AD_COOLDOWN_MS = 30 * 60 * 1000;
 
+        function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+        function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage blocked */ } }
+
         function canShowAd() {
-            const lastAdTime = localStorage.getItem('monetag_test_last_ad_time');
+            const lastAdTime = lsGet('monetag_test_last_ad_time');
             if (!lastAdTime) return true;
             return (Date.now() - parseInt(lastAdTime, 10)) > AD_COOLDOWN_MS;
         }
 
         function recordAdShown() {
-            localStorage.setItem('monetag_test_last_ad_time', Date.now().toString());
+            lsSet('monetag_test_last_ad_time', Date.now().toString());
         }
 
         function handleExitRedirect(targetUrl) {
@@ -346,7 +351,7 @@
 
                 setTimeout(() => {
                     recordAdShown();
-                    window.open(SMARTLINK_LOVEY, '_blank');
+                    try { window.open(SMARTLINK_LOVEY, '_blank'); } catch (e) { /* popup blocked */ }
                     window.location.href = targetUrl;
                 }, 2000);
             } else {
@@ -411,12 +416,13 @@
         };
 
         let currentLang = 'ru';
-        localStorage.setItem('site_lang', 'ru');
+        window.__testReady = false;
+        try { localStorage.setItem('site_lang', 'ru'); } catch (e) { /* storage blocked */ }
 
         function setLanguage(lang) {
             if (!testTranslations[lang]) lang = 'ru';
             currentLang = lang;
-            localStorage.setItem('site_lang', lang);
+            try { localStorage.setItem('site_lang', lang); } catch (e) { /* storage blocked */ }
 
             document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`lang-${lang}`);
@@ -482,7 +488,7 @@
                 return;
             }
 
-            if (localStorage.getItem(`completed_test_${testId}`)) {
+            if (lsGet(`completed_test_${testId}`)) {
                 const t = testTranslations[currentLang];
                 document.getElementById('inputFormGroup').style.display = 'none';
                 document.getElementById('alreadyPassedContainer').innerHTML = `<div class="already-passed-msg"><i class="fa-solid fa-circle-exclamation"></i> ${t.alreadyPassed}</div>`;
@@ -496,6 +502,7 @@
 
             function checkInputs() {
                 if (startBtn.dataset.state === "started" || startBtn.dataset.disabledLimit) return;
+                if (window.__testReady !== true) { startBtn.disabled = true; return; }
                 const nameVal = studentNameInput ? studentNameInput.value.trim() : '';
                 const classVal = studentClassInput ? studentClassInput.value.trim() : '';
                 
@@ -510,11 +517,26 @@
                 studentNameInput.addEventListener('input', checkInputs);
                 studentClassInput.addEventListener('input', checkInputs);
             }
+            window.__recheckStart = checkInputs;
+
+            // Watchdog: public-test.js жүктөлбөсө, окуучу чексиз "Загрузка..." экранында калбасын
+            setTimeout(() => {
+                if (window.__bilimalBooted) return;
+                if (lblTitleText) lblTitleText.textContent = ({ ky: 'Тест жүктөлгөн жок. Баракты жаңыртыңыз.', ru: 'Тест не загрузился. Обновите страницу.', en: 'The test failed to load. Please reload the page.' })[currentLang] || 'Reload';
+                const sp = document.querySelector('#lblTitle i.fa-spinner'); if (sp) sp.remove();
+                const holder = document.getElementById('alreadyPassedContainer');
+                if (holder && !holder.firstChild) {
+                    const b = document.createElement('button');
+                    b.type = 'button'; b.className = 'btn-start'; b.textContent = '↻';
+                    b.addEventListener('click', () => window.location.reload());
+                    holder.appendChild(b);
+                }
+            }, 20000);
         });
     </script>
 
     <script type="module" src="/js/public-test.js"></script>
-    <script src="/js/anti-cheat.js"></script>
+    <script src="/js/anti-cheat.js" defer></script>
 
     <script>
         function convertDriveUrl(url) {
@@ -535,16 +557,21 @@
             return url;
         }
 
+        function normalizeImgSrc(src) {
+            if (src && (src.includes('drive.google.com') || src.includes('docs.google.com'))) {
+                return convertDriveUrl(src);
+            }
+            return src;
+        }
+
         function processImages(container) {
             if (!container) return;
             const imgs = container.querySelectorAll('img');
             imgs.forEach(img => {
                 const src = img.getAttribute('src');
-                if (src && (src.includes('drive.google.com') || src.includes('docs.google.com'))) {
-                    const converted = convertDriveUrl(src);
-                    if (src !== converted) {
-                        img.src = converted;
-                    }
+                const converted = normalizeImgSrc(src);
+                if (src && src !== converted) {
+                    img.setAttribute('src', converted);
                 }
                 img.onerror = function() {
                     console.log("Сүрөттү жүктөөдө ката чыкты:", this.src);
@@ -563,37 +590,9 @@
             }
         }
 
-        let isRendering = false;
-        function renderMathSafe() {
-            if (isRendering) return;
-            const target = document.getElementById('runningScreen');
-            if (!target || target.style.display === 'none') return;
-
-            isRendering = true;
-            processImages(target);
-            fixDegreeFormatting(target);
-
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise([target])
-                    .catch((err) => console.error("MathJax error:", err))
-                    .finally(() => {
-                        isRendering = false;
-                    });
-            } else {
-                isRendering = false;
-            }
-        }
-
-        const targetNode = document.getElementById('runningScreen');
-        if (targetNode) {
-            let timer;
-            const observer = new MutationObserver(() => {
-                if (isRendering) return;
-                clearTimeout(timer);
-                timer = setTimeout(renderMathSafe, 150);
-            });
-            observer.observe(targetNode, { childList: true, subtree: true });
-        }
+        // Эскертүү: мурунку MutationObserver (бүт #runningScreen'ди ар секунд сайын кайра typeset кылчу) алынды.
+        // Сүрөт/градус форматтоо жана MathJax typeset эми public-test.js ичинде ар суроодо бир гана жолу чакырылат.
+        window.BiliRender = { convertDriveUrl, normalizeImgSrc, processImages, fixDegreeFormatting };
     </script>
 </body>
 </html>
