@@ -1,125 +1,70 @@
-// Anti-Cheat + Violation Counter (BiliMal Test System)
+// Anti-Cheat (BiliMal Test System) — киргизүү коргоосу гана.
+//
+// Бузууларды эсептөө, эскертүү экраны жана тестти аяктоо логикасы public-test.js ичинде
+// бир гана жерде жүргүзүлөт (эки тутум бири-бирине тоскоол болбойт, жалган "чыгарып жиберүү" жок).
 (function () {
     'use strict';
 
-    let isTestActive = false;
-    let violationCount = 0;
-    const MAX_VIOLATIONS = 5;
+    if (window.__biliAntiCheatLoaded) return;
+    window.__biliAntiCheatLoaded = true;
 
-    // Глобалдуу эсепти башталгыч абалга келтирүү
+    // эски код менен шайкештик: public-test.js бул маанини жаңыртат
     window.userViolationCount = 0;
 
-    const checkTestStarted = () => {
-        const runningScreen = document.getElementById('runningScreen');
-        if (runningScreen && runningScreen.style.display !== 'none') {
-            isTestActive = true;
-        }
-    };
+    const registered = [];
+    function on(target, type, fn, opts) {
+        target.addEventListener(type, fn, opts);
+        registered.push([target, type, fn, opts]);
+    }
+    function inField(e) {
+        const t = e.target;
+        return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable === true);
+    }
 
-    setInterval(checkTestStarted, 500);
-
-    // 1. Контексттик меню, көчүрүү, кесүү, сүйрөөнү бөгөттөө
-    document.addEventListener('contextmenu', e => e.preventDefault(), false);
-    document.addEventListener('copy', e => {
-        e.clipboardData.setData('text/plain', 'Тесттен көчүрүүгө тыюу салынган!');
+    // 1. Контексттик меню, көчүрүү, кесүү, сүйрөө, белгилөө
+    on(document, 'contextmenu', e => e.preventDefault(), false);
+    on(document, 'copy', e => {
+        if (inField(e)) return;
+        try { e.clipboardData.setData('text/plain', 'Тесттен көчүрүүгө тыюу салынган!'); } catch (_) { /* ignore */ }
         e.preventDefault();
     }, false);
-    document.addEventListener('cut', e => e.preventDefault(), false);
-    document.addEventListener('selectstart', e => {
-        if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-            e.preventDefault();
-        }
-    }, false);
-    document.addEventListener('dragstart', e => e.preventDefault(), false);
+    on(document, 'cut', e => { if (!inField(e)) e.preventDefault(); }, false);
+    on(document, 'paste', e => { if (!inField(e)) e.preventDefault(); }, false);
+    on(document, 'selectstart', e => { if (!inField(e)) e.preventDefault(); }, false);
+    on(document, 'dragstart', e => e.preventDefault(), false);
 
-    // 2. Ысык баскычтарды бөгөттөө
-    document.addEventListener('keydown', function (e) {
-        const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+    // 2. Ысык баскычтар
+    on(document, 'keydown', function (e) {
+        const mod = e.ctrlKey || e.metaKey;
         const key = e.key ? e.key.toLowerCase() : '';
 
-        if (e.keyCode === 123 || key === 'f12') {
+        if (e.keyCode === 123 || key === 'f12') { e.preventDefault(); return false; }
+        if (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) { e.preventDefault(); return false; }
+        if (mod && (key === 'u' || key === 's' || key === 'p')) { e.preventDefault(); return false; }
+        if (mod && (key === 'c' || key === 'a' || key === 'x' || key === 'v') && !inField(e)) {
             e.preventDefault();
             return false;
         }
-
-        if (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j' || key === 'c')) {
-            e.preventDefault();
-            return false;
-        }
-
-        if (isCmdOrCtrl && (key === 'u' || key === 's' || key === 'p' || key === 'c' || key === 'a' || key === 'x')) {
-            e.preventDefault();
-            return false;
-        }
-
-        if (key === 'printscreen') {
-            e.preventDefault();
-            navigator.clipboard.writeText('');
-            alert('Экранды сүрөткө тартууга болбойт!');
-        }
+        if (key === 'printscreen') { e.preventDefault(); clearClipboard(); }
+    }, false);
+    on(document, 'keyup', function (e) {
+        if (e.key && e.key.toLowerCase() === 'printscreen') clearClipboard();
     }, false);
 
-    // 3. Бузууларды каттоо жана экранга чыгаруу
-    function registerViolation() {
-        if (!isTestActive) return;
-
-        violationCount++;
-        window.userViolationCount = violationCount;
-
-        let overlay = document.getElementById('ai-protection-overlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'ai-protection-overlay';
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:#03030d; z-index:999999; display:flex; flex-direction:column; justify-content:center; align-items:center; color:#00f0ff; font-size:1.3rem; font-weight:bold; text-align:center; padding:20px; box-sizing:border-box;';
-            
-            overlay.addEventListener('click', function() {
-                if (violationCount <= MAX_VIOLATIONS) {
-                    hideOverlay();
-                }
-            });
-
-            document.body.appendChild(overlay);
-        }
-
-        if (violationCount > MAX_VIOLATIONS) {
-            overlay.innerHTML = `
-                <i class="fa-solid fa-ban" style="font-size:3.5rem; color:#ff0055; margin-bottom:15px;"></i>
-                <div style="color:#ff0055; font-size:1.6rem; margin-bottom:10px;">ТЕСТ БӨГӨТТӨЛДҮ!</div>
-                <div>Сиз башка терезеге өтүү эрежесин өтө көп буздуңуз (${violationCount - 1}/${MAX_VIOLATIONS}).</div>
-                <div style="font-size:1rem; color:#a5b4fc; margin-top:15px;">Тестти улантууга уруксат берилбейт. Жйынтыгыңыз мугалимге жөнөтүлдү.</div>
-            `;
-            if (typeof window.finishTestAuto === 'function') {
-                window.finishTestAuto();
+    function clearClipboard() {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                const p = navigator.clipboard.writeText('');
+                if (p && typeof p.catch === 'function') p.catch(() => { /* уруксат жок, маанилүү эмес */ });
             }
-        } else {
-            overlay.innerHTML = `
-                <i class="fa-solid fa-triangle-exclamation" style="font-size:3.5rem; color:#ffcc00; margin-bottom:15px;"></i>
-                <div style="font-size:1.5rem; margin-bottom:10px;">ЭСКЕРТҮҮ: Башка терезеге өтүүгө болбойт!</div>
-                <div style="background:rgba(255,0,85,0.2); border:1px solid #ff0055; color:#ff0055; padding:8px 16px; border-radius:20px; margin:15px 0; font-size:1.1rem;">
-                    ⚠️ Тесттен чыгуу эрежесин бузуу: <span style="font-size:1.4rem; font-weight:bold; color:#fff;">${violationCount}</span> / ${MAX_VIOLATIONS}
-                </div>
-                <div style="font-size:1rem; color:#a5b4fc; margin-top:10px; cursor:pointer;">Тестке кайтуу үчүн ушул экранды чыкылдатыңыз.</div>
-            `;
-        }
-
-        overlay.style.display = 'flex';
+        } catch (_) { /* ignore */ }
     }
 
-    function hideOverlay() {
-        let overlay = document.getElementById('ai-protection-overlay');
-        if (overlay && violationCount <= MAX_VIOLATIONS) {
-            overlay.style.display = 'none';
+    // 3. Токтотуу API (public-test.js жана HTML чакырат): бардык listener'лер алынат
+    window.stopAntiCheat = function () {
+        while (registered.length) {
+            const r = registered.pop();
+            try { r[0].removeEventListener(r[1], r[2], r[3]); } catch (_) { /* ignore */ }
         }
-    }
-
-    window.addEventListener('blur', function () {
-        registerViolation();
-    });
-
-    document.addEventListener('mouseleave', function (e) {
-        if (e.clientY <= 0 || e.clientX <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
-            registerViolation();
-        }
-    });
-
+    };
 })();
