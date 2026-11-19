@@ -577,6 +577,15 @@
                     <p id="item-lab-works-desc">Виртуалдык тажрыйбалар жана симуляциялар</p>
                 </div>
             </a>
+
+            <a href="./sections/unlimited-board.html" class="grid-item" data-vip-required="true">
+                <span class="vip-badge-tag">VIP</span>
+                <i class="fas fa-chalkboard"></i>
+                <div class="item-text">
+                    <h3 id="item-unlimited-board-title">Чексиз такта</h3>
+                    <p id="item-unlimited-board-desc">VIP колдонуучулар үчүн чексиз санариптик такта</p>
+                </div>
+            </a>
         </div>
     </div>
 
@@ -665,6 +674,8 @@
                 physicsAstroDesc: "Тесттер, теория жана тапшырмалар",
                 labWorksTitle: "Лабораториялык иштер",
                 labWorksDesc: "Виртуалдык тажрыйбалар жана симуляциялар",
+                unlimitedBoardTitle: "Чексиз такта",
+                unlimitedBoardDesc: "VIP колдонуучулар үчүн чексиз санариптик такта",
                 errWrongPass: "Почта же сыр сөз ката!",
                 errEmailInUse: "Бул почта мурда катталган! 'Кирүү' баскычын басыңыз.",
                 errWeakPass: "Сыр сөз кеминде 6 белгиден турушу керек!",
@@ -706,6 +717,8 @@
                 physicsAstroDesc: "Тесты, теория и задания",
                 labWorksTitle: "Лабораторные работы",
                 labWorksDesc: "Виртуальные опыты и симуляции",
+                unlimitedBoardTitle: "Бесконечная доска",
+                unlimitedBoardDesc: "Бесконечная цифровая доска для VIP-пользователей",
                 errWrongPass: "Неверный email или пароль!",
                 errEmailInUse: "Этот email уже зарегистрирован! Нажмите 'Войти'.",
                 errWeakPass: "Пароль должен содержать минимум 6 символов!",
@@ -747,6 +760,8 @@
                 physicsAstroDesc: "Tests, theory & assignments",
                 labWorksTitle: "Lab Works",
                 labWorksDesc: "Virtual experiments & simulations",
+                unlimitedBoardTitle: "Infinite Board",
+                unlimitedBoardDesc: "An infinite digital board for VIP users",
                 errWrongPass: "Incorrect email or password!",
                 errEmailInUse: "This email is already registered! Click 'Login'.",
                 errWeakPass: "Password must be at least 6 characters long!",
@@ -810,6 +825,8 @@
             updateElementText('item-physics-astro-desc', t.physicsAstroDesc);
             updateElementText('item-lab-works-title', t.labWorksTitle);
             updateElementText('item-lab-works-desc', t.labWorksDesc);
+            updateElementText('item-unlimited-board-title', t.unlimitedBoardTitle);
+            updateElementText('item-unlimited-board-desc', t.unlimitedBoardDesc);
 
             const submitBtn = document.getElementById('auth-submit-btn');
             if (isModeLogin) {
@@ -868,6 +885,7 @@
         let vipRequestsUnsubscribe = null;
         let vipStatusUnsubscribe = null;
         let vipIsActive = false;
+        let vipExpiryTimer = null;
         let vipAdminUser = false;
 
         const vipModal = document.getElementById("vip-modal");
@@ -910,14 +928,23 @@
             return value ? new Date(value).toLocaleString("ky-KG") : "—";
         }
         function showVipStatus(access) {
-            if (!vipStatusEl) return;
+            if (vipExpiryTimer) {
+                clearTimeout(vipExpiryTimer);
+                vipExpiryTimer = null;
+            }
             const expiry = Number(access?.expiresAt || 0);
             vipIsActive = access?.active === true && expiry > Date.now();
             if (vipIsActive) {
-                vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + formatVipDate(expiry);
+                if (vipStatusEl) vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + formatVipDate(expiry);
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP активдүү";
+                // Мөөнөтү бүткөн учурда баракты жаңыртпай эле VIP жеткиликтүүлүгүн өчүрөт.
+                vipExpiryTimer = setTimeout(() => {
+                    vipIsActive = false;
+                    if (vipStatusEl) vipStatusEl.textContent = "VIP мөөнөтү аяктады. Улантуу үчүн кайра жазылыңыз.";
+                    if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
+                }, Math.max(0, expiry - Date.now() + 50));
             } else {
-                vipStatusEl.textContent = "VIP азырынча активдүү эмес. Төлөм ырасталгандан кийин жеткиликтүүлүк берилет.";
+                if (vipStatusEl) vipStatusEl.textContent = "VIP азырынча активдүү эмес же мөөнөтү аяктаган. Төлөм ырасталгандан кийин жеткиликтүүлүк берилет.";
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
             }
         }
@@ -1063,6 +1090,7 @@
                 if (adminPanel) adminPanel.style.display = "none";
                 vipIsActive = false;
                 vipAdminUser = false;
+                if (vipExpiryTimer) { clearTimeout(vipExpiryTimer); vipExpiryTimer = null; }
                 localStorage.removeItem('duty_current_teacher_email');
                 
                 if (mainContent) mainContent.classList.remove('visible');
