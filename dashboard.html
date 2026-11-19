@@ -367,6 +367,48 @@
             letter-spacing: 0.5px;
         }
 
+
+        /* VIP subscription */
+        .btn-vip-access {
+            padding: 9px 16px; border: 1px solid rgba(245,158,11,.45);
+            border-radius: 9px; background: linear-gradient(135deg,#f59e0b,#fbbf24);
+            color:#111827; font-weight:800; cursor:pointer; font-size:.85rem;
+        }
+        .btn-vip-access:hover { filter:brightness(1.08); transform:translateY(-1px); }
+        .vip-modal {
+            position:fixed; inset:0; z-index:3000; display:none; align-items:center;
+            justify-content:center; padding:18px; background:rgba(2,6,15,.86); backdrop-filter:blur(7px);
+        }
+        .vip-modal.visible { display:flex; }
+        .vip-dialog {
+            width:100%; max-width:560px; max-height:92vh; overflow:auto; position:relative;
+            padding:26px; border-radius:18px; border:1px solid #334155;
+            background:#131b2e; box-shadow:0 24px 70px #0009;
+        }
+        .vip-dialog h2 { color:#fbbf24; margin:0 34px 12px 0; }
+        .vip-dialog p { color:#cbd5e1; line-height:1.55; margin:10px 0; }
+        .vip-close { position:absolute; top:15px; right:16px; border:0; background:#263449;
+            color:#fff; border-radius:8px; width:34px; height:34px; cursor:pointer; font-size:20px; }
+        .vip-price { font-size:1.8rem; font-weight:900; color:#fbbf24; margin:12px 0; }
+        .vip-qr-wrap { display:flex; justify-content:center; padding:14px; background:#fff; border-radius:12px; margin:14px auto; max-width:300px; }
+        .vip-qr-wrap img { display:block; width:100%; max-width:260px; height:auto; object-fit:contain; }
+        .vip-primary { display:block; width:100%; padding:13px 16px; border:0; border-radius:10px;
+            background:#16a34a; color:white; font-weight:800; cursor:pointer; font-size:1rem; margin-top:14px; }
+        .vip-primary:disabled { opacity:.6; cursor:wait; }
+        .vip-note { background:#422006; border:1px solid #92400e; color:#fde68a!important;
+            padding:13px; border-radius:10px; font-weight:650; }
+        .vip-status { margin-top:12px; color:#fbbf24!important; font-weight:700; }
+        .vip-admin { border-top:1px solid #334155; margin-top:22px; padding-top:18px; }
+        .vip-request { background:#0b1220; border:1px solid #334155; border-radius:10px; padding:13px; margin:10px 0; }
+        .vip-request small { color:#94a3b8; display:block; margin:5px 0; overflow-wrap:anywhere; }
+        .vip-approve { padding:8px 12px; border:0; border-radius:7px; background:#16a34a; color:white; cursor:pointer; font-weight:700; }
+        .vip-empty { color:#94a3b8; padding:12px 0; }
+        @media(max-width:600px) {
+            .vip-dialog { padding:20px 16px; }
+            .btn-vip-access { width:100%; }
+            .header-actions { flex-wrap:wrap; }
+        }
+
         /* Responsive Breakpoints */
         @media (max-width: 1024px) {
             .grid-container {
@@ -444,6 +486,7 @@
                     <button class="lang-btn" id="btn-lang-ru">RU</button>
                     <button class="lang-btn" id="btn-lang-en">EN</button>
                 </div>
+                <button class="btn-vip-access" id="vip-open-btn">VIP доступ алуу · 100 сом/ай</button>
                 <button class="btn-role" id="btn-role">Окуучу / Мугалим</button>
                 <button class="btn-logout" id="logout-btn">Чыгуу</button>
             </div>
@@ -484,7 +527,7 @@
                 </div>
             </a>
 
-            <a href="./sections/ebooks-admin.html" class="grid-item">
+            <a href="./sections/ebooks-admin.html" class="grid-item" data-vip-required="true">
                 <span class="vip-badge-tag">VIP</span>
                 <i class="fas fa-book-reader"></i>
                 <div class="item-text">
@@ -509,7 +552,7 @@
                 </div>
             </a>
 
-            <a href="./sections/lesson-plans-vip.html" class="grid-item">
+            <a href="./sections/lesson-plans-vip.html" class="grid-item" data-vip-required="true">
                 <span class="vip-badge-tag">VIP</span>
                 <i class="fas fa-scroll"></i>
                 <div class="item-text">
@@ -526,7 +569,7 @@
                 </div>
             </a>
 
-            <a href="./sections/lab-works-vip.html" class="grid-item">
+            <a href="./sections/lab-works-vip.html" class="grid-item" data-vip-required="true">
                 <span class="vip-badge-tag">VIP</span>
                 <i class="fas fa-flask-vial"></i>
                 <div class="item-text">
@@ -534,6 +577,32 @@
                     <p id="item-lab-works-desc">Виртуалдык тажрыйбалар жана симуляциялар</p>
                 </div>
             </a>
+        </div>
+    </div>
+
+
+    <!-- VIP төлөм жана администратор панели -->
+    <div class="vip-modal" id="vip-modal" aria-hidden="true">
+        <div class="vip-dialog" role="dialog" aria-modal="true" aria-labelledby="vip-title">
+            <button class="vip-close" id="vip-close-btn" aria-label="Жабуу">&times;</button>
+            <h2 id="vip-title">Bilimal VIP мүмкүнчүлүгү</h2>
+            <p>VIP бөлүмдөрүнө 30 күндүк жеткиликтүүлүк алуу үчүн төмөнкү QR-код аркылуу төлөм жүргүзүңүз.</p>
+            <div class="vip-price">100 сом / 1 ай</div>
+            <div class="vip-qr-wrap">
+                <img src="/qrmbank.png" alt="MBank төлөм QR-коду"
+                     onerror="this.style.display='none';document.getElementById('vip-qr-error').style.display='block';">
+            </div>
+            <p id="vip-qr-error" style="display:none;color:#fca5a5!important;text-align:center;">QR-код жүктөлгөн жок. /qrmbank.png файлы сайттын түпкү каталогунда бар экенин текшериңиз.</p>
+            <p><b>Төлөмдөн кийин:</b> WhatsApp ачылганда төлөмдүн чегин (квитанциясын) сөзсүз тиркеп, билдирүүнү өзүңүз жөнөтүңүз.</p>
+            <p class="vip-note">Сизге уруксат чек WhatsAppка жөнөтүлгөндөн кийин 24 сааттын ичинде VIP мүмкүнчүлүгү берилет.</p>
+            <button class="vip-primary" id="vip-whatsapp-btn">Төлөп, чекти WhatsAppка жөнөтүү</button>
+            <p class="vip-status" id="vip-user-status">VIP статусу текшерилүүдө...</p>
+
+            <div class="vip-admin" id="vip-admin-panel" style="display:none;">
+                <h3 style="color:#00d2fe;margin-bottom:8px;">Администратор: VIP төлөмдөрүн текшерүү</h3>
+                <p>Төлөмдү текшерип, туура болсо тиешелүү колдонуучуга 30 күндүк VIP мүмкүнчүлүгүн бериңиз.</p>
+                <div id="vip-requests-list" class="vip-empty">Сурамдар жүктөлүүдө...</div>
+            </div>
         </div>
     </div>
 
@@ -557,6 +626,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
         import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js";
+        import { getDatabase, ref, push, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
         const translations = {
             ky: {
@@ -787,7 +857,183 @@
         }).catch(() => {});
 
         const auth = getAuth(app);
+        const db = getDatabase(app);
         setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+        // VIP администратордун почтасы гана. Firebase RTDB Rules менен да бекитилиши МИЛДЕТТҮҮ.
+        const VIP_ADMIN_EMAIL = "mirzatestebesov51@gmail.com";
+        const VIP_PRICE_SOM = 100;
+        const VIP_DURATION_DAYS = 30;
+        const VIP_WHATSAPP_NUMBER = "996556400477";
+        let vipRequestsUnsubscribe = null;
+        let vipStatusUnsubscribe = null;
+        let vipIsActive = false;
+        let vipAdminUser = false;
+
+        const vipModal = document.getElementById("vip-modal");
+        const vipOpenBtn = document.getElementById("vip-open-btn");
+        const vipCloseBtn = document.getElementById("vip-close-btn");
+        const vipWhatsappBtn = document.getElementById("vip-whatsapp-btn");
+        const vipStatusEl = document.getElementById("vip-user-status");
+
+        function openVipModal() {
+            if (!vipModal) return;
+            vipModal.classList.add("visible");
+            vipModal.setAttribute("aria-hidden", "false");
+        }
+        function closeVipModal() {
+            if (!vipModal) return;
+            vipModal.classList.remove("visible");
+            vipModal.setAttribute("aria-hidden", "true");
+        }
+        document.addEventListener("click", event => {
+            const vipLink = event.target.closest("a[data-vip-required='true']");
+            if (vipLink && !vipIsActive && !vipAdminUser) {
+                event.preventDefault();
+                openVipModal();
+                if (vipStatusEl) vipStatusEl.textContent =
+                    "Бул бөлүм VIP жазылуучулар үчүн. 100 сом төлөп, администратордун ырастоосун күтүңүз.";
+            }
+        });
+        if (vipOpenBtn) vipOpenBtn.addEventListener("click", openVipModal);
+        if (vipCloseBtn) vipCloseBtn.addEventListener("click", closeVipModal);
+        if (vipModal) vipModal.addEventListener("click", e => {
+            if (e.target === vipModal) closeVipModal();
+        });
+
+        function escapeVipHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, ch => ({
+                "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+            }[ch]));
+        }
+        function formatVipDate(value) {
+            return value ? new Date(value).toLocaleString("ky-KG") : "—";
+        }
+        function showVipStatus(access) {
+            if (!vipStatusEl) return;
+            const expiry = Number(access?.expiresAt || 0);
+            vipIsActive = access?.active === true && expiry > Date.now();
+            if (vipIsActive) {
+                vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + formatVipDate(expiry);
+                if (vipOpenBtn) vipOpenBtn.textContent = "VIP активдүү";
+            } else {
+                vipStatusEl.textContent = "VIP азырынча активдүү эмес. Төлөм ырасталгандан кийин жеткиликтүүлүк берилет.";
+                if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
+            }
+        }
+        function startVipListeners(user) {
+            if (vipStatusUnsubscribe) vipStatusUnsubscribe();
+            if (vipRequestsUnsubscribe) vipRequestsUnsubscribe();
+            const isAdmin = (user.email || "").toLowerCase() === VIP_ADMIN_EMAIL.toLowerCase();
+            vipAdminUser = isAdmin;
+            const statusRef = ref(db, "vipAccess/" + user.uid);
+            vipStatusUnsubscribe = onValue(statusRef, snap => showVipStatus(snap.val() || null), error => {
+                if (vipStatusEl) vipStatusEl.textContent = "VIP статусун окуу мүмкүн болгон жок: " + error.message;
+            });
+
+            const adminPanel = document.getElementById("vip-admin-panel");
+            if (adminPanel) adminPanel.style.display = isAdmin ? "block" : "none";
+            if (isAdmin) {
+                const requestsRef = ref(db, "vipRequests");
+                vipRequestsUnsubscribe = onValue(requestsRef, snap => {
+                    const list = document.getElementById("vip-requests-list");
+                    if (!list) return;
+                    const all = snap.val() || {};
+                    const rows = [];
+                    Object.entries(all).forEach(([uid, requests]) => {
+                        Object.entries(requests || {}).forEach(([requestId, request]) => {
+                            if (request && request.status === "pending") {
+                                rows.push({uid, requestId, ...request});
+                            }
+                        });
+                    });
+                    rows.sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+                    if (!rows.length) {
+                        list.innerHTML = '<div class="vip-empty">Текшерүүнү күткөн төлөм сурамы жок.</div>';
+                        return;
+                    }
+                    list.innerHTML = rows.map(item => `
+                        <div class="vip-request">
+                            <b>${escapeVipHtml(item.email)}</b>
+                            <small>Сумма: ${Number(item.amount) || VIP_PRICE_SOM} сом · ${formatVipDate(item.createdAt)}</small>
+                            <small>UID: ${escapeVipHtml(item.uid)}</small>
+                            <button class="vip-approve" data-vip-uid="${escapeVipHtml(item.uid)}"
+                                data-vip-request="${escapeVipHtml(item.requestId)}">Төлөмдү ырастап, VIP берүү</button>
+                        </div>`).join("");
+                }, error => {
+                    const list = document.getElementById("vip-requests-list");
+                    if (list) list.textContent = "Сурамдарды окуу катасы: " + error.message;
+                });
+            }
+        }
+
+        document.getElementById("vip-requests-list")?.addEventListener("click", async event => {
+            const button = event.target.closest("[data-vip-uid]");
+            if (!button) return;
+            const admin = auth.currentUser;
+            if (!admin || (admin.email || "").toLowerCase() !== VIP_ADMIN_EMAIL.toLowerCase()) {
+                alert("Бул аракет администраторго гана уруксат берилген.");
+                return;
+            }
+            const uid = button.dataset.vipUid;
+            const requestId = button.dataset.vipRequest;
+            if (!confirm("Төлөм чын эле текшерилип, туура жүргүзүлгөнбү? 30 күндүк VIP мүмкүнчүлүгүн бересизби?")) return;
+            button.disabled = true;
+            try {
+                const now = Date.now();
+                const expiresAt = now + VIP_DURATION_DAYS * 24 * 60 * 60 * 1000;
+                await update(ref(db), {
+                    ["vipAccess/" + uid]: {
+                        active: true, expiresAt, approvedAt: now,
+                        approvedBy: admin.email, planDays: VIP_DURATION_DAYS
+                    },
+                    ["vipRequests/" + uid + "/" + requestId + "/status"]: "approved",
+                    ["vipRequests/" + uid + "/" + requestId + "/reviewedAt"]: now,
+                    ["vipRequests/" + uid + "/" + requestId + "/reviewedBy"]: admin.email
+                });
+                alert("VIP мүмкүнчүлүгү 30 күнгө берилди.");
+            } catch (error) {
+                console.error(error);
+                alert("Ырастоо ишке ашкан жок: " + error.message + ". Firebase Database Rules текшериңиз.");
+                button.disabled = false;
+            }
+        });
+
+        if (vipWhatsappBtn) vipWhatsappBtn.addEventListener("click", async () => {
+            const user = auth.currentUser;
+            if (!user) { alert("Адегенде аккаунтка кириңиз."); return; }
+            vipWhatsappBtn.disabled = true;
+            vipWhatsappBtn.textContent = "Сурам катталууда...";
+            const message =
+                "Саламатсызбы! Bilimal.org VIP мүмкүнчүлүгү үчүн 100 сом төлөдүм.\n" +
+                "Электрондук почтам: " + user.email + "\n" +
+                "UID: " + user.uid + "\n" +
+                "Төлөмдүн чегин (квитанциясын) ушул билдирүүгө тиркедим. Текшерип, VIP мүмкүнчүлүгүн берип коюуңузду суранам.\n\n" +
+                "Эскертүү: чек WhatsAppка жөнөтүлгөндөн кийин 24 сааттын ичинде VIP мүмкүнчүлүгү берилет.";
+            const waUrl = "https://wa.me/" + VIP_WHATSAPP_NUMBER + "?text=" + encodeURIComponent(message);
+            const waWindow = window.open("about:blank", "_blank");
+            try {
+                const requestsRef = ref(db, "vipRequests/" + user.uid);
+                const requestRef = push(requestsRef);
+                await set(requestRef, {
+                    uid: user.uid, email: user.email, amount: VIP_PRICE_SOM,
+                    currency: "KGS", planDays: VIP_DURATION_DAYS,
+                    status: "pending", createdAt: Date.now()
+                });
+                if (waWindow) waWindow.location.href = waUrl;
+                else window.location.href = waUrl;
+                if (vipStatusEl) vipStatusEl.textContent =
+                    "Сурамыңыз катталды. WhatsAppта квитанциянын сүрөтүн тиркеп, билдирүүнү сөзсүз жөнөтүңүз.";
+            } catch (error) {
+                if (waWindow) waWindow.close();
+                console.error(error);
+                alert("Төлөм сурамын каттоо ишке ашкан жок: " + error.message +
+                    ". Интернетти жана Firebase Database Rules жөндөөлөрүн текшериңиз.");
+            } finally {
+                vipWhatsappBtn.disabled = false;
+                vipWhatsappBtn.textContent = "Төлөп, чекти WhatsAppка жөнөтүү";
+            }
+        });
 
         const loader = document.getElementById('loader');
         const mainContent = document.getElementById('main-content');
@@ -808,8 +1054,15 @@
                 
                 if (authModal) authModal.classList.remove('visible');
                 if (mainContent) mainContent.classList.add('visible');
+                startVipListeners(user);
             } else {
                 currentUserEmail = null;
+                if (vipStatusUnsubscribe) { vipStatusUnsubscribe(); vipStatusUnsubscribe = null; }
+                if (vipRequestsUnsubscribe) { vipRequestsUnsubscribe(); vipRequestsUnsubscribe = null; }
+                const adminPanel = document.getElementById("vip-admin-panel");
+                if (adminPanel) adminPanel.style.display = "none";
+                vipIsActive = false;
+                vipAdminUser = false;
                 localStorage.removeItem('duty_current_teacher_email');
                 
                 if (mainContent) mainContent.classList.remove('visible');
