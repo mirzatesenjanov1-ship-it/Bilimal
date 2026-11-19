@@ -1,0 +1,1248 @@
+
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f172a">
+<title>Чексиз такта — Bilimal.org</title>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+:root {
+    --bg:#0b1120;
+    --panel:#151f32;
+    --panel2:#1e293b;
+    --accent:#06d6f5;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --border:#334155;
+}
+* {box-sizing:border-box}
+html,body {
+    width:100%;
+    height:100%;
+    margin:0;
+    overflow:hidden;
+    font-family:Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+button,input {font:inherit}
+button {cursor:pointer}
+#app {
+    height:100%;
+    display:flex;
+    flex-direction:column;
+}
+.topbar {
+    min-height:65px;
+    background:var(--panel);
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 18px;
+    gap:12px;
+    z-index:5;
+}
+.brand {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    font-weight:bold;
+    font-size:18px;
+}
+.brand i {color:var(--accent);font-size:23px}
+.brand small {
+    display:block;
+    font-size:11px;
+    color:var(--muted);
+    margin-top:3px;
+}
+.top-actions {
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+.btn {
+    border:1px solid var(--border);
+    background:var(--panel2);
+    color:var(--text);
+    padding:10px 13px;
+    border-radius:8px;
+    transition:.2s;
+}
+.btn:hover {border-color:var(--accent);color:var(--accent)}
+.btn.active {
+    background:var(--accent);
+    color:#082032;
+    border-color:var(--accent);
+}
+.btn.danger:hover {color:#ef4444;border-color:#ef4444}
+.workspace {
+    flex:1;
+    position:relative;
+    overflow:hidden;
+    background:#fff;
+}
+#board {
+    display:block;
+    width:100%;
+    height:100%;
+    touch-action:none;
+    cursor:crosshair;
+}
+.toolbar {
+    position:absolute;
+    top:15px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:8px;
+    border-radius:12px;
+    background:rgba(15,23,42,.96);
+    border:1px solid #334155;
+    box-shadow:0 5px 25px rgba(0,0,0,.2);
+    z-index:3;
+    max-width:calc(100% - 20px);
+    overflow-x:auto;
+}
+.tool {
+    width:42px;
+    height:42px;
+    flex-shrink:0;
+    border:1px solid transparent;
+    border-radius:8px;
+    background:transparent;
+    color:#cbd5e1;
+    font-size:17px;
+}
+.tool:hover {background:#26364d}
+.tool.active {
+    background:var(--accent);
+    color:#082032;
+}
+.separator {
+    height:28px;
+    width:1px;
+    background:#475569;
+    margin:0 3px;
+    flex-shrink:0;
+}
+.color-picker {
+    width:36px;
+    height:36px;
+    border:0;
+    padding:2px;
+    background:transparent;
+    cursor:pointer;
+}
+.size-select {
+    width:65px;
+    padding:9px 5px;
+    border-radius:7px;
+    background:#1e293b;
+    border:1px solid #475569;
+    color:white;
+}
+.bottom-info {
+    position:absolute;
+    bottom:15px;
+    left:15px;
+    padding:9px 13px;
+    background:rgba(15,23,42,.9);
+    color:#e2e8f0;
+    border-radius:8px;
+    font-size:12px;
+    pointer-events:none;
+}
+.zoom-controls {
+    position:absolute;
+    right:15px;
+    bottom:15px;
+    display:flex;
+    gap:5px;
+    padding:6px;
+    background:rgba(15,23,42,.95);
+    border-radius:10px;
+}
+.zoom-controls button {
+    width:38px;
+    height:38px;
+    background:#26364d;
+    color:white;
+    border:0;
+    border-radius:7px;
+}
+.zoom-controls button:hover {background:#087eaa}
+#zoomText {
+    min-width:55px;
+    text-align:center;
+    align-self:center;
+    font-size:13px;
+}
+.status {
+    padding:5px 10px;
+    border-radius:6px;
+    background:#064e3b;
+    color:#6ee7b7;
+    font-size:12px;
+}
+#authScreen {
+    position:fixed;
+    inset:0;
+    z-index:100;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:20px;
+    background:radial-gradient(circle at top,#1e3a5f,#0b1120 65%);
+}
+.auth-card {
+    width:100%;
+    max-width:420px;
+    padding:32px;
+    background:#151f32;
+    border:1px solid #334155;
+    border-radius:18px;
+    text-align:center;
+    box-shadow:0 20px 60px #0007;
+}
+.auth-icon {
+    font-size:45px;
+    color:var(--accent);
+    margin-bottom:15px;
+}
+.auth-card h2 {margin:0 0 10px}
+.auth-card p {
+    color:var(--muted);
+    line-height:1.6;
+    font-size:14px;
+}
+.auth-card input {
+    width:100%;
+    padding:14px;
+    margin:15px 0 10px;
+    border-radius:8px;
+    border:1px solid #475569;
+    background:#0b1120;
+    color:white;
+    outline:none;
+}
+.auth-card input:focus {border-color:var(--accent)}
+.auth-card button {
+    width:100%;
+    padding:13px;
+    background:var(--accent);
+    color:#082032;
+    border:0;
+    border-radius:8px;
+    font-weight:bold;
+}
+#authMessage {
+    margin-top:12px;
+    font-size:13px;
+    color:#fca5a5;
+}
+#loading {
+    position:fixed;
+    inset:0;
+    background:#0b1120;
+    z-index:110;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:15px;
+}
+.spinner {
+    width:40px;
+    height:40px;
+    border:4px solid #334155;
+    border-top-color:var(--accent);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+}
+@keyframes spin {to{transform:rotate(360deg)}}
+@media(max-width:650px) {
+    .topbar {padding:8px 10px;min-height:55px}
+    .brand {font-size:14px}
+    .brand small {font-size:10px}
+    .top-actions .desktop {display:none}
+    .toolbar {top:10px;gap:3px;padding:5px}
+    .tool {width:36px;height:38px;font-size:15px}
+    .size-select {width:55px}
+    .bottom-info {font-size:10px;bottom:10px;left:8px}
+    .zoom-controls {right:8px;bottom:8px}
+}
+</style>
+</head>
+
+<body>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <div>Bilimal.org жүктөлүүдө...</div>
+</div>
+
+<div id="authScreen" style="display:none">
+    <div class="auth-card">
+        <div class="auth-icon"><i class="fa-solid fa-chalkboard"></i></div>
+        <h2>Чексиз такта</h2>
+        <p>
+            Бул бөлүмгө VIP мүмкүнчүлүгү активдүү колдонуучулар гана кире алышат.
+            VIP аккаунтуңузга байланышкан электрондук почтаңызды киргизиңиз.
+        </p>
+        <input type="email" id="emailInput" placeholder="example@gmail.com">
+        <button onclick="verifyAccess()">
+            <i class="fa-solid fa-lock-open"></i> Кирүү
+        </button>
+        <div id="authMessage"></div>
+        <p style="margin-top:20px;font-size:12px">
+            <a href="/dashboard.html" style="color:#06d6f5;text-decoration:none">
+                <i class="fa-solid fa-arrow-left"></i> Башкы панелге кайтуу
+            </a>
+        </p>
+    </div>
+</div>
+
+<div id="app" style="display:none">
+
+    <header class="topbar">
+        <div class="brand">
+            <i class="fa-solid fa-chalkboard"></i>
+            <div>
+                Bilimal.org — Чексиз такта
+                <small id="userLabel">VIP колдонуучу</small>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <span class="status desktop">
+                <i class="fa-solid fa-crown"></i> VIP
+            </span>
+            <button class="btn desktop" onclick="saveBoard()">
+                <i class="fa-solid fa-floppy-disk"></i> Сактоо
+            </button>
+            <button class="btn desktop" onclick="exportImage()">
+                <i class="fa-solid fa-download"></i> PNG
+            </button>
+            <button class="btn danger" onclick="goBack()">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span class="desktop">Чыгуу</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <canvas id="board"></canvas>
+
+        <div class="toolbar">
+
+            <button class="tool active" id="penTool"
+                title="Калем" onclick="setTool('pen')">
+                <i class="fa-solid fa-pen"></i>
+            </button>
+
+            <button class="tool" id="eraserTool"
+                title="Өчүргүч" onclick="setTool('eraser')">
+                <i class="fa-solid fa-eraser"></i>
+            </button>
+
+            <button class="tool" id="handTool"
+                title="Такта жылдыруу" onclick="setTool('hand')">
+                <i class="fa-solid fa-hand"></i>
+            </button>
+
+            <div class="separator"></div>
+
+            <input type="color" id="colorPicker"
+                class="color-picker" value="#111827"
+                title="Калемдин түсү">
+
+            <select id="brushSize" class="size-select" title="Калемдин калыңдыгы">
+                <option value="2">Жука</option>
+                <option value="4" selected>Орто</option>
+                <option value="8">Калың</option>
+                <option value="14">Өтө калың</option>
+                <option value="22">Чоң</option>
+            </select>
+
+            <div class="separator"></div>
+
+            <button class="tool" onclick="undo()" title="Артка кайтаруу">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+
+            <button class="tool" onclick="redo()" title="Кайра кайталоо">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+
+            <button class="tool" onclick="clearBoard()" title="Тактанын баарын тазалоо">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+
+            <div class="separator"></div>
+
+            <button class="tool" onclick="saveBoard()" title="Сактоо">
+                <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+
+            <button class="tool" onclick="exportImage()" title="PNG жүктөө">
+                <i class="fa-solid fa-image"></i>
+            </button>
+
+        </div>
+
+        <div class="bottom-info">
+            <i class="fa-solid fa-circle-info"></i>
+            Калем менен тартыңыз. Кол белгиси менен тактаны жылдырыңыз.
+        </div>
+
+        <div class="zoom-controls">
+            <button onclick="zoomAtCenter(1.2)" title="Чоңойтуу">
+                <i class="fa-solid fa-plus"></i>
+            </button>
+            <span id="zoomText">100%</span>
+            <button onclick="zoomAtCenter(0.8)" title="Кичирейтүү">
+                <i class="fa-solid fa-minus"></i>
+            </button>
+            <button onclick="resetView()" title="Баштапкы көрүнүш">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </main>
+
+</div>
+
+<script>
+// ================================================
+// 1. FIREBASE CONFIGURATION
+// ================================================
+
+const firebaseConfig = {
+    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
+    authDomain: "bilimal-org.firebaseapp.com",
+    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "bilimal-org",
+    storageBucket: "bilimal-org.firebasestorage.app",
+    messagingSenderId: "241750360816",
+    appId: "1:241750360816:web:a991434eb5afbc470d7835",
+    measurementId: "G-9GSQV60QV0"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.auth();
+const db = firebase.database();
+
+// ================================================
+// 2. GLOBAL VARIABLES
+// ================================================
+
+const canvas = document.getElementById("board");
+const ctx = canvas.getContext("2d");
+
+let currentEmail = "";
+let currentTool = "pen";
+
+let strokes = [];
+let redoStack = [];
+
+let drawing = false;
+let panning = false;
+let lastPointer = null;
+let spacePressed = false;
+
+let zoom = 1;
+let panX = 0;
+let panY = 0;
+
+let pixelRatio = window.devicePixelRatio || 1;
+
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 5;
+
+let saveTimer = null;
+
+// ================================================
+// 3. FIREBASE AUTHENTICATION
+// ================================================
+
+function ensureAuth() {
+    return new Promise((resolve, reject) => {
+
+        if (auth.currentUser) {
+            resolve(auth.currentUser);
+            return;
+        }
+
+        const unsubscribe = auth.onAuthStateChanged(user => {
+
+            unsubscribe();
+
+            if (user) {
+                resolve(user);
+            } else {
+                auth.signInAnonymously()
+                    .then(result => resolve(result.user))
+                    .catch(reject);
+            }
+        }, reject);
+    });
+}
+
+function sanitizeEmail(email) {
+    return email.trim().toLowerCase()
+        .replace(/\./g, "_dot_")
+        .replace(/@/g, "_at_");
+}
+
+// ================================================
+// 4. VIP ACCESS CHECK
+// ================================================
+
+function verifyAccess() {
+
+    const email = document.getElementById("emailInput").value.trim().toLowerCase();
+    const message = document.getElementById("authMessage");
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        message.textContent = "Туура электрондук почта киргизиңиз.";
+        return;
+    }
+
+    message.style.color = "#94a3b8";
+    message.textContent = "VIP мүмкүнчүлүк текшерилүүдө...";
+
+    ensureAuth()
+        .then(() => {
+
+            const emailKey = sanitizeEmail(email);
+
+            return db.ref("applications/vip_users/" + emailKey).once("value")
+                .then(snapshot => {
+
+                    if (!snapshot.exists()) {
+                        throw new Error("Бул E-mail үчүн VIP мүмкүнчүлүк табылган жок.");
+                    }
+
+                    const data = snapshot.val();
+                    const expiry = new Date(data.expiresAt).getTime();
+
+                    if (
+                        data.status !== "active" ||
+                        !Number.isFinite(expiry) ||
+                        expiry <= Date.now()
+                    ) {
+                        throw new Error("VIP мөөнөтүңүз аяктаган. Мүмкүнчүлүктү жаңыртыңыз.");
+                    }
+
+                    currentEmail = email;
+
+                    localStorage.setItem("bilimal_user_email", email);
+
+                    document.getElementById("userLabel").textContent =
+                        email + " | VIP";
+
+                    document.getElementById("authScreen").style.display = "none";
+                    document.getElementById("app").style.display = "flex";
+
+                    initializeBoard();
+
+                });
+
+        })
+        .catch(error => {
+            console.error("VIP текшерүү катасы:", error);
+            message.style.color = "#fca5a5";
+            message.textContent = error.message ||
+                "Маалыматты текшерүү мүмкүн болгон жок. Кайра аракет кылыңыз.";
+        });
+}
+
+// ================================================
+// 5. INITIALIZATION
+// ================================================
+
+window.addEventListener("DOMContentLoaded", async () => {
+
+    try {
+        await ensureAuth();
+
+        const savedEmail = localStorage.getItem("bilimal_user_email");
+
+        if (savedEmail) {
+            document.getElementById("emailInput").value = savedEmail;
+        }
+
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("authScreen").style.display = "flex";
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("loading").innerHTML =
+            "<p style='color:#fca5a5'>Firebase менен байланышуу мүмкүн болгон жок. Баракты жаңыртып көрүңүз.</p>";
+    }
+
+});
+
+// ================================================
+// 6. BOARD INITIALIZATION
+// ================================================
+
+function initializeBoard() {
+
+    resizeCanvas();
+
+    loadBoard();
+
+    drawBoard();
+
+    window.addEventListener("resize", () => {
+        resizeCanvas();
+        drawBoard();
+    });
+}
+
+function resizeCanvas() {
+
+    const rect = canvas.getBoundingClientRect();
+
+    pixelRatio = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(rect.width * pixelRatio);
+    canvas.height = Math.round(rect.height * pixelRatio);
+
+    drawBoard();
+}
+
+// ================================================
+// 7. BOARD DRAWING
+// ================================================
+
+function drawBoard() {
+
+    const width = canvas.width / pixelRatio;
+    const height = canvas.height / pixelRatio;
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    ctx.clearRect(0, 0, width, height);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+
+    drawGrid(width, height);
+
+    ctx.setTransform(
+        pixelRatio * zoom,
+        0,
+        0,
+        pixelRatio * zoom,
+        pixelRatio * panX,
+        pixelRatio * panY
+    );
+
+    strokes.forEach(stroke => drawStroke(stroke));
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    document.getElementById("zoomText").textContent =
+        Math.round(zoom * 100) + "%";
+}
+
+function drawGrid(width, height) {
+
+    const gridSize = 40 * zoom;
+
+    if (gridSize < 8) return;
+
+    const startX = ((panX % gridSize) + gridSize) % gridSize;
+    const startY = ((panY % gridSize) + gridSize) % gridSize;
+
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 0.7;
+
+    ctx.beginPath();
+
+    for (let x = startX; x < width; x += gridSize) {
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+    }
+
+    for (let y = startY; y < height; y += gridSize) {
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+    }
+
+    ctx.stroke();
+}
+
+function drawStroke(stroke) {
+
+    if (!stroke.points || stroke.points.length === 0) return;
+
+    ctx.save();
+
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    ctx.globalCompositeOperation =
+        stroke.tool === "eraser" ? "destination-out" : "source-over";
+
+    ctx.strokeStyle = stroke.color || "#111827";
+    ctx.lineWidth = stroke.size || 4;
+
+    ctx.beginPath();
+
+    const points = stroke.points;
+
+    ctx.moveTo(points[0].x, points[0].y);
+
+    if (points.length === 1) {
+
+        ctx.lineTo(points[0].x + 0.01, points[0].y + 0.01);
+
+    } else {
+
+        for (let i = 1; i < points.length; i++) {
+            ctx.lineTo(points[i].x, points[i].y);
+        }
+    }
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// ================================================
+// 8. TOOL SELECTION
+// ================================================
+
+function setTool(tool) {
+
+    currentTool = tool;
+
+    document.querySelectorAll(".tool").forEach(btn => {
+        btn.classList.remove("active");
+    });
+
+    const selected = {
+        pen: "penTool",
+        eraser: "eraserTool",
+        hand: "handTool"
+    };
+
+    const button = document.getElementById(selected[tool]);
+
+    if (button) button.classList.add("active");
+
+    canvas.style.cursor =
+        tool === "hand" ? "grab" : "crosshair";
+}
+
+// ================================================
+// 9. POINTER COORDINATES
+// ================================================
+
+function getWorldPosition(event) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (event.clientX - rect.left - panX) / zoom,
+        y: (event.clientY - rect.top - panY) / zoom
+    };
+}
+
+// ================================================
+// 10. POINTER EVENTS
+// ================================================
+
+canvas.addEventListener("pointerdown", event => {
+
+    if (!currentEmail) return;
+
+    canvas.setPointerCapture(event.pointerId);
+
+    const rect = canvas.getBoundingClientRect();
+
+    const screenPoint = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+    };
+
+    const useHand =
+        currentTool === "hand" ||
+        spacePressed ||
+        event.button === 1;
+
+    if (useHand) {
+
+        panning = true;
+        lastPointer = screenPoint;
+        canvas.style.cursor = "grabbing";
+
+        return;
+    }
+
+    if (event.button !== 0) return;
+
+    drawing = true;
+
+    const point = getWorldPosition(event);
+
+    const stroke = {
+        tool: currentTool,
+        color: document.getElementById("colorPicker").value,
+        size: Number(document.getElementById("brushSize").value),
+        points: [point]
+    };
+
+    strokes.push(stroke);
+
+    redoStack = [];
+
+    drawBoard();
+
+});
+
+canvas.addEventListener("pointermove", event => {
+
+    const rect = canvas.getBoundingClientRect();
+
+    const screenPoint = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+    };
+
+    if (panning) {
+
+        panX += screenPoint.x - lastPointer.x;
+        panY += screenPoint.y - lastPointer.y;
+
+        lastPointer = screenPoint;
+
+        drawBoard();
+
+        return;
+    }
+
+    if (!drawing) return;
+
+    const point = getWorldPosition(event);
+
+    const stroke = strokes[strokes.length - 1];
+
+    if (stroke) {
+        stroke.points.push(point);
+        drawBoard();
+    }
+});
+
+function finishDrawing() {
+
+    if (drawing) {
+        drawing = false;
+        scheduleSave();
+    }
+
+    if (panning) {
+        panning = false;
+        canvas.style.cursor =
+            currentTool === "hand" ? "grab" : "crosshair";
+    }
+
+    lastPointer = null;
+}
+
+canvas.addEventListener("pointerup", finishDrawing);
+canvas.addEventListener("pointercancel", finishDrawing);
+canvas.addEventListener("lostpointercapture", finishDrawing);
+
+// ================================================
+// 11. ZOOM
+// ================================================
+
+canvas.addEventListener("wheel", event => {
+
+    event.preventDefault();
+
+    const rect = canvas.getBoundingClientRect();
+
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+
+    const factor = event.deltaY < 0 ? 1.12 : 0.89;
+
+    zoomAt(mouseX, mouseY, factor);
+
+}, { passive: false });
+
+function zoomAt(x, y, factor) {
+
+    const oldZoom = zoom;
+
+    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+
+    const ratio = zoom / oldZoom;
+
+    panX = x - (x - panX) * ratio;
+    panY = y - (y - panY) * ratio;
+
+    drawBoard();
+    scheduleSave();
+}
+
+function zoomAtCenter(factor) {
+
+    const rect = canvas.getBoundingClientRect();
+
+    zoomAt(rect.width / 2, rect.height / 2, factor);
+}
+
+function resetView() {
+
+    zoom = 1;
+    panX = 0;
+    panY = 0;
+
+    drawBoard();
+    scheduleSave();
+}
+
+// ================================================
+// 12. UNDO / REDO
+// ================================================
+
+function undo() {
+
+    if (strokes.length === 0) return;
+
+    redoStack.push(strokes.pop());
+
+    drawBoard();
+    scheduleSave();
+}
+
+function redo() {
+
+    if (redoStack.length === 0) return;
+
+    strokes.push(redoStack.pop());
+
+    drawBoard();
+    scheduleSave();
+}
+
+// ================================================
+// 13. CLEAR BOARD
+// ================================================
+
+function clearBoard() {
+
+    if (strokes.length === 0) return;
+
+    if (!confirm("Тактадагы бардык жазууларды өчүрөсүзбү?")) {
+        return;
+    }
+
+    redoStack = [...strokes];
+    strokes = [];
+
+    drawBoard();
+    saveBoard();
+}
+
+// ================================================
+// 14. LOCAL STORAGE
+// ================================================
+
+function getStorageKey() {
+
+    return "bilimal_unlimited_board_" + sanitizeEmail(currentEmail);
+}
+
+function saveBoard() {
+
+    if (!currentEmail) return;
+
+    try {
+
+        const data = {
+            version: 1,
+            strokes: strokes,
+            zoom: zoom,
+            panX: panX,
+            panY: panY,
+            updatedAt: new Date().toISOString()
+        };
+
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+
+        showToast("Такта ийгиликтүү сакталды!");
+
+    } catch (error) {
+
+        console.error("Сактоо катасы:", error);
+
+        showToast("Сактоо мүмкүн болгон жок. Маалымат өтө чоң болушу мүмкүн.");
+    }
+}
+
+function loadBoard() {
+
+    if (!currentEmail) return;
+
+    try {
+
+        const raw = localStorage.getItem(getStorageKey());
+
+        if (!raw) {
+            strokes = [];
+            zoom = 1;
+            panX = 0;
+            panY = 0;
+            return;
+        }
+
+        const data = JSON.parse(raw);
+
+        if (data.version !== 1 || !Array.isArray(data.strokes)) {
+            throw new Error("Тактанын маалымат форматы туура эмес.");
+        }
+
+        strokes = data.strokes;
+        zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(data.zoom) || 1));
+        panX = Number(data.panX) || 0;
+        panY = Number(data.panY) || 0;
+
+    } catch (error) {
+
+        console.error("Жүктөө катасы:", error);
+
+        strokes = [];
+        zoom = 1;
+        panX = 0;
+        panY = 0;
+    }
+}
+
+function scheduleSave() {
+
+    clearTimeout(saveTimer);
+
+    saveTimer = setTimeout(() => {
+
+        if (!currentEmail) return;
+
+        try {
+
+            const data = {
+                version: 1,
+                strokes: strokes,
+                zoom: zoom,
+                panX: panX,
+                panY: panY,
+                updatedAt: new Date().toISOString()
+            };
+
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
+
+        } catch (error) {
+            console.error("Автоматтык сактоо катасы:", error);
+        }
+
+    }, 700);
+}
+
+// ================================================
+// 15. EXPORT PNG
+// ================================================
+
+function exportImage() {
+
+    if (!currentEmail) return;
+
+    try {
+
+        const link = document.createElement("a");
+
+        link.download =
+            "Bilimal-Chексиз-такта-" +
+            new Date().toISOString().slice(0, 10) +
+            ".png";
+
+        link.href = canvas.toDataURL("image/png");
+
+        link.click();
+
+        showToast("PNG сүрөт даяр!");
+
+    } catch (error) {
+
+        console.error(error);
+        showToast("Сүрөттү сактоо мүмкүн болгон жок.");
+    }
+}
+
+// ================================================
+// 16. KEYBOARD SHORTCUTS
+// ================================================
+
+document.addEventListener("keydown", event => {
+
+    if (event.target.tagName === "INPUT" ||
+        event.target.tagName === "SELECT") return;
+
+    if (event.code === "Space") {
+        event.preventDefault();
+        spacePressed = true;
+        canvas.style.cursor = "grab";
+    }
+
+    if ((event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "z") {
+
+        event.preventDefault();
+
+        if (event.shiftKey) redo();
+        else undo();
+    }
+
+    if ((event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === "s") {
+
+        event.preventDefault();
+        saveBoard();
+    }
+
+    if (event.key.toLowerCase() === "p") setTool("pen");
+    if (event.key.toLowerCase() === "e") setTool("eraser");
+    if (event.key.toLowerCase() === "h") setTool("hand");
+
+    if (event.key === "Escape") {
+        finishDrawing();
+    }
+});
+
+document.addEventListener("keyup", event => {
+
+    if (event.code === "Space") {
+
+        spacePressed = false;
+
+        canvas.style.cursor =
+            currentTool === "hand" ? "grab" : "crosshair";
+    }
+});
+
+// ================================================
+// 17. COLOR PICKER
+// ================================================
+
+document.getElementById("colorPicker").addEventListener("input", () => {
+
+    if (currentTool === "eraser") {
+        setTool("pen");
+    }
+});
+
+// ================================================
+// 18. TOAST NOTIFICATION
+// ================================================
+
+function showToast(message) {
+
+    let toast = document.getElementById("boardToast");
+
+    if (!toast) {
+
+        toast = document.createElement("div");
+
+        toast.id = "boardToast";
+
+        toast.style.cssText = `
+            position:fixed;
+            top:80px;
+            left:50%;
+            transform:translateX(-50%);
+            background:#064e3b;
+            color:white;
+            padding:12px 20px;
+            border-radius:9px;
+            z-index:200;
+            box-shadow:0 5px 20px #0005;
+            font-size:14px;
+            max-width:90%;
+            text-align:center;
+        `;
+
+        document.body.appendChild(toast);
+    }
+
+    toast.textContent = message;
+    toast.style.display = "block";
+
+    clearTimeout(toast.timer);
+
+    toast.timer = setTimeout(() => {
+        toast.style.display = "none";
+    }, 2500);
+}
+
+// ================================================
+// 19. EXIT
+// ================================================
+
+function goBack() {
+
+    if (!confirm("Чексиз тактадан чыгасызбы?")) return;
+
+    saveBoard();
+
+    window.location.href = "/dashboard.html";
+}
+
+// ================================================
+// 20. AUTO SAVE BEFORE LEAVING
+// ================================================
+
+window.addEventListener("beforeunload", () => {
+
+    if (!currentEmail) return;
+
+    try {
+
+        const data = {
+            version: 1,
+            strokes: strokes,
+            zoom: zoom,
+            panX: panX,
+            panY: panY,
+            updatedAt: new Date().toISOString()
+        };
+
+        localStorage.setItem(getStorageKey(), JSON.stringify(data));
+
+    } catch (error) {
+        console.error(error);
+    }
+});
+
+</script>
+
+</body>
+</html>
