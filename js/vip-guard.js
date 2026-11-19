@@ -1,8 +1,8 @@
 
 /* =====================================================
    BILIMAL VIP GUARD
-   Файл: /js/vip-guard.js
-   VIP бөлүмдөрүн коргоо жана мөөнөтүн текшерүү
+   Бирдиктүү VIP маалымат базасы:
+   applications/vip_users/{emailKey}
    ===================================================== */
 
 import {
@@ -22,8 +22,6 @@ import {
     get
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
-/* Firebase конфигурациясы — dashboard.html файлыңыздагыдай */
-
 const firebaseConfig = {
     apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
     authDomain: "bilimal-org.firebaseapp.com",
@@ -35,11 +33,7 @@ const firebaseConfig = {
     measurementId: "G-9GSQV60QV0"
 };
 
-/* Администратор */
-
 const ADMIN_EMAIL = "mirzatestebesov51@gmail.com";
-
-/* Firebase */
 
 const app = getApps().length
     ? getApp()
@@ -48,23 +42,27 @@ const app = getApps().length
 const auth = getAuth(app);
 const db = getDatabase(app);
 
-/* Баракты жашыруу */
+// Электрондук почтаны Firebase ачкычына айландыруу
+function sanitizeEmail(email) {
+    return email.trim()
+        .toLowerCase()
+        .replace(/\./g, "_dot_")
+        .replace(/@/g, "_at_");
+}
 
+// VIP текшерилип бүткөндө баракты көрсөтүү
 function showPage() {
     document.documentElement.classList.remove("vip-checking");
 }
 
-/* VIP жок болсо dashboard'га кайтаруу */
-
+// VIP жок болсо башкы панелге кайтаруу
 function denyAccess(reason) {
     window.location.replace(
-        "/dashboard.html?vip=" +
-        encodeURIComponent(reason)
+        "/dashboard.html?vip=" + encodeURIComponent(reason)
     );
 }
 
-/* VIP мөөнөтүн текшерүү */
-
+// VIP текшерүү
 async function checkVipAccess(user) {
 
     if (!user) {
@@ -72,19 +70,26 @@ async function checkVipAccess(user) {
         return;
     }
 
-    // Администраторго VIP чектөөсү жок
-    if (
-        (user.email || "").toLowerCase() ===
-        ADMIN_EMAIL.toLowerCase()
-    ) {
+    const email = (user.email || "").trim().toLowerCase();
+
+    // Администраторго чектөөсүз мүмкүнчүлүк
+    if (email === ADMIN_EMAIL.toLowerCase()) {
         showPage();
+        return;
+    }
+
+    if (!email) {
+        denyAccess("email-required");
         return;
     }
 
     try {
 
+        // Админ берген VIP менен бирдей база
+        const emailKey = sanitizeEmail(email);
+
         const snapshot = await get(
-            ref(db, "vipAccess/" + user.uid)
+            ref(db, "applications/vip_users/" + emailKey)
         );
 
         if (!snapshot.exists()) {
@@ -94,12 +99,12 @@ async function checkVipAccess(user) {
 
         const access = snapshot.val();
 
-        const expiresAt = Number(
-            access.expiresAt || 0
-        );
+        const expiresAt = new Date(
+            access.expiresAt
+        ).getTime();
 
         const isActive =
-            access.active === true &&
+            access.status === "active" &&
             Number.isFinite(expiresAt) &&
             expiresAt > Date.now();
 
@@ -108,10 +113,10 @@ async function checkVipAccess(user) {
             return;
         }
 
-        // VIP активдүү — баракты көрсөтүү
+        // VIP активдүү
         showPage();
 
-        // Мөөнөт бүткөнүн мезгил-мезгили менен текшерүү
+        // Мөөнөтү бүткөндө автоматтык түрдө жабуу
         const expiryCheck = window.setInterval(() => {
 
             if (Date.now() >= expiresAt) {
@@ -121,34 +126,29 @@ async function checkVipAccess(user) {
 
         }, 10000);
 
-        // Колдонуучу баракка кайра келгенде да текшерүү
-        document.addEventListener(
-            "visibilitychange",
-            () => {
-                if (
-                    document.visibilityState === "visible" &&
-                    Date.now() >= expiresAt
-                ) {
-                    window.clearInterval(expiryCheck);
-                    denyAccess("expired");
-                }
+        // Баракка кайра келгенде да текшерүү
+        document.addEventListener("visibilitychange", () => {
+
+            if (
+                document.visibilityState === "visible" &&
+                Date.now() >= expiresAt
+            ) {
+                window.clearInterval(expiryCheck);
+                denyAccess("expired");
             }
-        );
+
+        });
 
     } catch (error) {
 
-        console.error(
-            "Bilimal VIP текшерүү катасы:",
-            error
-        );
+        console.error("Bilimal VIP катасы:", error);
 
-        // Firebase катасы болсо, кирүүгө уруксат берилбейт
+        // Ката болсо коопсуздук үчүн киргизбөө
         denyAccess("check-error");
     }
 }
 
-/* Авторизацияны текшерүү */
-
+// Firebase авторизациясы
 onAuthStateChanged(auth, async (user) => {
     await checkVipAccess(user);
 });
