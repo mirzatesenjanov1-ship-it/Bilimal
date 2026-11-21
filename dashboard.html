@@ -940,23 +940,11 @@
         }
         function vipExpiryValue(data) {
             if (!data) return 0;
-            const raw = data.expiresAtMs || data.expiresAt || data.expiry || data.expiration || 0;
-            if (raw === null || raw === undefined || raw === "") return 0;
+            const raw = data.expiresAtMs || data.expiresAt || 0;
             const numeric = Number(raw);
-            if (numeric > 0 && Number.isFinite(numeric)) {
-                // Supports milliseconds and Unix seconds.
-                return numeric < 1000000000000 ? numeric * 1000 : numeric;
-            }
+            if (numeric > 0 && Number.isFinite(numeric)) return numeric;
             const parsed = Date.parse(raw);
             return Number.isFinite(parsed) ? parsed : 0;
-        }
-
-        function vipRecordIsActive(record) {
-            if (!record) return false;
-            // Lab VIP records use status:"active"; dashboard approvals use active:true.
-            const statusActive = String(record.status || "").trim().toLowerCase() === "active";
-            const booleanActive = record.active === true || record.active === "true";
-            return (statusActive || booleanActive) && vipExpiryValue(record) > Date.now();
         }
 
         function showVipStatus() {
@@ -974,7 +962,7 @@
 
             const now = Date.now();
             const candidates = [vipUidAccess, vipEmailAccess, vipLegacyAccess]
-                .filter(item => vipRecordIsActive(item));
+                .filter(item => item && item.active === true && vipExpiryValue(item) > now);
             candidates.sort((a, b) => vipExpiryValue(b) - vipExpiryValue(a));
 
             const best = candidates[0] || null;
@@ -1015,7 +1003,7 @@
             });
 
             // VIP access granted from lab-works-vip.html: email-based paths.
-            if (user.email && normalizeVipEmail(user.email)) {
+            if (user.email) {
                 const emailKey = vipEmailKey(user.email);
                 vipEmailStatusUnsubscribe = onValue(ref(db, "applications/vip_users/" + emailKey), snap => {
                     vipEmailAccess = snap.val() || null;
@@ -1066,7 +1054,7 @@
             const button = event.target.closest("[data-vip-uid]");
             if (!button) return;
             const admin = auth.currentUser;
-            if (!admin || normalizeVipEmail(admin.email) !== normalizeVipEmail(VIP_ADMIN_EMAIL)) {
+            if (!admin || (admin.email || "").toLowerCase() !== VIP_ADMIN_EMAIL.toLowerCase()) {
                 alert("Бул аракет администраторго гана уруксат берилген.");
                 return;
             }
