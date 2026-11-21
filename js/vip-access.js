@@ -1,21 +1,24 @@
-
-/* =====================================================
-   BILIMAL VIP ACCESS - CENTRAL CHECKER
-   Used by:
-   /sections/lab-works-vip.html
-   /sections/unlimited-board.html
-
-   Main database:
-   applications/vip_users/{emailKey}
-   ===================================================== */
+/* =========================================================
+   BILIMAL VIP ACCESS SYSTEM
+   Central VIP verification for Bilimal.org
+   ========================================================= */
 
 (function () {
     "use strict";
 
-    const ADMIN_EMAIL = "mirzatestebesov51@gmail.com";
+    const ADMIN_EMAIL = "mirzatestebesjanov51@gmail.com";
+
+    const MAIN_PATH = "applications/vip_users";
+    const LEGACY_PATH = "vip_users";
+
+    // -----------------------------------------------------
+    // EMAIL NORMALIZATION
+    // -----------------------------------------------------
 
     function normalizeEmail(email) {
-        return String(email || "").trim().toLowerCase();
+        return String(email || "")
+            .trim()
+            .toLowerCase();
     }
 
     function sanitizeEmail(email) {
@@ -24,158 +27,228 @@
             .replace(/@/g, "_at_");
     }
 
-    function ensureAuth() {
-        const auth = firebase.auth();
+    function isValidEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+            normalizeEmail(email)
+        );
+    }
 
-        if (auth.currentUser) {
-            return Promise.resolve(auth.currentUser);
+    // -----------------------------------------------------
+    // FIREBASE AUTH
+    // -----------------------------------------------------
+
+    async function ensureAuth() {
+        if (typeof firebase === "undefined") {
+            throw new Error("Firebase жүктөлгөн эмес.");
         }
 
-        return auth.signInAnonymously().then(result => result.user);
+        if (!firebase.auth || !firebase.database) {
+            throw new Error("Firebase Auth же Database жеткиликтүү эмес.");
+        }
+
+        if (firebase.auth().currentUser) {
+            return firebase.auth().currentUser;
+        }
+
+        const result = await firebase.auth().signInAnonymously();
+
+        return result.user;
     }
+
+    // -----------------------------------------------------
+    // EXPIRATION DATE
+    // -----------------------------------------------------
 
     function parseExpiry(data) {
-        if (!data) return NaN;
+        if (!data) return 0;
 
-        if (typeof data.expiresAtMs === "number") {
-            return data.expiresAtMs;
+        if (data.expiresAtMs) {
+            const value = Number(data.expiresAtMs);
+
+            if (Number.isFinite(value) && value > 0) {
+                return value;
+            }
         }
 
-        const value = data.expiresAt;
+        if (data.expiresAt) {
+            const value = Date.parse(data.expiresAt);
 
-        if (typeof value === "number") {
-            return value;
+            if (!Number.isNaN(value)) {
+                return value;
+            }
         }
 
-        if (typeof value === "string") {
-            const parsed = Date.parse(value);
-            return Number.isFinite(parsed) ? parsed : NaN;
-        }
-
-        return NaN;
+        return 0;
     }
+
+    function formatDate(timestamp) {
+        if (!timestamp) return "Белгисиз";
+
+        return new Date(timestamp).toLocaleDateString("ru-RU", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        });
+    }
+
+    // -----------------------------------------------------
+    // DATABASE VIP READ
+    // -----------------------------------------------------
 
     async function readVip(email) {
         await ensureAuth();
 
-        const db = firebase.database();
         const emailKey = sanitizeEmail(email);
 
-        // 1. Негизги VIP маалымат базасы
-        const mainSnapshot = await db.ref(
-            "applications/vip_users/" + emailKey
-        ).once("value");
+        const mainRef = firebase.database()
+            .ref(MAIN_PATH + "/" + emailKey);
+
+        const mainSnapshot = await mainRef.once("value");
 
         if (mainSnapshot.exists()) {
             return {
                 data: mainSnapshot.val(),
-                path: "applications/vip_users/" + emailKey
+                path: MAIN_PATH
             };
         }
 
-        // 2. Мурунку версиялардагы root VIP маалыматтары
-        const legacySnapshot = await db.ref(
-            "vip_users/" + emailKey
-        ).once("value");
+        const legacyRef = firebase.database()
+            .ref(LEGACY_PATH + "/" + emailKey);
+
+        const legacySnapshot = await legacyRef.once("value");
 
         if (legacySnapshot.exists()) {
             return {
                 data: legacySnapshot.val(),
-                path: "vip_users/" + emailKey
+                path: LEGACY_PATH
             };
         }
 
         return null;
     }
 
+    // -----------------------------------------------------
+    // CENTRAL VIP CHECK
+    // -----------------------------------------------------
+
     async function check(email) {
         email = normalizeEmail(email);
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        if (!isValidEmail(email)) {
             return {
                 active: false,
-                reason: "invalid-email"
+                reason: "invalid_email",
+                email: email
             };
         }
 
-        if (email === ADMIN_EMAIL) {
+        // ADMIN HAS UNLIMITED ACCESS
+        if (email === normalizeEmail(ADMIN_EMAIL)) {
             return {
                 active: true,
                 admin: true,
+                unlimited: true,
+                email: email,
                 expiresAt: null
             };
         }
 
-        const result = await readVip(email);
+        try {
+            const record = await readVip(email);
 
-        if (!result) {
+            if (!record || !record.data) {
+                return {
+                    active: false,
+                    reason: "not_found",
+                    email: email
+                };
+            }
+
+            const data = record.data;
+
+            if (data.status !== "active") {
+                return {
+                    active: false,
+                    reason: "inactive",
+                    email: email,
+                    data: data
+                };
+            }
+
+            const expiresAt = parseExpiry(data);
+
+            if (!expiresAt || expiresAt <= Date.now()) {
+                return {
+                    active: false,
+                    reason: "expired",
+                    email: email,
+                    expiresAt: expiresAt,
+                    data: data
+                };
+            }
+
             return {
-                active: false,
-                reason: "not-found"
-            };
-        }
-
-        const data = result.data;
-        const expiry = parseExpiry(data);
-
-        const active =
-            data.status === "active" &&
-            Number.isFinite(expiry) &&
-            expiry > Date.now();
-
-        if (!active) {
-            return {
-                active: false,
-                reason: "expired",
+                active: true,
+                admin: false,
+                unlimited: false,
+                email: email,
+                expiresAt: expiresAt,
+                expiresAtFormatted: formatDate(expiresAt),
                 data: data,
-                path: result.path
+                path: record.path
+            };
+
+        } catch (error) {
+            console.error("VIP CHECK ERROR:", error);
+
+            return {
+                active: false,
+                reason: "error",
+                error: error.message,
+                email: email
             };
         }
-
-        return {
-            active: true,
-            admin: false,
-            expiresAt: expiry,
-            data: data,
-            path: result.path
-        };
     }
 
-    // Башка барактар колдонушу үчүн
+    // -----------------------------------------------------
+    // PUBLIC API
+    // -----------------------------------------------------
+
     window.BilimalVIP = {
         check: check,
-        sanitizeEmail: sanitizeEmail
+        sanitizeEmail: sanitizeEmail,
+        normalizeEmail: normalizeEmail
     };
 
-    // ==========================================
-    // LAB WORKS VIP PAGE
-    // ==========================================
+    // -----------------------------------------------------
+    // LAB-WORKS-VIP.HTML
+    // -----------------------------------------------------
 
     window.verifyVipAccess = async function () {
-
         const input = document.getElementById("userEmailInput");
-        if (!input) return;
 
-        const email = normalizeEmail(input.value);
-
-        if (!email) {
-            alert("E-mail дарегиңизди киргизиңиз.");
+        if (!input) {
+            console.error("userEmailInput табылган жок.");
             return;
         }
 
-        const errorBox = document.getElementById("vipAccessError");
+        const email = normalizeEmail(input.value);
 
-        if (errorBox) {
-            errorBox.remove();
+        if (!isValidEmail(email)) {
+            alert("Электрондук почта туура эмес!");
+            return;
         }
 
-        input.value = email;
+        const button = document.querySelector(
+            'button[onclick*="verifyVipAccess"]'
+        );
 
-        const button = document.querySelector(".btn-check");
+        let oldButtonText = "";
 
         if (button) {
+            oldButtonText = button.innerHTML;
             button.disabled = true;
-            button.textContent = "Текшерилүүдө...";
+            button.innerHTML = "Текшерилүүдө...";
         }
 
         try {
@@ -183,138 +256,145 @@
 
             if (result.active) {
 
-                localStorage.setItem("bilimal_user_email", email);
-
-                const modalEmail = document.getElementById("modalUserEmail");
-
-                if (modalEmail) {
-                    modalEmail.value = email;
+                if (typeof showVipContent === "function") {
+                    showVipContent();
                 }
 
-                if (typeof window.showVipContent === "function") {
-
-                    if (result.admin) {
-                        document.getElementById("vipContentSection").style.display = "block";
-                        document.getElementById("pricingSection").style.display = "none";
-                        document.getElementById("vipExpireText").textContent =
-                            "Администратор — чектөөсүз мүмкүнчүлүк";
-                    } else {
-                        window.showVipContent(new Date(result.expiresAt));
-                    }
+                if (typeof showPricingSection === "function") {
+                    showPricingSection(false);
                 }
 
-            } else if (result.reason === "not-found" ||
-                       result.reason === "expired") {
-
-                if (typeof window.showPricingSection === "function") {
-                    window.showPricingSection();
-                }
-
-            } else {
-                throw new Error("E-mail дареги туура эмес.");
-            }
-
-        } catch (error) {
-
-            console.error("VIP текшерүү катасы:", error);
-
-            let box = document.getElementById("vipAccessError");
-
-            if (!box) {
-                box = document.createElement("div");
-                box.id = "vipAccessError";
-                box.style.cssText =
-                    "margin-top:15px;padding:12px;border-radius:8px;" +
-                    "background:#451a1a;color:#fecaca;font-size:13px;";
-
-                const parent = document.querySelector(".auth-check-box");
-
-                if (parent) {
-                    parent.appendChild(box);
-                }
-            }
-
-            box.textContent =
-                "VIP маалыматтарын текшерүү мүмкүн болгон жок: " +
-                error.message +
-                ". Интернетти жана Firebase Rules эрежелерин текшериңиз.";
-
-        } finally {
-
-            if (button) {
-                button.disabled = false;
-                button.innerHTML =
-                    '<i class="fa-solid fa-magnifying-glass"></i> Текшерүү';
-            }
-        }
-    };
-
-    // ==========================================
-    // UNLIMITED BOARD PAGE
-    // ==========================================
-
-    window.verifyAccess = async function () {
-
-        const input = document.getElementById("emailInput");
-        const message = document.getElementById("authMessage");
-
-        if (!input || !message) return;
-
-        const email = normalizeEmail(input.value);
-
-        message.style.color = "#94a3b8";
-        message.textContent = "VIP мүмкүнчүлүк текшерилүүдө...";
-
-        try {
-
-            const result = await check(email);
-
-            if (!result.active) {
-
-                message.style.color = "#fca5a5";
-
-                if (result.reason === "not-found") {
-                    message.textContent =
-                        "Бул E-mail дарегине VIP уруксаты берилген эмес.";
-                } else if (result.reason === "expired") {
-                    message.textContent =
-                        "VIP мөөнөтү аяктаган. Уруксатты жаңыртыңыз.";
+                if (result.admin) {
+                    alert("Администратор. Чексиз VIP мүмкүнчүлүк!");
                 } else {
-                    message.textContent =
-                        "Туура E-mail дарегин киргизиңиз.";
+                    alert(
+                        "VIP мүмкүнчүлүк активдүү!\n" +
+                        "Мөөнөтү: " +
+                        result.expiresAtFormatted
+                    );
                 }
 
                 return;
             }
 
-            localStorage.setItem("bilimal_user_email", email);
+            if (typeof showVipContent === "function") {
+                showVipContent(false);
+            }
+
+            if (typeof showPricingSection === "function") {
+                showPricingSection(true);
+            }
+
+            if (result.reason === "expired") {
+                alert("VIP мөөнөтү бүткөн. Кайра сатып алыңыз.");
+            } else if (result.reason === "not_found") {
+                alert("VIP аккаунт табылган жок. Тариф тандаңыз.");
+            } else if (result.reason === "inactive") {
+                alert("VIP аккаунт активдүү эмес.");
+            } else {
+                alert("VIP текшерүү учурунда ката чыкты.");
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Сервер менен байланышуу мүмкүн болгон жок.");
+        } finally {
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = oldButtonText;
+            }
+        }
+    };
+
+    // -----------------------------------------------------
+    // UNLIMITED-BOARD.HTML
+    // -----------------------------------------------------
+
+    window.verifyAccess = async function () {
+        const input = document.getElementById("emailInput");
+        const message = document.getElementById("authMessage");
+
+        if (!input) {
+            console.error("emailInput табылган жок.");
+            return;
+        }
+
+        const email = normalizeEmail(input.value);
+
+        if (!isValidEmail(email)) {
+            if (message) {
+                message.textContent =
+                    "Электрондук почта туура эмес!";
+                message.style.color = "#ef4444";
+            }
+
+            return;
+        }
+
+        if (message) {
+            message.textContent = "VIP статус текшерилүүдө...";
+            message.style.color = "#f59e0b";
+        }
+
+        try {
+            const result = await check(email);
+
+            if (!result.active) {
+                if (message) {
+                    message.textContent =
+                        "VIP мүмкүнчүлүк жок же мөөнөтү бүткөн.";
+                    message.style.color = "#ef4444";
+                }
+
+                return;
+            }
+
+            // VIP ACCESS GRANTED
+
+            localStorage.setItem("bilimal_vip_email", email);
+            localStorage.setItem("bilimal_vip_active", "true");
 
             if (typeof currentEmail !== "undefined") {
                 currentEmail = email;
             }
 
-            const label = document.getElementById("userLabel");
+            const authScreen = document.getElementById("authScreen");
+            const app = document.getElementById("app");
 
-            if (label) {
-                label.textContent =
-                    email + (result.admin ? " | ADMIN" : " | VIP");
+            if (authScreen) {
+                authScreen.style.display = "none";
             }
 
-            document.getElementById("authScreen").style.display = "none";
-            document.getElementById("app").style.display = "flex";
+            if (app) {
+                app.style.display = "block";
+            }
+
+            const userLabel = document.getElementById("userLabel");
+
+            if (userLabel) {
+                userLabel.textContent = email;
+            }
+
+            if (message) {
+                message.textContent = "VIP мүмкүнчүлүк берилди!";
+                message.style.color = "#22c55e";
+            }
 
             if (typeof initializeBoard === "function") {
                 initializeBoard();
             }
 
         } catch (error) {
+            console.error("VIP ACCESS ERROR:", error);
 
-            console.error("Чексиз такта VIP катасы:", error);
-
-            message.style.color = "#fca5a5";
-            message.textContent =
-                "Firebase текшерүү катасы: " + error.message;
+            if (message) {
+                message.textContent =
+                    "Текшерүүдө ката кетти. Кайра аракет кылыңыз.";
+                message.style.color = "#ef4444";
+            }
         }
     };
+
+    console.log("Bilimal VIP Access System loaded successfully.");
 
 })();
