@@ -105,8 +105,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(3, 7, 18, 0.82);
-            backdrop-filter: blur(8px);
+            background: rgba(3, 7, 18, 0.8);
+            backdrop-filter: blur(6px);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -120,14 +120,14 @@
             visibility: visible;
         }
         .auth-card {
-            background: rgba(13, 24, 44, 0.92);
+            background: var(--card-bg);
             backdrop-filter: blur(14px);
             padding: 35px 30px;
             border-radius: 18px;
             width: 100%;
             max-width: 420px;
             border: 1px solid var(--border-color);
-            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
             text-align: center;
         }
         .auth-card h2 {
@@ -154,8 +154,8 @@
         .form-group input {
             width: 100%;
             padding: 12px 14px;
-            background: rgba(5, 12, 26, 0.85);
-            border: 1px solid rgba(56, 189, 248, 0.25);
+            background: #0b0f17;
+            border: 1px solid #1e293b;
             border-radius: 10px;
             font-size: 0.95rem;
             color: #ffffff;
@@ -249,7 +249,7 @@
         .lang-selector {
             display: flex;
             gap: 4px;
-            background: rgba(5, 12, 26, 0.78);
+            background: #0b0f17;
             padding: 4px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
@@ -266,7 +266,7 @@
             transition: all 0.2s ease;
         }
         .lang-btn.active {
-            background: rgba(0, 210, 254, 0.16);
+            background: #1e293b;
             color: var(--accent-cyan);
         }
         .btn-logout, .btn-role {
@@ -279,7 +279,7 @@
             transition: all 0.2s ease;
         }
         .btn-role {
-            background: rgba(15, 32, 58, 0.85);
+            background: #1e293b;
             color: var(--accent-cyan);
         }
         .btn-logout {
@@ -579,7 +579,7 @@
             </div>
         </div>
     </div>
-    <!-- Технология, инновация жана физика фону (Атом орбиталары, түйүндөр жана бөлүкчөлөр) -->
+    <!-- Технология, инновация жана физика фону -->
     <script>
         (function initPhysicsInnovationCanvas() {
             const pCanvas = document.getElementById('physics-canvas');
@@ -994,6 +994,14 @@
             const parsed = Date.parse(raw);
             return Number.isFinite(parsed) ? parsed : 0;
         }
+        function isVipRecordActive(item, nowTs) {
+            if (!item || typeof item !== "object") return false;
+            const flagActive = item.active === true || item.active === "true" || item.isVip === true || item.status === "approved" || item.status === "active";
+            if (!flagActive) return false;
+            const expiry = vipExpiryValue(item);
+            if (!expiry) return true;
+            return expiry > nowTs;
+        }
         function showVipStatus() {
             if (vipExpiryTimer) {
                 clearTimeout(vipExpiryTimer);
@@ -1007,19 +1015,20 @@
             }
             const now = Date.now();
             const candidates = [vipUidAccess, vipEmailAccess, vipLegacyAccess]
-                .filter(item => item && item.active === true && vipExpiryValue(item) > now);
+                .filter(item => isVipRecordActive(item, now));
             candidates.sort((a, b) => vipExpiryValue(b) - vipExpiryValue(a));
             const best = candidates[0] || null;
             const expiry = best ? vipExpiryValue(best) : 0;
             vipIsActive = Boolean(best);
             if (vipIsActive) {
-                if (vipStatusEl) vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + formatVipDate(expiry);
+                const expiryLabel = expiry > 0 ? formatVipDate(expiry) : "30 күн";
+                if (vipStatusEl) vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + expiryLabel;
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP активдүү";
-                vipExpiryTimer = setTimeout(() => {
-                    vipUidAccess = vipEmailAccess = vipLegacyAccess = null;
-                    vipIsActive = false;
-                    showVipStatus();
-                }, Math.max(0, expiry - now + 50));
+                if (expiry > now) {
+                    vipExpiryTimer = setTimeout(() => {
+                        showVipStatus();
+                    }, Math.min(2147483647, Math.max(0, expiry - now + 50)));
+                }
             } else {
                 if (vipStatusEl) vipStatusEl.textContent = "VIP азырынча активдүү эмес же мөөнөтү аяктаган. Төлөм ырасталгандан кийин жеткиликтүүлүк берилет.";
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
@@ -1033,24 +1042,33 @@
             vipUidAccess = vipEmailAccess = vipLegacyAccess = null;
             const isAdmin = normalizeVipEmail(user.email) === normalizeVipEmail(VIP_ADMIN_EMAIL);
             vipAdminUser = isAdmin;
+            showVipStatus();
+
             // Existing dashboard VIP approval: UID-based path.
             vipStatusUnsubscribe = onValue(ref(db, "vipAccess/" + user.uid), snap => {
                 vipUidAccess = snap.val() || null;
                 showVipStatus();
             }, error => {
-                if (vipStatusEl) vipStatusEl.textContent = "VIP UID статусун окуу мүмкүн болгон жок: " + error.message;
+                console.warn("VIP UID status read error:", error.message);
+                showVipStatus();
             });
-            // VIP access granted from lab-works-vip.html: email-based paths.
+            // VIP access granted from lab-works-vip.html or dashboard: email-based paths.
             if (user.email) {
                 const emailKey = vipEmailKey(user.email);
                 vipEmailStatusUnsubscribe = onValue(ref(db, "applications/vip_users/" + emailKey), snap => {
                     vipEmailAccess = snap.val() || null;
                     showVipStatus();
-                }, error => console.warn("Email VIP status read error:", error.message));
+                }, error => {
+                    console.warn("Email VIP status read error:", error.message);
+                    showVipStatus();
+                });
                 vipLegacyStatusUnsubscribe = onValue(ref(db, "vip_users/" + emailKey), snap => {
                     vipLegacyAccess = snap.val() || null;
                     showVipStatus();
-                }, error => console.warn("Legacy VIP status read error:", error.message));
+                }, error => {
+                    console.warn("Legacy VIP status read error:", error.message);
+                    showVipStatus();
+                });
             }
             const adminPanel = document.getElementById("vip-admin-panel");
             if (adminPanel) adminPanel.style.display = isAdmin ? "block" : "none";
@@ -1090,47 +1108,55 @@
             const button = event.target.closest("[data-vip-uid]");
             if (!button) return;
             const admin = auth.currentUser;
-            if (!admin || (admin.email || "").toLowerCase() !== VIP_ADMIN_EMAIL.toLowerCase()) {
+            if (!admin || normalizeVipEmail(admin.email) !== normalizeVipEmail(VIP_ADMIN_EMAIL)) {
                 alert("Бул аракет администраторго гана уруксат берилген.");
                 return;
             }
-            const uid = button.dataset.vipUid;
-            const targetEmail = button.dataset.vipEmail || "";
-            const requestId = button.dataset.vipRequest;
+            const uid = (button.dataset.vipUid || "").trim();
+            const targetEmail = normalizeVipEmail(button.dataset.vipEmail || "");
+            const requestId = (button.dataset.vipRequest || "").trim();
+            if (!uid || !requestId) {
+                alert("Сурамдын UID же ID маалыматы толук эмес.");
+                return;
+            }
             if (!confirm("Төлөм чын эле текшерилип, туура жүргүзүлгөнбү? 30 күндүк VIP мүмкүнчүлүгүн бересизби?")) return;
             button.disabled = true;
+            const originalBtnText = button.textContent;
+            button.textContent = "Активдештирилүүдө...";
             try {
                 const now = Date.now();
                 const expiresAt = now + VIP_DURATION_DAYS * 24 * 60 * 60 * 1000;
-                const payload = {
-                    active: true, expiresAt, approvedAt: now,
-                    approvedBy: admin.email, planDays: VIP_DURATION_DAYS
+                // Firebase RTDB Rules боюнча vipAccess/$uid так ушул талааларды гана күтөт
+                const strictVipAccessPayload = {
+                    active: true,
+                    expiresAt: expiresAt,
+                    approvedAt: now,
+                    approvedBy: VIP_ADMIN_EMAIL,
+                    planDays: VIP_DURATION_DAYS
                 };
                 const updatesMap = {
-                    ["vipAccess/" + uid]: payload,
-                    ["vipRequests/" + uid + "/" + requestId + "/status"]: "approved",
-                    ["vipRequests/" + uid + "/" + requestId + "/reviewedAt"]: now,
-                    ["vipRequests/" + uid + "/" + requestId + "/reviewedBy"]: admin.email
+                    ["vipAccess/" + uid]: strictVipAccessPayload,
+                    ["vipRequests/" + uid + "/" + requestId + "/status"]: "approved"
                 };
                 if (targetEmail) {
                     const eKey = vipEmailKey(targetEmail);
-                    updatesMap["applications/vip_users/" + eKey] = {
-                        ...payload,
-                        email: normalizeVipEmail(targetEmail),
+                    const emailVipPayload = {
+                        ...strictVipAccessPayload,
+                        uid: uid,
+                        email: targetEmail,
+                        status: "approved",
                         expiresAtMs: expiresAt
                     };
-                    updatesMap["vip_users/" + eKey] = {
-                        ...payload,
-                        email: normalizeVipEmail(targetEmail),
-                        expiresAtMs: expiresAt
-                    };
+                    updatesMap["applications/vip_users/" + eKey] = emailVipPayload;
+                    updatesMap["vip_users/" + eKey] = emailVipPayload;
                 }
                 await update(ref(db), updatesMap);
-                alert("VIP мүмкүнчүлүгү " + (targetEmail || uid) + " колдонуучусуна 30 күнгө берилди.");
+                alert("VIP мүмкүнчүлүгү " + (targetEmail || uid) + " колдонуучусуна 30 күнгө активдүү берилди.");
             } catch (error) {
-                console.error(error);
-                alert("Ырастоо ишке ашкан жок: " + error.message + ". Firebase Database Rules текшериңиз.");
+                console.error("VIP approval error:", error);
+                alert("Ырастоо ишке ашкан жок: " + error.message + "\nFirebase Realtime Database Rules валидациясын текшериңиз.");
                 button.disabled = false;
+                button.textContent = originalBtnText;
             }
         });
         if (vipWhatsappBtn) vipWhatsappBtn.addEventListener("click", async () => {
