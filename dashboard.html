@@ -884,6 +884,11 @@
         const VIP_WHATSAPP_NUMBER = "996556400477";
         let vipRequestsUnsubscribe = null;
         let vipStatusUnsubscribe = null;
+        let vipEmailStatusUnsubscribe = null;
+        let vipLegacyStatusUnsubscribe = null;
+        let vipUidAccess = null;
+        let vipEmailAccess = null;
+        let vipLegacyAccess = null;
         let vipIsActive = false;
         let vipExpiryTimer = null;
         let vipAdminUser = false;
@@ -927,36 +932,89 @@
         function formatVipDate(value) {
             return value ? new Date(value).toLocaleString("ky-KG") : "—";
         }
-        function showVipStatus(access) {
+        function normalizeVipEmail(email) {
+            return String(email || "").trim().toLowerCase();
+        }
+        function vipEmailKey(email) {
+            return normalizeVipEmail(email).replace(/\./g, "_dot_").replace(/@/g, "_at_");
+        }
+        function vipExpiryValue(data) {
+            if (!data) return 0;
+            const raw = data.expiresAtMs || data.expiresAt || 0;
+            const numeric = Number(raw);
+            if (numeric > 0 && Number.isFinite(numeric)) return numeric;
+            const parsed = Date.parse(raw);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function showVipStatus() {
             if (vipExpiryTimer) {
                 clearTimeout(vipExpiryTimer);
                 vipExpiryTimer = null;
             }
-            const expiry = Number(access?.expiresAt || 0);
-            vipIsActive = access?.active === true && expiry > Date.now();
+
+            if (vipAdminUser) {
+                vipIsActive = true;
+                if (vipStatusEl) vipStatusEl.textContent = "Администратор: VIP чексиз активдүү.";
+                if (vipOpenBtn) vipOpenBtn.textContent = "VIP активдүү · Администратор";
+                return;
+            }
+
+            const now = Date.now();
+            const candidates = [vipUidAccess, vipEmailAccess, vipLegacyAccess]
+                .filter(item => item && item.active === true && vipExpiryValue(item) > now);
+            candidates.sort((a, b) => vipExpiryValue(b) - vipExpiryValue(a));
+
+            const best = candidates[0] || null;
+            const expiry = best ? vipExpiryValue(best) : 0;
+            vipIsActive = Boolean(best);
+
             if (vipIsActive) {
                 if (vipStatusEl) vipStatusEl.textContent = "VIP активдүү. Мөөнөтү: " + formatVipDate(expiry);
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP активдүү";
-                // Мөөнөтү бүткөн учурда баракты жаңыртпай эле VIP жеткиликтүүлүгүн өчүрөт.
                 vipExpiryTimer = setTimeout(() => {
+                    vipUidAccess = vipEmailAccess = vipLegacyAccess = null;
                     vipIsActive = false;
-                    if (vipStatusEl) vipStatusEl.textContent = "VIP мөөнөтү аяктады. Улантуу үчүн кайра жазылыңыз.";
-                    if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
-                }, Math.max(0, expiry - Date.now() + 50));
+                    showVipStatus();
+                }, Math.max(0, expiry - now + 50));
             } else {
                 if (vipStatusEl) vipStatusEl.textContent = "VIP азырынча активдүү эмес же мөөнөтү аяктаган. Төлөм ырасталгандан кийин жеткиликтүүлүк берилет.";
                 if (vipOpenBtn) vipOpenBtn.textContent = "VIP доступ алуу · 100 сом/ай";
             }
         }
+
         function startVipListeners(user) {
             if (vipStatusUnsubscribe) vipStatusUnsubscribe();
+            if (vipEmailStatusUnsubscribe) vipEmailStatusUnsubscribe();
+            if (vipLegacyStatusUnsubscribe) vipLegacyStatusUnsubscribe();
             if (vipRequestsUnsubscribe) vipRequestsUnsubscribe();
-            const isAdmin = (user.email || "").toLowerCase() === VIP_ADMIN_EMAIL.toLowerCase();
+
+            vipUidAccess = vipEmailAccess = vipLegacyAccess = null;
+
+            const isAdmin = normalizeVipEmail(user.email) === normalizeVipEmail(VIP_ADMIN_EMAIL);
             vipAdminUser = isAdmin;
-            const statusRef = ref(db, "vipAccess/" + user.uid);
-            vipStatusUnsubscribe = onValue(statusRef, snap => showVipStatus(snap.val() || null), error => {
-                if (vipStatusEl) vipStatusEl.textContent = "VIP статусун окуу мүмкүн болгон жок: " + error.message;
+
+            // Existing dashboard VIP approval: UID-based path.
+            vipStatusUnsubscribe = onValue(ref(db, "vipAccess/" + user.uid), snap => {
+                vipUidAccess = snap.val() || null;
+                showVipStatus();
+            }, error => {
+                if (vipStatusEl) vipStatusEl.textContent = "VIP UID статусун окуу мүмкүн болгон жок: " + error.message;
             });
+
+            // VIP access granted from lab-works-vip.html: email-based paths.
+            if (user.email) {
+                const emailKey = vipEmailKey(user.email);
+                vipEmailStatusUnsubscribe = onValue(ref(db, "applications/vip_users/" + emailKey), snap => {
+                    vipEmailAccess = snap.val() || null;
+                    showVipStatus();
+                }, error => console.warn("Email VIP status read error:", error.message));
+
+                vipLegacyStatusUnsubscribe = onValue(ref(db, "vip_users/" + emailKey), snap => {
+                    vipLegacyAccess = snap.val() || null;
+                    showVipStatus();
+                }, error => console.warn("Legacy VIP status read error:", error.message));
+            }
 
             const adminPanel = document.getElementById("vip-admin-panel");
             if (adminPanel) adminPanel.style.display = isAdmin ? "block" : "none";
@@ -969,9 +1027,7 @@
                     const rows = [];
                     Object.entries(all).forEach(([uid, requests]) => {
                         Object.entries(requests || {}).forEach(([requestId, request]) => {
-                            if (request && request.status === "pending") {
-                                rows.push({uid, requestId, ...request});
-                            }
+                            if (request && request.status === "pending") rows.push({uid, requestId, ...request});
                         });
                     });
                     rows.sort((a,b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
@@ -1085,6 +1141,9 @@
             } else {
                 currentUserEmail = null;
                 if (vipStatusUnsubscribe) { vipStatusUnsubscribe(); vipStatusUnsubscribe = null; }
+                if (vipEmailStatusUnsubscribe) { vipEmailStatusUnsubscribe(); vipEmailStatusUnsubscribe = null; }
+                if (vipLegacyStatusUnsubscribe) { vipLegacyStatusUnsubscribe(); vipLegacyStatusUnsubscribe = null; }
+                vipUidAccess = vipEmailAccess = vipLegacyAccess = null;
                 if (vipRequestsUnsubscribe) { vipRequestsUnsubscribe(); vipRequestsUnsubscribe = null; }
                 const adminPanel = document.getElementById("vip-admin-panel");
                 if (adminPanel) adminPanel.style.display = "none";
