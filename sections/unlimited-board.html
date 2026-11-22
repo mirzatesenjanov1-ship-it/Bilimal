@@ -41,7 +41,8 @@ input,select,textarea{outline:none}
 #overlay-layer{position:fixed;inset:0;z-index:2;pointer-events:none;transform-origin:0 0}
 .media-card{position:absolute;pointer-events:auto;border-radius:12px;overflow:hidden;border:1px solid rgba(56,189,248,.35);background:rgba(8,16,34,.92);box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column}
 .media-card.selected{outline:2px solid var(--accent-cyan);box-shadow:0 0 24px rgba(0,229,255,.35)}
-.media-drag-bar{height:24px;background:rgba(15,29,58,.95);display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:10px;color:var(--text-muted);cursor:grab;border-bottom:1px solid rgba(56,189,248,.18)}
+.media-drag-bar{height:26px;background:rgba(15,29,58,.96);display:flex;align-items:center;justify-content:space-between;padding:0 9px;font-size:10.5px;color:var(--text-muted);cursor:grab;border-bottom:1px solid rgba(56,189,248,.18);touch-action:none;user-select:none}
+.media-drag-bar:active{cursor:grabbing;color:var(--accent-cyan)}
 .media-drag-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .media-body{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;background:#040916}
 .media-body iframe,.media-body video{width:100%;height:100%;border:0;display:block}
@@ -55,7 +56,10 @@ input,select,textarea{outline:none}
 /* Текст түзөтүү терезеси */
 #text-editor-box{position:fixed;display:none;z-index:120;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:rgba(6,14,32,.96);border:2px solid var(--accent-cyan);box-shadow:0 12px 36px rgba(0,0,0,.7),0 0 24px rgba(0,229,255,.3)}
 #text-editor-box.show{display:flex}
-#inline-text-editor{min-width:210px;min-height:66px;padding:6px 8px;border-radius:8px;background:rgba(12,25,54,.92);border:1px solid rgba(56,189,248,.25);resize:both;line-height:1.35;white-space:pre-wrap;user-select:text}
+.text-editor-topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--text-muted)}
+.text-editor-topbar label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.text-editor-topbar input[type="color"]{width:24px;height:22px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer}
+#inline-text-editor{min-width:220px;min-height:70px;padding:6px 8px;border-radius:8px;background:rgba(12,25,54,.92);border:1px solid rgba(56,189,248,.25);resize:both;line-height:1.35;white-space:pre-wrap;user-select:text}
 .text-editor-actions{display:flex;justify-content:flex-end;gap:6px}
 .text-save-btn{padding:4px 10px;border-radius:7px;background:var(--accent-cyan);color:#030712;font-size:11px;font-weight:800}
 
@@ -83,7 +87,7 @@ input,select,textarea{outline:none}
 .tool-btn.active{color:#fff;background:linear-gradient(135deg,rgba(0,229,255,.28),rgba(139,92,246,.28));border:1px solid var(--border-neon);box-shadow:0 0 14px rgba(0,229,255,.25)}
 
 /* Көмөкчү Popover'лер */
-.sub-popover{position:fixed;left:84px;top:50%;transform:translateY(-50%);z-index:55;display:none;width:246px;padding:12px;border-radius:16px;background:var(--glass-heavy);backdrop-filter:var(--blur);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
+.sub-popover{position:fixed;left:84px;top:50%;transform:translateY(-50%);z-index:65;display:none;width:246px;padding:12px;border-radius:16px;background:var(--glass-heavy);backdrop-filter:var(--blur);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
 .sub-popover.show{display:block}
 .sub-popover h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-cyan);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
 .popover-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -93,7 +97,7 @@ input,select,textarea{outline:none}
 .pop-act-btn{width:100%;padding:7px 10px;border-radius:9px;background:rgba(15,31,64,.85);border:1px solid rgba(56,189,248,.2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:space-between;text-align:left}
 .pop-act-btn:hover{border-color:var(--accent-pink);background:rgba(236,72,153,.15)}
 
-/* ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) */
+/* ОҢ ЖАК: Properties Panel */
 .properties-panel{position:fixed;right:12px;top:68px;bottom:74px;width:288px;z-index:48;display:none;flex-direction:column;gap:9px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.3) transparent;padding:13px;border-radius:18px;background:var(--glass-heavy);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
 .properties-panel.visible{display:flex}
 .prop-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)}
@@ -172,10 +176,15 @@ input,select,textarea{outline:none}
 
 <!-- Текст түзөтүү терезеси -->
 <div id="text-editor-box">
+  <div class="text-editor-topbar">
+    <span>Текст өңү:</span>
+    <input type="color" id="inlineTextColorInput" value="#f8fafc" oninput="applyInlineTextColor(this.value)">
+    <span style="margin-left:auto;font-size:10px">Enter: жаңы сап · Ctrl+Enter: сактоо</span>
+  </div>
   <textarea id="inline-text-editor" spellcheck="false" placeholder="Каалаган жериңизге текст жазыңыз..."></textarea>
   <div class="text-editor-actions">
     <button class="hud-btn" onclick="cancelTextEdit()">Жабуу</button>
-    <button class="text-save-btn" onclick="commitInlineTextEdit()">Сактоо (Enter)</button>
+    <button class="text-save-btn" onclick="commitInlineTextEdit()">Сактоо</button>
   </div>
 </div>
 
@@ -210,14 +219,14 @@ input,select,textarea{outline:none}
   <button class="tool-btn" data-tool="video" onclick="openVideoModal()" title="Видео коюу"><i class="fa-solid fa-video"></i><span>Видео</span></button>
   <button class="tool-btn" data-tool="audio" onclick="triggerMediaUpload('audio')" title="Аудио коюу"><i class="fa-solid fa-headphones"></i><span>Аудио</span></button>
   <button class="tool-btn" data-tool="pdf" onclick="triggerMediaUpload('pdf')" title="PDF коюу"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></button>
-  <button class="tool-btn" data-tool="shape" onclick="togglePopover('shapesPopover')" title="Формалар"><i class="fa-solid fa-shapes"></i><span>Формалар</span></button>
+  <button class="tool-btn" data-tool="shape" onclick="togglePopover('shapesPopover', event)" title="Формалар"><i class="fa-solid fa-shapes"></i><span>Формалар</span></button>
   <button class="tool-btn" data-tool="sticky" onclick="createStickyNote()" title="Стикер (Sticker Wall)"><i class="fa-solid fa-note-sticky"></i><span>Стикер</span></button>
   <button class="tool-btn" data-tool="connector" onclick="setTool('connector')" title="Жебе / Байланыш"><i class="fa-solid fa-share-nodes"></i><span>Жебе</span></button>
-  <button class="tool-btn" data-tool="mindmap" onclick="togglePopover('mindmapPopover')" title="Mind Map"><i class="fa-solid fa-diagram-project"></i><span>Mind Map</span></button>
-  <button class="tool-btn" data-tool="flowchart" onclick="togglePopover('flowchartPopover')" title="Flowchart"><i class="fa-solid fa-sitemap"></i><span>Flowchart</span></button>
+  <button class="tool-btn" data-tool="mindmap" onclick="togglePopover('mindmapPopover', event)" title="Mind Map"><i class="fa-solid fa-diagram-project"></i><span>Mind Map</span></button>
+  <button class="tool-btn" data-tool="flowchart" onclick="togglePopover('flowchartPopover', event)" title="Flowchart"><i class="fa-solid fa-sitemap"></i><span>Flowchart</span></button>
   <button class="tool-btn" data-tool="table" onclick="createTableObject()" title="Таблица"><i class="fa-solid fa-table"></i><span>Table</span></button>
-  <button class="tool-btn" data-tool="frame" onclick="createFrameObject()" title="Кошумча Frame (милдеттүү эмес)"><i class="fa-solid fa-vector-square"></i><span>Frame</span></button>
-  <button class="tool-btn" data-tool="ai" onclick="togglePopover('aiPopover')" title="Билим Дүйнөсү & AI"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI / Дүйнө</span></button>
+  <button class="tool-btn" data-tool="frame" onclick="createFrameObject()" title="Кошумча Frame"><i class="fa-solid fa-vector-square"></i><span>Frame</span></button>
+  <button class="tool-btn" data-tool="ai" onclick="togglePopover('aiPopover', event)" title="Билим Дүйнөсү & AI"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI / Дүйнө</span></button>
 </aside>
 
 <!-- Popover: Формалар -->
@@ -268,7 +277,7 @@ input,select,textarea{outline:none}
   </div>
 </div>
 
-<!-- ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) -->
+<!-- ОҢ ЖАК: Properties Panel -->
 <aside class="properties-panel" id="propertiesPanel" aria-label="Касиеттер">
   <div class="prop-header">
     <h3><i class="fa-solid fa-sliders"></i><span id="propObjectTitle">Касиеттер</span></h3>
@@ -294,11 +303,12 @@ input,select,textarea{outline:none}
   </div>
 
   <div class="prop-section">
-    <div class="prop-label"><span>Түс (Fill) & Чек ара / Калем (Stroke)</span></div>
+    <div class="prop-label"><span>Түс (Fill) · Чек ара (Stroke) · Текст өңү</span></div>
     <div class="prop-row">
-      <input type="color" id="propFill" value="#00e5ff" oninput="updateSelectedFromInputs()">
-      <input type="color" id="propStroke" value="#00e5ff" oninput="updateSelectedFromInputs()">
-      <input type="number" id="propStrokeW" min="0" max="32" step="1" value="3" onchange="updateSelectedFromInputs()">
+      <input type="color" id="propFill" value="#00e5ff" title="Фон түсү" oninput="updateSelectedFromInputs()">
+      <input type="color" id="propStroke" value="#00e5ff" title="Чек ара / Калем түсү" oninput="updateSelectedFromInputs()">
+      <input type="color" id="propTextColor" value="#f8fafc" title="Тексттин өңү" oninput="updateSelectedFromInputs()">
+      <input type="number" id="propStrokeW" min="0" max="32" step="1" value="3" style="max-width:56px" onchange="updateSelectedFromInputs()">
     </div>
   </div>
 
@@ -324,7 +334,7 @@ input,select,textarea{outline:none}
   </div>
 
   <div class="prop-section">
-    <div class="prop-label"><span>Анимация</span></div>
+    <div class="prop-label"><span>Анимация & Кезек Номери</span></div>
     <div class="prop-row">
       <select id="propAnimType" onchange="updateSelectedFromInputs()">
         <option value="none">Жок (None)</option>
@@ -334,7 +344,8 @@ input,select,textarea{outline:none}
         <option value="bounce">Bounce</option>
         <option value="rotate">Rotate</option>
       </select>
-      <button class="mini-btn" onclick="replayAnimationOnSelected()"><i class="fa-solid fa-play"></i> Ойнотуу</button>
+      <input type="number" id="propAnimOrder" min="0" max="999" step="1" placeholder="№" title="Кино режиминдеги кезеги (мис: 1, 2, 3)" style="max-width:64px" onchange="updateSelectedFromInputs()">
+      <button class="mini-btn" style="flex:0 0 auto;padding:6px 8px" onclick="replayAnimationOnSelected()" title="Анимацияны ойнотуу"><i class="fa-solid fa-play"></i></button>
     </div>
   </div>
 
@@ -372,7 +383,7 @@ input,select,textarea{outline:none}
 
 <!-- Presentation / Cinema HUD -->
 <div id="presentation-hud">
-  <span id="slideCounter" style="font-size:12px;font-weight:800;color:var(--accent-gold)">Cinema / Frame</span>
+  <span id="slideCounter" style="font-size:12px;font-weight:800;color:var(--accent-gold)">№1 / 1</span>
   <button class="hud-btn" onclick="prevFrameSlide()"><i class="fa-solid fa-chevron-left"></i> Мурунку</button>
   <button class="hud-btn accent" onclick="nextFrameSlide()">Кийинки <i class="fa-solid fa-chevron-right"></i></button>
   <button class="hud-btn" id="cinemaAutoBtn" onclick="toggleCinemaMode()"><i class="fa-solid fa-film"></i> Cinema</button>
@@ -418,8 +429,8 @@ if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
 
-const STORAGE_KEY = 'bilimal_unlimited_world_projects_v2';
-const AUTOSAVE_KEY = 'bilimal_unlimited_world_autosave_v2';
+const STORAGE_KEY = 'bilimal_unlimited_world_projects_v3';
+const AUTOSAVE_KEY = 'bilimal_unlimited_world_autosave_v3';
 
 const canvas = document.getElementById('board-canvas');
 const ctx = canvas.getContext('2d', { alpha: false });
@@ -428,6 +439,7 @@ const minimapCanvas = document.getElementById('minimap-canvas');
 const mctx = minimapCanvas.getContext('2d');
 const textEditorBox = document.getElementById('text-editor-box');
 const inlineEditor = document.getElementById('inline-text-editor');
+const inlineTextColorInput = document.getElementById('inlineTextColorInput');
 
 const state = {
   camX: 0,
@@ -528,7 +540,6 @@ function getViewportCenterWorld() {
   return screenToWorld(canvas.clientWidth / 2, canvas.clientHeight / 2);
 }
 
-/* Бардык объекттер эркин: абсолюттук координаталарда, эч кандай контейнерге байланбайт */
 function createBaseObj(type, props = {}) {
   const c = getViewportCenterWorld();
   return Object.assign({
@@ -553,6 +564,7 @@ function createBaseObj(type, props = {}) {
     underline: false,
     align: 'center',
     animType: 'none',
+    animOrder: 0,
     _animStart: performance.now(),
     locked: false,
     hidden: false,
@@ -584,16 +596,17 @@ function addObject(obj, selectIt = true) {
 function addShape(kind) {
   closePopovers();
   const defaults = {
-    rect: { w: 180, h: 110, fill: 'rgba(0,229,255,0.14)', stroke: '#00e5ff', name: 'Rectangle' },
-    circle: { w: 140, h: 140, fill: 'rgba(139,92,246,0.18)', stroke: '#8b5cf6', name: 'Circle' },
-    diamond: { w: 150, h: 150, fill: 'rgba(236,72,153,0.16)', stroke: '#ec4899', name: 'Diamond' },
-    triangle: { w: 150, h: 130, fill: 'rgba(255,189,88,0.16)', stroke: '#ffbd58', name: 'Triangle' },
-    arrow: { w: 200, h: 60, fill: 'rgba(0,229,255,0.22)', stroke: '#00e5ff', name: 'Arrow' },
+    rect: { w: 180, h: 110, fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', name: 'Rectangle' },
+    circle: { w: 140, h: 140, fill: 'rgba(139,92,246,0.2)', stroke: '#8b5cf6', name: 'Circle' },
+    diamond: { w: 150, h: 150, fill: 'rgba(236,72,153,0.18)', stroke: '#ec4899', name: 'Diamond' },
+    triangle: { w: 150, h: 130, fill: 'rgba(255,189,88,0.18)', stroke: '#ffbd58', name: 'Triangle' },
+    arrow: { w: 200, h: 60, fill: 'rgba(0,229,255,0.24)', stroke: '#00e5ff', name: 'Arrow' },
     line: { w: 200, h: 12, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 3, name: 'Line' }
   };
   const d = defaults[kind] || defaults.rect;
   addObject(createBaseObj('shape', Object.assign({ shapeKind: kind, text: '' }, d)));
   setTool('select');
+  showToast(`${d.name} кошулду`);
 }
 
 function createStickyNote(customText = 'Жаңы стикер', customFill = '#facc15', customPos = null) {
@@ -663,10 +676,11 @@ function createFrameObject() {
     fill: 'rgba(12,26,56,0.16)',
     stroke: 'rgba(236,72,153,0.65)',
     strokeWidth: 2,
-    fontSize: 15
+    fontSize: 15,
+    animOrder: idx
   }));
   setTool('select');
-  showToast(`Frame ${idx} кошулду (милдеттүү эмес)`);
+  showToast(`Frame ${idx} кошулду`);
 }
 
 function addMindNode(relation = 'root') {
@@ -808,7 +822,7 @@ function handleFileUpload(event, kind) {
     } else if (kind === 'video') {
       addObject(createBaseObj('video', { name: file.name, src: dataUrl, w: 420, h: 250 }));
     } else if (kind === 'audio') {
-      addObject(createBaseObj('audio', { name: file.name, src: dataUrl, w: 310, h: 112 }));
+      addObject(createBaseObj('audio', { name: file.name, src: dataUrl, w: 320, h: 118 }));
     } else if (kind === 'pdf') {
       let pagesCount = 1;
       if (window.pdfjsLib) {
@@ -844,6 +858,7 @@ window.addEventListener('drop', e => {
   else if (file.type === 'application/pdf') handleFileUpload({ target: { files: [file] } }, 'pdf');
 });
 
+/* Медиа карталарды жылдыру: курсордо калып кетпей, так координата менен жылат */
 function syncMediaOverlays() {
   const mediaTypes = new Set(['video', 'audio', 'pdf']);
   const desired = state.objects.filter(o => mediaTypes.has(o.type) && !o.hidden);
@@ -860,9 +875,18 @@ function syncMediaOverlays() {
       bar.className = 'media-drag-bar';
       bar.innerHTML = `<span>${escapeHtml(o.name)}</span><i class="fa-solid fa-up-down-left-right"></i>`;
       bar.addEventListener('pointerdown', (ev) => {
+        if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+        ev.preventDefault();
         ev.stopPropagation();
         selectOnly(o.id);
-        state.activeObjDrag = { id: o.id, mode: 'move', startWorld: screenToWorld(ev.clientX, ev.clientY), origObj: cloneBasic(o) };
+        const cur = getObjById(o.id);
+        if (!cur || cur.locked) return;
+        state.activeObjDrag = {
+          id: o.id,
+          mode: 'move',
+          startWorld: screenToWorld(ev.clientX, ev.clientY),
+          origObj: cloneBasic(cur)
+        };
       });
       card.addEventListener('pointerdown', () => selectOnly(o.id));
       const body = document.createElement('div');
@@ -913,28 +937,45 @@ function updateOverlayTransform() {
   overlayLayer.style.transform = `translate(${state.camX}px, ${state.camY}px) scale(${state.zoom})`;
 }
 
-/* Текст түзөтүү */
+/* Текст түзөтүү: Enter алдына түшөт, Ctrl+Enter / «Сактоо» / сыртты басуу сактайт, өңү жандуу өзгөрөт */
 function startInlineTextEdit(obj) {
   if (!obj || obj.locked) return;
   state.editingTextId = obj.id;
   const scr = worldToScreen(obj.x, obj.y);
-  const left = Math.max(12, Math.min(window.innerWidth - 260, scr.x));
-  const top = Math.max(64, Math.min(window.innerHeight - 160, scr.y));
+  const left = Math.max(12, Math.min(window.innerWidth - 280, scr.x));
+  const top = Math.max(64, Math.min(window.innerHeight - 190, scr.y));
   textEditorBox.style.left = left + 'px';
   textEditorBox.style.top = top + 'px';
   textEditorBox.classList.add('show');
 
-  inlineEditor.style.width = Math.max(210, obj.w * state.zoom) + 'px';
-  inlineEditor.style.height = Math.max(66, obj.h * state.zoom) + 'px';
+  const curColor = (obj.textColor && obj.textColor.startsWith('#')) ? obj.textColor : '#f8fafc';
+  inlineTextColorInput.value = curColor;
+
+  inlineEditor.style.width = Math.max(220, obj.w * state.zoom) + 'px';
+  inlineEditor.style.height = Math.max(70, obj.h * state.zoom) + 'px';
   inlineEditor.style.fontFamily = obj.fontFamily || 'Inter, sans-serif';
   inlineEditor.style.fontSize = Math.max(14, (obj.fontSize || 20) * state.zoom) + 'px';
   inlineEditor.style.fontWeight = obj.bold ? '800' : '500';
   inlineEditor.style.fontStyle = obj.italic ? 'italic' : 'normal';
   inlineEditor.style.textDecoration = obj.underline ? 'underline' : 'none';
   inlineEditor.style.textAlign = obj.align || 'left';
-  inlineEditor.style.color = obj.textColor || '#f8fafc';
+  inlineEditor.style.color = curColor;
   inlineEditor.value = obj.text || '';
   setTimeout(() => { inlineEditor.focus(); inlineEditor.select(); }, 10);
+}
+
+function applyInlineTextColor(hexColor) {
+  inlineEditor.style.color = hexColor;
+  if (state.editingTextId) {
+    const obj = getObjById(state.editingTextId);
+    if (obj) obj.textColor = hexColor;
+  }
+  const sel = getFirstSelected();
+  if (sel) {
+    sel.textColor = hexColor;
+    const el = document.getElementById('propTextColor');
+    if (el && hexColor.startsWith('#')) el.value = hexColor;
+  }
 }
 
 function commitInlineTextEdit() {
@@ -942,10 +983,11 @@ function commitInlineTextEdit() {
   const obj = state.objects.find(o => o.id === state.editingTextId);
   if (obj) {
     obj.text = inlineEditor.value;
+    obj.textColor = inlineTextColorInput.value || obj.textColor || '#f8fafc';
     const lines = obj.text.split('\n');
     const longest = Math.max(...lines.map(l => l.length), 6);
-    obj.w = Math.max(obj.w, Math.min(560, longest * ((obj.fontSize || 20) * 0.62) + 28));
-    obj.h = Math.max(obj.h, lines.length * ((obj.fontSize || 20) * 1.35) + 22);
+    obj.w = Math.max(obj.w, Math.min(580, longest * ((obj.fontSize || 20) * 0.62) + 32));
+    obj.h = Math.max(obj.h, lines.length * ((obj.fontSize || 20) * 1.35) + 26);
   }
   textEditorBox.classList.remove('show');
   state.editingTextId = null;
@@ -964,12 +1006,13 @@ function editSelectedText() {
 }
 
 inlineEditor.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     commitInlineTextEdit();
   } else if (e.key === 'Escape') {
     cancelTextEdit();
   }
+  // Жөнөкөй Enter алдын албайбыз — текст төмөнкү сапка түшөт
 });
 
 /* Pointer & Touch */
@@ -1028,6 +1071,37 @@ function getHandleAt(wx, wy, obj) {
   const brY = obj.y + obj.h;
   if (Math.hypot(wx - brX, wy - brY) < 14 / state.zoom) return 'resize-br';
   return null;
+}
+
+function eraseAtWorldPoint(wx, wy, radius = 22) {
+  let changed = false;
+  for (let i = state.objects.length - 1; i >= 0; i--) {
+    const o = state.objects[i];
+    if (o.locked || o.hidden) continue;
+    if (o.type === 'pen' && o.points && o.points.length) {
+      const beforeLen = o.points.length;
+      o.points = o.points.filter(p => Math.hypot(p.x - wx, p.y - wy) > radius);
+      if (o.points.length !== beforeLen) changed = true;
+      if (o.points.length < 2) {
+        state.objects.splice(i, 1);
+        state.selectedIds.delete(o.id);
+        changed = true;
+      }
+    } else if (o.type !== 'frame' && o.type !== 'connector') {
+      const cx = o.x + (o.w || 0) / 2;
+      const cy = o.y + (o.h || 0) / 2;
+      if (Math.hypot(cx - wx, cy - wy) < radius + Math.min(o.w || 40, o.h || 40) * 0.35) {
+        state.objects.splice(i, 1);
+        state.selectedIds.delete(o.id);
+        changed = true;
+      }
+    }
+  }
+  if (changed) {
+    syncMediaOverlays();
+    refreshPropertiesPanel();
+  }
+  return changed;
 }
 
 const activeTouches = new Map();
@@ -1095,14 +1169,20 @@ canvas.addEventListener('pointerdown', (e) => {
     return;
   }
 
-  if (state.tool === 'pen' || state.tool === 'eraser') {
+  if (state.tool === 'eraser') {
+    state.drawingStroke = { id: 'eraser_active', type: 'eraser', didErase: false };
+    if (eraseAtWorldPoint(wPos.x, wPos.y, 24)) state.drawingStroke.didErase = true;
+    return;
+  }
+
+  if (state.tool === 'pen') {
     state.drawingStroke = {
       id: uid(),
-      type: state.tool === 'eraser' ? 'eraser' : 'pen',
-      name: state.tool === 'eraser' ? 'Eraser' : 'Pen Stroke',
+      type: 'pen',
+      name: 'Pen Stroke',
       points: [wPos],
-      stroke: state.tool === 'eraser' ? '#030712' : state.penColor,
-      strokeWidth: state.tool === 'eraser' ? 26 : state.penWidth,
+      stroke: state.penColor,
+      strokeWidth: state.penWidth,
       x: wPos.x, y: wPos.y, w: 10, h: 10,
       opacity: 1, rotation: 0, fill: 'transparent',
       _animStart: performance.now(),
@@ -1141,7 +1221,7 @@ canvas.addEventListener('pointerdown', (e) => {
   }
 });
 
-canvas.addEventListener('pointermove', (e) => {
+window.addEventListener('pointermove', (e) => {
   if (activeTouches.has(e.pointerId)) activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
   if (state.isPinching && activeTouches.size === 2) {
@@ -1154,7 +1234,12 @@ canvas.addEventListener('pointermove', (e) => {
   }
 
   if (state.drawingStroke) {
-    state.drawingStroke.points.push(screenToWorld(e.clientX, e.clientY));
+    const wPos = screenToWorld(e.clientX, e.clientY);
+    if (state.drawingStroke.type === 'eraser') {
+      if (eraseAtWorldPoint(wPos.x, wPos.y, 24)) state.drawingStroke.didErase = true;
+    } else {
+      state.drawingStroke.points.push(wPos);
+    }
     return;
   }
 
@@ -1192,14 +1277,20 @@ canvas.addEventListener('pointermove', (e) => {
   }
 });
 
-function handlePointerUp(e) {
-  activeTouches.delete(e.pointerId);
+function handleGlobalPointerUp(e) {
+  if (e && typeof e.pointerId === 'number') {
+    activeTouches.delete(e.pointerId);
+  } else {
+    activeTouches.clear();
+  }
   if (activeTouches.size < 2) state.isPinching = false;
 
   if (state.drawingStroke) {
     const st = state.drawingStroke;
     state.drawingStroke = null;
-    if (st.points.length > 1) {
+    if (st.type === 'eraser') {
+      if (st.didErase) pushHistory();
+    } else if (st.points && st.points.length > 1) {
       state.objects.push(st);
       pushHistory();
     }
@@ -1213,8 +1304,9 @@ function handlePointerUp(e) {
   state.isDraggingCanvas = false;
 }
 
-canvas.addEventListener('pointerup', handlePointerUp);
-canvas.addEventListener('pointercancel', handlePointerUp);
+window.addEventListener('pointerup', handleGlobalPointerUp);
+window.addEventListener('pointercancel', handleGlobalPointerUp);
+window.addEventListener('blur', handleGlobalPointerUp);
 
 canvas.addEventListener('dblclick', (e) => {
   const wPos = screenToWorld(e.clientX, e.clientY);
@@ -1297,6 +1389,7 @@ function refreshPropertiesInputsOnly() {
   document.getElementById('propOpacityVal').textContent = Math.round(op * 100) + '%';
   if (sel.fill && sel.fill.startsWith('#')) document.getElementById('propFill').value = sel.fill;
   if (sel.stroke && sel.stroke.startsWith('#')) document.getElementById('propStroke').value = sel.stroke;
+  if (sel.textColor && sel.textColor.startsWith('#')) document.getElementById('propTextColor').value = sel.textColor;
   document.getElementById('propStrokeW').value = sel.strokeWidth ?? 2;
   document.getElementById('propFontFamily').value = sel.fontFamily || 'Inter, sans-serif';
   document.getElementById('propFontSize').value = sel.fontSize || 20;
@@ -1304,6 +1397,7 @@ function refreshPropertiesInputsOnly() {
   document.getElementById('btnItalic').classList.toggle('active', !!sel.italic);
   document.getElementById('btnUnderline').classList.toggle('active', !!sel.underline);
   document.getElementById('propAnimType').value = sel.animType || 'none';
+  document.getElementById('propAnimOrder').value = sel.animOrder || 0;
   document.getElementById('btnLockLayer').classList.toggle('active', !!sel.locked);
   document.getElementById('btnHideLayer').classList.toggle('active', !!sel.hidden);
 }
@@ -1318,6 +1412,11 @@ function updateSelectedFromInputs() {
   document.getElementById('propOpacityVal').textContent = Math.round(sel.opacity * 100) + '%';
   sel.fill = document.getElementById('propFill').value;
   sel.stroke = document.getElementById('propStroke').value;
+  sel.textColor = document.getElementById('propTextColor').value;
+  if (state.editingTextId === sel.id) {
+    inlineTextColorInput.value = sel.textColor;
+    inlineEditor.style.color = sel.textColor;
+  }
   sel.strokeWidth = Number(document.getElementById('propStrokeW').value) || 0;
   if (sel.type === 'pen') {
     state.penColor = sel.stroke;
@@ -1326,6 +1425,7 @@ function updateSelectedFromInputs() {
   sel.fontFamily = document.getElementById('propFontFamily').value;
   sel.fontSize = Math.max(10, Number(document.getElementById('propFontSize').value) || 20);
   sel.animType = document.getElementById('propAnimType').value;
+  sel.animOrder = Math.max(0, parseInt(document.getElementById('propAnimOrder').value, 10) || 0);
   syncMediaOverlays();
   pushHistory();
 }
@@ -1347,7 +1447,11 @@ function setTextAlign(align) {
 
 function replayAnimationOnSelected() {
   const sel = getFirstSelected();
-  if (sel) sel._animStart = performance.now();
+  if (sel) {
+    if (!sel.animType || sel.animType === 'none') sel.animType = 'zoom';
+    sel._animStart = performance.now();
+    refreshPropertiesInputsOnly();
+  }
 }
 
 function bringToFront() {
@@ -1386,9 +1490,10 @@ function renderLayersList() {
   if (!container) return;
   container.innerHTML = '';
   [...state.objects].reverse().slice(0, 30).forEach(o => {
+    const ordTag = o.animOrder ? ` [№${o.animOrder}]` : '';
     const row = document.createElement('div');
     row.className = 'layer-item' + (state.selectedIds.has(o.id) ? ' active' : '');
-    row.innerHTML = `<span class="layer-item-title">${escapeHtml(o.name || o.type)}</span><span class="layer-item-actions"><button onclick="toggleObjLockById('${o.id}')"><i class="fa-solid ${o.locked ? 'fa-lock' : 'fa-lock-open'}"></i></button><button onclick="toggleObjHideById('${o.id}')"><i class="fa-solid ${o.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button></span>`;
+    row.innerHTML = `<span class="layer-item-title">${escapeHtml((o.name || o.type) + ordTag)}</span><span class="layer-item-actions"><button onclick="toggleObjLockById('${o.id}')"><i class="fa-solid ${o.locked ? 'fa-lock' : 'fa-lock-open'}"></i></button><button onclick="toggleObjHideById('${o.id}')"><i class="fa-solid ${o.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button></span>`;
     row.querySelector('.layer-item-title').onclick = () => selectOnly(o.id);
     container.appendChild(row);
   });
@@ -1419,21 +1524,32 @@ function deleteSelected() {
 
 function cloneBasic(o) { return JSON.parse(JSON.stringify(stripRuntimeProps(o))); }
 
-/* Presentation & Cinema (Frame болбосо дагы Cinema иштейт) */
-function getFrames() { return state.objects.filter(o => o.type === 'frame' && !o.hidden); }
-function getTourTargets() {
-  const frames = getFrames();
-  if (frames.length) return frames;
-  return state.objects.filter(o => !o.hidden && !['connector', 'eraser'].includes(o.type));
+/* Кино режими & Presentation: Анимация номери (animOrder > 0) боюнча иреттелип көрсөтүлөт */
+function getOrderedTourTargets() {
+  const all = state.objects.filter(o => !o.hidden && !['connector', 'eraser', 'pen'].includes(o.type));
+  const numbered = all
+    .filter(o => (o.animOrder || 0) > 0)
+    .sort((a, b) => (a.animOrder || 0) - (b.animOrder || 0));
+  if (numbered.length) return numbered;
+  const frames = all.filter(o => o.type === 'frame');
+  return frames.length ? frames : all;
+}
+
+function triggerTargetAnimation(item) {
+  if (!item) return;
+  if (!item.animType || item.animType === 'none') item.animType = 'zoom';
+  item._animStart = performance.now();
+  selectOnly(item.id);
 }
 
 function startPresentationMode() {
-  const targets = getTourTargets();
+  const targets = getOrderedTourTargets();
   if (!targets.length) { showToast('Көрсөтө турган объект табылган жок'); return; }
   state.presentationMode = true;
   state.presentationIndex = 0;
   document.getElementById('presentation-hud').classList.add('show');
   focusTarget(targets[0], 0, targets.length);
+  triggerTargetAnimation(targets[0]);
 }
 
 function stopPresentationMode() {
@@ -1444,21 +1560,24 @@ function stopPresentationMode() {
 }
 
 function nextFrameSlide() {
-  const targets = getTourTargets();
+  const targets = getOrderedTourTargets();
   if (!targets.length) return;
   state.presentationIndex = (state.presentationIndex + 1) % targets.length;
   focusTarget(targets[state.presentationIndex], state.presentationIndex, targets.length);
+  triggerTargetAnimation(targets[state.presentationIndex]);
 }
 
 function prevFrameSlide() {
-  const targets = getTourTargets();
+  const targets = getOrderedTourTargets();
   if (!targets.length) return;
   state.presentationIndex = (state.presentationIndex - 1 + targets.length) % targets.length;
   focusTarget(targets[state.presentationIndex], state.presentationIndex, targets.length);
+  triggerTargetAnimation(targets[state.presentationIndex]);
 }
 
 function focusTarget(item, idx, total) {
-  document.getElementById('slideCounter').textContent = `${idx + 1} / ${total}`;
+  const ordLabel = item.animOrder ? `№${item.animOrder}` : `${idx + 1}`;
+  document.getElementById('slideCounter').textContent = `${ordLabel} (${idx + 1}/${total})`;
   const w = Math.max(120, item.w || 220), h = Math.max(90, item.h || 120);
   const targetZoom = clampZoom(Math.min((canvas.clientWidth * 0.72) / w, (canvas.clientHeight * 0.72) / h));
   const cx = item.x + w / 2, cy = item.y + h / 2;
@@ -1470,8 +1589,14 @@ function toggleCinemaMode() {
   document.getElementById('cinemaBtn').classList.toggle('active', state.cinemaMode);
   document.getElementById('cinemaAutoBtn').classList.toggle('active', state.cinemaMode);
   if (state.cinemaMode) {
+    state.cinemaTime = state.presentationIndex * 2.5;
+    const targets = getOrderedTourTargets();
+    if (targets.length) {
+      focusTarget(targets[state.presentationIndex % targets.length], state.presentationIndex % targets.length, targets.length);
+      triggerTargetAnimation(targets[state.presentationIndex % targets.length]);
+    }
     document.getElementById('presentation-hud').classList.add('show');
-    showToast('Кино режими башталды');
+    showToast('Кино режими башталды (анимация кезеги боюнча)');
   } else if (!state.presentationMode) {
     document.getElementById('presentation-hud').classList.remove('show');
   }
@@ -1483,19 +1608,19 @@ function createKnowledgeWorldDemo() {
   pushHistory();
   const c = getViewportCenterWorld();
   const chain = [
-    { title: 'Күн системасы', dx: -680, dy: -260, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7' },
-    { title: 'Жер', dx: -440, dy: -160, fill: 'rgba(56,189,248,0.22)', stroke: '#38bdf8' },
-    { title: 'Евразия / Континент', dx: -200, dy: -60, fill: 'rgba(0,229,255,0.18)', stroke: '#00e5ff' },
-    { title: 'Кыргызстан', dx: 40, dy: 40, fill: 'rgba(236,72,153,0.22)', stroke: '#ec4899' },
-    { title: 'Бишкек / Талас', dx: 280, dy: 140, fill: 'rgba(255,189,88,0.22)', stroke: '#ffbd58' },
-    { title: 'Мектеп → Класс → Сабак', dx: 520, dy: 240, fill: 'rgba(16,185,129,0.24)', stroke: '#10b981' }
+    { title: 'Күн системасы', dx: -680, dy: -260, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', order: 1 },
+    { title: 'Жер', dx: -440, dy: -160, fill: 'rgba(56,189,248,0.22)', stroke: '#38bdf8', order: 2 },
+    { title: 'Евразия / Континент', dx: -200, dy: -60, fill: 'rgba(0,229,255,0.18)', stroke: '#00e5ff', order: 3 },
+    { title: 'Кыргызстан', dx: 40, dy: 40, fill: 'rgba(236,72,153,0.22)', stroke: '#ec4899', order: 4 },
+    { title: 'Бишкек / Талас', dx: 280, dy: 140, fill: 'rgba(255,189,88,0.22)', stroke: '#ffbd58', order: 5 },
+    { title: 'Мектеп → Класс → Сабак', dx: 520, dy: 240, fill: 'rgba(16,185,129,0.24)', stroke: '#10b981', order: 6 }
   ];
   let prevNode = null;
   chain.forEach((step) => {
     const node = createBaseObj('mindnode', {
       name: step.title, text: step.title,
       x: c.x + step.dx, y: c.y + step.dy, w: 205, h: 72,
-      fill: step.fill, stroke: step.stroke, bold: true
+      fill: step.fill, stroke: step.stroke, bold: true, animType: 'zoom', animOrder: step.order
     });
     state.objects.push(node);
     if (prevNode) {
@@ -1505,19 +1630,19 @@ function createKnowledgeWorldDemo() {
     }
     prevNode = node;
   });
-  showToast('Prezi Билим Дүйнөсү чынжырчасы кошулду');
+  showToast('Prezi Билим Дүйнөсү (№1–№6 анимация менен) кошулду');
 }
 
 function aiGenerateMindMap() {
   const topic = (document.getElementById('aiTopicInput').value || 'Кыргызстандын тарыхы').trim();
   closePopovers(); pushHistory();
   const c = getViewportCenterWorld();
-  const root = createBaseObj('mindnode', { name: topic, text: topic, x: c.x - 105, y: c.y - 36, w: 210, h: 72, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true });
+  const root = createBaseObj('mindnode', { name: topic, text: topic, x: c.x - 105, y: c.y - 36, w: 210, h: 72, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true, animType: 'zoom', animOrder: 1 });
   state.objects.push(root);
   const branches = ['Хронология', 'Сүрөттөр & Булактар', 'Видео баян', 'Тест & Суроолор'];
   branches.forEach((b, i) => {
     const ang = -Math.PI / 2 + (i / (branches.length - 1)) * Math.PI;
-    const node = createBaseObj('mindnode', { name: b, text: b, x: root.x + Math.cos(ang) * 245, y: root.y + Math.sin(ang) * 170, w: 175, h: 64, fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', parentId: root.id });
+    const node = createBaseObj('mindnode', { name: b, text: b, x: root.x + Math.cos(ang) * 245, y: root.y + Math.sin(ang) * 170, w: 175, h: 64, fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', parentId: root.id, animType: 'slide', animOrder: i + 2 });
     state.objects.push(node, createBaseObj('connector', { fromId: root.id, toId: node.id, stroke: '#ec4899', strokeWidth: 2, fill: 'transparent', w: 10, h: 10 }));
   });
   selectOnly(root.id);
@@ -1535,7 +1660,7 @@ function aiGenerateLessonPlan() {
     { title: 'Суроо / Тест', color: '#f472b6' }
   ];
   steps.forEach((s, idx) => {
-    state.objects.push(createBaseObj('sticky', { name: s.title, text: s.title, x: c.x - 430 + idx * 220, y: c.y - 95, w: 195, h: 190, fill: s.color, stroke: 'rgba(255,255,255,0.25)', textColor: '#0f172a', fontSize: 16, bold: true }));
+    state.objects.push(createBaseObj('sticky', { name: s.title, text: s.title, x: c.x - 430 + idx * 220, y: c.y - 95, w: 195, h: 190, fill: s.color, stroke: 'rgba(255,255,255,0.25)', textColor: '#0f172a', fontSize: 16, bold: true, animType: 'bounce', animOrder: idx + 1 }));
   });
   showToast('Sticker Wall стикерлери кошулду');
 }
@@ -1557,7 +1682,7 @@ function aiAutoCluster() {
 /* Save / Autosave / Export / Import */
 function getProjectPayload() {
   return {
-    version: 2,
+    version: 3,
     name: (document.getElementById('projectNameInput').value || 'Билим Дүйнөсү').trim(),
     updatedAt: new Date().toISOString(),
     camX: state.camX, camY: state.camY, zoom: state.zoom,
@@ -1653,7 +1778,7 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
-/* UI & Hotkeys (T, Enter, Ctrl+Z/Y/C/V/S, Delete, Esc) */
+/* UI & Hotkeys */
 function setTool(tool) {
   state.tool = tool;
   if (tool !== 'connector') state.connectorStartId = null;
@@ -1671,14 +1796,22 @@ function togglePinDock() {
   document.getElementById('pinDockBtn').classList.toggle('active', state.dockPinned);
 }
 
-function togglePopover(id) {
+function togglePopover(id, ev) {
+  if (ev) ev.stopPropagation();
   const el = document.getElementById(id);
   const wasShown = el.classList.contains('show');
   closePopovers();
-  if (!wasShown) el.classList.add('show');
+  if (!wasShown) {
+    el.classList.add('show');
+    document.getElementById('leftDock').classList.add('open');
+  }
 }
 
-function closePopovers() { document.querySelectorAll('.sub-popover').forEach(p => p.classList.remove('show')); }
+function closePopovers() {
+  document.querySelectorAll('.sub-popover').forEach(p => p.classList.remove('show'));
+  document.getElementById('leftDock').classList.remove('open');
+}
+
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 function toggleMinimap() {
   const hidden = document.getElementById('minimapBox').classList.toggle('hidden');
@@ -1789,12 +1922,13 @@ function renderFrame(now) {
 
   if (state.cinemaMode) {
     state.cinemaTime += dt * 0.4;
-    const targets = getTourTargets();
+    const targets = getOrderedTourTargets();
     if (targets.length) {
       const idx = Math.floor(state.cinemaTime) % targets.length;
       if (idx !== state.presentationIndex) {
         state.presentationIndex = idx;
         focusTarget(targets[idx], idx, targets.length);
+        triggerTargetAnimation(targets[idx]);
       }
     }
   }
@@ -1844,7 +1978,7 @@ function renderFrame(now) {
     drawStandardObj(o, now);
   }
 
-  if (state.drawingStroke) drawStrokeObj(state.drawingStroke);
+  if (state.drawingStroke && state.drawingStroke.type === 'pen') drawStrokeObj(state.drawingStroke);
 
   const firstSel = getFirstSelected();
   if (firstSel && !firstSel.hidden && firstSel.type !== 'pen' && firstSel.type !== 'connector') {
@@ -1867,7 +2001,8 @@ function drawFrameObj(o, now) {
   ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#f9a8d4';
   ctx.font = '700 13px Inter, sans-serif';
-  ctx.fillText(o.text || o.name || 'Frame', 14, -8);
+  const ordBadge = o.animOrder ? `[№${o.animOrder}] ` : '';
+  ctx.fillText(ordBadge + (o.text || o.name || 'Frame'), 14, -8);
   ctx.restore();
 }
 
@@ -1932,7 +2067,7 @@ function drawStandardObj(o, now) {
         const x0 = -hw + c * cellW, y0 = -hh + r * cellH;
         if (r === 0) { ctx.fillStyle = 'rgba(0,229,255,0.18)'; ctx.fillRect(x0, y0, cellW, cellH); }
         ctx.strokeRect(x0, y0, cellW, cellH);
-        ctx.fillStyle = '#f8fafc';
+        ctx.fillStyle = o.textColor || '#f8fafc';
         ctx.fillText(String(rows[r][c] ?? ''), x0 + cellW / 2, y0 + cellH / 2);
       }
     }
@@ -2051,7 +2186,6 @@ function drawMinimap(vw, vh) {
 function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function slugify(s) { return String(s || 'board').trim().toLowerCase().replace(/[^a-zа-яөүң0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'bilimal-world'; }
 
-/* Башында таза, эркин чексиз кенеп (эч кандай рамкага байланбаган) */
 window.addEventListener('load', () => {
   resizeCanvas();
   state.camX = canvas.clientWidth / 2;
@@ -2078,19 +2212,22 @@ window.addEventListener('load', () => {
         text: 'Чексиз акылдуу доска — каалаган жерге жазыңыз (T же Double Click)',
         x: -260, y: -150, w: 520, h: 46,
         fill: 'transparent', stroke: 'transparent', strokeWidth: 0,
-        fontSize: 20, bold: true, align: 'center', textColor: '#38bdf8'
+        fontSize: 20, bold: true, align: 'center', textColor: '#38bdf8',
+        animType: 'fade', animOrder: 1
       }),
       createBaseObj('sticky', {
         name: 'Стикер',
         text: 'Сүрөт, видео, PDF, Mind Map жана стикерлерди эркин коюңуз',
         x: -240, y: -40, w: 210, h: 165,
-        fill: '#facc15', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, align: 'left'
+        fill: '#facc15', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, align: 'left',
+        animType: 'zoom', animOrder: 2
       }),
       createBaseObj('mindnode', {
         name: 'Билим Дүйнөсү',
         text: 'Билим Дүйнөсү',
         x: 60, y: -5, w: 200, h: 72,
-        fill: 'rgba(139,92,246,0.28)', stroke: '#a855f7', bold: true
+        fill: 'rgba(139,92,246,0.28)', stroke: '#a855f7', bold: true,
+        animType: 'slide', animOrder: 3
       })
     ];
     pushHistory();
