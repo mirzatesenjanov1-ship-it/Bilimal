@@ -32,8 +32,7 @@ button{cursor:pointer}
 .main-column{min-width:0}
 #canvas-container-solar{height:min(70vh,790px);min-height:460px;position:relative;overflow:hidden;border:1px solid rgba(94,165,235,.24);border-radius:20px;background:radial-gradient(ellipse at center,#0b1730 0%,#030711 68%);box-shadow:0 20px 70px #0008,inset 0 0 80px #1a4b7a18}
 #canvas-container-solar canvas{display:block;width:100%;height:100%;touch-action:none}
-.sim-hint{position:absolute;top:14px;left:14px;max-width:330px;padding:10px 13px;border-radius:11px;background:#030916c9;border:1px solid #4aa8dc45;color:#b9d9f7;font-size:11px;line-height:1.7;pointer-events:none;backdrop-filter:blur(10px)}
-.canvas-top-tools{position:absolute;right:13px;top:13px;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;max-width:62%;z-index:4}
+.canvas-top-tools{position:absolute;right:13px;top:13px;display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;max-width:70%;z-index:4}
 .canvas-bottom{position:absolute;left:14px;right:14px;bottom:13px;display:flex;justify-content:space-between;align-items:end;gap:10px;pointer-events:none;z-index:4}
 .live-chip{background:#061326d9;border:1px solid #4da9d744;border-radius:9px;padding:7px 10px;font-size:10px;color:#b9d9f7;backdrop-filter:blur(10px)}
 .live-chip strong{color:var(--cyan);font-variant-numeric:tabular-nums}
@@ -104,14 +103,14 @@ button{cursor:pointer}
 .minimap-wrap{height:150px;background:#030914;border:1px solid #29415f;border-radius:10px;overflow:hidden}
 #minimap{width:100%;height:100%}
 .footer-note{max-width:1600px;margin:12px auto 0;text-align:center;color:#60748e;font-size:9px;line-height:1.6}
-.hud-hidden .top-header,.hud-hidden .toolbar,.hud-hidden .info-panel,.hud-hidden .footer-note,.hud-hidden .sim-hint,.hud-hidden .canvas-bottom{display:none!important}
+.hud-hidden .top-header,.hud-hidden .toolbar,.hud-hidden .info-panel,.hud-hidden .footer-note,.hud-hidden .canvas-bottom{display:none!important}
 .hud-hidden body,.hud-hidden{padding:0!important}
 .hud-hidden #canvas-container-solar{height:100vh;height:100dvh;border-radius:0;border:none;max-width:none}
 .hud-restore-btn{display:none;position:fixed;left:14px;bottom:14px;z-index:15000}
 .hud-hidden .hud-restore-btn{display:inline-flex}
 @media(max-width:1100px){.sim-wrapper{grid-template-columns:minmax(0,1fr) 310px}}
 @media(max-width:850px){body{padding:9px}.sim-wrapper{grid-template-columns:1fr}.info-panel{display:grid;grid-template-columns:1fr 1fr}.info-card:first-child{grid-column:1/-1}#canvas-container-solar{height:58vh;min-height:380px}.time-readout{margin-left:0}}
-@media(max-width:560px){.top-header{padding:10px}.page-title{order:3;width:100%;text-align:center}.header-right{margin-left:auto}.info-panel{grid-template-columns:1fr}.info-card:first-child{grid-column:auto}.sim-hint{font-size:9px;max-width:210px;padding:7px}.canvas-top-tools{max-width:72%}.canvas-top-tools .btn{font-size:9px;padding:6px 8px}.toolbar{gap:6px}.toolbar .group{width:100%}.time-readout{width:100%;text-align:center}.compare-grid{grid-template-columns:1fr}}
+@media(max-width:560px){.top-header{padding:10px}.page-title{order:3;width:100%;text-align:center}.header-right{margin-left:auto}.info-panel{grid-template-columns:1fr}.info-card:first-child{grid-column:auto}.canvas-top-tools{max-width:92%}.canvas-top-tools .btn{font-size:9px;padding:6px 8px}.toolbar{gap:6px}.toolbar .group{width:100%}.time-readout{width:100%;text-align:center}.compare-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -143,7 +142,6 @@ button{cursor:pointer}
 <div class="sim-wrapper">
   <main class="main-column">
     <div id="canvas-container-solar">
-      <div class="sim-hint" id="ui-hint-solar">☀️ <b>Күн системасы жана Гравитация:</b> планеталарды тандап изилдеңиз<br>🖱️ Айлантуу: сүйрөңүз · Зум: дөңгөлөк / чымчуу<br>👆 Планетаны басып, катмарларын жана маалыматын көрүңүз</div>
       <div class="canvas-top-tools">
         <button class="btn" id="btn-free-camera" onclick="setFreeCamera()"><i class="fa-solid fa-camera"></i><span id="txt-free">Эркин камера</span></button>
         <button class="btn" id="btn-auto-orbit" onclick="toggleAutoOrbitCam()"><i class="fa-solid fa-video"></i><span id="txt-autoorbit">Камера айлантуу: OFF</span></button>
@@ -319,7 +317,14 @@ function toggleBackgroundMusic(){
   }
   updateMusicButtonUI();
 }
-/* Браузер автоойнотууну уруксат бергенде биринчи таптоо/басуу менен ойнотуу */
+/* Эгер Google Дисктеги файл ID'син колдонуу керек болсо чакырылат */
+function setGoogleDriveMusic(fileId){
+  const audio = document.getElementById('bgMusicAudio');
+  if(!audio || !fileId) return;
+  audio.src = `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`;
+  audio.load();
+  if(musicEnabled) tryPlayBgMusic();
+}
 ['pointerdown','keydown','touchstart'].forEach(ev=>{
   window.addEventListener(ev, ()=>{ if(musicEnabled) tryPlayBgMusic(); }, { passive:true, once:false });
 });
@@ -379,7 +384,6 @@ const CELESTIAL_LAYERS = {
 const translations={
 ky:{
 metaTitle:"Күн системасы жана Гравитация 3D — BiliMal",backMenu:"Бөлүмгө кайтуу",mainTitle:"Күн системасы жана Гравитация — 3D",cabinet:"Кабинет",
-hint:"☀️ <b>Күн системасы жана Гравитация:</b> планеталарды тандап изилдеңиз<br>🖱️ Айлантуу: сүйрөңүз · Зум: дөңгөлөк / чымчуу<br>👆 Планетаны басып, катмарларын жана маалыматын көрүңүз",
 legend:"Планеталар",infoTitle:"Илимий эскертүү",infoDesc:"Орбиталар Кеплердин эллипстик модели менен көрсөтүлөт. Визуалдык масштаб илимий аралыкка түз пропорционалдуу эмес.",reset:"Күндү борборго келтирүү",
 pause:"Токтотуу",play:"Улантуу",speed:"Ылдамдык",date:"Дата",now:"Бүгүн",running:"Убакыт жүрүп жатат",paused:"Убакыт токтоду",scale:"Аралык масштабы",free:"Эркин камера",autoOrbitOff:"Камера айлантуу: OFF",autoOrbitOn:"Камера айлантуу: ON",focus:"Жакындатуу",compare:"Салыштыруу",search:"Планетаны издөө",layers:"Көрүнүш катмарлары",bodyLayers:"Ички жана атмосфералык катмарлар",live:"Жандуу телеметрия",distance:"Күндөн аралык",velocity:"Орбиталык ылдамдык",coords:"Координаталар (модель)",camera:"Камера",simDate:"Симуляция датасы",
 orbit:"Орбиталар",labels:"Аталыштар",asteroids:"Астероиддер",effects:"Космос эффекттери",followOn:"Ээрчүү: ON",followOff:"Ээрчүү: OFF",orbitToggle:"Орбиталар",labelToggle:"Белгилер",stars:"Жылдыздар",asteroidToggle:"Астероид алкагы",comets:"Кометалар",effectsToggle:"Күн шамалы",compareTitle:"Планеталарды салыштыруу",compareNote:"Диаграммалар радиустун салыштырма катышын көрсөтөт.",type:"Түрү",radius:"Радиусу",mass:"Массасы",gravity:"Гравитация",escape:"Качуу ылдамдыгы",temp:"Орточо температура",moons:"Жандоочулары",atmosphere:"Атмосферасы",orbitPeriod:"Орбиталык мезгил",rotation:"Айлануу мезгили",au:"AU",sun:"Күн",star:"G2V жылдызы",description:"Күн системасынын борборундагы жылдыз. Анын тартылуу күчү планеталардын орбиталарын аныктайт.",
@@ -389,7 +393,6 @@ descriptions:["Күнгө эң жакын жана эң кичине плане�
 },
 ru:{
 metaTitle:"Солнечная система и Гравитация 3D — BiliMal",backMenu:"Назад в раздел",mainTitle:"Солнечная система и Гравитация — 3D",cabinet:"Кабинет",
-hint:"☀️ <b>Солнечная система и Гравитация:</b> выбирайте планеты для изучения<br>🖱️ Вращение: перетаскивание · Масштаб: колесо / щипок<br>👆 Нажмите на планету, чтобы увидеть слои и данные",
 legend:"Планеты",infoTitle:"Научное примечание",infoDesc:"Орбиты представлены кеплеровской эллиптической моделью. Визуальный масштаб не пропорционален реальным расстояниям.",reset:"Центрировать Солнце",
 pause:"Пауза",play:"Продолжить",speed:"Скорость",date:"Дата",now:"Сегодня",running:"Время идёт",paused:"Время остановлено",scale:"Масштаб расстояний",free:"Свободная камера",autoOrbitOff:"Автооблёт: OFF",autoOrbitOn:"Автооблёт: ON",focus:"Приблизить",compare:"Сравнить",search:"Поиск планеты",layers:"Слои отображения",bodyLayers:"Внутренние и атмосферные слои",live:"Телеметрия",distance:"Расстояние от Солнца",velocity:"Орбитальная скорость",coords:"Координаты (модель)",camera:"Камера",simDate:"Дата симуляции",
 orbit:"Орбиты",labels:"Названия",asteroids:"Астероиды",effects:"Космические эффекты",followOn:"Слежение: ON",followOff:"Слежение: OFF",orbitToggle:"Орбиты",labelToggle:"Метки",stars:"Звёзды",asteroidToggle:"Пояс астероидов",comets:"Кометы",effectsToggle:"Солнечный ветер",compareTitle:"Сравнение планет",compareNote:"Диаграммы показывают относительное соотношение радиусов.",type:"Тип",radius:"Радиус",mass:"Масса",gravity:"Гравитация",escape:"Вторая космическая",temp:"Средняя температура",moons:"Спутники",atmosphere:"Атмосфера",orbitPeriod:"Орбитальный период",rotation:"Период вращения",au:"а.е.",sun:"Солнце",star:"Звезда класса G2V",description:"Звезда в центре Солнечной системы. Её гравитация определяет орбиты планет.",
@@ -399,7 +402,6 @@ descriptions:["Ближайшая к Солнцу и самая маленька
 },
 en:{
 metaTitle:"Solar System & Gravity 3D — BiliMal",backMenu:"Back to Section",mainTitle:"Solar System & Gravity — 3D",cabinet:"Dashboard",
-hint:"☀️ <b>Solar System & Gravity:</b> select planets to explore<br>🖱️ Rotate: drag · Zoom: scroll / pinch<br>👆 Click a planet to inspect layers & data",
 legend:"Planets",infoTitle:"Scientific note",infoDesc:"Orbits use an educational Keplerian ellipse model. Visual spacing is not linearly proportional to actual astronomical distances.",reset:"Center the Sun",
 pause:"Pause",play:"Resume",speed:"Speed",date:"Date",now:"Today",running:"Time running",paused:"Time paused",scale:"Distance scale",free:"Free camera",autoOrbitOff:"Auto Orbit: OFF",autoOrbitOn:"Auto Orbit: ON",focus:"Focus",compare:"Compare",search:"Search planets",layers:"Display layers",bodyLayers:"Internal & Atmospheric Layers",live:"Live telemetry",distance:"Distance from Sun",velocity:"Orbital velocity",coords:"Coordinates (model)",camera:"Camera",simDate:"Simulation date",
 orbit:"Orbits",labels:"Labels",asteroids:"Asteroids",effects:"Space effects",followOn:"Follow: ON",followOff:"Follow: OFF",orbitToggle:"Orbits",labelToggle:"Labels",stars:"Stars",asteroidToggle:"Asteroid belt",comets:"Comets",effectsToggle:"Solar wind",compareTitle:"Planet comparison",compareNote:"Bars show the relative radius ratio.",type:"Type",radius:"Radius",mass:"Mass",gravity:"Gravity",escape:"Escape velocity",temp:"Mean temperature",moons:"Moons",atmosphere:"Atmosphere",orbitPeriod:"Orbital period",rotation:"Rotation period",au:"AU",sun:"Sun",star:"G2V star",description:"The star at the center of the Solar System. Its gravity governs planetary orbits.",
@@ -413,7 +415,7 @@ function changeLanguage(lang){
   currentLang=translations[lang]?lang:'ky';const t=translations[currentLang];
   const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
   document.documentElement.lang=currentLang;set('page-meta-title',t.metaTitle);set('ui-maintitle',t.mainTitle);set('ui-cabinet',t.cabinet);set('ui-back',t.backMenu);
-  document.getElementById('ui-hint-solar').innerHTML=t.hint;set('ui-solar-legend-title',t.legend);set('ui-solar-info-title',t.infoTitle);set('ui-solar-info-desc',t.infoDesc);set('ui-btn-reset-solar',t.reset);
+  set('ui-solar-legend-title',t.legend);set('ui-solar-info-title',t.infoTitle);set('ui-solar-info-desc',t.infoDesc);set('ui-btn-reset-solar',t.reset);
   const map={'txt-pause':t.pause,'txt-speed':t.speed,'txt-date':t.date,'txt-now':t.now,'txt-time-state':isPlaying?t.running:t.paused,'txt-scale':t.scale,'txt-free':t.free,'txt-focus':t.focus,'txt-compare':t.compare,'txt-search':t.search,'txt-layers':t.layers,'txt-body-layers':t.bodyLayers,'txt-live-data':t.live,'txt-distance-sun':t.distance,'txt-orbital-speed':t.velocity,'txt-coordinates':t.coords,'txt-camera':t.camera,'txt-sim-date':t.simDate,'orbitBtn':t.orbit,'labelsBtn':t.labels,'asteroidBtn':t.asteroids,'effectsBtn':t.effects,'txt-orbit-toggle':t.orbitToggle,'txt-label-toggle':t.labelToggle,'txt-stars-toggle':t.stars,'asteroidToggle':t.asteroidToggle,'comets':t.comets,'effectsToggle':t.effectsToggle,'compareTitle':t.compareTitle,'compareNote':t.compareNote};
   Object.keys(map).forEach(k=>set(k,map[k]));
   document.getElementById('langSelector').value=currentLang;
