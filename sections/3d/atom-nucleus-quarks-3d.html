@@ -9,201 +9,300 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
-  <!-- Font Awesome жана Google Fonts -->
+  <!-- Font Awesome жана Кириллицаны (Ө, Ү, Ң) колдогон Google Fonts (Manrope & Inter) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
 
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Poppins', sans-serif;
     }
 
     html, body {
       width: 100%;
       min-height: 100vh;
-      background-color: #04060c;
+      background-color: #050811;
       color: #ffffff;
+      font-family: 'Inter', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
       overflow-x: hidden;
     }
 
     body {
+      background-color: #050811;
       background-image:
-        radial-gradient(circle at 20% 15%, rgba(56, 189, 248, 0.12), transparent 40%),
-        radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.12), transparent 45%),
-        linear-gradient(160deg, #03050a 0%, #070d1d 55%, #04060c 100%);
+        radial-gradient(ellipse 80% 55% at 15% 10%, rgba(0, 210, 255, 0.16), transparent 60%),
+        radial-gradient(ellipse 75% 55% at 85% 15%, rgba(0, 102, 255, 0.18), transparent 62%),
+        radial-gradient(ellipse 80% 60% at 50% 90%, rgba(0, 210, 255, 0.10), transparent 65%),
+        linear-gradient(160deg, #050811 0%, #071024 52%, #050a18 100%);
+      background-attachment: fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 14px;
+      padding: 18px 16px 48px;
+      position: relative;
     }
 
-    /* Жогорку навигация */
-    .top-header {
+    /* Абстракттуу санариптик толкундар жана назик 3D торчо фон */
+    .bg-mesh-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        linear-gradient(to right, rgba(0, 210, 255, 0.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 102, 255, 0.055) 1px, transparent 1px);
+      background-size: 52px 52px;
+      mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.25) 85%);
+      -webkit-mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.25) 85%);
+    }
+
+    #bg-waves-canvas {
+      position: fixed;
+      inset: 0;
       width: 100%;
-      max-width: 1360px;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Жогорку Glassmorphism панель */
+    .top-header {
+      position: relative;
+      z-index: 20;
+      width: 100%;
+      max-width: 1240px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 14px;
-      padding: 10px 16px;
-      background: rgba(15, 23, 42, 0.78);
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      border-radius: 14px;
-      backdrop-filter: blur(12px);
+      margin-bottom: 26px;
+      padding: 14px 20px;
+      background: rgba(9, 17, 36, 0.68);
+      border: 1px solid rgba(0, 210, 255, 0.28);
+      border-radius: 18px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
       flex-wrap: wrap;
-      gap: 10px;
-      z-index: 20;
+      gap: 14px;
     }
 
     .header-left, .header-right {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
     .btn-back {
-      color: #38bdf8;
+      color: #ffffff;
       text-decoration: none;
+      font-family: 'Manrope', sans-serif;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       display: inline-flex;
       align-items: center;
-      gap: 7px;
-      padding: 6px 10px;
-      border-radius: 8px;
-      background: rgba(56, 189, 248, 0.08);
-      border: 1px solid rgba(56, 189, 248, 0.2);
-      transition: 0.25s ease;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: rgba(0, 210, 255, 0.08);
+      border: 1px solid rgba(0, 210, 255, 0.32);
+      transition: all 0.25s ease;
       cursor: pointer;
     }
 
     .btn-back:hover {
+      background: rgba(0, 210, 255, 0.18);
+      border-color: #00D2FF;
+      box-shadow: 0 0 18px rgba(0, 210, 255, 0.25);
       transform: translateX(-2px);
-      background: rgba(56, 189, 248, 0.16);
     }
 
     .page-title {
-      font-size: clamp(0.95rem, 1.8vw, 1.2rem);
-      font-weight: 700;
-      background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      font-family: 'Manrope', sans-serif;
+      font-size: clamp(1.1rem, 2vw, 1.45rem);
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #ffffff;
+      text-shadow: 0 0 24px rgba(0, 210, 255, 0.35);
       text-align: center;
     }
 
     .lang-select {
-      background: #0f172a;
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      color: #38bdf8;
-      padding: 6px 10px;
-      border-radius: 8px;
+      background: rgba(6, 12, 26, 0.85);
+      border: 1px solid rgba(0, 210, 255, 0.38);
+      color: #ffffff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-family: 'Manrope', sans-serif;
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       outline: none;
       cursor: pointer;
+      transition: border-color 0.25s ease;
     }
 
-    .btn-ctrl {
-      width: 100%;
-      padding: 9px 12px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(135deg, #2563eb, #1d4ed8);
-      color: #ffffff;
-      font-weight: 600;
-      font-size: 0.82rem;
-      cursor: pointer;
-      transition: 0.25s ease;
-      margin-top: 8px;
-    }
-
-    .btn-ctrl:hover {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      box-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
+    .lang-select:focus {
+      border-color: #00D2FF;
     }
 
     .btn-cabinet {
-      width: auto;
-      padding: 6px 13px;
-      margin: 0;
-      text-decoration: none;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 0.8rem;
+      gap: 7px;
+      padding: 8px 16px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #ffffff;
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.24), rgba(0, 102, 255, 0.38));
+      border: 1px solid rgba(0, 210, 255, 0.55);
+      box-shadow: 0 0 16px rgba(0, 210, 255, 0.2);
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+
+    .btn-cabinet:hover {
+      background: linear-gradient(135deg, #00D2FF, #0066FF);
+      color: #050811;
+      box-shadow: 0 0 24px rgba(0, 210, 255, 0.55);
+      transform: translateY(-1px);
     }
 
     /* Меню карточкалары контейнери */
     .menu-container {
+      position: relative;
+      z-index: 10;
       width: 100%;
-      max-width: 1360px;
+      max-width: 1240px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-      gap: 18px;
-      margin-top: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
     }
 
+    @media (max-width: 1024px) {
+      .menu-container {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .menu-container {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+    }
+
+    /* Frosted Glass карточкалар — кичинекей төрт бурчтуу иконкалар жок */
     .menu-card {
-      background: rgba(15, 23, 42, 0.82);
-      border: 1px solid rgba(56, 189, 248, 0.24);
-      border-radius: 18px;
-      padding: 20px;
+      background: rgba(10, 19, 41, 0.62);
+      border: 1px solid rgba(0, 210, 255, 0.30);
+      border-radius: 22px;
+      padding: 16px 18px 20px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       gap: 16px;
-      transition: 0.25s ease;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
       cursor: pointer;
-      backdrop-filter: blur(10px);
+      overflow: hidden;
     }
 
     .menu-card:hover {
-      border-color: rgba(56, 189, 248, 0.8);
-      transform: translateY(-4px);
-      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.16);
+      transform: translateY(-6px);
+      background: rgba(13, 25, 54, 0.78);
+      border-color: #00D2FF;
+      box-shadow: 0 22px 46px rgba(0, 0, 0, 0.68), 0 0 28px rgba(0, 210, 255, 0.28);
     }
 
-    .menu-card-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.15rem;
-      margin-bottom: 10px;
+    /* Карточканын жогорку бөлүгүндөгү 3D визуалдык сүрөт алкагы */
+    .card-3d-visual {
+      width: 100%;
+      height: 176px;
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(0, 210, 255, 0.24);
+      background: radial-gradient(circle at 50% 45%, #0c1d3d 0%, #050811 100%);
+      box-shadow: inset 0 0 26px rgba(0, 102, 255, 0.22);
+    }
+
+    .card-3d-visual canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 2px;
     }
 
     .menu-card h2 {
-      font-size: 1rem;
+      font-family: 'Manrope', sans-serif;
+      font-size: 1.08rem;
       font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 6px;
+      line-height: 1.35;
+      color: #ffffff;
     }
 
     .menu-card p {
-      font-size: 0.82rem;
-      color: #94a3b8;
-      line-height: 1.48;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.88rem;
+      font-weight: 400;
+      color: #B8C7E0;
+      line-height: 1.55;
+    }
+
+    .btn-open-sim {
+      width: 100%;
+      padding: 11px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 210, 255, 0.55);
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.22), rgba(0, 102, 255, 0.34));
+      color: #ffffff;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 700;
+      font-size: 0.88rem;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 0 18px rgba(0, 210, 255, 0.16);
+      transition: all 0.25s ease;
+    }
+
+    .menu-card:hover .btn-open-sim {
+      background: linear-gradient(135deg, #00D2FF 0%, #0066FF 100%);
+      color: #ffffff;
+      border-color: #00D2FF;
+      box-shadow: 0 0 24px rgba(0, 210, 255, 0.45);
     }
 
     /* 3D Симуляция — Экранга толук ыңгайлуу алкак */
     .sim-stage {
+      position: relative;
+      z-index: 10;
       width: 100%;
       max-width: 1360px;
-      height: calc(100vh - 86px);
+      height: calc(100vh - 96px);
       min-height: 440px;
       max-height: 920px;
-      position: relative;
-      border-radius: 20px;
+      border-radius: 22px;
       overflow: hidden;
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      box-shadow: 0 0 35px rgba(56, 189, 248, 0.16);
-      background: radial-gradient(circle at center, #0b1329 0%, #02050b 100%);
+      border: 1px solid rgba(0, 210, 255, 0.38);
+      box-shadow: 0 0 38px rgba(0, 210, 255, 0.18);
+      background: radial-gradient(circle at center, #0b1630 0%, #050811 100%);
     }
 
     #canvas-container {
@@ -213,22 +312,25 @@
       touch-action: none;
     }
 
-    /* Сол жогорку кыска эскертүү */
     .sim-hint {
       position: absolute;
       top: 12px;
       left: 12px;
-      max-width: min(320px, calc(100% - 140px));
-      background: rgba(2, 6, 23, 0.72);
-      padding: 8px 12px;
-      border-radius: 10px;
-      font-size: 0.74rem;
-      color: #7dd3fc;
+      max-width: min(320px, calc(100% - 145px));
+      background: rgba(5, 8, 17, 0.78);
+      padding: 9px 13px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      color: #B8C7E0;
       pointer-events: none;
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      line-height: 1.42;
-      backdrop-filter: blur(8px);
+      border: 1px solid rgba(0, 210, 255, 0.28);
+      line-height: 1.45;
+      backdrop-filter: blur(10px);
       z-index: 5;
+    }
+
+    .sim-hint b {
+      color: #ffffff;
     }
 
     /* Чекедеги кичинекей белгилер (Edge Chips) */
@@ -246,15 +348,16 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 7px 11px;
+      padding: 7px 12px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.84);
-      color: #e2e8f0;
-      border: 1px solid rgba(56, 189, 248, 0.45);
-      font-size: 0.74rem;
+      background: rgba(8, 15, 34, 0.85);
+      color: #ffffff;
+      border: 1px solid rgba(0, 210, 255, 0.45);
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.75rem;
       font-weight: 600;
       cursor: pointer;
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(10px);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
       transition: all 0.2s ease;
       white-space: nowrap;
@@ -262,13 +365,12 @@
 
     .edge-chip:hover,
     .edge-chip.active {
-      background: rgba(56, 189, 248, 0.24);
-      border-color: #38bdf8;
-      color: #ffffff;
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.28), rgba(0, 102, 255, 0.35));
+      border-color: #00D2FF;
     }
 
     .edge-chip i {
-      color: #38bdf8;
+      color: #00D2FF;
       font-size: 0.76rem;
     }
 
@@ -277,15 +379,15 @@
       position: absolute;
       top: 12px;
       right: 12px;
-      width: min(310px, calc(100% - 24px));
+      width: min(315px, calc(100% - 24px));
       max-height: calc(100% - 24px);
       overflow-y: auto;
-      background: rgba(10, 16, 32, 0.9);
-      border: 1px solid rgba(56, 189, 248, 0.35);
-      border-radius: 14px;
-      padding: 14px;
-      backdrop-filter: blur(14px);
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      background: rgba(7, 13, 29, 0.92);
+      border: 1px solid rgba(0, 210, 255, 0.38);
+      border-radius: 16px;
+      padding: 15px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7);
       z-index: 25;
       display: none;
       animation: drawerPop 0.2s ease;
@@ -305,16 +407,21 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 10px;
-      padding-bottom: 7px;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(0, 210, 255, 0.2);
     }
 
     .drawer-header h3 {
-      font-size: 0.88rem;
-      color: #38bdf8;
+      font-family: 'Manrope', sans-serif;
+      font-size: 0.9rem;
+      color: #ffffff;
       display: flex;
       align-items: center;
       gap: 7px;
+    }
+
+    .drawer-header h3 i {
+      color: #00D2FF;
     }
 
     .drawer-close {
@@ -331,23 +438,23 @@
       justify-content: center;
     }
 
-    .drawer-close:hover {
-      background: rgba(239, 68, 68, 0.32);
-    }
-
     .legend-list {
       list-style: none;
-      font-size: 0.8rem;
-      color: #cbd5e1;
+      font-size: 0.82rem;
+      color: #B8C7E0;
       display: flex;
       flex-direction: column;
-      gap: 7px;
+      gap: 8px;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
       gap: 9px;
+    }
+
+    .legend-item b {
+      color: #ffffff;
     }
 
     .dot {
@@ -358,9 +465,29 @@
     }
 
     .quant-text {
-      font-size: 0.78rem;
-      color: #cbd5e1;
-      line-height: 1.5;
+      font-size: 0.8rem;
+      color: #B8C7E0;
+      line-height: 1.55;
+    }
+
+    .btn-ctrl {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 210, 255, 0.45);
+      background: linear-gradient(135deg, rgba(0, 210, 255, 0.24), rgba(0, 102, 255, 0.36));
+      color: #ffffff;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      margin-top: 8px;
+    }
+
+    .btn-ctrl:hover {
+      background: linear-gradient(135deg, #00D2FF, #0066FF);
+      box-shadow: 0 0 16px rgba(0, 210, 255, 0.35);
     }
 
     /* ЖАРНАМА ЭСКЕРТҮҮ МОДАЛДЫК ТЕРЕЗЕСИ */
@@ -371,41 +498,42 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(4, 6, 12, 0.85);
-      backdrop-filter: blur(8px);
+      background: rgba(5, 8, 17, 0.86);
+      backdrop-filter: blur(10px);
       z-index: 20000;
       justify-content: center;
       align-items: center;
     }
 
     .ad-modal-content {
-      background: #111827;
-      border: 2px solid #38bdf8;
+      background: rgba(11, 20, 44, 0.94);
+      border: 1px solid #00D2FF;
       border-radius: 20px;
       padding: 28px 34px;
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.4);
+      box-shadow: 0 0 32px rgba(0, 210, 255, 0.35);
       text-align: center;
       max-width: 440px;
       width: 90%;
     }
 
     .ad-modal-icon {
-      font-size: 2.6rem;
-      color: #38bdf8;
+      font-size: 2.5rem;
+      color: #00D2FF;
       margin-bottom: 12px;
       animation: spin 1.5s infinite linear;
     }
 
     .ad-modal-title {
+      font-family: 'Manrope', sans-serif;
       font-size: 1.2rem;
-      font-weight: bold;
-      color: #fff;
+      font-weight: 700;
+      color: #ffffff;
       margin-bottom: 8px;
     }
 
     .ad-modal-subtitle {
       font-size: 0.9rem;
-      color: #cbd5e1;
+      color: #B8C7E0;
     }
 
     @keyframes spin {
@@ -415,31 +543,35 @@
 
     @media (max-width: 640px) {
       body {
-        padding: 10px;
+        padding: 12px 10px 36px;
       }
       .top-header {
-        padding: 8px 12px;
-        margin-bottom: 10px;
-        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 16px;
+        border-radius: 14px;
       }
       .sim-stage {
-        height: calc(100vh - 118px);
+        height: calc(100vh - 122px);
         min-height: 360px;
         border-radius: 16px;
       }
       .sim-hint {
         font-size: 0.68rem;
-        padding: 6px 9px;
+        padding: 7px 10px;
         max-width: min(210px, calc(100% - 125px));
       }
       .edge-chip {
-        padding: 6px 9px;
+        padding: 6px 10px;
         font-size: 0.7rem;
       }
     }
   </style>
 </head>
 <body>
+
+  <!-- Санариптик толкундар жана торчо фон -->
+  <div class="bg-mesh-layer" aria-hidden="true"></div>
+  <canvas id="bg-waves-canvas" aria-hidden="true"></canvas>
 
   <!-- ЖАРНАМА ЭСКЕРТҮҮ ТЕРЕЗЕСИ -->
   <div class="ad-modal" id="adNoticeModal">
@@ -466,107 +598,119 @@
         <option value="ru">🇷🇺 Русский</option>
         <option value="en">🇬🇧 English</option>
       </select>
-      <a href="dashboard.html" class="btn-ctrl btn-cabinet">
+      <a href="dashboard.html" class="btn-cabinet">
         🚀 <span id="ui-cabinet">Кабинет</span>
       </a>
     </div>
   </header>
 
-  <!-- 1. ФИЗИКА 3D СИМУЛЯТОРЛОР МЕНЮСУ -->
+  <!-- 1. ФИЗИКА 3D СИМУЛЯТОРЛОР МЕНЮСУ (6 КАРТОЧКА, ИКОНКАЛАРСЫЗ, ТЕМАЛЫК 3D СҮРӨТТӨР МЕНЕН) -->
   <div id="simMenuSection" class="menu-container">
 
-    <!-- АТОМ 3D -->
+    <!-- 1. АТОМ 3D -->
     <div class="menu-card" onclick="openSimulator('atom')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(56, 189, 248, 0.18); color: #38bdf8;">
-          <i class="fa-solid fa-atom"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-atom"></canvas>
         </div>
-        <h2 id="ui-menu-atom-title">Атомдун, Ядронун жана Кварктардын 3D Модели</h2>
-        <p id="ui-menu-atom-desc">
-          Протондор, нейтрондор жана кварктардын кванттык түзүлүшүн 3D мейкиндикте изилдеңиз.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-atom-title">Атомдун, Ядронун жана Кварктардын 3D Модели</h2>
+          <p id="ui-menu-atom-desc">
+            Протондор, нейтрондор жана кварктардын кванттык түзүлүшүн 3D мейкиндикте изилдеңиз.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl">
+      <button class="btn-open-sim">
         <span id="ui-menu-atom-btn">Симуляторду ачуу</span> →
       </button>
     </div>
 
-    <!-- КҮН СИСТЕМАСЫ 3D -->
+    <!-- 2. КҮН СИСТЕМАСЫ 3D -->
     <div class="menu-card" onclick="handleNavigation('solar-system-3d.html')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(245, 158, 11, 0.18); color: #fbbf24;">
-          <i class="fa-solid fa-solar-system"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-solar"></canvas>
         </div>
-        <h2 id="ui-menu-solar-title">Күн системасы жана Гравитация 3D</h2>
-        <p id="ui-menu-solar-desc">
-          Планеталардын орбиталык кыймылдары жана гравитациялык талаалар 3D мейкиндикте.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-solar-title">Күн системасы жана Гравитация 3D</h2>
+          <p id="ui-menu-solar-desc">
+            Планеталардын орбиталык кыймылдары жана гравитациялык талаалар 3D мейкиндикте.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl" style="background: linear-gradient(135deg, #d97706, #b45309);">
+      <button class="btn-open-sim">
         <span id="ui-menu-solar-btn">Симуляторду ачуу</span> →
       </button>
     </div>
 
-    <!-- ГАЛАКТИКАЛАРДЫН КАГЫЛЫШУУСУ 3D -->
+    <!-- 3. ГАЛАКТИКАЛАРДЫН КАГЫЛЫШУУСУ 3D -->
     <div class="menu-card" onclick="handleNavigation('galaxy-collision-3d.html')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(168, 85, 247, 0.18); color: #c084fc;">
-          <i class="fa-solid fa-galaxy"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-galaxy"></canvas>
         </div>
-        <h2 id="ui-menu-galaxy-title">Галактикалардын кагылышуусу 3D (Milkomeda)</h2>
-        <p id="ui-menu-galaxy-desc">
-          Саманчынын жолу жана Андромеда галактикаларынын тартылуу күчү аркылуу биригүү симуляциясы.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-galaxy-title">Галактикалардын кагылышуусу 3D (Milkomeda)</h2>
+          <p id="ui-menu-galaxy-desc">
+            Саманчынын жолу жана Андромеда галактикаларынын тартылуу күчү аркылуу биригүү симуляциясы.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl" style="background: linear-gradient(135deg, #9333ea, #7e22ce);">
+      <button class="btn-open-sim">
         <span id="ui-menu-galaxy-btn">Симуляторду ачуу</span> →
       </button>
     </div>
 
-    <!-- ААЛАМДЫН ЖАРАЛУУ МОДЕЛИ -->
+    <!-- 4. ААЛАМДЫН ЖАРАЛУУ МОДЕЛИ -->
     <div class="menu-card" onclick="handleNavigation('universe-origin-3d.html')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(244, 63, 94, 0.18); color: #fb7185;">
-          <i class="fa-solid fa-fire-flame-curved"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-universe"></canvas>
         </div>
-        <h2 id="ui-menu-universe-title">Ааламдын жаралуу модели (Big Bang)</h2>
-        <p id="ui-menu-universe-desc">
-          Чоң Шартлоо (Big Bang), инфляция мезгили, алгачкы элементардык атомдордун жана галактикалардын пайда болуу эволюциясы.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-universe-title">Ааламдын жаралуу модели (Big Bang)</h2>
+          <p id="ui-menu-universe-desc">
+            Чоң Шартлоо (Big Bang), инфляция мезгили, алгачкы элементардык атомдордун жана галактикалардын пайда болуу эволюциясы.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl" style="background: linear-gradient(135deg, #e11d48, #be123c);">
+      <button class="btn-open-sim">
         <span id="ui-menu-universe-btn">Симуляторду ачуу</span> →
       </button>
     </div>
 
-    <!-- ДОПЛЕР ЭФФЕКТИСИ -->
+    <!-- 5. ДОПЛЕР ЭФФЕКТИСИ -->
     <div class="menu-card" onclick="handleNavigation('doppler-effect-3d.html')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(6, 182, 212, 0.18); color: #22d3ee;">
-          <i class="fa-solid fa-wave-square"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-doppler"></canvas>
         </div>
-        <h2 id="ui-menu-doppler-title">Доплер эффектиси (Doppler Effect)</h2>
-        <p id="ui-menu-doppler-desc">
-          Кыймылдагы булактын үн же жарык толкундарынын жыштыгынын өзгөрүшүн 3D визуалдык симуляция аркылуу изилдеңиз.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-doppler-title">Доплер эффектиси (Doppler Effect)</h2>
+          <p id="ui-menu-doppler-desc">
+            Кыймылдагы булактын үн же жарык толкундарынын жыштыгынын өзгөрүшүн 3D визуалдык симуляция аркылуу изилдеңиз.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl" style="background: linear-gradient(135deg, #0891b2, #0e7490);">
+      <button class="btn-open-sim">
         <span id="ui-menu-doppler-btn">Симуляторду ачуу</span> →
       </button>
     </div>
 
-    <!-- ПУЛЬСАР ЖЫЛДЫЗЫ -->
+    <!-- 6. ПУЛЬСАР ЖЫЛДЫЗЫ -->
     <div class="menu-card" onclick="handleNavigation('pulsar-star-3d.html')">
       <div>
-        <div class="menu-card-icon" style="background: rgba(99, 102, 241, 0.18); color: #818cf8;">
-          <i class="fa-solid fa-compact-disc"></i>
+        <div class="card-3d-visual">
+          <canvas id="thumb-pulsar"></canvas>
         </div>
-        <h2 id="ui-menu-pulsar-title">Пульсар жылдызы (Pulsar Star)</h2>
-        <p id="ui-menu-pulsar-desc">
-          Өтө тез айланган нейтрондук жылдыздардын магниттик нурлануу жана пульсация жасоо 3D симуляциясы.
-        </p>
+        <div class="card-body" style="margin-top: 14px;">
+          <h2 id="ui-menu-pulsar-title">Пульсар жылдызы (Pulsar Star)</h2>
+          <p id="ui-menu-pulsar-desc">
+            Өтө тез айланган нейтрондук жылдыздардын магниттик нурлануу жана пульсация жасоо 3D симуляциясы.
+          </p>
+        </div>
       </div>
-      <button class="btn-ctrl" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+      <button class="btn-open-sim">
         <span id="ui-menu-pulsar-btn">Симуляторду ачуу</span> →
       </button>
     </div>
@@ -585,11 +729,11 @@
 
     <!-- Чекедеги кичинекей белгилер -->
     <div class="edge-toggles" id="edgeToggles">
-      <button class="edge-chip" id="chipParticles" onclick="toggleDrawer('particlesDrawer')" title="Субатомдук бөлүкчөлөр">
+      <button class="edge-chip" id="chipParticles" onclick="toggleDrawer('particlesDrawer')">
         <i class="fa-solid fa-layer-group"></i>
         <span id="ui-chip-particles">Бөлүкчөлөр</span>
       </button>
-      <button class="edge-chip" id="chipQuantum" onclick="toggleDrawer('quantumDrawer')" title="Кванттык структура жана камера">
+      <button class="edge-chip" id="chipQuantum" onclick="toggleDrawer('quantumDrawer')">
         <i class="fa-solid fa-microscope"></i>
         <span id="ui-chip-quantum">Квант & Камера</span>
       </button>
@@ -620,10 +764,251 @@
         Адрондор (протон жана нейтрон) дагы да майда элементардык бөлүкчөлөрдөн — Кварктардан турат. Глюондор аркылуу кармалып турат.
       </p>
       <button class="btn-ctrl" onclick="focusNucleus(); closeAllDrawers();"><span id="ui-btn-focus">🔬 Ядрого жакындап көрүү</span></button>
-      <button class="btn-ctrl" style="background: #374151;" onclick="resetCamera(); closeAllDrawers();"><span id="ui-btn-reset">🌌 Толук Атомду көрүү</span></button>
+      <button class="btn-ctrl" style="background: rgba(15, 23, 42, 0.85);" onclick="resetCamera(); closeAllDrawers();"><span id="ui-btn-reset">🌌 Толук Атомду көрүү</span></button>
     </div>
   </div>
 
+  <!-- ФОНДОГУ САНАРИПТИК ТОЛКУНДАР ЖАНА 6 КАРТОЧКАНЫН 3D ВИЗУАЛДЫК СҮРӨТТӨРҮ -->
+  <script>
+    (function initWavesAndCardVisuals() {
+      const waveCanvas = document.getElementById('bg-waves-canvas');
+      if (waveCanvas) {
+        const wCtx = waveCanvas.getContext('2d');
+        let wWidth = 0;
+        let wHeight = 0;
+        let wPhase = 0;
+
+        function resizeWaves() {
+          wWidth = waveCanvas.width = window.innerWidth;
+          wHeight = waveCanvas.height = window.innerHeight;
+        }
+
+        function drawWaves() {
+          wPhase += 0.012;
+          wCtx.clearRect(0, 0, wWidth, wHeight);
+
+          const waveCount = 3;
+          for (let w = 0; w < waveCount; w++) {
+            wCtx.beginPath();
+            const baseY = wHeight * (0.28 + w * 0.24);
+            const amp = 24 + w * 10;
+            const freq = 0.0032 - w * 0.0005;
+            for (let x = 0; x <= wWidth; x += 18) {
+              const y = baseY + Math.sin(x * freq + wPhase * (1 + w * 0.25) + w) * amp;
+              if (x === 0) wCtx.moveTo(x, y);
+              else wCtx.lineTo(x, y);
+            }
+            wCtx.strokeStyle = w === 0
+              ? 'rgba(0, 210, 255, 0.12)'
+              : (w === 1 ? 'rgba(0, 102, 255, 0.12)' : 'rgba(56, 189, 248, 0.08)');
+            wCtx.lineWidth = 1.3;
+            wCtx.stroke();
+          }
+
+          requestAnimationFrame(drawWaves);
+        }
+
+        window.addEventListener('resize', resizeWaves);
+        resizeWaves();
+        drawWaves();
+      }
+
+      // Ар бир карточканын 3D визуалдык сүрөтү
+      const configs = [
+        { id: 'thumb-atom', type: 'atom' },
+        { id: 'thumb-solar', type: 'solar' },
+        { id: 'thumb-galaxy', type: 'galaxy' },
+        { id: 'thumb-universe', type: 'universe' },
+        { id: 'thumb-doppler', type: 'doppler' },
+        { id: 'thumb-pulsar', type: 'pulsar' }
+      ];
+
+      const cardScenes = configs.map(cfg => {
+        const canvas = document.getElementById(cfg.id);
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(200, (rect.width || 320) * dpr);
+        canvas.height = Math.max(120, (rect.height || 176) * dpr);
+        return { canvas, ctx, dpr, type: cfg.type, t: Math.random() * 10 };
+      }).filter(Boolean);
+
+      window.addEventListener('resize', () => {
+        cardScenes.forEach(item => {
+          const rect = item.canvas.getBoundingClientRect();
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          item.dpr = dpr;
+          item.canvas.width = Math.max(200, (rect.width || 320) * dpr);
+          item.canvas.height = Math.max(120, (rect.height || 176) * dpr);
+        });
+      });
+
+      function renderCardVisuals() {
+        cardScenes.forEach(item => {
+          item.t += 0.025;
+          const { ctx, canvas, dpr, type, t } = item;
+          const w = canvas.width;
+          const h = canvas.height;
+          const cx = w / 2;
+          const cy = h / 2;
+
+          ctx.save();
+          ctx.scale(dpr, dpr);
+          const lw = w / dpr;
+          const lh = h / dpr;
+          const lcx = lw / 2;
+          const lcy = lh / 2;
+
+          const bgGrad = ctx.createRadialGradient(lcx, lcy, 6, lcx, lcy, Math.max(lw, lh) * 0.72);
+          bgGrad.addColorStop(0, '#0d2247');
+          bgGrad.addColorStop(0.6, '#071024');
+          bgGrad.addColorStop(1, '#050811');
+          ctx.fillStyle = bgGrad;
+          ctx.fillRect(0, 0, lw, lh);
+
+          if (type === 'atom') {
+            for (let i = 0; i < 3; i++) {
+              ctx.save();
+              ctx.translate(lcx, lcy);
+              ctx.rotate((i * Math.PI) / 3 + t * 0.25);
+              ctx.strokeStyle = 'rgba(0, 210, 255, 0.42)';
+              ctx.lineWidth = 1.2;
+              ctx.beginPath();
+              ctx.ellipse(0, 0, 56, 20, 0, 0, Math.PI * 2);
+              ctx.stroke();
+
+              const ang = t * (1.8 + i * 0.4);
+              const ex = Math.cos(ang) * 56;
+              const ey = Math.sin(ang) * 20;
+              ctx.fillStyle = '#00D2FF';
+              ctx.beginPath();
+              ctx.arc(ex, ey, 3.6, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+            const nuc = ctx.createRadialGradient(lcx - 2, lcy - 2, 2, lcx, lcy, 15);
+            nuc.addColorStop(0, '#7dd3fc');
+            nuc.addColorStop(0.55, '#0066FF');
+            nuc.addColorStop(1, '#071430');
+            ctx.fillStyle = nuc;
+            ctx.beginPath();
+            ctx.arc(lcx, lcy, 14, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (type === 'solar') {
+            const sun = ctx.createRadialGradient(lcx, lcy, 2, lcx, lcy, 22);
+            sun.addColorStop(0, '#ffffff');
+            sun.addColorStop(0.45, '#38bdf8');
+            sun.addColorStop(1, 'rgba(0, 102, 255, 0)');
+            ctx.fillStyle = sun;
+            ctx.beginPath();
+            ctx.arc(lcx, lcy, 20, 0, Math.PI * 2);
+            ctx.fill();
+
+            [34, 52, 68].forEach((r, idx) => {
+              ctx.strokeStyle = 'rgba(0, 210, 255, 0.25)';
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.ellipse(lcx, lcy, r, r * 0.42, -0.2, 0, Math.PI * 2);
+              ctx.stroke();
+
+              const a = t * (1.4 - idx * 0.3) + idx;
+              const px = lcx + Math.cos(a) * r;
+              const py = lcy + Math.sin(a) * (r * 0.42);
+              ctx.fillStyle = idx === 1 ? '#00D2FF' : '#93c5fd';
+              ctx.beginPath();
+              ctx.arc(px, py, 3.4, 0, Math.PI * 2);
+              ctx.fill();
+            });
+          } else if (type === 'galaxy') {
+            [lcx - 24, lcx + 24].forEach((gx, gIdx) => {
+              const gy = lcy + (gIdx === 0 ? -6 : 6);
+              for (let arm = 0; arm < 2; arm++) {
+                ctx.save();
+                ctx.translate(gx, gy);
+                ctx.rotate(t * (gIdx === 0 ? 0.7 : -0.7) + arm * Math.PI);
+                ctx.strokeStyle = gIdx === 0 ? 'rgba(0, 210, 255, 0.55)' : 'rgba(56, 189, 248, 0.55)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                for (let s = 0; s < 28; s++) {
+                  const rad = s * 1.3;
+                  const ang = s * 0.22;
+                  const x = Math.cos(ang) * rad;
+                  const y = Math.sin(ang) * rad * 0.55;
+                  if (s === 0) ctx.moveTo(x, y);
+                  else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.restore();
+              }
+            });
+          } else if (type === 'universe') {
+            const pulse = 18 + Math.sin(t * 1.6) * 6;
+            const glow = ctx.createRadialGradient(lcx, lcy, 2, lcx, lcy, pulse * 2.2);
+            glow.addColorStop(0, '#ffffff');
+            glow.addColorStop(0.35, '#00D2FF');
+            glow.addColorStop(0.7, 'rgba(0, 102, 255, 0.35)');
+            glow.addColorStop(1, 'rgba(5, 8, 17, 0)');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(lcx, lcy, pulse * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            for (let i = 0; i < 18; i++) {
+              const ang = (i / 18) * Math.PI * 2 + t * 0.2;
+              const dist = ((t * 22 + i * 9) % 64) + 8;
+              ctx.fillStyle = 'rgba(186, 230, 253, 0.85)';
+              ctx.beginPath();
+              ctx.arc(lcx + Math.cos(ang) * dist, lcy + Math.sin(ang) * dist * 0.65, 1.8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (type === 'doppler') {
+            const sx = lcx + Math.cos(t * 1.4) * 34;
+            const sy = lcy;
+            for (let r = 1; r <= 5; r++) {
+              const rad = ((t * 24 + r * 12) % 58) + 6;
+              ctx.strokeStyle = `rgba(0, 210, 255, ${(1 - rad / 66) * 0.65})`;
+              ctx.lineWidth = 1.4;
+              ctx.beginPath();
+              ctx.arc(sx - Math.cos(t * 1.4) * 6, sy, rad, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.fillStyle = '#00D2FF';
+            ctx.beginPath();
+            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (type === 'pulsar') {
+            ctx.save();
+            ctx.translate(lcx, lcy);
+            ctx.rotate(t * 1.5);
+            const beamGrad = ctx.createLinearGradient(0, -68, 0, 68);
+            beamGrad.addColorStop(0, 'rgba(0, 210, 255, 0)');
+            beamGrad.addColorStop(0.5, 'rgba(0, 210, 255, 0.45)');
+            beamGrad.addColorStop(1, 'rgba(0, 102, 255, 0)');
+            ctx.fillStyle = beamGrad;
+            ctx.fillRect(-7, -68, 14, 136);
+            ctx.restore();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#00D2FF';
+            ctx.shadowBlur = 18;
+            ctx.beginPath();
+            ctx.arc(lcx, lcy, 9 + Math.sin(t * 5) * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.restore();
+        });
+
+        requestAnimationFrame(renderCardVisuals);
+      }
+
+      renderCardVisuals();
+    })();
+  </script>
+
+  <!-- НЕГИЗГИ СИМУЛЯТОР ЖАНА ТИЛ ЛОГИКАСЫ -->
   <script>
     const SMARTLINK_LOVEY = "https://uplcm.com/4/11977319";
     const AD_COOLDOWN_MS = 30 * 60 * 1000;
@@ -674,7 +1059,7 @@
       ky: {
         metaTitle: "Физика 3D Симуляторлору — BiliMal",
         backMenu: "Бөлүмгө кайтуу",
-        backLab: "Лабораторияга кайтуу",
+        backLab: "Бөлүмгө кайтуу",
         mainTitle: "Физика 3D Симуляторлору",
         cabinet: "Кабинет",
         menuAtomTitle: "Атомдун, Ядронун жана Кварктардын 3D Модели",
@@ -712,7 +1097,7 @@
       ru: {
         metaTitle: "Физические 3D Симуляторы — BiliMal",
         backMenu: "Назад в раздел",
-        backLab: "Назад в лабораторию",
+        backLab: "Назад в раздел",
         mainTitle: "Физические 3D Симуляторы",
         cabinet: "Кабинет",
         menuAtomTitle: "3D Модель Атома, Ядра и Кварков",
@@ -750,7 +1135,7 @@
       en: {
         metaTitle: "Physics 3D Simulators — BiliMal",
         backMenu: "Back to Section",
-        backLab: "Back to Lab",
+        backLab: "Back to Section",
         mainTitle: "Physics 3D Simulators",
         cabinet: "Dashboard",
         menuAtomTitle: "3D Model of Atom, Nucleus & Quarks",
