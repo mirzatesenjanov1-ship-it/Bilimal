@@ -3,347 +3,815 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIP Лабораториялык Бөлүмдөр - Bilimal.org</title>
-    
+    <meta name="description" content="Виртуалдык Физика Ааламы — интерактивдүү лабораториялык иштер, 3D симуляциялар жана санариптик моделдер платформасы (Bilimal.org).">
+    <title>VIP Лабораториялык Бөлүмдөр - Виртуалдык Физика Ааламы | Bilimal.org</title>
+
     <!-- External Dependencies -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+
     <!-- Firebase SDK (Version 8.x) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: #1e293b;
-            --accent-color: #38bdf8;
-            --accent-hover: #0284c7;
+            --bg-color: #030712;
+            --bg-deep: #050b1d;
+            --card-bg: rgba(11, 22, 46, 0.58);
+            --card-bg-hover: rgba(16, 33, 68, 0.78);
+            --accent-color: #00e5ff;
+            --accent-cyan: #38bdf8;
+            --accent-hover: #00b8d4;
+            --accent-pink: #ec4899;
+            --accent-purple: #8b5cf6;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
-            --border-color: #334155;
+            --border-color: rgba(56, 189, 248, 0.24);
+            --neon-border: rgba(0, 229, 255, 0.55);
             --success-color: #10b981;
             --danger-color: #ef4444;
             --warning-color: #f59e0b;
+            --glass-blur: blur(18px);
         }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
-            padding: 20px;
+            padding: 24px 20px 60px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
+            background-image:
+                radial-gradient(ellipse 85% 65% at 15% 10%, rgba(14, 165, 233, 0.22), transparent 55%),
+                radial-gradient(ellipse 80% 60% at 85% 18%, rgba(139, 92, 246, 0.20), transparent 55%),
+                radial-gradient(ellipse 75% 65% at 50% 85%, rgba(236, 72, 153, 0.14), transparent 60%),
+                linear-gradient(165deg, #02050f 0%, #050d24 45%, #071433 100%);
+            background-attachment: fixed;
             color: var(--text-main);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
         }
+
+        /* Космостук туман (Nebula) жана технологиялык торчо */
+        .space-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nebula-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(85px);
+            opacity: 0.48;
+            will-change: transform, opacity;
+            animation: nebulaDrift 18s ease-in-out infinite alternate;
+        }
+
+        .nebula-1 {
+            width: 520px;
+            height: 520px;
+            top: -120px;
+            left: -120px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.34), rgba(2, 132, 199, 0.08) 70%, transparent);
+        }
+
+        .nebula-2 {
+            width: 580px;
+            height: 580px;
+            top: 12%;
+            right: -160px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.32), rgba(236, 72, 153, 0.12) 65%, transparent);
+            animation-delay: -6s;
+        }
+
+        .nebula-3 {
+            width: 480px;
+            height: 480px;
+            bottom: -140px;
+            left: 25%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25), rgba(16, 185, 129, 0.08) 70%, transparent);
+            animation-delay: -11s;
+        }
+
+        .cyber-grid {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                linear-gradient(to right, rgba(56, 189, 248, 0.065) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(56, 189, 248, 0.065) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.22) 82%);
+            -webkit-mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.22) 82%);
+        }
+
+        #cosmos-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+        }
+
+        @keyframes nebulaDrift {
+            0% {
+                transform: translate3d(0, 0, 0) scale(1);
+                opacity: 0.42;
+            }
+            50% {
+                transform: translate3d(28px, -22px, 0) scale(1.07);
+                opacity: 0.58;
+            }
+            100% {
+                transform: translate3d(-24px, 24px, 0) scale(0.96);
+                opacity: 0.45;
+            }
+        }
+
+        @keyframes floatSlow {
+            0%, 100% {
+                transform: translate3d(0, 0, 0);
+            }
+            50% {
+                transform: translate3d(0, -8px, 0);
+            }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 0 18px rgba(0, 229, 255, 0.25), inset 0 0 12px rgba(0, 229, 255, 0.12);
+            }
+            50% {
+                box-shadow: 0 0 32px rgba(0, 229, 255, 0.48), inset 0 0 18px rgba(0, 229, 255, 0.22);
+            }
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            position: relative;
+            z-index: 1;
         }
+
+        /* HERO SECTION */
+        .hero-section {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(10, 22, 48, 0.76) 0%, rgba(16, 26, 58, 0.66) 55%, rgba(9, 18, 40, 0.82) 100%);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(0, 229, 255, 0.32);
+            border-radius: 24px;
+            padding: 46px 36px;
+            margin-bottom: 30px;
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.65),
+                0 0 40px rgba(0, 229, 255, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            text-align: center;
+            transform: translateZ(0);
+        }
+
+        .hero-section::before {
+            content: "";
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 560px;
+            height: 260px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.24), rgba(139, 92, 246, 0.14) 55%, transparent 75%);
+            filter: blur(35px);
+            pointer-events: none;
+        }
+
+        .hero-section::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(115deg, transparent 25%, rgba(255, 255, 255, 0.05) 45%, rgba(0, 229, 255, 0.08) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.9s ease;
+            pointer-events: none;
+        }
+
+        .hero-section:hover::after {
+            transform: translateX(100%);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+            color: var(--accent-color);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.15);
+        }
+
+        .hero-title {
+            position: relative;
+            z-index: 1;
+            margin: 0 0 14px 0;
+            font-size: clamp(2rem, 4.4vw, 3.35rem);
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            background: linear-gradient(90deg, #ffffff 0%, #7dd3fc 38%, #00e5ff 68%, #e879f9 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 36px rgba(0, 229, 255, 0.25);
+        }
+
+        .hero-subtitle {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+            margin: 0 auto 30px auto;
+            font-size: clamp(1rem, 1.7vw, 1.2rem);
+            line-height: 1.65;
+            color: #cbd5e1;
+        }
+
+        .hero-actions {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 18px;
+        }
+
+        .btn-hero-labs {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 15px 28px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-decoration: none;
+            color: #03101d;
+            background: linear-gradient(135deg, #00e5ff 0%, #38bdf8 55%, #0284c7 100%);
+            border: 1px solid rgba(125, 211, 252, 0.75);
+            box-shadow: 0 0 24px rgba(0, 229, 255, 0.42), 0 10px 25px rgba(2, 132, 199, 0.35);
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.28s ease;
+            will-change: transform;
+            cursor: pointer;
+        }
+
+        .btn-hero-labs:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 0 38px rgba(0, 229, 255, 0.75), 0 14px 32px rgba(56, 189, 248, 0.45);
+            filter: brightness(1.06);
+        }
+
+        .btn-hero-labs:focus-visible {
+            outline: 2px solid #ffffff;
+            outline-offset: 3px;
+        }
+
+        .btn-hero-3d {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 15px 28px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-decoration: none;
+            color: #ffffff;
+            background: linear-gradient(135deg, #ec4899 0%, #a855f7 52%, #2563eb 100%);
+            border: 1px solid rgba(244, 114, 182, 0.65);
+            box-shadow: 0 0 24px rgba(236, 72, 153, 0.38), 0 10px 26px rgba(37, 99, 235, 0.35);
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.28s ease;
+            will-change: transform;
+            cursor: pointer;
+        }
+
+        .btn-hero-3d:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 0 38px rgba(236, 72, 153, 0.68), 0 14px 34px rgba(59, 130, 246, 0.5);
+            filter: brightness(1.08);
+        }
+
+        .btn-hero-3d:focus-visible {
+            outline: 2px solid #00e5ff;
+            outline-offset: 3px;
+        }
+
         /* E-mail verification box */
         .auth-check-box {
             background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--border-color);
-            padding: 20px;
-            border-radius: 12px;
+            padding: 22px 24px;
+            border-radius: 16px;
             margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            gap: 15px;
+            gap: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
+
         .auth-check-box h3 {
             margin: 0;
             color: var(--accent-color);
+            text-shadow: 0 0 16px rgba(0, 229, 255, 0.25);
         }
+
         .email-input-group {
             display: flex;
             gap: 10px;
             flex-grow: 1;
             max-width: 500px;
         }
+
         .input-email {
             flex-grow: 1;
-            padding: 10px 15px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: #0f172a;
+            padding: 11px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(56, 189, 248, 0.32);
+            background: rgba(3, 10, 26, 0.85);
             color: var(--text-main);
             font-size: 14px;
             outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
         }
+
         .input-email:focus {
             border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.16);
         }
+
         .btn-check {
-            background: var(--accent-color);
-            color: #0f172a;
+            background: linear-gradient(135deg, #00e5ff, #38bdf8);
+            color: #03101d;
             border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: bold;
+            padding: 11px 22px;
+            border-radius: 10px;
+            font-weight: 800;
             cursor: pointer;
-            transition: background 0.2s;
+            box-shadow: 0 0 18px rgba(0, 229, 255, 0.3);
+            transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
         }
+
         .btn-check:hover {
-            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 0 26px rgba(0, 229, 255, 0.55);
+            filter: brightness(1.05);
         }
+
         /* VIP Content Section */
         .vip-content-section {
             display: none;
             animation: fadeIn 0.4s ease-in-out;
         }
+
         .vip-badge-active {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid var(--success-color);
-            padding: 15px;
-            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(6, 78, 59, 0.28));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(16, 185, 129, 0.55);
+            padding: 16px 20px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             gap: 15px;
             margin-bottom: 30px;
+            box-shadow: 0 0 24px rgba(16, 185, 129, 0.16);
         }
+
         .section-header-title {
             color: var(--accent-color);
-            font-size: 22px;
-            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 22px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 0.28);
         }
-        /* Section Cards Grid */
+
+        /* 7 Section Cards Grid */
         .sections-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 25px;
+            gap: 26px;
+            perspective: 1100px;
         }
+
         .section-card {
             background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
+            border-radius: 18px;
+            padding: 26px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             text-decoration: none;
             color: var(--text-main);
-            transition: all 0.25s ease;
+            transition:
+                transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.35s ease,
+                box-shadow 0.35s ease,
+                background 0.35s ease;
             position: relative;
             overflow: hidden;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
         }
+
+        /* Light reflection sheen */
+        .section-card::before {
+            content: "";
+            position: absolute;
+            top: -40%;
+            left: -65%;
+            width: 55%;
+            height: 180%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.11), rgba(0, 229, 255, 0.14), transparent);
+            transform: rotate(22deg) translateX(0);
+            transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+        }
+
+        /* Top neon hairline */
+        .section-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.45), transparent 45%, rgba(168, 85, 247, 0.35));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0.45;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+
         .section-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-color);
-            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+            transform: translate3d(0, -10px, 24px) rotateX(3deg) rotateY(-2deg);
+            background: var(--card-bg-hover);
+            border-color: var(--neon-border);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.65),
+                0 0 28px rgba(0, 229, 255, 0.28),
+                0 0 48px rgba(56, 189, 248, 0.14);
         }
+
+        .section-card:hover::before {
+            transform: rotate(22deg) translateX(290%);
+        }
+
+        .section-card:hover::after {
+            opacity: 1;
+        }
+
+        .section-card:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 3px;
+        }
+
         .section-card-icon {
             font-size: 36px;
             color: var(--accent-color);
-            margin-bottom: 15px;
+            margin-bottom: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 62px;
+            height: 62px;
+            border-radius: 16px;
+            background: rgba(0, 229, 255, 0.09);
+            border: 1px solid rgba(0, 229, 255, 0.25);
+            box-shadow: 0 0 22px rgba(0, 229, 255, 0.18);
+            animation: floatSlow 5.5s ease-in-out infinite;
         }
+
+        .section-card:nth-child(even) .section-card-icon {
+            animation-delay: -2.4s;
+        }
+
         .section-card h3 {
             margin: 0 0 10px 0;
             font-size: 18px;
             color: var(--text-main);
-            line-height: 1.3;
+            line-height: 1.35;
         }
+
         .section-card p {
-            font-size: 13px;
+            font-size: 13.5px;
             color: var(--text-muted);
-            margin: 0 0 20px 0;
-            line-height: 1.5;
+            margin: 0 0 22px 0;
+            line-height: 1.55;
         }
+
         .section-btn-action {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(56, 189, 248, 0.1);
+            background: rgba(0, 229, 255, 0.09);
             color: var(--accent-color);
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-weight: bold;
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-weight: 700;
             font-size: 14px;
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            transition: all 0.2s;
+            border: 1px solid rgba(0, 229, 255, 0.32);
+            transition: all 0.25s ease;
         }
+
         .section-card:hover .section-btn-action {
-            background: var(--accent-color);
-            color: #0f172a;
+            background: linear-gradient(135deg, #00e5ff, #38bdf8);
+            color: #03101d;
             border-color: var(--accent-color);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.35);
         }
+
         /* Pricing Section */
         .pricing-section {
             display: none;
             animation: fadeIn 0.4s ease-in-out;
         }
+
         .pricing-header {
             text-align: center;
             margin-bottom: 30px;
         }
+
+        .pricing-header h2 {
+            font-size: 28px;
+            background: linear-gradient(90deg, #ffffff, #38bdf8, #e879f9);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
         .pricing-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            gap: 22px;
         }
+
         .card {
             background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 25px;
+            border-radius: 18px;
+            padding: 28px 24px;
             text-align: center;
             position: relative;
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
+
+        .card:hover {
+            transform: translateY(-6px);
+            border-color: var(--neon-border);
+            box-shadow: 0 20px 42px rgba(0, 229, 255, 0.16);
+        }
+
         .card.featured {
-            border-color: var(--accent-color);
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+            border-color: rgba(0, 229, 255, 0.65);
+            animation: pulseGlow 4s ease-in-out infinite;
         }
+
         .badge-featured {
             position: absolute;
             top: -12px;
             left: 50%;
             transform: translateX(-50%);
-            background: var(--accent-color);
-            color: #0f172a;
-            padding: 2px 10px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #00e5ff, #38bdf8);
+            color: #03101d;
+            padding: 3px 12px;
+            border-radius: 999px;
             font-size: 11px;
-            font-weight: bold;
+            font-weight: 800;
+            box-shadow: 0 0 16px rgba(0, 229, 255, 0.45);
         }
+
         .plan-title {
             font-size: 18px;
-            font-weight: bold;
+            font-weight: 700;
             margin-bottom: 10px;
         }
+
         .plan-price {
             font-size: 32px;
-            font-weight: bold;
+            font-weight: 900;
             color: var(--accent-color);
             margin-bottom: 20px;
+            text-shadow: 0 0 18px rgba(0, 229, 255, 0.25);
         }
+
         .plan-price span {
             font-size: 14px;
             color: var(--text-muted);
         }
+
         .btn-select {
             width: 100%;
-            background: var(--accent-color);
-            color: #0f172a;
+            background: linear-gradient(135deg, #00e5ff, #38bdf8);
+            color: #03101d;
             border: none;
-            padding: 10px;
-            border-radius: 6px;
-            font-weight: bold;
+            padding: 11px;
+            border-radius: 10px;
+            font-weight: 800;
             cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .btn-select:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 22px rgba(0, 229, 255, 0.5);
+        }
+
         /* Admin Controls */
         .admin-trigger-container {
-            margin-top: 50px;
+            margin-top: 52px;
             text-align: center;
         }
+
         .btn-toggle-admin {
-            background: transparent;
+            background: rgba(11, 22, 46, 0.65);
+            backdrop-filter: blur(10px);
             color: var(--text-muted);
-            border: 1px dashed var(--border-color);
-            padding: 8px 16px;
-            border-radius: 6px;
+            border: 1px dashed rgba(56, 189, 248, 0.4);
+            padding: 10px 18px;
+            border-radius: 10px;
             cursor: pointer;
+            transition: all 0.25s ease;
         }
+
+        .btn-toggle-admin:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 18px rgba(0, 229, 255, 0.2);
+        }
+
         .admin-panel {
             display: none;
             background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             border: 1px solid var(--border-color);
-            padding: 20px;
-            border-radius: 12px;
+            padding: 24px;
+            border-radius: 18px;
             margin-top: 20px;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
         }
+
         .admin-panel.active {
             display: block;
         }
+
         .admin-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
         }
+
         .admin-form {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             margin-bottom: 20px;
         }
+
         .admin-form input, .admin-form select {
-            padding: 8px 12px;
-            background: #0f172a;
+            padding: 9px 12px;
+            background: rgba(3, 10, 26, 0.85);
             border: 1px solid var(--border-color);
             color: var(--text-main);
-            border-radius: 6px;
+            border-radius: 8px;
         }
+
         .btn-admin-add {
             background: var(--success-color);
             color: #fff;
             border: none;
-            padding: 8px 15px;
-            border-radius: 6px;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-weight: 700;
             cursor: pointer;
         }
+
         .admin-table-wrapper {
             overflow-x: auto;
         }
+
         .admin-table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
             font-size: 14px;
         }
+
         .admin-table th, .admin-table td {
             padding: 12px;
             border-bottom: 1px solid var(--border-color);
         }
+
         .admin-table th {
-            background-color: var(--card-bg);
+            background-color: rgba(15, 23, 42, 0.75);
             color: var(--text-muted);
         }
+
         .btn-delete-user {
             background-color: var(--danger-color);
             color: #fff;
             border: none;
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
+            font-weight: 600;
         }
+
         .status-badge {
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
         }
+
         .status-active {
             background-color: rgba(16, 185, 129, 0.2);
             color: var(--success-color);
         }
+
         .status-expired {
             background-color: rgba(239, 68, 68, 0.2);
             color: var(--danger-color);
         }
+
         /* Modal Overlay */
         .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(2, 6, 17, 0.84);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
+            padding: 16px;
         }
+
         .modal-overlay.active {
             display: flex;
         }
+
         .modal-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
+            background: rgba(13, 24, 48, 0.92);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--neon-border);
             width: 90%;
-            max-width: 400px;
-            padding: 25px;
-            border-radius: 12px;
+            max-width: 410px;
+            padding: 26px;
+            border-radius: 18px;
             position: relative;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 32px rgba(0, 229, 255, 0.18);
         }
+
         .modal-close {
             position: absolute;
             top: 10px;
@@ -354,16 +822,21 @@
             font-size: 24px;
             cursor: pointer;
         }
+
         .qr-image-container {
             text-align: center;
             margin: 15px 0;
         }
+
         .qr-image-container img {
             width: 180px;
             height: 180px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
+            background: #ffffff;
+            padding: 6px;
         }
+
         .btn-whatsapp {
             display: flex;
             align-items: center;
@@ -372,21 +845,110 @@
             background: #25d366;
             color: #fff;
             text-decoration: none;
-            padding: 10px;
-            border-radius: 6px;
+            padding: 11px;
+            border-radius: 10px;
             font-weight: bold;
             margin-top: 15px;
+            box-shadow: 0 0 20px rgba(37, 211, 102, 0.28);
         }
+
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
         }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 992px) {
+            .hero-section {
+                padding: 36px 24px;
+            }
+            .sections-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px 14px 48px;
+            }
+            .hero-section {
+                padding: 28px 18px;
+                border-radius: 20px;
+                margin-bottom: 22px;
+            }
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn-hero-labs,
+            .btn-hero-3d {
+                width: 100%;
+                padding: 14px 20px;
+            }
+            .auth-check-box {
+                padding: 18px 16px;
+            }
+            .email-input-group {
+                max-width: 100%;
+                width: 100%;
+                flex-direction: column;
+            }
+            .btn-check {
+                width: 100%;
+            }
+            .sections-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .section-card:hover {
+                transform: translate3d(0, -6px, 0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Космостук фон, туман жана санариптик бөлүкчөлөр -->
+    <div class="space-backdrop" aria-hidden="true">
+        <div class="nebula-orb nebula-1"></div>
+        <div class="nebula-orb nebula-2"></div>
+        <div class="nebula-orb nebula-3"></div>
+    </div>
+    <div class="cyber-grid" aria-hidden="true"></div>
+    <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
+
     <div class="container">
+        <!-- HERO SECTION -->
+        <header class="hero-section" data-aos="fade-up" data-aos-duration="750">
+            <div class="hero-badge">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <span>NASA · AI · QUANTUM LABS</span>
+            </div>
+            <h1 class="hero-title">Виртуалдык Физика Ааламы</h1>
+            <p class="hero-subtitle">Интерактивдүү лабораториялык иштер, 3D симуляциялар жана санариптик моделдер аркылуу физиканы жаңы деңгээлде үйрөнүңүз</p>
+            <div class="hero-actions">
+                <a href="#labs-section" class="btn-hero-labs" id="heroLabsBtn">
+                    <i class="fa-solid fa-flask"></i>
+                    <span>Лабораториялык иштер</span>
+                </a>
+                <a href="/sections/3d-simulations-models.html" class="btn-hero-3d" id="hero3dBtn">
+                    <i class="fa-solid fa-cubes"></i>
+                    <span>3D симуляциялар жана моделдер</span>
+                </a>
+            </div>
+        </header>
+
         <!-- E-MAIL ТЕКШЕРҮҮ -->
-        <div class="auth-check-box">
+        <div class="auth-check-box" data-aos="fade-up" data-aos-delay="80">
             <div>
                 <h3><i class="fa-solid fa-user-lock"></i> VIP Эсепти Текшерүү</h3>
                 <p style="margin: 5px 0 0 0; font-size: 13px; color: var(--text-muted);">
@@ -398,148 +960,147 @@
                 <button class="btn-check" onclick="verifyVipAccess()"><i class="fa-solid fa-magnifying-glass"></i> Текшерүү</button>
             </div>
         </div>
-        <!-- VIP МАЗМУН: БӨЛҮМДӨРДҮН КАРТОЧКАСЫ -->
-        <div id="vipContentSection" class="vip-content-section">
-            <div class="vip-badge-active">
-                <i class="fa-solid fa-circle-check" style="font-size: 24px;"></i>
+
+        <!-- VIP МАЗМУН: 7 БӨЛҮМДҮН КАРТОЧКАСЫ -->
+        <section id="labs-section" class="vip-content-section" aria-label="Лабораториялык иштер">
+            <div class="vip-badge-active" data-aos="zoom-in">
+                <i class="fa-solid fa-circle-check" style="font-size: 24px; color: var(--success-color);"></i>
                 <div>
                     <b>VIP Мүмкүнчүлүк Активдүү!</b>
                     <div id="vipExpireText" style="font-size: 13px; color: var(--text-muted);">Иштөө мөөнөтү: Чектелбеген</div>
                 </div>
             </div>
-            <div class="section-header-title">
-                <i class="fa-solid fa-layer-group"></i> Лабораториялык иштер
+
+            <div class="section-header-title" data-aos="fade-up">
+                <i class="fa-solid fa-layer-group"></i> Лабораториялык Иштердин Бөлүмдөрү
             </div>
+
             <div class="sections-grid">
-                
                 <!-- 1. Турмуштагы физика -->
-                <a href="/sections/labs/everyday-physics.html" class="section-card">
+                <a href="/sections/labs/everyday-physics.html" class="section-card" data-aos="fade-up" data-aos-delay="40">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-house-chimney-crack"></i></div>
                         <h3>1. Турмуштагы физика жана күнүмдүк кубулуштар</h3>
                         <p>Заттын агрегаттык абалынын өзгөрүшү, беттик чыңалуу, капиллярдуулук жана күнүмдүк турмушта кездешүүчү кубулуштар.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 2. Классикалык механика -->
-                <a href="/sections/labs/mechanics.html" class="section-card">
+                <a href="/sections/labs/mechanics.html" class="section-card" data-aos="fade-up" data-aos-delay="90">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-car-side"></i></div>
                         <h3>2. Классикалык механика жана кыймыл динамикасы</h3>
                         <p>Математикалык жана физикалык маятниктер, Ньютондун мыйзамдары, сүрүлүү күчү жана сакталуу мыйзамдары.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 3. Толкундуу жана геометриялык оптика -->
-                <a href="/sections/labs/optics.html" class="section-card">
+                <a href="/sections/labs/optics.html" class="section-card" data-aos="fade-up" data-aos-delay="140">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-lightbulb"></i></div>
                         <h3>3. Толкундуу жана геометриялык оптика</h3>
                         <p>Жарыктын сынуу жана чагылуу мыйзамдары, линзалар, дифракциялык торчо жана интерференция кубулуштары.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 4. Молекулалык-кинетикалык теория жана термодинамика -->
-                <a href="/sections/labs/thermodynamics.html" class="section-card">
+                <a href="/sections/labs/thermodynamics.html" class="section-card" data-aos="fade-up" data-aos-delay="190">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
                         <h3>4. Молекулалык-кинетикалык теория жана термодинамика</h3>
                         <p>Идеал газ мыйзамдары (Изопроцесстер), жылуулук балансынын теңдемеси жана калориметриялык тажрыйбалар.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 5. Кванттык физика -->
-                <a href="/sections/labs/quantum-physics.html" class="section-card">
+                <a href="/sections/labs/quantum-physics.html" class="section-card" data-aos="fade-up" data-aos-delay="240">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-atom"></i></div>
                         <h3>5. Кванттык физика жана атомдук кубулуштар</h3>
                         <p>Сырткы фотоэффект кубулушу, Планк туруктуусу, сутек атомунун Бордук модели жана спектрлер.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 6. Электромагнетизм -->
-                <a href="/sections/labs/electrodynamics.html" class="section-card">
+                <a href="/sections/labs/electrodynamics.html" class="section-card" data-aos="fade-up" data-aos-delay="290">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-bolt"></i></div>
                         <h3>6. Электромагнетизм жана электр тизмектери</h3>
                         <p>Ом мыйзамы, каршылыктарды туташтыруу, электромагниттик индукция жана Фарадей мыйзамы.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
+
                 <!-- 7. Астрофизика -->
-                <a href="/sections/labs/astrophysics.html" class="section-card">
+                <a href="/sections/labs/astrophysics.html" class="section-card" data-aos="fade-up" data-aos-delay="340">
                     <div>
                         <div class="section-card-icon"><i class="fa-solid fa-planet-ringed"></i></div>
                         <h3>7. Астрофизика жана Ааламдын түзүлүшү</h3>
                         <p>Кеплер мыйзамдары, планеталардын кыймыл симуляциясы, жылдыздардын HR-диаграммасы жана спектралдык анализ.</p>
                     </div>
                     <div class="section-btn-action">
-                        <span>Лабораториялык иштер</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </div>
-                </a>
-                <!-- 8. 3D симуляциялар жана моделдер -->
-                <a href="/sections/3d-simulations-models.html" class="section-card">
-                    <div>
-                        <div class="section-card-icon"><i class="fa-solid fa-cubes"></i></div>
-                        <h3>8. 3D симуляциялар жана моделдер</h3>
-                        <p>Интерактивдүү 3D физикалык моделдер, мейкиндик симуляциялары жана визуалдык эксперименттер.</p>
-                    </div>
-                    <div class="section-btn-action">
-                        <span>3D симуляциялар жана моделдер</span>
+                        <span>Бөлүмдү Ачуу</span>
                         <i class="fa-solid fa-arrow-right"></i>
                     </div>
                 </a>
             </div>
-        </div>
+        </section>
+
         <!-- ТАРИФТЕР -->
         <div id="pricingSection" class="pricing-section">
-            <div class="pricing-header">
+            <div class="pricing-header" data-aos="fade-up">
                 <h2>VIP Доступ Тарифтери</h2>
             </div>
             <div class="pricing-cards">
-                <div class="card">
+                <div class="card" data-aos="zoom-in" data-aos-delay="60">
                     <div class="plan-title">1 айлык мүмкүнчүлүк</div>
                     <div class="plan-price">200 <span>сом</span></div>
                     <button class="btn-select" onclick="openPaymentModal('1 айлык тариф', 200)">Тандоо</button>
                 </div>
-                <div class="card featured">
+                <div class="card featured" data-aos="zoom-in" data-aos-delay="140">
                     <div class="badge-featured">Сунушталат</div>
                     <div class="plan-title">6 айлык мүмкүнчүлүк</div>
                     <div class="plan-price">900 <span>сом</span></div>
                     <button class="btn-select" onclick="openPaymentModal('6 айлык тариф', 900)">Тандоо</button>
                 </div>
-                <div class="card">
+                <div class="card" data-aos="zoom-in" data-aos-delay="220">
                     <div class="plan-title">1 жылдык мүмкүнчүлүк</div>
                     <div class="plan-price">1500 <span>сом</span></div>
                     <button class="btn-select" onclick="openPaymentModal('1 жылдык тариф', 1500)">Тандоо</button>
                 </div>
             </div>
         </div>
+
         <!-- АДМИН ПАНЕЛЬ -->
         <div class="admin-trigger-container">
             <button class="btn-toggle-admin" onclick="openAdminModal()">
                 <i class="fa-solid fa-user-shield"></i> Админ Панель
             </button>
         </div>
+
         <div id="adminPanel" class="admin-panel">
             <div class="admin-header">
                 <h3><i class="fa-solid fa-sliders"></i> VIP Колдонуучуларды Башкаруу Панели</h3>
@@ -576,6 +1137,7 @@
             </div>
         </div>
     </div>
+
     <!-- ТӨЛӨМ МҮМКҮНЧҮЛҮГҮ ҮЧҮН МОДАЛДЫК ТЕРЕЗЕ -->
     <div id="paymentModal" class="modal-overlay">
         <div class="modal-card">
@@ -583,11 +1145,12 @@
             <h3 style="margin-top:0; color: var(--accent-color); text-align: center;">
                 <i class="fa-solid fa-qrcode"></i> MBank QR Аркылуу Төлөө
             </h3>
-            
+
             <div style="margin-bottom: 12px;">
                 <label style="font-size: 13px; color: var(--text-muted);">Активдештирилүүчү E-mail дарегиңиз:</label>
                 <input type="email" id="modalUserEmail" class="input-email" style="width: 100%; margin-top: 5px; box-sizing: border-box;" placeholder="user@gmail.com">
             </div>
+
             <div class="payment-details">
                 <div class="payment-row" style="display:flex; justify-content:space-between; margin-bottom:5px;">
                     <span>Тандалган тариф:</span>
@@ -604,14 +1167,138 @@
                     MBank тиркемесинен жогорудагы QR кодду сканерлеп төлөңүз.
                 </div>
             </div>
+
             <p style="font-size: 12px; color: var(--text-muted); text-align: center; margin: 10px 0;">
                 Төлөм аткарылгандан кийин чекти WhatsApp (<b>+996 556 400 477</b>) аркылуу жөнөтүңүз:
             </p>
+
             <a id="whatsappPayBtn" href="https://wa.me/996556400477" target="_blank" class="btn-whatsapp" onclick="return submitVipOrder()">
                 <i class="fa-brands fa-whatsapp" style="font-size: 20px;"></i> Чекти WhatsApp'ка жөнөтүү
             </a>
         </div>
     </div>
+
+    <!-- Космостук бөлүкчөлөр жана жылдыз талаасы -->
+    <script>
+        (function initCosmicUniverseCanvas() {
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const canvas = document.getElementById('cosmos-canvas');
+            if (!canvas || prefersReduced) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            let width = 0;
+            let height = 0;
+            let stars = [];
+            let particles = [];
+            let rafId = null;
+            let isPaused = false;
+
+            function createScene() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+
+                const starCount = Math.min(130, Math.max(45, Math.floor((width * height) / 14000)));
+                stars = Array.from({ length: starCount }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    r: Math.random() * 1.65 + 0.4,
+                    alpha: Math.random() * 0.75 + 0.2,
+                    twinkleSpeed: Math.random() * 0.02 + 0.006,
+                    phase: Math.random() * Math.PI * 2
+                }));
+
+                const particleCount = Math.min(44, Math.max(16, Math.floor((width * height) / 42000)));
+                const palette = [
+                    'rgba(0, 229, 255, 0.75)',
+                    'rgba(56, 189, 248, 0.7)',
+                    'rgba(168, 85, 247, 0.65)',
+                    'rgba(236, 72, 153, 0.65)'
+                ];
+
+                particles = Array.from({ length: particleCount }, (_, idx) => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.35,
+                    vy: (Math.random() - 0.5) * 0.35,
+                    r: Math.random() * 2.2 + 1.1,
+                    color: palette[idx % palette.length]
+                }));
+            }
+
+            function renderFrame() {
+                if (isPaused) return;
+                ctx.clearRect(0, 0, width, height);
+
+                for (let i = 0; i < stars.length; i++) {
+                    const s = stars[i];
+                    s.phase += s.twinkleSpeed;
+                    const currentAlpha = Math.max(0.12, Math.min(0.95, s.alpha + Math.sin(s.phase) * 0.25));
+                    ctx.fillStyle = `rgba(226, 244, 255, ${currentAlpha.toFixed(3)})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0) p.x = width;
+                    else if (p.x > width) p.x = 0;
+                    if (p.y < 0) p.y = height;
+                    else if (p.y > height) p.y = 0;
+
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const q = particles[j];
+                        const dist = Math.hypot(p.x - q.x, p.y - q.y);
+                        if (dist < 125) {
+                            const lineAlpha = ((1 - dist / 125) * 0.16).toFixed(3);
+                            ctx.strokeStyle = `rgba(56, 189, 248, ${lineAlpha})`;
+                            ctx.lineWidth = 0.8;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(q.x, q.y);
+                            ctx.stroke();
+                        }
+                    }
+
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                rafId = requestAnimationFrame(renderFrame);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                isPaused = document.hidden;
+                if (!isPaused && !rafId) {
+                    rafId = requestAnimationFrame(renderFrame);
+                } else if (isPaused && rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+            });
+
+            let resizeTimer = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(createScene, 140);
+            });
+
+            createScene();
+            rafId = requestAnimationFrame(renderFrame);
+        })();
+    </script>
+
+    <!-- AOS Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+
+    <!-- Негизги Firebase жана VIP логикасы -->
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
@@ -633,6 +1320,15 @@
         let isAdminAuthenticated = false;
         let selectedPlan = "";
         let selectedPrice = 0;
+
+        function refreshAosAnimations() {
+            if (window.AOS && typeof window.AOS.refreshHard === 'function') {
+                window.AOS.refreshHard();
+            } else if (window.AOS && typeof window.AOS.refresh === 'function') {
+                window.AOS.refresh();
+            }
+        }
+
         function ensureAuth() {
             return new Promise((resolve, reject) => {
                 auth.onAuthStateChanged((user) => {
@@ -649,7 +1345,34 @@
                 });
             });
         }
+
         window.addEventListener('DOMContentLoaded', () => {
+            if (window.AOS) {
+                window.AOS.init({
+                    duration: 650,
+                    easing: 'ease-out-cubic',
+                    once: true,
+                    offset: 40,
+                    disable: function () {
+                        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    }
+                });
+            }
+
+            const heroLabsBtn = document.getElementById('heroLabsBtn');
+            if (heroLabsBtn) {
+                heroLabsBtn.addEventListener('click', (e) => {
+                    const labsSection = document.getElementById('labs-section');
+                    if (labsSection) {
+                        const isHidden = window.getComputedStyle(labsSection).display === 'none';
+                        if (!isHidden) {
+                            e.preventDefault();
+                            labsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                    }
+                });
+            }
+
             ensureAuth().then(() => {
                 const savedEmail = localStorage.getItem('bilimal_user_email');
                 if (savedEmail) {
@@ -658,13 +1381,16 @@
                     verifyVipAccess();
                 }
             }).catch(() => {});
+
             if (sessionStorage.getItem('bilimal_admin_logged') === 'true') {
                 isAdminAuthenticated = true;
             }
         });
+
         function sanitizeEmail(email) {
             return email.toLowerCase().replace(/\./g, '_dot_').replace(/@/g, '_at_');
         }
+
         function verifyVipAccess() {
             const emailInput = document.getElementById('userEmailInput').value.trim();
             if (!emailInput || !emailInput.includes('@')) {
@@ -694,15 +1420,22 @@
                 showPricingSection();
             });
         }
+
         function showVipContent(expireDate) {
-            document.getElementById('vipContentSection').style.display = 'block';
+            const vipSection = document.getElementById('vipContentSection') || document.getElementById('labs-section');
+            if (vipSection) vipSection.style.display = 'block';
             document.getElementById('pricingSection').style.display = 'none';
             document.getElementById('vipExpireText').innerText = `Иштөө мөөнөтү: ${expireDate.toLocaleDateString()} чейин активдүү`;
+            refreshAosAnimations();
         }
+
         function showPricingSection() {
-            document.getElementById('vipContentSection').style.display = 'none';
+            const vipSection = document.getElementById('vipContentSection') || document.getElementById('labs-section');
+            if (vipSection) vipSection.style.display = 'none';
             document.getElementById('pricingSection').style.display = 'block';
+            refreshAosAnimations();
         }
+
         /* ТӨЛӨМ ЛОГИКАСЫ */
         function openPaymentModal(planName, price) {
             selectedPlan = planName;
@@ -715,9 +1448,11 @@
             document.getElementById('modalPlanPrice').innerText = price + " сом";
             document.getElementById('paymentModal').classList.add('active');
         }
+
         function closePaymentModal() {
             document.getElementById('paymentModal').classList.remove('active');
         }
+
         function submitVipOrder() {
             const email = document.getElementById('modalUserEmail').value.trim();
             if (!email || !email.includes('@')) {
@@ -738,10 +1473,11 @@
             }).catch(() => {});
             const text = encodeURIComponent(`Саламатсызбы! Мен Bilimal.org сайтынан MBank QR аркылуу төлөм жасадым.\n\nE-mail: ${email}\nТариф: ${selectedPlan}\nСумма: ${selectedPrice} сом\nТөлөм чегин тиркеп жатам.`);
             window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${text}`, '_blank');
-            
+
             closePaymentModal();
             return false;
         }
+
         /* АДМИН ПАНЕЛЬ */
         function openAdminModal() {
             if (!isAdminAuthenticated) {
@@ -757,13 +1493,16 @@
             document.getElementById('adminPanel').classList.add('active');
             loadAdminVipUsers();
         }
+
         function closeAdminPanel() {
             document.getElementById('adminPanel').classList.remove('active');
         }
+
         function toggleCustomDateInput() {
             const selectVal = document.getElementById('adminDurationSelect').value;
             document.getElementById('adminCustomDate').style.display = selectVal === 'custom' ? 'inline-block' : 'none';
         }
+
         function grantVipAccess() {
             const email = document.getElementById('adminUserEmail').value.trim();
             const durationChoice = document.getElementById('adminDurationSelect').value;
@@ -798,6 +1537,7 @@
                 });
             }).catch(() => {});
         }
+
         function loadAdminVipUsers() {
             const tbody = document.getElementById('adminUsersTableBody');
             tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Жүктөлүүдө...</td></tr>';
@@ -837,6 +1577,7 @@
                 });
             }).catch(() => {});
         }
+
         function deleteVipUser(emailKey, userEmail) {
             if (confirm(`Чын эле ${userEmail} колдонуучусун өчүрөсүзбү?`)) {
                 ensureAuth().then(() => {
