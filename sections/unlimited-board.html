@@ -1,1987 +1,260 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ky">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#030712">
-<title>Bilimal.org — Чексиз Интерактивдүү Такта</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bilimal Infinite Learning Workspace</title>
 <style>
-:root{
-  --bg-void:#030712;
-  --glass:rgba(10,20,42,.78);
-  --glass-heavy:rgba(8,16,34,.92);
-  --border:rgba(56,189,248,.22);
-  --border-neon:rgba(0,229,255,.55);
-  --accent-cyan:#00e5ff;
-  --accent-sky:#38bdf8;
-  --accent-pink:#ec4899;
-  --accent-purple:#8b5cf6;
-  --accent-gold:#ffbd58;
-  --accent-green:#10b981;
-  --text-main:#f8fafc;
-  --text-muted:#94a3b8;
-  --blur:blur(16px);
-  --shadow-lg:0 18px 48px rgba(0,0,0,.6),0 0 24px rgba(0,229,255,.12);
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-void);color:var(--text-main);font-family:'Inter',system-ui,sans-serif}
-button,input,select,textarea{font:inherit;color:var(--text-main)}
-button{cursor:pointer;border:0;background:transparent}
-input,select,textarea{outline:none}
-
-/* Чексиз кенеп */
-#board-stage{position:fixed;inset:0;z-index:1;background:radial-gradient(ellipse 80% 60% at 20% 15%,rgba(0,229,255,.08),transparent 60%),radial-gradient(ellipse 75% 65% at 85% 20%,rgba(139,92,246,.08),transparent 60%),#030712}
-#board-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none}
-
-/* HTML overlay: YouTube iframe, локалдык видео, аудио, PDF preview */
-#overlay-layer{position:fixed;inset:0;z-index:2;pointer-events:none;transform-origin:0 0}
-.media-card{position:absolute;pointer-events:auto;border-radius:12px;overflow:hidden;border:1px solid rgba(56,189,248,.35);background:rgba(8,16,34,.92);box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column}
-.media-card.selected{outline:2px solid var(--accent-cyan);box-shadow:0 0 24px rgba(0,229,255,.35)}
-.media-drag-bar{height:24px;background:rgba(15,29,58,.95);display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:10px;color:var(--text-muted);cursor:grab;border-bottom:1px solid rgba(56,189,248,.18)}
-.media-drag-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.media-body{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;background:#040916}
-.media-body iframe,.media-body video{width:100%;height:100%;border:0;display:block}
-.audio-widget{width:100%;padding:12px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(135deg,rgba(14,28,58,.95),rgba(24,18,52,.95))}
-.audio-widget audio{width:100%;height:34px}
-.pdf-preview-wrap{width:100%;height:100%;display:flex;flex-direction:column;background:#071022}
-.pdf-preview-canvas{flex:1;max-width:100%;max-height:100%;object-fit:contain;margin:auto}
-.pdf-nav{display:flex;align-items:center;justify-content:center;gap:10px;padding:5px;background:rgba(6,13,28,.95);font-size:11px;border-top:1px solid rgba(56,189,248,.18)}
-.pdf-nav button{padding:3px 9px;border-radius:6px;background:rgba(0,229,255,.15);color:var(--accent-cyan);font-weight:700}
-
-/* Текст түзөтүү терезеси */
-#text-editor-box{position:fixed;display:none;z-index:120;flex-direction:column;gap:6px;padding:8px;border-radius:12px;background:rgba(6,14,32,.96);border:2px solid var(--accent-cyan);box-shadow:0 12px 36px rgba(0,0,0,.7),0 0 24px rgba(0,229,255,.3)}
-#text-editor-box.show{display:flex}
-#inline-text-editor{min-width:200px;min-height:64px;padding:6px 8px;border-radius:8px;background:rgba(12,25,54,.9);border:1px solid rgba(56,189,248,.25);resize:both;line-height:1.35;white-space:pre-wrap;user-select:text}
-.text-editor-actions{display:flex;justify-content:flex-end;gap:6px}
-.text-save-btn{padding:4px 10px;border-radius:7px;background:var(--accent-cyan);color:#030712;font-size:11px;font-weight:800}
-
-/* Үстүнкү компакттуу проект тилкеси */
-.top-hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:15px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);max-width:calc(100vw - 20px);flex-wrap:wrap}
-.brand-pill{display:flex;align-items:center;gap:7px;font-weight:800;font-size:12px;background:linear-gradient(90deg,#fff,var(--accent-cyan),var(--accent-pink));-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:6px;border-right:1px solid var(--border)}
-.project-name-input{background:rgba(4,10,24,.75);border:1px solid rgba(56,189,248,.24);border-radius:8px;padding:4px 9px;font-size:12px;font-weight:600;width:150px;transition:.2s;user-select:text}
-.project-name-input:focus{border-color:var(--accent-cyan);width:185px}
-.hud-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:9px;font-size:11px;font-weight:700;background:rgba(15,30,62,.75);border:1px solid rgba(56,189,248,.2);transition:.18s}
-.hud-btn:hover{border-color:var(--accent-cyan);background:rgba(0,229,255,.16)}
-.hud-btn.accent{background:linear-gradient(135deg,rgba(236,72,153,.28),rgba(139,92,246,.32));border-color:rgba(244,114,182,.55)}
-.save-status{font-size:10px;color:var(--accent-green);display:flex;align-items:center;gap:4px;padding:0 3px;font-weight:600}
-
-/* СОЛ ЧЕТ: Автоматтык жашынуучу + Pin / Ачуу баскычтуу вертикалдык панель */
-.left-dock-trigger{position:fixed;left:0;top:50%;transform:translateY(-50%);width:18px;height:160px;z-index:45;display:flex;align-items:center;justify-content:center}
-.left-dock-trigger::after{content:"";width:4px;height:58px;border-radius:99px;background:linear-gradient(180deg,var(--accent-cyan),var(--accent-pink));opacity:.75}
-.left-dock{position:fixed;left:10px;top:50%;transform:translate3d(calc(-100% - 22px),-50%,0);z-index:50;width:66px;max-height:calc(100vh - 106px);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:8px 6px;border-radius:18px;background:var(--glass-heavy);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;gap:4px;transition:transform .24s cubic-bezier(.22,1,.36,1)}
-.left-dock::-webkit-scrollbar{display:none}
-.left-dock-trigger:hover + .left-dock,.left-dock:hover,.left-dock.open,.left-dock.pinned{transform:translate3d(0,-50%,0)}
-.dock-pin-btn{width:100%;padding:5px 4px;border-radius:9px;font-size:10px;font-weight:800;color:var(--text-muted);display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;margin-bottom:2px}
-.dock-pin-btn.active,.dock-pin-btn:hover{color:var(--accent-cyan);background:rgba(0,229,255,.12);border-color:rgba(0,229,255,.3)}
-.tool-btn{position:relative;width:48px;height:42px;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text-muted);font-size:14px;transition:.16s;flex-shrink:0}
-.tool-btn span{font-size:8.5px;font-weight:700;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tool-btn:hover{color:#fff;background:rgba(56,189,248,.14)}
-.tool-btn.active{color:#fff;background:linear-gradient(135deg,rgba(0,229,255,.28),rgba(139,92,246,.28));border:1px solid var(--border-neon);box-shadow:0 0 14px rgba(0,229,255,.25)}
-
-/* Көмөкчү Popover'лер */
-.sub-popover{position:fixed;left:84px;top:50%;transform:translateY(-50%);z-index:55;display:none;width:238px;padding:12px;border-radius:16px;background:var(--glass-heavy);backdrop-filter:var(--blur);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
-.sub-popover.show{display:block}
-.sub-popover h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-cyan);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
-.popover-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.pop-chip{padding:8px 5px;border-radius:10px;background:rgba(15,31,64,.8);border:1px solid rgba(56,189,248,.2);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px}
-.pop-chip:hover{border-color:var(--accent-cyan);background:rgba(0,229,255,.16)}
-.pop-action-list{display:flex;flex-direction:column;gap:6px}
-.pop-act-btn{width:100%;padding:7px 10px;border-radius:9px;background:rgba(15,31,64,.85);border:1px solid rgba(56,189,248,.2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:space-between;text-align:left}
-.pop-act-btn:hover{border-color:var(--accent-pink);background:rgba(236,72,153,.15)}
-
-/* ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) */
-.properties-panel{position:fixed;right:12px;top:68px;bottom:74px;width:288px;z-index:48;display:none;flex-direction:column;gap:9px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.3) transparent;padding:13px;border-radius:18px;background:var(--glass-heavy);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
-.properties-panel.visible{display:flex}
-.prop-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)}
-.prop-header h3{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--accent-cyan);display:flex;align-items:center;gap:6px}
-.prop-section{background:rgba(7,16,34,.68);border:1px solid rgba(56,189,248,.14);border-radius:11px;padding:9px;display:flex;flex-direction:column;gap:7px}
-.prop-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
-.prop-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.prop-row input[type="range"]{flex:1;accent-color:var(--accent-cyan)}
-.prop-row input[type="color"]{width:32px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;cursor:pointer}
-.prop-row input[type="number"],.prop-row select{flex:1;background:rgba(4,10,24,.85);border:1px solid rgba(56,189,248,.24);border-radius:8px;padding:5px 7px;font-size:11px}
-.mini-toggle-group{display:flex;gap:4px}
-.mini-btn{flex:1;padding:6px;border-radius:8px;background:rgba(15,31,64,.8);border:1px solid rgba(56,189,248,.18);font-size:11px;font-weight:700}
-.mini-btn.active{background:rgba(0,229,255,.22);border-color:var(--accent-cyan);color:var(--accent-cyan)}
-.layer-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 7px;border-radius:8px;background:rgba(12,25,52,.75);border:1px solid rgba(56,189,248,.12);font-size:11px}
-.layer-item.active{border-color:var(--accent-pink);background:rgba(236,72,153,.14)}
-.layer-item-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
-.layer-item-actions{display:flex;gap:3px}
-.layer-item-actions button{padding:3px 5px;border-radius:6px;font-size:10px;color:var(--text-muted)}
-.layer-item-actions button:hover{color:#fff;background:rgba(255,255,255,.1)}
-
-/* ТӨМӨН: Floating Navigation Bar */
-.bottom-nav{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:45;display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:15px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
-.nav-pill-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:10px;font-size:11px;font-weight:700;color:var(--text-main);transition:.18s;white-space:nowrap}
-.nav-pill-btn:hover{background:rgba(0,229,255,.16);color:var(--accent-cyan)}
-.nav-pill-btn.active{background:linear-gradient(135deg,rgba(236,72,153,.35),rgba(0,229,255,.3));border:1px solid var(--border-neon)}
-.zoom-readout{font-size:11px;font-weight:800;color:var(--accent-cyan);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
-
-/* MINI MAP */
-.minimap-box{position:fixed;right:12px;bottom:12px;width:168px;height:112px;z-index:44;border-radius:13px;overflow:hidden;background:rgba(4,10,24,.88);backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);cursor:crosshair;transition:.22s}
-.minimap-box.hidden{display:none}
-.minimap-box.shifted{right:312px}
-#minimap-canvas{width:100%;height:100%;display:block}
-.minimap-badge{position:absolute;top:5px;left:7px;font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--accent-cyan);pointer-events:none;text-transform:uppercase}
-
-/* Presentation / Cinema */
-#presentation-hud{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:120;display:none;align-items:center;gap:10px;padding:9px 16px;border-radius:16px;background:rgba(6,13,28,.92);backdrop-filter:var(--blur);border:1px solid var(--accent-pink);box-shadow:0 12px 40px rgba(0,0,0,.75)}
-#presentation-hud.show{display:flex}
-
-/* Модалдар */
-.modal-backdrop{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(2,6,17,.78);backdrop-filter:blur(8px);padding:16px}
-.modal-backdrop.show{display:flex}
-.modal-card{width:min(540px,100%);max-height:85vh;overflow-y:auto;border-radius:18px;padding:18px;background:var(--glass-heavy);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
-.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.modal-head h3{font-size:14px;font-weight:800;color:var(--accent-cyan)}
-.project-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(14,28,58,.75);border:1px solid rgba(56,189,248,.16);margin-bottom:8px}
-.project-item-meta small{display:block;font-size:10px;color:var(--text-muted);margin-top:2px}
-
-/* Toast */
-#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:300;opacity:0;pointer-events:none;padding:7px 15px;border-radius:11px;background:rgba(8,18,40,.95);border:1px solid var(--accent-cyan);font-size:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.6);transition:.22s}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-@media(max-width:900px){
-  .properties-panel{top:auto;bottom:68px;left:10px;right:10px;width:auto;max-height:40vh}
-  .minimap-box{width:126px;height:84px;bottom:66px;right:10px}
-  .minimap-box.shifted{bottom:calc(40vh + 76px);right:10px}
-}
-@media(max-width:640px){
-  .top-hud{top:8px;padding:5px 8px;gap:4px}
-  .project-name-input{width:105px;font-size:11px;padding:4px 7px}
-  .hud-btn span{display:none}
-  .bottom-nav{bottom:8px;padding:5px 6px;gap:2px;max-width:calc(100vw - 12px);overflow-x:auto}
-  .nav-pill-btn span{display:none}
-  .nav-pill-btn{padding:6px 8px}
-  .minimap-box{width:104px;height:70px;bottom:56px;right:8px}
-  .left-dock{width:60px;max-height:calc(100vh - 124px)}
-  .tool-btn{width:42px;height:38px;font-size:13px}
-}
+:root{--bg:#0b1220;--panel:#121d30;--panel2:#17243a;--line:#2a3b56;--text:#eaf2ff;--muted:#9eb0c9;--accent:#00c9e8;--accent2:#6b8cff;--danger:#ff5b6e;--shadow:0 16px 50px #0005;--radius:16px}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);font:14px/1.4 Inter,system-ui,Segoe UI,Arial;color:var(--text)}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;border:1px solid var(--line);background:#1b2a42;border-radius:10px;padding:9px 12px;transition:.15s}button:hover{background:#263c5c;border-color:#466488}button:active{transform:translateY(1px)}button.active{background:var(--accent);color:#04202a;border-color:var(--accent);font-weight:700}button.icon{width:38px;height:38px;padding:0;display:grid;place-items:center;font-size:17px}button.flat{background:transparent;border-color:transparent}button.small{padding:6px 9px;font-size:12px}
+input,select,textarea{background:#0d1728;border:1px solid var(--line);border-radius:8px;padding:8px;outline:none;width:100%}input:focus,select:focus,textarea:focus{border-color:var(--accent)}label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}.app{height:100%;display:flex;flex-direction:column}
+.topbar{height:58px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;background:#101a2c;border-bottom:1px solid var(--line);z-index:20}.brand{font-weight:800;font-size:16px;white-space:nowrap}.brand span{color:var(--accent)}.project-title{max-width:230px;background:transparent;border:0;font-size:15px;font-weight:700;padding:6px}.top-actions{margin-left:auto;display:flex;gap:7px;align-items:center}.top-actions .hide-mobile{display:inline}
+.workspace{position:relative;flex:1;min-height:0;overflow:hidden;background:#f4f7fb;color:#101828;--grid:#dce4ef}
+.canvas-viewport{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:grab}.canvas-viewport.panning{cursor:grabbing}.canvas-viewport.drawmode{cursor:crosshair}
+.gridbg{position:absolute;inset:0;background-color:#f4f7fb;background-image:radial-gradient(var(--grid) 1px,transparent 1px);background-size:24px 24px}
+.world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.obj{position:absolute;box-sizing:border-box;transform-origin:center center;user-select:none;touch-action:none;cursor:move;color:#172033}
+.obj.selected{outline:2px solid #00a9cf;outline-offset:2px}
+.obj.textobj{min-width:60px;min-height:28px;white-space:pre-wrap;overflow-wrap:anywhere;cursor:move;padding:4px;background:transparent}
+.obj.textobj[contenteditable=true]{outline:2px solid var(--accent);user-select:text;cursor:text}
+.obj.shapeobj{display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;border:2px solid #233750;background:#ffffffb8}
+.obj.sticky{border-radius:4px;padding:12px 10px;box-shadow:3px 7px 15px #0002;white-space:pre-wrap;overflow:auto}
+.obj.imageobj img{width:100%;height:100%;object-fit:contain;pointer-events:none}
+.obj.mediaobj{background:#111;color:white;border-radius:10px;overflow:hidden}
+.obj.mediaobj iframe,.obj.mediaobj video,.obj.mediaobj audio,.obj.mediaobj embed{width:100%;height:100%;border:0;display:block}
+.obj.pdfobj iframe{width:100%;height:100%;border:0;background:#fff}
+.obj.frameobj{border:2px dashed #7388a5;background:#ffffff10;border-radius:12px;pointer-events:none}
+.frame-label{position:absolute;left:0;top:-26px;background:#536d8e;color:#fff;padding:3px 8px;border-radius:5px;font-size:12px;white-space:nowrap}
+.resize-handle{position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid #009fca;right:-6px;bottom:-6px;cursor:nwse-resize;display:none}
+.obj.selected .resize-handle{display:block}
+.rotate-handle{position:absolute;left:50%;top:-22px;width:9px;height:9px;border-radius:50%;border:2px solid #00a9cf;background:#fff;display:none;cursor:grab}
+.obj.selected .rotate-handle{display:block}
+.connector-layer{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+.connector-line{stroke:#52708f;stroke-width:2;fill:none;marker-end:url(#arrowhead)}
+.toolbar-shell{position:absolute;left:12px;top:12px;z-index:12;display:flex;align-items:flex-start;gap:8px}
+.tool-rail{width:46px;padding:6px;background:#132039eF;border:1px solid #32445e;border-radius:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:5px;transition:width .2s;overflow:hidden}
+.tool-rail:hover,.tool-rail.pinned{width:206px}.tool-rail:not(.pinned) .tool-label{opacity:0;max-width:0}.tool-rail:hover .tool-label,.tool-rail.pinned .tool-label{opacity:1;max-width:150px}
+.tool-btn{height:38px;display:flex;align-items:center;gap:10px;padding:0 9px;border:0;background:transparent;color:#d9e8fc;white-space:nowrap;text-align:left}.tool-btn:hover{background:#263a58}.tool-btn .glyph{width:26px;flex:none;text-align:center;font-size:18px}.tool-label{transition:opacity .15s;overflow:hidden;font-size:13px}
+.panel{position:absolute;right:12px;top:12px;width:250px;max-height:calc(100% - 24px);overflow:auto;background:#142039ed;color:#eaf2ff;border:1px solid #30445e;border-radius:15px;box-shadow:var(--shadow);z-index:13;padding:12px;backdrop-filter:blur(16px);display:none}.panel.show{display:block}.panel-head{display:flex;align-items:center;justify-content:space-between;font-weight:700;margin-bottom:8px}.panel .row{display:flex;gap:7px}.panel .row>*{flex:1;min-width:0}.panel input[type=color]{height:36px;padding:3px}.panel input[type=range]{padding:0}.panel hr{border:0;border-top:1px solid #2b3c55;margin:12px 0}.layers-list{display:flex;flex-direction:column;gap:5px}.layer-item{display:flex;align-items:center;gap:6px;padding:6px;border:1px solid #2c3f59;border-radius:7px;font-size:12px}.layer-item .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bottomdock{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:14;display:flex;gap:5px;align-items:center;background:#142039ed;border:1px solid #32445e;border-radius:13px;padding:6px;box-shadow:var(--shadow);backdrop-filter:blur(12px)}.bottomdock button{padding:7px 10px;font-size:12px}.zoomread{min-width:45px;text-align:center;font-size:12px;color:#b8c9df}
+.minimap{position:absolute;right:12px;bottom:12px;width:160px;height:100px;border:1px solid #8394aa;background:#ffffffd9;border-radius:9px;z-index:11;display:none;overflow:hidden}.minimap.show{display:block}.mini-world{position:absolute;inset:0}.mini-dot{position:absolute;background:#00a7ca;border-radius:2px;opacity:.8}.mini-view{position:absolute;border:1px solid #00a9cf;background:#00c9e822}
+.status{position:absolute;left:12px;bottom:12px;z-index:5;color:#56657a;background:#ffffffb8;padding:4px 8px;border-radius:6px;font-size:11px;pointer-events:none}
+.toast{position:absolute;left:50%;top:76px;transform:translateX(-50%);background:#15243b;color:white;padding:9px 14px;border-radius:9px;z-index:40;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
+.modal-backdrop{position:absolute;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:50;padding:15px}.modal-backdrop.show{display:flex}.modal{width:min(440px,100%);background:#142039;border:1px solid #334761;border-radius:16px;padding:18px;box-shadow:var(--shadow)}.modal h3{margin:0 0 12px}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.timeline{position:absolute;left:0;right:0;bottom:0;height:170px;background:#121d30;border-top:1px solid #2c3e59;z-index:15;display:none;color:#dce8f7;padding:8px 12px}.timeline.show{display:block}.timeline-top{display:flex;align-items:center;gap:8px;height:32px}.timeline-scroll{overflow:auto;height:118px;position:relative}.track{height:26px;margin:5px 0;background:#1b2b44;border-radius:5px;position:relative}.track-label{position:absolute;left:0;top:0;width:110px;padding:4px;font-size:11px;color:#b9cce2;background:#213550;border-radius:5px}.clip{position:absolute;top:3px;height:20px;border-radius:4px;background:#00a7c8;min-width:18px;color:#06202a;font-size:10px;padding:3px;overflow:hidden;white-space:nowrap}
+.presentation{position:absolute;inset:0;background:#050b14;z-index:60;display:none;align-items:center;justify-content:center;color:white}.presentation.show{display:flex}.pres-caption{position:absolute;bottom:18px;display:flex;gap:10px}.presentation .pres-canvas{position:absolute;inset:0;overflow:hidden}
+body.light{--bg:#e8edf5;--panel:#fff;--panel2:#f1f5fb;--text:#142238;--muted:#65758c;--line:#d4deeb;--shadow:0 12px 35px #14223818}.light .topbar{background:#fff;color:#142238}.light .tool-rail,.light .panel,.light .bottomdock,.light .timeline{background:#fff;color:#142238}.light .tool-btn{color:#142238}
+@media(max-width:760px){.topbar{height:52px;padding:0 8px;gap:5px}.brand{font-size:13px}.project-title{max-width:120px;font-size:12px}.top-actions button{padding:6px 8px}.top-actions .hide-mobile{display:none}.toolbar-shell{left:6px;top:7px}.tool-rail{width:42px}.tool-rail:hover,.tool-rail.pinned{width:190px}.panel{right:6px;top:7px;width:210px;max-height:65%}.bottomdock{bottom:6px;gap:2px;padding:4px}.bottomdock button{padding:6px;font-size:11px}.minimap{right:6px;bottom:58px;width:120px;height:80px}.status{bottom:6px;left:6px}.timeline{height:145px}.timeline-scroll{height:94px}}
 </style>
 </head>
 <body>
-
-<div id="board-stage">
-  <canvas id="board-canvas"></canvas>
-  <div id="overlay-layer"></div>
-</div>
-
-<!-- Текст түзөтүү терезеси -->
-<div id="text-editor-box">
-  <textarea id="inline-text-editor" spellcheck="false" placeholder="Бул жерге текст жазыңыз..."></textarea>
-  <div class="text-editor-actions">
-    <button class="hud-btn" onclick="cancelTextEdit()">Жабуу</button>
-    <button class="text-save-btn" onclick="commitInlineTextEdit()">Сактоо (Enter)</button>
+<div class="app" id="app">
+<header class="topbar">
+  <div class="brand">▣ <span>Bilimal</span> Infinite</div>
+  <input class="project-title" id="projectName" value="Жаңы билим долбоору" aria-label="Project name">
+  <div class="top-actions">
+    <button id="saveBtn" title="Save project (Ctrl+S)">💾 <span class="hide-mobile">Save</span></button>
+    <button id="exportBtn" title="Export project JSON">⇩ <span class="hide-mobile">Export</span></button>
+    <button id="importBtn" title="Import project">⇧ <span class="hide-mobile">Import</span></button>
+    <button id="themeBtn" title="Light / Dark">☀</button>
+    <button id="exitBtn" title="Back to Bilimal">↩</button>
   </div>
-</div>
-
-<div id="toast"></div>
-
-<!-- Үстүнкү проект тилкеси -->
-<header class="top-hud">
-  <div class="brand-pill"><i class="fa-solid fa-infinity"></i><span>BILIMAL BOARD</span></div>
-  <input type="text" id="projectNameInput" class="project-name-input" value="Физика 7-класс" placeholder="Проекттин аты...">
-  <button class="hud-btn" onclick="saveProjectManual()" title="Сактоо (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i><span>Сактоо</span></button>
-  <button class="hud-btn" onclick="openProjectsModal()" title="Сакталган проекттер"><i class="fa-solid fa-folder-open"></i><span>Проекттер</span></button>
-  <button class="hud-btn" onclick="exportJSON()" title="JSON экспорт"><i class="fa-solid fa-file-code"></i><span>JSON</span></button>
-  <button class="hud-btn" onclick="document.getElementById('importJsonInput').click()" title="JSON импорт"><i class="fa-solid fa-file-import"></i><span>Импорт</span></button>
-  <button class="hud-btn accent" onclick="exportImage('png')" title="PNG жүктөө"><i class="fa-solid fa-image"></i><span>PNG</span></button>
-  <button class="hud-btn" onclick="exportImage('jpeg')" title="JPG жүктөө"><i class="fa-solid fa-file-image"></i><span>JPG</span></button>
-  <button class="hud-btn" onclick="exportPDF()" title="PDF экспорт"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></button>
-  <div class="save-status" id="autosaveBadge"><i class="fa-solid fa-circle-check"></i><span id="autosaveText">Auto 30s</span></div>
 </header>
-
-<!-- СОЛ ЧЕТ: Автоматтык жашынуучу вертикалдык панель -->
-<div class="left-dock-trigger" id="leftDockTrigger" aria-hidden="true"></div>
-<aside class="left-dock" id="leftDock" aria-label="Куралдар панели">
-  <button class="dock-pin-btn" id="pinDockBtn" onclick="togglePinDock()" title="Панелди ачык кармоо / жашыруу"><i class="fa-solid fa-thumbtack"></i><span>Pin</span></button>
-
-  <button class="tool-btn active" data-tool="select" onclick="setTool('select')" title="Тандоо / Көчүрүү"><i class="fa-solid fa-arrow-pointer"></i><span>Тандоо</span></button>
-  <button class="tool-btn" data-tool="pan" onclick="setTool('pan')" title="Кенепти жылдыруу"><i class="fa-solid fa-hand"></i><span>Pan</span></button>
-  <button class="tool-btn" data-tool="pen" onclick="setTool('pen')" title="Калем менен тартуу"><i class="fa-solid fa-pen"></i><span>Калем</span></button>
-  <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')" title="Өчүргүч"><i class="fa-solid fa-eraser"></i><span>Өчүргүч</span></button>
-  <button class="tool-btn" data-tool="text" onclick="setTool('text')" title="Текст жазуу"><i class="fa-solid fa-font"></i><span>Текст</span></button>
-  <button class="tool-btn" data-tool="image" onclick="triggerMediaUpload('image')" title="Сүрөт жүктөө"><i class="fa-solid fa-image"></i><span>Сүрөт</span></button>
-  <button class="tool-btn" data-tool="video" onclick="openVideoModal()" title="Видео"><i class="fa-solid fa-video"></i><span>Видео</span></button>
-  <button class="tool-btn" data-tool="audio" onclick="triggerMediaUpload('audio')" title="Аудио"><i class="fa-solid fa-headphones"></i><span>Аудио</span></button>
-  <button class="tool-btn" data-tool="pdf" onclick="triggerMediaUpload('pdf')" title="PDF"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></button>
-  <button class="tool-btn" data-tool="shape" onclick="togglePopover('shapesPopover')" title="Формалар"><i class="fa-solid fa-shapes"></i><span>Формалар</span></button>
-  <button class="tool-btn" data-tool="sticky" onclick="createStickyNote()" title="Sticky Notes"><i class="fa-solid fa-note-sticky"></i><span>Стикер</span></button>
-  <button class="tool-btn" data-tool="connector" onclick="setTool('connector')" title="Байланыштыргыч"><i class="fa-solid fa-share-nodes"></i><span>Connector</span></button>
-  <button class="tool-btn" data-tool="mindmap" onclick="togglePopover('mindmapPopover')" title="Mind Map"><i class="fa-solid fa-diagram-project"></i><span>Mind Map</span></button>
-  <button class="tool-btn" data-tool="flowchart" onclick="togglePopover('flowchartPopover')" title="Flowchart"><i class="fa-solid fa-sitemap"></i><span>Flowchart</span></button>
-  <button class="tool-btn" data-tool="table" onclick="createTableObject()" title="Таблица"><i class="fa-solid fa-table"></i><span>Table</span></button>
-  <button class="tool-btn" data-tool="frame" onclick="createFrameObject()" title="Frame"><i class="fa-solid fa-vector-square"></i><span>Frame</span></button>
-  <button class="tool-btn" data-tool="ai" onclick="togglePopover('aiPopover')" title="AI Assistant"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI</span></button>
-</aside>
-
-<!-- Popover: Формалар -->
-<div class="sub-popover" id="shapesPopover">
-  <h4><span>Формалар</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
-  <div class="popover-grid">
-    <button class="pop-chip" onclick="addShape('rect')"><i class="fa-regular fa-square"></i><span>Rectangle</span></button>
-    <button class="pop-chip" onclick="addShape('circle')"><i class="fa-regular fa-circle"></i><span>Circle</span></button>
-    <button class="pop-chip" onclick="addShape('diamond')"><i class="fa-regular fa-gem"></i><span>Diamond</span></button>
-    <button class="pop-chip" onclick="addShape('triangle')"><i class="fa-solid fa-play" style="transform:rotate(-90deg)"></i><span>Triangle</span></button>
-    <button class="pop-chip" onclick="addShape('arrow')"><i class="fa-solid fa-arrow-right"></i><span>Arrow</span></button>
-    <button class="pop-chip" onclick="addShape('line')"><i class="fa-solid fa-minus"></i><span>Line</span></button>
+<main class="workspace" id="workspace">
+ <div class="canvas-viewport" id="viewport">
+  <div class="gridbg"></div>
+  <div class="world" id="world">
+   <svg class="connector-layer" id="svgLayer" width="10000" height="10000" style="overflow:visible">
+    <defs><marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#52708f"/></marker></defs>
+   </svg>
   </div>
+ </div>
+ <div class="toolbar-shell">
+  <div class="tool-rail" id="toolRail">
+   <button class="tool-btn" id="pinTools" title="Pin toolbar"><span class="glyph">📌</span><span class="tool-label">Toolbar pin</span></button>
+   <button class="tool-btn" data-tool="select"><span class="glyph">↖</span><span class="tool-label">Select / Move</span></button>
+   <button class="tool-btn" data-tool="pen"><span class="glyph">✏️</span><span class="tool-label">Freehand pencil</span></button>
+   <button class="tool-btn" data-tool="eraser"><span class="glyph">🩹</span><span class="tool-label">Eraser</span></button>
+   <button class="tool-btn" data-tool="text"><span class="glyph">T</span><span class="tool-label">Text</span></button>
+   <button class="tool-btn" data-tool="sticky"><span class="glyph">📌</span><span class="tool-label">Sticky note</span></button>
+   <button class="tool-btn" data-tool="image"><span class="glyph">🖼</span><span class="tool-label">Image</span></button>
+   <button class="tool-btn" data-tool="pdf"><span class="glyph">📄</span><span class="tool-label">PDF</span></button>
+   <button class="tool-btn" data-tool="video"><span class="glyph">▶</span><span class="tool-label">Video / YouTube</span></button>
+   <button class="tool-btn" data-tool="audio"><span class="glyph">♫</span><span class="tool-label">Audio</span></button>
+   <button class="tool-btn" data-tool="shape"><span class="glyph">◇</span><span class="tool-label">Shapes</span></button>
+   <button class="tool-btn" data-tool="connector"><span class="glyph">↗</span><span class="tool-label">Connector</span></button>
+   <button class="tool-btn" data-tool="table"><span class="glyph">▦</span><span class="tool-label">Table</span></button>
+   <button class="tool-btn" data-tool="mindmap"><span class="glyph">🧠</span><span class="tool-label">Mind map</span></button>
+   <button class="tool-btn" data-tool="flow"><span class="glyph">📈</span><span class="tool-label">Flowchart</span></button>
+   <button class="tool-btn" data-tool="frame"><span class="glyph">▣</span><span class="tool-label">Frame</span></button>
+   <button class="tool-btn" data-tool="comment"><span class="glyph">💬</span><span class="tool-label">Comment</span></button>
+   <button class="tool-btn" data-tool="record"><span class="glyph">🎙</span><span class="tool-label">Voice recording</span></button>
+   <button class="tool-btn" data-tool="cinema"><span class="glyph">🎬</span><span class="tool-label">Cinema route</span></button>
+  </div>
+ </div>
+ <aside class="panel" id="properties">
+  <div class="panel-head"><span>Object Properties</span><button class="icon flat small" id="closeProps">×</button></div>
+  <div id="propertyContent"><div style="color:#9eb0c9;font-size:12px">Select an object to edit its properties.</div></div>
+ </aside>
+ <div class="bottomdock" id="dock">
+  <button id="zoomOut">−</button><span class="zoomread" id="zoomLabel">100%</span><button id="zoomIn">+</button>
+  <button id="fitBtn">Fit</button><button id="miniBtn">Mini map</button><button id="timelineBtn">Timeline</button><button id="presBtn">Present</button><button id="cinemaBtn">Cinema</button><button id="fullscreenBtn">⛶</button>
+ </div>
+ <div class="minimap" id="minimap"><div class="mini-world" id="miniWorld"></div><div class="mini-view" id="miniView"></div></div>
+ <div class="status" id="status">Select · Space + drag to pan · Double-click to edit text</div>
+ <div class="toast" id="toast"></div>
+ <div class="timeline" id="timeline"><div class="timeline-top"><b>Timeline</b><button class="small" id="timelineClose">Close</button><button class="small" id="addKeyframe">＋ Camera keyframe</button><button class="small" id="playTimeline">▶ Play</button><span id="timeLabel">00:00</span></div><div class="timeline-scroll" id="timelineTracks"></div></div>
+ <div class="presentation" id="presentation"><div class="pres-canvas" id="presCanvas"></div><div class="pres-caption"><button id="prevFrame">← Previous</button><span id="frameCounter">Frame 0/0</span><button id="nextFrame">Next →</button><button id="presExit">Exit</button></div></div>
+ <div class="modal-backdrop" id="modal"><div class="modal"><h3 id="modalTitle">Dialog</h3><div id="modalBody"></div><div class="modal-actions"><button id="modalCancel">Cancel</button><button class="active" id="modalOK">Continue</button></div></div></div>
+ <input type="file" id="fileInput" hidden multiple accept="image/*,application/pdf,video/*,audio/*">
+ <input type="file" id="importInput" hidden accept=".json,application/json">
+</main>
 </div>
-
-<!-- Popover: Mind Map -->
-<div class="sub-popover" id="mindmapPopover">
-  <h4><span>Mind Map</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
-  <div class="pop-action-list">
-    <button class="pop-act-btn" onclick="addMindNode('root')"><span>+ Жаңы Root Node</span><i class="fa-solid fa-circle-plus"></i></button>
-    <button class="pop-act-btn" onclick="addMindNode('child')"><span>+ Child Node кошуу</span><i class="fa-solid fa-turn-down"></i></button>
-    <button class="pop-act-btn" onclick="addMindNode('sibling')"><span>+ Sibling Node кошуу</span><i class="fa-solid fa-arrows-left-right"></i></button>
-    <button class="pop-act-btn" onclick="layoutMindMap('tree')"><span>Tree Layout</span><i class="fa-solid fa-folder-tree"></i></button>
-    <button class="pop-act-btn" onclick="layoutMindMap('radial')"><span>Radial Layout</span><i class="fa-solid fa-dharmachakra"></i></button>
-  </div>
-</div>
-
-<!-- Popover: Flowchart -->
-<div class="sub-popover" id="flowchartPopover">
-  <h4><span>Flowchart</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
-  <div class="pop-action-list">
-    <button class="pop-act-btn" onclick="addFlowNode('start','Башталыш')"><span>Башталыш / Аягы</span><i class="fa-solid fa-play"></i></button>
-    <button class="pop-act-btn" onclick="addFlowNode('process','Процесс')"><span>Процесс блогу</span><i class="fa-regular fa-square"></i></button>
-    <button class="pop-act-btn" onclick="addFlowNode('decision','Шарт?')"><span>Шарт (Ромб)</span><i class="fa-regular fa-gem"></i></button>
-    <button class="pop-act-btn" onclick="addFlowNode('io','Киргизүү / Чыгаруу')"><span>Киргизүү / Чыгаруу</span><i class="fa-solid fa-arrows-left-right"></i></button>
-  </div>
-</div>
-
-<!-- Popover: AI Assistant -->
-<div class="sub-popover" id="aiPopover">
-  <h4><span>AI Assistant</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
-  <div class="pop-action-list">
-    <input type="text" id="aiTopicInput" placeholder="Тема (мис: Ньютон закондору)" style="background:rgba(4,10,24,.9);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11px;user-select:text">
-    <button class="pop-act-btn" onclick="aiGenerateMindMap()"><span>AI Mind Map түзүү</span><i class="fa-solid fa-wand-magic-sparkles"></i></button>
-    <button class="pop-act-btn" onclick="aiGenerateLessonPlan()"><span>AI Сабак картасы</span><i class="fa-solid fa-graduation-cap"></i></button>
-    <button class="pop-act-btn" onclick="aiAutoCluster()"><span>Стикерлерди иреттөө</span><i class="fa-solid fa-layer-group"></i></button>
-  </div>
-</div>
-
-<!-- ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) -->
-<aside class="properties-panel" id="propertiesPanel" aria-label="Касиеттер">
-  <div class="prop-header">
-    <h3><i class="fa-solid fa-sliders"></i><span id="propObjectTitle">Касиеттер</span></h3>
-    <div style="display:flex;gap:4px">
-      <button class="mini-btn" onclick="editSelectedText()" title="Текстти өзгөртүү"><i class="fa-solid fa-pen-to-square"></i></button>
-      <button class="mini-btn" onclick="duplicateSelected()" title="Көчүрмө"><i class="fa-regular fa-copy"></i></button>
-      <button class="mini-btn" onclick="deleteSelected()" title="Өчүрүү" style="color:#fda4af"><i class="fa-solid fa-trash"></i></button>
-      <button class="mini-btn" onclick="clearSelection()" title="Жабуу"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-  </div>
-
-  <div class="prop-section">
-    <div class="prop-label"><span>Өлчөм (W × H) & Айлантуу</span></div>
-    <div class="prop-row">
-      <input type="number" id="propW" min="20" max="3000" step="5" onchange="updateSelectedFromInputs()">
-      <input type="number" id="propH" min="20" max="3000" step="5" onchange="updateSelectedFromInputs()">
-      <input type="number" id="propRot" min="-360" max="360" step="1" onchange="updateSelectedFromInputs()">
-    </div>
-    <div class="prop-label"><span>Тунуктук (Opacity)</span><span id="propOpacityVal">100%</span></div>
-    <div class="prop-row">
-      <input type="range" id="propOpacity" min="0.05" max="1" step="0.01" value="1" oninput="updateSelectedFromInputs()">
-    </div>
-  </div>
-
-  <div class="prop-section">
-    <div class="prop-label"><span>Түс (Fill) & Чек ара / Калем (Stroke)</span></div>
-    <div class="prop-row">
-      <input type="color" id="propFill" value="#00e5ff" oninput="updateSelectedFromInputs()">
-      <input type="color" id="propStroke" value="#00e5ff" oninput="updateSelectedFromInputs()">
-      <input type="number" id="propStrokeW" min="0" max="32" step="1" value="3" onchange="updateSelectedFromInputs()">
-    </div>
-  </div>
-
-  <div class="prop-section" id="textPropSection">
-    <div class="prop-label"><span>Текст & Шрифт</span></div>
-    <div class="prop-row">
-      <select id="propFontFamily" onchange="updateSelectedFromInputs()">
-        <option value="Inter, sans-serif">Inter</option>
-        <option value="'Playfair Display', serif">Playfair Display</option>
-        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
-        <option value="Georgia, serif">Georgia</option>
-      </select>
-      <input type="number" id="propFontSize" min="10" max="180" step="1" value="20" style="max-width:66px" onchange="updateSelectedFromInputs()">
-    </div>
-    <div class="mini-toggle-group">
-      <button class="mini-btn" id="btnBold" onclick="toggleTextStyle('bold')"><b>B</b></button>
-      <button class="mini-btn" id="btnItalic" onclick="toggleTextStyle('italic')"><i>I</i></button>
-      <button class="mini-btn" id="btnUnderline" onclick="toggleTextStyle('underline')"><u>U</u></button>
-      <button class="mini-btn" onclick="setTextAlign('left')"><i class="fa-solid fa-align-left"></i></button>
-      <button class="mini-btn" onclick="setTextAlign('center')"><i class="fa-solid fa-align-center"></i></button>
-      <button class="mini-btn" onclick="setTextAlign('right')"><i class="fa-solid fa-align-right"></i></button>
-    </div>
-  </div>
-
-  <div class="prop-section">
-    <div class="prop-label"><span>Анимация</span></div>
-    <div class="prop-row">
-      <select id="propAnimType" onchange="updateSelectedFromInputs()">
-        <option value="none">Жок (None)</option>
-        <option value="fade">Fade</option>
-        <option value="slide">Slide</option>
-        <option value="zoom">Zoom</option>
-        <option value="bounce">Bounce</option>
-        <option value="rotate">Rotate</option>
-      </select>
-      <button class="mini-btn" onclick="replayAnimationOnSelected()"><i class="fa-solid fa-play"></i> Ойнотуу</button>
-    </div>
-  </div>
-
-  <div class="prop-section">
-    <div class="prop-label"><span>Катмарлар (Layers)</span></div>
-    <div class="mini-toggle-group">
-      <button class="mini-btn" onclick="bringToFront()">Front</button>
-      <button class="mini-btn" onclick="sendToBack()">Back</button>
-      <button class="mini-btn" id="btnLockLayer" onclick="toggleLockSelected()"><i class="fa-solid fa-lock"></i></button>
-      <button class="mini-btn" id="btnHideLayer" onclick="toggleHideSelected()"><i class="fa-solid fa-eye"></i></button>
-    </div>
-    <div id="layersListContainer" style="display:flex;flex-direction:column;gap:4px;max-height:125px;overflow-y:auto;margin-top:4px"></div>
-  </div>
-</aside>
-
-<!-- ТӨМӨН: Floating Navigation Bar -->
-<nav class="bottom-nav" aria-label="Навигация">
-  <button class="nav-pill-btn" onclick="undo()" title="Артка (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i><span>Undo</span></button>
-  <button class="nav-pill-btn" onclick="redo()" title="Алдыга (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i><span>Redo</span></button>
-  <button class="nav-pill-btn" onclick="zoomBy(1.2)" title="Zoom +"><i class="fa-solid fa-magnifying-glass-plus"></i><span>Zoom +</span></button>
-  <span class="zoom-readout" id="zoomPercent">100%</span>
-  <button class="nav-pill-btn" onclick="zoomBy(1/1.2)" title="Zoom -"><i class="fa-solid fa-magnifying-glass-minus"></i><span>Zoom -</span></button>
-  <button class="nav-pill-btn" onclick="fitToScreen()" title="Fit Screen"><i class="fa-solid fa-maximize"></i><span>Fit</span></button>
-  <button class="nav-pill-btn active" id="minimapToggleBtn" onclick="toggleMinimap()" title="Mini Map"><i class="fa-solid fa-map"></i><span>Mini Map</span></button>
-  <button class="nav-pill-btn" id="presentBtn" onclick="startPresentationMode()" title="Presentation"><i class="fa-solid fa-tv"></i><span>Presentation</span></button>
-  <button class="nav-pill-btn" id="cinemaBtn" onclick="toggleCinemaMode()" title="Cinema Mode"><i class="fa-solid fa-film"></i><span>Cinema</span></button>
-  <button class="nav-pill-btn" onclick="toggleFullScreen()" title="Full Screen"><i class="fa-solid fa-expand"></i><span>Full Screen</span></button>
-</nav>
-
-<!-- MINI MAP -->
-<div class="minimap-box" id="minimapBox" title="Басып кенепте көчүңүз">
-  <div class="minimap-badge">MINI MAP</div>
-  <canvas id="minimap-canvas"></canvas>
-</div>
-
-<!-- Presentation / Cinema HUD -->
-<div id="presentation-hud">
-  <span id="slideCounter" style="font-size:12px;font-weight:800;color:var(--accent-gold)">Frame 1 / 1</span>
-  <button class="hud-btn" onclick="prevFrameSlide()"><i class="fa-solid fa-chevron-left"></i> Мурунку</button>
-  <button class="hud-btn accent" onclick="nextFrameSlide()">Кийинки <i class="fa-solid fa-chevron-right"></i></button>
-  <button class="hud-btn" id="cinemaAutoBtn" onclick="toggleCinemaMode()"><i class="fa-solid fa-film"></i> Cinema</button>
-  <button class="hud-btn" onclick="stopPresentationMode()"><i class="fa-solid fa-xmark"></i> Чыгуу</button>
-</div>
-
-<!-- Проекттер модалы -->
-<div class="modal-backdrop" id="projectsModal">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h3><i class="fa-solid fa-folder-open"></i> Сакталган Проекттер</h3>
-      <button class="mini-btn" style="flex:0 0 auto;padding:6px 10px" onclick="closeModal('projectsModal')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div id="savedProjectsList"></div>
-  </div>
-</div>
-
-<!-- Видео модал -->
-<div class="modal-backdrop" id="videoModal">
-  <div class="modal-card">
-    <div class="modal-head">
-      <h3><i class="fa-solid fa-video"></i> Видео кошуу</h3>
-      <button class="mini-btn" style="flex:0 0 auto;padding:6px 10px" onclick="closeModal('videoModal')"><i class="fa-solid fa-xmark"></i></button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <input type="text" id="youtubeUrlInput" placeholder="YouTube шилтемесин чаптаңыз..." style="background:rgba(4,10,24,.9);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:12px;user-select:text">
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="hud-btn accent" onclick="addYouTubeFromInput()"><i class="fa-brands fa-youtube"></i> YouTube кошуу</button>
-        <button class="hud-btn" onclick="triggerMediaUpload('video')"><i class="fa-solid fa-file-video"></i> Локалдык видео жүктөө</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event,'image')">
-<input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="handleFileUpload(event,'video')">
-<input type="file" id="audioFileInput" accept="audio/*" style="display:none" onchange="handleFileUpload(event,'audio')">
-<input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handleFileUpload(event,'pdf')">
-<input type="file" id="importJsonInput" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
-
 <script>
-if (window.pdfjsLib) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+(()=>{
+"use strict";
+const $=s=>document.querySelector(s), viewport=$("#viewport"),world=$("#world"),workspace=$("#workspace"),props=$("#properties"),propertyContent=$("#propertyContent"),svg=$("#svgLayer");
+const state={objects:[],connectors:[],frames:[],selected:null,tool:"select",scale:1,panX:0,panY:0,theme:"dark",pinned:false,undo:[],redo:[],clipboard:null,drag:null,draw:null,frameIndex:0,projectName:"Жаңы билим долбоору",cameraKeyframes:[],recording:null,recordedChunks:[],timelineOn:false,playing:false};
+const colors=["#fff3a6","#c9f7dc","#d9e8ff","#ffd9e8","#eadcff","#ffe3bd"];
+let idCounter=0,autosaveTimer,rafPending=false,toastTimer;
+function uid(){return "obj_"+Date.now().toString(36)+"_"+(++idCounter).toString(36)}
+function toast(msg){let el=$("#toast");el.textContent=msg;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),1800)}
+function snapshot(){return JSON.stringify({objects:state.objects,connectors:state.connectors,frames:state.frames,projectName:state.projectName,scale:state.scale,panX:state.panX,panY:state.panY,cameraKeyframes:state.cameraKeyframes})}
+function pushUndo(){state.undo.push(snapshot());if(state.undo.length>150)state.undo.shift();state.redo=[]}
+function restore(data){try{const p=JSON.parse(data);state.objects=p.objects||[];state.connectors=p.connectors||[];state.frames=p.frames||[];state.projectName=p.projectName||"Жаңы билим долбоору";state.cameraKeyframes=p.cameraKeyframes||[];state.selected=null;$("#projectName").value=state.projectName;render();updateView()}catch(e){console.error(e);toast("Project data could not be read")}}
+function undo(){if(!state.undo.length)return;state.redo.push(snapshot());restore(state.undo.pop())}
+function redo(){if(!state.redo.length)return;state.undo.push(snapshot());restore(state.redo.pop())}
+function updateView(){world.style.transform=`translate(${state.panX}px,${state.panY}px) scale(${state.scale})`;$("#zoomLabel").textContent=Math.round(state.scale*100)+"%";renderMini()}
+function screenToWorld(x,y){let r=viewport.getBoundingClientRect();return{x:(x-r.left-state.panX)/state.scale,y:(y-r.top-state.panY)/state.scale}}
+function worldToScreen(x,y){return{x:x*state.scale+state.panX,y:y*state.scale+state.panY}}
+function createObj(type,x,y,extra={}){pushUndo();const o={id:uid(),type,x,y,w:extra.w||220,h:extra.h||120,rotation:0,color:extra.color||"#ffffff",text:extra.text||"",content:extra.content||"",name:extra.name||type,opacity:1,border:"#34445b",fontSize:20,fontFamily:"Arial",bold:false,italic:false,underline:false,align:"left",animation:"none",start:0,duration:10,locked:false,hidden:false,...extra};state.objects.push(o);state.selected=o.id;render();showProperties();return o}
+function objectEl(o){let el=document.createElement("div");el.className="obj";el.dataset.id=o.id;el.style.left=o.x+"px";el.style.top=o.y+"px";el.style.width=o.w+"px";el.style.height=o.h+"px";el.style.transform=`rotate(${o.rotation||0}deg)`;el.style.opacity=o.opacity??1;el.style.zIndex=o.z||1;
+if(o.type==="text"){el.classList.add("textobj");el.style.fontSize=(o.fontSize||20)+"px";el.style.fontFamily=o.fontFamily||"Arial";el.style.color=o.color||"#172033";el.style.fontWeight=o.bold?"700":"400";el.style.fontStyle=o.italic?"italic":"normal";el.style.textDecoration=o.underline?"underline":"none";el.style.textAlign=o.align||"left";el.textContent=o.text||"Double-click to edit";el.addEventListener("dblclick",e=>{e.stopPropagation();el.contentEditable="true";el.focus();document.execCommand("selectAll",false,null)});el.addEventListener("blur",()=>{if(el.contentEditable==="true"){o.text=el.innerText;el.contentEditable="false";scheduleSave()}});el.addEventListener("keydown",e=>{if(e.key==="Escape"){el.blur()}if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();el.blur()}})}
+else if(o.type==="sticky"){el.classList.add("sticky");el.style.background=o.color||colors[0];el.style.color=o.textColor||"#293247";el.style.fontSize=(o.fontSize||16)+"px";el.textContent=o.text||"Стикерге жаз...";el.addEventListener("dblclick",()=>editSticky(o,el))}
+else if(o.type==="image"){el.classList.add("imageobj");let im=document.createElement("img");im.src=o.content;el.appendChild(im)}
+else if(o.type==="pdf"){el.classList.add("mediaobj","pdfobj");let f=document.createElement("iframe");f.src=o.content;el.appendChild(f)}
+else if(o.type==="video"){el.classList.add("mediaobj");if(o.content.startsWith("https://")||o.content.startsWith("http://")){let iframe=document.createElement("iframe");iframe.src=o.content;iframe.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";iframe.allowFullscreen=true;el.appendChild(iframe)}else{let v=document.createElement("video");v.src=o.content;v.controls=true;el.appendChild(v)}}
+else if(o.type==="audio"){el.classList.add("mediaobj");let a=document.createElement("audio");a.src=o.content;a.controls=true;el.appendChild(a)}
+else if(o.type==="shape"){el.classList.add("shapeobj");el.style.background=o.fill||"#ffffffaa";el.style.borderColor=o.border||"#233750";el.style.color=o.color||"#172033";el.style.borderWidth=(o.lineWidth||2)+"px";el.style.borderRadius=o.shape==="circle"?"50%":o.shape==="diamond"?"0":o.shape==="triangle"?"0":o.shape==="hexagon"?"18px":"8px";if(o.shape==="diamond")el.style.transform=`rotate(${(o.rotation||0)+45}deg) scale(.85)`;if(o.shape==="triangle"){el.style.clipPath="polygon(50% 0,0 100%,100% 100%)";el.style.border="0"}if(o.shape==="hexagon")el.style.clipPath="polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)";el.textContent=o.text||o.shape}
+else if(o.type==="frame"){el.classList.add("frameobj");el.style.borderColor=o.color||"#7288a5";el.style.zIndex=0;let lab=document.createElement("span");lab.className="frame-label";lab.textContent=o.text||"Frame";el.appendChild(lab)}
+else if(o.type==="table"){el.style.background="#fff";el.style.border="1px solid #718096";el.style.color="#152238";el.style.overflow="auto";el.innerHTML=o.content||makeTableHTML(3,3)}
+else if(o.type==="comment"){el.classList.add("sticky");el.style.background="#d9e8ff";el.textContent="💬 "+(o.text||"Комментарий");}
+else if(o.type==="drawing"){el.style.pointerEvents="none";el.innerHTML=o.content}
+else if(o.type==="mindnode"){el.classList.add("shapeobj");el.style.background=o.fill||"#d8f7ff";el.style.borderRadius="20px";el.textContent=o.text||"Node"}
+else if(o.type==="flow"){el.classList.add("shapeobj");el.textContent=o.text||"Process";el.style.background="#e4efff";}
+if(o.id===state.selected){el.classList.add("selected");let rh=document.createElement("span");rh.className="resize-handle";el.appendChild(rh);let rot=document.createElement("span");rot.className="rotate-handle";el.appendChild(rot)}
+if(!o.hidden){el.addEventListener("pointerdown",objectPointerDown);el.addEventListener("click",e=>{e.stopPropagation();select(o.id)})}
+return el}
+function makeTableHTML(r,c){let html="<table style='border-collapse:collapse;width:100%;height:100%'>";for(let i=0;i<r;i++){html+="<tr>";for(let j=0;j<c;j++)html+=`<td contenteditable="true" style="border:1px solid #aab6c5;padding:5px;min-width:50px"> </td>`;html+="</tr>"}return html+"</table>"}
+function render(){world.querySelectorAll(".obj").forEach(n=>n.remove());state.objects.forEach(o=>{if(!o.hidden)world.appendChild(objectEl(o))});renderConnectors();renderMini();renderTimeline()}
+function renderConnectors(){svg.querySelectorAll(".dynamic").forEach(n=>n.remove());state.connectors.forEach(c=>{let a=state.objects.find(o=>o.id===c.a),b=state.objects.find(o=>o.id===c.b);if(!a||!b)return;let x1=a.x+a.w/2,y1=a.y+a.h/2,x2=b.x+b.w/2,y2=b.y+b.h/2;let line=document.createElementNS("http://www.w3.org/2000/svg","line");line.setAttribute("x1",x1);line.setAttribute("y1",y1);line.setAttribute("x2",x2);line.setAttribute("y2",y2);line.setAttribute("class","connector-line dynamic");svg.appendChild(line)})}
+function select(id){state.selected=id;render();showProperties()}
+function showProperties(){let o=state.objects.find(x=>x.id===state.selected);if(!o){props.classList.remove("show");return}props.classList.add("show");let content=`<div style="font-size:12px;color:#9eb0c9">${o.type.toUpperCase()} · ${o.id.slice(-6)}</div>
+<label>Position X / Y</label><div class="row"><input id="propX" type="number" value="${Math.round(o.x)}"><input id="propY" type="number" value="${Math.round(o.y)}"></div>
+<label>Width / Height</label><div class="row"><input id="propW" type="number" min="20" value="${Math.round(o.w)}"><input id="propH" type="number" min="20" value="${Math.round(o.h)}"></div>
+<label>Rotation</label><input id="propRot" type="range" min="-180" max="180" value="${o.rotation||0}">
+<label>Opacity</label><input id="propOpacity" type="range" min="0.1" max="1" step="0.05" value="${o.opacity??1}">
+<label>Color</label><input id="propColor" type="color" value="${safeColor(o.color||"#172033")}">
+${o.type==="text"||o.type==="sticky"||o.type==="shape"||o.type==="mindnode"||o.type==="flow"?`<label>Text</label><textarea id="propText" rows="3">${escapeHtml(o.text||"")}</textarea><label>Font size</label><input id="propFont" type="number" min="8" max="160" value="${o.fontSize||20}"><div class="row"><button id="boldBtn" class="${o.bold?"active":""}">B</button><button id="italicBtn" class="${o.italic?"active":""}"><i>I</i></button><button id="underlineBtn" class="${o.underline?"active":""}"><u>U</u></button></div><label>Alignment</label><select id="propAlign"><option>left</option><option ${o.align==="center"?"selected":""}>center</option><option ${o.align==="right"?"selected":""}>right</option></select>`:""}
+${o.type==="shape"?`<label>Shape</label><select id="propShape">${["rectangle","circle","diamond","triangle","hexagon","arrow","line"].map(s=>`<option ${o.shape===s?"selected":""}>${s}</option>`).join("")}</select><label>Fill</label><input id="propFill" type="color" value="${safeColor(o.fill||"#ffffff")}">`:""}
+<label>Animation</label><select id="propAnimation">${["none","fade","fadeOut","zoom","bounce","rotate","slideLeft","slideRight","slideUp","slideDown","pulse","glow","typewriter"].map(s=>`<option ${o.animation===s?"selected":""}>${s}</option>`).join("")}</select>
+<label>Start (sec) / Duration</label><div class="row"><input id="propStart" type="number" min="0" step=".1" value="${o.start||0}"><input id="propDuration" type="number" min=".1" step=".1" value="${o.duration||10}"></div>
+<div class="row" style="margin-top:10px"><button id="duplicateObj">Duplicate</button><button id="deleteObj" style="color:#ff9aa5">Delete</button></div><div class="row" style="margin-top:6px"><button id="frontObj">Front</button><button id="backObj">Back</button><button id="lockObj">${o.locked?"Unlock":"Lock"}</button><button id="hideObj">${o.hidden?"Show":"Hide"}</button></div>
+<div class="row" style="margin-top:6px"><button id="addKeyObj">＋ Keyframe</button><button id="copyObj">Copy</button></div>`;
+propertyContent.innerHTML=content;
+const bind=(id,fn,event="input")=>{let el=$("#"+id);if(el)el.addEventListener(event,fn)};
+["propX","propY","propW","propH"].forEach(id=>bind(id,()=>{pushUndo();o.x=+$("#propX").value;o.y=+$("#propY").value;o.w=Math.max(20,+$("#propW").value);o.h=Math.max(20,+$("#propH").value);render()}));
+bind("propRot",()=>{o.rotation=+$("#propRot").value;render()});bind("propOpacity",()=>{o.opacity=+$("#propOpacity").value;render()});
+bind("propColor",()=>{o.color=$("#propColor").value;render()});
+bind("propText",()=>{o.text=$("#propText").value;render()});bind("propFont",()=>{o.fontSize=+$("#propFont").value;render()});
+bind("propAlign",()=>{o.align=$("#propAlign").value;render()});bind("propShape",()=>{o.shape=$("#propShape").value;render()});bind("propFill",()=>{o.fill=$("#propFill").value;render()});
+bind("propAnimation",()=>{o.animation=$("#propAnimation").value});bind("propStart",()=>o.start=+$("#propStart").value);bind("propDuration",()=>o.duration=+$("#propDuration").value);
+bind("boldBtn",()=>{o.bold=!o.bold;showProperties();render()},"click");bind("italicBtn",()=>{o.italic=!o.italic;showProperties();render()},"click");bind("underlineBtn",()=>{o.underline=!o.underline;showProperties();render()},"click");
+bind("duplicateObj",()=>duplicate(o),"click");bind("deleteObj",deleteSelected,"click");bind("frontObj",()=>{pushUndo();o.z=(Math.max(0,...state.objects.map(x=>x.z||0))+1);render()},"click");bind("backObj",()=>{pushUndo();o.z=-1;render()},"click");bind("lockObj",()=>{o.locked=!o.locked;showProperties()},"click");bind("hideObj",()=>{o.hidden=!o.hidden;state.selected=null;render();showProperties()},"click");bind("addKeyObj",()=>{state.cameraKeyframes.push({time:o.start||0,x:state.panX,y:state.panY,scale:state.scale,focus:o.id});renderTimeline();toast("Keyframe added")},"click");bind("copyObj",()=>{state.clipboard=JSON.stringify(o);toast("Copied object")},"click");
 }
-
-const STORAGE_KEY = 'bilimal_unlimited_board_projects_v1';
-const AUTOSAVE_KEY = 'bilimal_unlimited_board_autosave_v1';
-
-const canvas = document.getElementById('board-canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
-const overlayLayer = document.getElementById('overlay-layer');
-const minimapCanvas = document.getElementById('minimap-canvas');
-const mctx = minimapCanvas.getContext('2d');
-const textEditorBox = document.getElementById('text-editor-box');
-const inlineEditor = document.getElementById('inline-text-editor');
-
-const state = {
-  camX: 0,
-  camY: 0,
-  zoom: 1,
-  minZoom: 0.08,
-  maxZoom: 6,
-  tool: 'select',
-  penColor: '#00e5ff',
-  penWidth: 3.5,
-  objects: [],
-  selectedIds: new Set(),
-  clipboard: [],
-  undoStack: [],
-  redoStack: [],
-  maxHistory: 60,
-  dockPinned: false,
-  cinemaMode: false,
-  presentationMode: false,
-  presentationIndex: 0,
-  cinemaTime: 0,
-  cinemaTarget: null,
-  isDraggingCanvas: false,
-  isPinching: false,
-  pinchStartDist: 0,
-  pinchStartZoom: 1,
-  dragStartScreen: { x: 0, y: 0 },
-  dragStartCam: { x: 0, y: 0 },
-  activeObjDrag: null,
-  drawingStroke: null,
-  connectorStartId: null,
-  editingTextId: null,
-  imageCache: new Map(),
-  lastFrameTime: performance.now(),
-  toastTimer: null
-};
-
-function uid() {
-  return 'obj_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
-}
-
-function showToast(msg, ms = 2000) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(state.toastTimer);
-  state.toastTimer = setTimeout(() => el.classList.remove('show'), ms);
-}
-
-function screenToWorld(sx, sy) {
-  return { x: (sx - state.camX) / state.zoom, y: (sy - state.camY) / state.zoom };
-}
-
-function worldToScreen(wx, wy) {
-  return { x: wx * state.zoom + state.camX, y: wy * state.zoom + state.camY };
-}
-
-function stripRuntimeProps(o) {
-  const copy = Object.assign({}, o);
-  delete copy._animStart;
-  return copy;
-}
-
-function pushHistory() {
-  const snapshot = JSON.stringify(state.objects.map(stripRuntimeProps));
-  if (state.undoStack[state.undoStack.length - 1] === snapshot) return;
-  state.undoStack.push(snapshot);
-  if (state.undoStack.length > state.maxHistory) state.undoStack.shift();
-  state.redoStack = [];
-}
-
-function undo() {
-  if (state.undoStack.length <= 1) { showToast('Артка кайтарууга кадам жок'); return; }
-  const current = state.undoStack.pop();
-  state.redoStack.push(current);
-  const prev = JSON.parse(state.undoStack[state.undoStack.length - 1]);
-  loadObjectsArray(prev, false);
-  showToast('Undo');
-}
-
-function redo() {
-  if (!state.redoStack.length) { showToast('Алдыга жылдырууга кадам жок'); return; }
-  const next = state.redoStack.pop();
-  state.undoStack.push(next);
-  loadObjectsArray(JSON.parse(next), false);
-  showToast('Redo');
-}
-
-function loadObjectsArray(arr, record = true) {
-  state.objects = Array.isArray(arr) ? arr : [];
-  state.selectedIds.clear();
-  syncMediaOverlays();
-  refreshPropertiesPanel();
-  if (record) pushHistory();
-}
-
-function getViewportCenterWorld() {
-  return screenToWorld(canvas.clientWidth / 2, canvas.clientHeight / 2);
-}
-
-function createBaseObj(type, props = {}) {
-  const c = getViewportCenterWorld();
-  return Object.assign({
-    id: uid(),
-    type,
-    name: props.name || type.toUpperCase(),
-    x: c.x - (props.w || 180) / 2,
-    y: c.y - (props.h || 110) / 2,
-    w: props.w || 180,
-    h: props.h || 110,
-    rotation: 0,
-    opacity: 1,
-    fill: '#0b2246',
-    stroke: '#00e5ff',
-    strokeWidth: 2,
-    text: '',
-    textColor: '#f8fafc',
-    fontSize: 20,
-    fontFamily: 'Inter, sans-serif',
-    bold: false,
-    italic: false,
-    underline: false,
-    align: 'center',
-    animType: 'none',
-    _animStart: performance.now(),
-    locked: false,
-    hidden: false,
-    parentId: null,
-    fromId: null,
-    toId: null,
-    points: [],
-    src: '',
-    youtubeId: '',
-    rows: [],
-    pdfPage: 1,
-    pdfPagesCount: 1
-  }, props);
-}
-
-function addObject(obj, selectIt = true) {
-  obj._animStart = performance.now();
-  state.objects.push(obj);
-  if (selectIt) {
-    state.selectedIds.clear();
-    state.selectedIds.add(obj.id);
-  }
-  syncMediaOverlays();
-  refreshPropertiesPanel();
-  pushHistory();
-  return obj;
-}
-
-function addShape(kind) {
-  closePopovers();
-  const defaults = {
-    rect: { w: 180, h: 110, fill: 'rgba(0,229,255,0.14)', stroke: '#00e5ff', name: 'Rectangle' },
-    circle: { w: 140, h: 140, fill: 'rgba(139,92,246,0.18)', stroke: '#8b5cf6', name: 'Circle' },
-    diamond: { w: 150, h: 150, fill: 'rgba(236,72,153,0.16)', stroke: '#ec4899', name: 'Diamond' },
-    triangle: { w: 150, h: 130, fill: 'rgba(255,189,88,0.16)', stroke: '#ffbd58', name: 'Triangle' },
-    arrow: { w: 200, h: 60, fill: 'rgba(0,229,255,0.22)', stroke: '#00e5ff', name: 'Arrow' },
-    line: { w: 200, h: 12, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 3, name: 'Line' }
-  };
-  const d = defaults[kind] || defaults.rect;
-  addObject(createBaseObj('shape', Object.assign({ shapeKind: kind, text: '' }, d)));
-  setTool('select');
-}
-
-function createStickyNote(customText = 'Жаңы эскертме', customFill = '#facc15', customPos = null) {
-  closePopovers();
-  const c = customPos || getViewportCenterWorld();
-  addObject(createBaseObj('sticky', {
-    name: 'Sticky Note',
-    x: c.x - 95,
-    y: c.y - 95,
-    w: 190,
-    h: 190,
-    fill: customFill,
-    stroke: 'rgba(255,255,255,0.22)',
-    strokeWidth: 1,
-    text: customText,
-    fontSize: 16,
-    align: 'left',
-    textColor: '#0f172a'
-  }));
-  setTool('select');
-}
-
-function createTableObject() {
-  closePopovers();
-  addObject(createBaseObj('table', {
-    name: 'Таблица (3×3)',
-    w: 360,
-    h: 180,
-    fill: 'rgba(10,22,48,0.92)',
-    stroke: '#38bdf8',
-    rows: [
-      ['Параметр', 'Мааниси', 'Бирдиги'],
-      ['Масса (m)', '5.97 × 10²⁴', 'кг'],
-      ['Гравитация (g)', '9.81', 'м/с²']
-    ]
-  }));
-  setTool('select');
-}
-
-function createFrameObject() {
-  closePopovers();
-  const idx = state.objects.filter(o => o.type === 'frame').length + 1;
-  addObject(createBaseObj('frame', {
-    name: `Frame ${idx}`,
-    text: `Frame ${idx}`,
-    w: 760,
-    h: 460,
-    fill: 'rgba(12,26,56,0.25)',
-    stroke: '#ec4899',
-    strokeWidth: 2,
-    fontSize: 16
-  }));
-  setTool('select');
-  showToast(`Frame ${idx} түзүлдү`);
-}
-
-function addMindNode(relation = 'root') {
-  closePopovers();
-  const selected = getFirstSelected();
-  if (relation === 'root' || !selected || selected.type !== 'mindnode') {
-    const c = getViewportCenterWorld();
-    addObject(createBaseObj('mindnode', {
-      name: 'Негизги идея', text: 'Негизги идея',
-      x: c.x - 90, y: c.y - 36, w: 180, h: 72,
-      fill: 'rgba(139,92,246,0.28)', stroke: '#a855f7', bold: true
-    }));
-    setTool('select');
-    return;
-  }
-  const parentId = relation === 'child' ? selected.id : (selected.parentId || null);
-  const newNode = createBaseObj('mindnode', {
-    name: relation === 'child' ? 'Child Node' : 'Sibling Node',
-    text: relation === 'child' ? 'Бутак' : 'Түйүн',
-    x: selected.x + (relation === 'child' ? 230 : 0),
-    y: selected.y + (relation === 'child' ? 0 : 110),
-    w: 165, h: 64,
-    fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', parentId
-  });
-  addObject(newNode);
-  if (parentId) {
-    state.objects.push(createBaseObj('connector', {
-      name: 'Mind Link', fromId: parentId, toId: newNode.id,
-      stroke: '#a855f7', strokeWidth: 2, fill: 'transparent', w: 10, h: 10
-    }));
-  }
-  setTool('select');
-}
-
-function layoutMindMap(mode = 'tree') {
-  closePopovers();
-  const nodes = state.objects.filter(o => o.type === 'mindnode');
-  if (!nodes.length) { showToast('Mind Map түйүндөрү табылган жок'); return; }
-  pushHistory();
-  const roots = nodes.filter(n => !n.parentId);
-  const root = roots[0] || nodes[0];
-  const childrenMap = new Map();
-  nodes.forEach(n => {
-    if (n.parentId) {
-      if (!childrenMap.has(n.parentId)) childrenMap.set(n.parentId, []);
-      childrenMap.get(n.parentId).push(n);
-    }
-  });
-  if (mode === 'tree') {
-    let rowIdx = 0;
-    function placeTree(node, depth) {
-      const kids = childrenMap.get(node.id) || [];
-      node.x = root.x + depth * 240;
-      if (!kids.length) {
-        node.y = root.y + rowIdx * 95;
-        rowIdx++;
-      } else {
-        kids.forEach(k => placeTree(k, depth + 1));
-        node.y = (kids[0].y + kids[kids.length - 1].y) / 2;
-      }
-    }
-    placeTree(root, 0);
-  } else {
-    const others = nodes.filter(n => n.id !== root.id);
-    const radius = Math.max(200, others.length * 36);
-    others.forEach((n, i) => {
-      const ang = (i / Math.max(1, others.length)) * Math.PI * 2;
-      n.x = root.x + Math.cos(ang) * radius;
-      n.y = root.y + Math.sin(ang) * radius;
-    });
-  }
-  showToast(`Mind Map (${mode.toUpperCase()}) иреттелди`);
-}
-
-function addFlowNode(kind, label) {
-  closePopovers();
-  const prevFlow = [...state.objects].reverse().find(o => o.type === 'flownode');
-  const x = prevFlow ? prevFlow.x + 230 : getViewportCenterWorld().x - 85;
-  const y = prevFlow ? prevFlow.y : getViewportCenterWorld().y - 45;
-  const colors = {
-    start: { fill: 'rgba(16,185,129,0.2)', stroke: '#10b981', shape: 'round' },
-    process: { fill: 'rgba(56,189,248,0.16)', stroke: '#38bdf8', shape: 'rect' },
-    decision: { fill: 'rgba(255,189,88,0.18)', stroke: '#ffbd58', shape: 'diamond' },
-    io: { fill: 'rgba(236,72,153,0.18)', stroke: '#ec4899', shape: 'rect' }
-  };
-  const c = colors[kind] || colors.process;
-  const node = addObject(createBaseObj('flownode', {
-    name: `Flow: ${label}`, text: label, x, y,
-    w: kind === 'decision' ? 140 : 175, h: kind === 'decision' ? 110 : 76,
-    fill: c.fill, stroke: c.stroke, flowShape: c.shape
-  }));
-  if (prevFlow) {
-    state.objects.push(createBaseObj('connector', {
-      name: 'Flow Arrow', fromId: prevFlow.id, toId: node.id,
-      stroke: '#58d9ff', strokeWidth: 2, fill: 'transparent', w: 10, h: 10
-    }));
-  }
-  setTool('select');
-}
-
-/* Media */
-function triggerMediaUpload(kind) {
-  closePopovers();
-  const map = { image: 'imageFileInput', video: 'videoFileInput', audio: 'audioFileInput', pdf: 'pdfFileInput' };
-  const el = document.getElementById(map[kind]);
-  if (el) { el.value = ''; el.click(); }
-}
-
-function openVideoModal() {
-  closePopovers();
-  document.getElementById('videoModal').classList.add('show');
-}
-
-function extractYouTubeId(url) {
-  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/);
-  return m ? m[1] : '';
-}
-
-function addYouTubeFromInput() {
-  const raw = document.getElementById('youtubeUrlInput').value.trim();
-  const vid = extractYouTubeId(raw);
-  if (!vid) { showToast('Туура YouTube шилтемесин жазыңыз'); return; }
-  closeModal('videoModal');
-  addObject(createBaseObj('video', { name: 'YouTube Video', youtubeId: vid, w: 440, h: 260 }));
-  document.getElementById('youtubeUrlInput').value = '';
-}
-
-function handleFileUpload(event, kind) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    const dataUrl = e.target.result;
-    if (kind === 'image') {
-      const img = await loadImageCached(dataUrl);
-      const ratio = img.width && img.height ? img.height / img.width : 0.75;
-      const w = Math.min(360, img.width || 300);
-      addObject(createBaseObj('image', { name: file.name, src: dataUrl, w, h: Math.round(w * ratio) }));
-    } else if (kind === 'video') {
-      addObject(createBaseObj('video', { name: file.name, src: dataUrl, w: 420, h: 250 }));
-    } else if (kind === 'audio') {
-      addObject(createBaseObj('audio', { name: file.name, src: dataUrl, w: 310, h: 112 }));
-    } else if (kind === 'pdf') {
-      let pagesCount = 1;
-      if (window.pdfjsLib) {
-        try {
-          const pdfDoc = await pdfjsLib.getDocument(dataUrl).promise;
-          pagesCount = pdfDoc.numPages || 1;
-        } catch (_) {}
-      }
-      addObject(createBaseObj('pdf', { name: file.name, src: dataUrl, w: 400, h: 520, pdfPage: 1, pdfPagesCount: pagesCount }));
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-function loadImageCached(src) {
-  return new Promise((resolve) => {
-    if (state.imageCache.has(src)) { resolve(state.imageCache.get(src)); return; }
-    const img = new Image();
-    img.onload = () => { state.imageCache.set(src, img); resolve(img); };
-    img.onerror = () => resolve({ width: 200, height: 150 });
-    img.src = src;
-  });
-}
-
-window.addEventListener('dragover', e => e.preventDefault());
-window.addEventListener('drop', e => {
-  e.preventDefault();
-  const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-  if (!file) return;
-  if (file.type.startsWith('image/')) handleFileUpload({ target: { files: [file] } }, 'image');
-  else if (file.type.startsWith('video/')) handleFileUpload({ target: { files: [file] } }, 'video');
-  else if (file.type.startsWith('audio/')) handleFileUpload({ target: { files: [file] } }, 'audio');
-  else if (file.type === 'application/pdf') handleFileUpload({ target: { files: [file] } }, 'pdf');
+function safeColor(c){return /^#[0-9a-f]{6}$/i.test(c)?c:"#ffffff"}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function editSticky(o,el){let text=prompt("Стикердин текстин өзгөртүү:",o.text||"");if(text!==null){pushUndo();o.text=text;render()}}
+function duplicate(o){pushUndo();let copy=JSON.parse(JSON.stringify(o));copy.id=uid();copy.x+=30;copy.y+=30;state.objects.push(copy);state.selected=copy.id;render();showProperties()}
+function deleteSelected(){if(!state.selected)return;pushUndo();state.objects=state.objects.filter(o=>o.id!==state.selected);state.connectors=state.connectors.filter(c=>c.a!==state.selected&&c.b!==state.selected);state.selected=null;render();showProperties()}
+function objectPointerDown(e){if(e.target.classList.contains("resize-handle")){resizeStart(e,this);return}if(e.target.classList.contains("rotate-handle")){rotateStart(e,this);return}if(e.button!==0)return;let o=state.objects.find(x=>x.id===this.dataset.id);if(!o||o.locked)return;if(state.tool==="eraser"){pushUndo();state.objects=state.objects.filter(x=>x.id!==o.id);state.selected=null;render();return}if(state.tool!=="select")return;e.stopPropagation();select(o.id);pushUndo();state.drag={kind:"move",obj:o,startX:e.clientX,startY:e.clientY,ox:o.x,oy:o.y};this.setPointerCapture?.(e.pointerId)}
+function resizeStart(e,el){e.stopPropagation();let o=state.objects.find(x=>x.id===el.dataset.id);if(!o||o.locked)return;pushUndo();state.drag={kind:"resize",obj:o,startX:e.clientX,startY:e.clientY,ow:o.w,oh:o.h};el.setPointerCapture?.(e.pointerId)}
+function rotateStart(e,el){e.stopPropagation();let o=state.objects.find(x=>x.id===el.dataset.id);if(!o||o.locked)return;pushUndo();state.drag={kind:"rotate",obj:o,startX:e.clientX,startY:e.clientY,rotation:o.rotation||0};}
+function pointerMove(e){if(state.drag){let d=state.drag,o=d.obj,dx=(e.clientX-d.startX)/state.scale,dy=(e.clientY-d.startY)/state.scale;if(d.kind==="move"){o.x=d.ox+dx;o.y=d.oy+dy}else if(d.kind==="resize"){o.w=Math.max(40,d.ow+dx);o.h=Math.max(30,d.oh+dy)}else if(d.kind==="rotate"){o.rotation=d.rotation+dx*.7}render();showProperties();return}
+if(state.draw){let p=screenToWorld(e.clientX,e.clientY);state.draw.points.push(p);renderDrawingPreview();}}
+function pointerUp(){state.drag=null;if(state.draw){finishDrawing()}scheduleSave()}
+viewport.addEventListener("pointermove",pointerMove);viewport.addEventListener("pointerup",pointerUp);viewport.addEventListener("pointercancel",pointerUp);
+let pan=null;
+viewport.addEventListener("pointerdown",e=>{if(e.button!==0&&e.button!==1)return;let p=screenToWorld(e.clientX,e.clientY);if(state.tool==="text"){createObj("text",p.x,p.y,{w:240,h:90,text:"Жаңы текст",color:"#172033"});setTimeout(()=>{let el=world.querySelector(`[data-id="${state.selected}"]`);el?.dispatchEvent(new MouseEvent("dblclick",{bubbles:true}))},0);state.tool="select";setTool("select");return}
+if(state.tool==="sticky"){createObj("sticky",p.x,p.y,{w:190,h:160,text:"Стикер...",color:colors[Math.floor(Math.random()*colors.length)]});state.tool="select";setTool("select");return}
+if(state.tool==="shape"){openShapeDialog(p);return}
+if(state.tool==="frame"){createObj("frame",p.x,p.y,{w:500,h:320,text:"Frame"});state.tool="select";setTool("select");return}
+if(state.tool==="comment"){createObj("comment",p.x,p.y,{w:210,h:120,text:"Комментарий"});state.tool="select";setTool("select");return}
+if(state.tool==="mindmap"){buildMindMap(p);state.tool="select";setTool("select");return}
+if(state.tool==="flow"){buildFlow(p);state.tool="select";setTool("select");return}
+if(state.tool==="connector"){startConnector(p);return}
+if(state.tool==="pen"||state.tool==="eraser"){state.draw={points:[p],erase:state.tool==="eraser"};viewport.classList.add("drawmode");return}
+if(e.button===1||spacePressed){pan={x:e.clientX,y:e.clientY,px:state.panX,py:state.panY};viewport.classList.add("panning");return}
+if(e.target===viewport||e.target.classList.contains("gridbg")){state.selected=null;render();showProperties();if(e.button===0){pan={x:e.clientX,y:e.clientY,px:state.panX,py:state.panY};viewport.classList.add("panning")}}
 });
-
-function syncMediaOverlays() {
-  const mediaTypes = new Set(['video', 'audio', 'pdf']);
-  const desired = state.objects.filter(o => mediaTypes.has(o.type) && !o.hidden);
-  const desiredIds = new Set(desired.map(o => o.id));
-  [...overlayLayer.children].forEach(el => { if (!desiredIds.has(el.dataset.id)) el.remove(); });
-
-  desired.forEach(o => {
-    let card = overlayLayer.querySelector(`.media-card[data-id="${o.id}"]`);
-    if (!card) {
-      card = document.createElement('div');
-      card.className = 'media-card';
-      card.dataset.id = o.id;
-      const bar = document.createElement('div');
-      bar.className = 'media-drag-bar';
-      bar.innerHTML = `<span>${escapeHtml(o.name)}</span><i class="fa-solid fa-up-down-left-right"></i>`;
-      bar.addEventListener('pointerdown', (ev) => {
-        ev.stopPropagation();
-        selectOnly(o.id);
-        state.activeObjDrag = { id: o.id, mode: 'move', startWorld: screenToWorld(ev.clientX, ev.clientY), origObj: cloneBasic(o) };
-      });
-      card.addEventListener('pointerdown', () => selectOnly(o.id));
-      const body = document.createElement('div');
-      body.className = 'media-body';
-      if (o.type === 'video') {
-        body.innerHTML = o.youtubeId
-          ? `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(o.youtubeId)}" allowfullscreen></iframe>`
-          : `<video src="${o.src}" controls playsinline></video>`;
-      } else if (o.type === 'audio') {
-        body.innerHTML = `<div class="audio-widget"><div style="font-size:11px;font-weight:700;color:#58d9ff"><i class="fa-solid fa-music"></i> ${escapeHtml(o.name)}</div><audio src="${o.src}" controls></audio></div>`;
-      } else if (o.type === 'pdf') {
-        body.innerHTML = `<div class="pdf-preview-wrap"><canvas class="pdf-preview-canvas"></canvas><div class="pdf-nav"><button class="pdf-prev">◀</button><span class="pdf-page-lbl">1/1</span><button class="pdf-next">▶</button></div></div>`;
-        renderPdfCardPage(card, o);
-        card.querySelector('.pdf-prev').onclick = (e) => { e.stopPropagation(); if (o.pdfPage > 1) { o.pdfPage--; renderPdfCardPage(card, o); } };
-        card.querySelector('.pdf-next').onclick = (e) => { e.stopPropagation(); if (o.pdfPage < o.pdfPagesCount) { o.pdfPage++; renderPdfCardPage(card, o); } };
-      }
-      card.append(bar, body);
-      overlayLayer.appendChild(card);
-    }
-    card.style.left = o.x + 'px';
-    card.style.top = o.y + 'px';
-    card.style.width = o.w + 'px';
-    card.style.height = o.h + 'px';
-    card.style.opacity = o.opacity;
-    card.style.transform = `rotate(${o.rotation || 0}deg)`;
-    card.classList.toggle('selected', state.selectedIds.has(o.id));
-  });
-}
-
-async function renderPdfCardPage(card, obj) {
-  const lbl = card.querySelector('.pdf-page-lbl');
-  const pCanvas = card.querySelector('.pdf-preview-canvas');
-  if (lbl) lbl.textContent = `${obj.pdfPage || 1} / ${obj.pdfPagesCount || 1}`;
-  if (!window.pdfjsLib || !obj.src || !pCanvas) return;
-  try {
-    const doc = await pdfjsLib.getDocument(obj.src).promise;
-    obj.pdfPagesCount = doc.numPages;
-    const page = await doc.getPage(Math.min(Math.max(1, obj.pdfPage || 1), doc.numPages));
-    const vp = page.getViewport({ scale: 1.1 });
-    pCanvas.width = vp.width;
-    pCanvas.height = vp.height;
-    await page.render({ canvasContext: pCanvas.getContext('2d'), viewport: vp }).promise;
-    if (lbl) lbl.textContent = `${obj.pdfPage || 1} / ${doc.numPages}`;
-  } catch (_) {}
-}
-
-function updateOverlayTransform() {
-  overlayLayer.style.transform = `translate(${state.camX}px, ${state.camY}px) scale(${state.zoom})`;
-}
-
-/* Текст түзөтүү (Ыңгайлуу жана так) */
-function startInlineTextEdit(obj) {
-  if (!obj || obj.locked) return;
-  state.editingTextId = obj.id;
-  const scr = worldToScreen(obj.x, obj.y);
-  const left = Math.max(12, Math.min(window.innerWidth - 260, scr.x));
-  const top = Math.max(64, Math.min(window.innerHeight - 160, scr.y));
-  textEditorBox.style.left = left + 'px';
-  textEditorBox.style.top = top + 'px';
-  textEditorBox.classList.add('show');
-
-  inlineEditor.style.width = Math.max(210, obj.w * state.zoom) + 'px';
-  inlineEditor.style.height = Math.max(68, obj.h * state.zoom) + 'px';
-  inlineEditor.style.fontFamily = obj.fontFamily || 'Inter, sans-serif';
-  inlineEditor.style.fontSize = Math.max(14, (obj.fontSize || 20) * state.zoom) + 'px';
-  inlineEditor.style.fontWeight = obj.bold ? '800' : '500';
-  inlineEditor.style.fontStyle = obj.italic ? 'italic' : 'normal';
-  inlineEditor.style.textDecoration = obj.underline ? 'underline' : 'none';
-  inlineEditor.style.textAlign = obj.align || 'left';
-  inlineEditor.style.color = obj.textColor || '#f8fafc';
-  inlineEditor.value = obj.text || '';
-  setTimeout(() => { inlineEditor.focus(); inlineEditor.select(); }, 10);
-}
-
-function commitInlineTextEdit() {
-  if (!state.editingTextId) return;
-  const obj = state.objects.find(o => o.id === state.editingTextId);
-  if (obj) {
-    obj.text = inlineEditor.value;
-    const lines = obj.text.split('\n');
-    const longest = Math.max(...lines.map(l => l.length), 6);
-    obj.w = Math.max(obj.w, Math.min(540, longest * ((obj.fontSize || 20) * 0.62) + 28));
-    obj.h = Math.max(obj.h, lines.length * ((obj.fontSize || 20) * 1.35) + 20);
-  }
-  textEditorBox.classList.remove('show');
-  state.editingTextId = null;
-  pushHistory();
-  refreshPropertiesPanel();
-}
-
-function cancelTextEdit() {
-  textEditorBox.classList.remove('show');
-  state.editingTextId = null;
-}
-
-function editSelectedText() {
-  const sel = getFirstSelected();
-  if (sel) startInlineTextEdit(sel);
-}
-
-inlineEditor.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    commitInlineTextEdit();
-  } else if (e.key === 'Escape') {
-    cancelTextEdit();
-  }
-});
-
-/* Pointer & Touch */
-function getObjById(id) { return state.objects.find(o => o.id === id); }
-function getFirstSelected() { const id = [...state.selectedIds][0]; return id ? getObjById(id) : null; }
-
-function selectOnly(id) {
-  state.selectedIds.clear();
-  if (id) state.selectedIds.add(id);
-  syncMediaOverlays();
-  refreshPropertiesPanel();
-}
-
-function clearSelection() {
-  commitInlineTextEdit();
-  state.selectedIds.clear();
-  syncMediaOverlays();
-  refreshPropertiesPanel();
-}
-
-function hitTestObject(wx, wy) {
-  for (let i = state.objects.length - 1; i >= 0; i--) {
-    const o = state.objects[i];
-    if (o.hidden || o.type === 'connector' || o.type === 'frame' || o.type === 'eraser') continue;
-    if (o.type === 'pen' && o.points && o.points.length > 1) {
-      for (let j = 0; j < o.points.length - 1; j++) {
-        if (pointToSegmentDist(wx, wy, o.points[j].x, o.points[j].y, o.points[j + 1].x, o.points[j + 1].y) < Math.max(10, (o.strokeWidth || 3) * 2)) {
-          return o;
-        }
-      }
-      continue;
-    }
-    if (wx >= o.x && wx <= o.x + o.w && wy >= o.y && wy <= o.y + o.h) return o;
-  }
-  for (let i = state.objects.length - 1; i >= 0; i--) {
-    const o = state.objects[i];
-    if (!o.hidden && o.type === 'frame' && wx >= o.x && wx <= o.x + o.w && wy >= o.y && wy <= o.y + o.h) return o;
-  }
-  return null;
-}
-
-function pointToSegmentDist(px, py, x1, y1, x2, y2) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  let t = lenSq ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
-}
-
-function getHandleAt(wx, wy, obj) {
-  if (!obj || obj.locked) return null;
-  const rotHandleX = obj.x + obj.w / 2;
-  const rotHandleY = obj.y - 26 / state.zoom;
-  if (Math.hypot(wx - rotHandleX, wy - rotHandleY) < 13 / state.zoom) return 'rotate';
-  const brX = obj.x + obj.w;
-  const brY = obj.y + obj.h;
-  if (Math.hypot(wx - brX, wy - brY) < 14 / state.zoom) return 'resize-br';
-  return null;
-}
-
-const activeTouches = new Map();
-
-canvas.addEventListener('pointerdown', (e) => {
-  closePopovers();
-  if (state.editingTextId) commitInlineTextEdit();
-  activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-  if (activeTouches.size === 2) {
-    const pts = [...activeTouches.values()];
-    state.isPinching = true;
-    state.isDraggingCanvas = false;
-    state.activeObjDrag = null;
-    state.pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    state.pinchStartZoom = state.zoom;
-    return;
-  }
-
-  const wPos = screenToWorld(e.clientX, e.clientY);
-
-  // Connector
-  if (state.tool === 'connector') {
-    const hit = hitTestObject(wPos.x, wPos.y);
-    if (hit) {
-      if (!state.connectorStartId) {
-        state.connectorStartId = hit.id;
-        selectOnly(hit.id);
-        showToast('Экинчи объектти басыңыз');
-      } else if (state.connectorStartId !== hit.id) {
-        state.objects.push(createBaseObj('connector', {
-          name: 'Connector', fromId: state.connectorStartId, toId: hit.id,
-          stroke: '#00e5ff', strokeWidth: 2.5, fill: 'transparent', w: 10, h: 10
-        }));
-        state.connectorStartId = null;
-        pushHistory();
-        setTool('select');
-        showToast('Байланыштырылды');
-      }
-    }
-    return;
-  }
-
-  // Текст жазуу: баскан жерге дароо түзөтүүчү текст түзөт
-  if (state.tool === 'text') {
-    const textObj = addObject(createBaseObj('text', {
-      name: 'Текст',
-      text: '',
-      x: wPos.x,
-      y: wPos.y,
-      w: 220,
-      h: 48,
-      fill: 'transparent',
-      stroke: 'transparent',
-      strokeWidth: 0,
-      fontSize: 22,
-      bold: false,
-      align: 'left'
-    }), true);
-    setTool('select');
-    startInlineTextEdit(textObj);
-    return;
-  }
-
-  // Калем же Өчүргүч: мышка/манжа менен тартуу
-  if (state.tool === 'pen' || state.tool === 'eraser') {
-    state.drawingStroke = {
-      id: uid(),
-      type: state.tool === 'eraser' ? 'eraser' : 'pen',
-      name: state.tool === 'eraser' ? 'Eraser' : 'Pen Stroke',
-      points: [wPos],
-      stroke: state.tool === 'eraser' ? '#030712' : state.penColor,
-      strokeWidth: state.tool === 'eraser' ? 26 : state.penWidth,
-      x: wPos.x, y: wPos.y, w: 10, h: 10,
-      opacity: 1, rotation: 0, fill: 'transparent',
-      _animStart: performance.now(),
-      locked: false, hidden: false
-    };
-    return;
-  }
-
-  if (state.tool === 'pan' || e.button === 1) {
-    state.isDraggingCanvas = true;
-    state.dragStartScreen = { x: e.clientX, y: e.clientY };
-    state.dragStartCam = { x: state.camX, y: state.camY };
-    return;
-  }
-
-  const firstSel = getFirstSelected();
-  if (firstSel && !firstSel.locked) {
-    const handle = getHandleAt(wPos.x, wPos.y, firstSel);
-    if (handle) {
-      state.activeObjDrag = { id: firstSel.id, mode: handle, startWorld: wPos, origObj: cloneBasic(firstSel) };
-      return;
-    }
-  }
-
-  const hit = hitTestObject(wPos.x, wPos.y);
-  if (hit) {
-    selectOnly(hit.id);
-    if (!hit.locked) {
-      state.activeObjDrag = { id: hit.id, mode: 'move', startWorld: wPos, origObj: cloneBasic(hit) };
-    }
-  } else {
-    clearSelection();
-    state.isDraggingCanvas = true;
-    state.dragStartScreen = { x: e.clientX, y: e.clientY };
-    state.dragStartCam = { x: state.camX, y: state.camY };
-  }
-});
-
-canvas.addEventListener('pointermove', (e) => {
-  if (activeTouches.has(e.pointerId)) activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-  if (state.isPinching && activeTouches.size === 2) {
-    const pts = [...activeTouches.values()];
-    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    const midX = (pts[0].x + pts[1].x) / 2;
-    const midY = (pts[0].y + pts[1].y) / 2;
-    zoomAtScreenPoint(clampZoom(state.pinchStartZoom * (dist / Math.max(10, state.pinchStartDist))), midX, midY);
-    return;
-  }
-
-  if (state.drawingStroke) {
-    state.drawingStroke.points.push(screenToWorld(e.clientX, e.clientY));
-    return;
-  }
-
-  if (state.activeObjDrag) {
-    const { id, mode, startWorld, origObj } = state.activeObjDrag;
-    const obj = getObjById(id);
-    if (!obj) return;
-    const curWorld = screenToWorld(e.clientX, e.clientY);
-    const dx = curWorld.x - startWorld.x;
-    const dy = curWorld.y - startWorld.y;
-
-    if (mode === 'move') {
-      obj.x = origObj.x + dx;
-      obj.y = origObj.y + dy;
-      if (obj.type === 'pen' && origObj.points) {
-        obj.points = origObj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
-      }
-    } else if (mode === 'resize-br') {
-      obj.w = Math.max(24, origObj.w + dx);
-      obj.h = Math.max(24, origObj.h + dy);
-    } else if (mode === 'rotate') {
-      const cx = obj.x + obj.w / 2;
-      const cy = obj.y + obj.h / 2;
-      obj.rotation = Math.round(Math.atan2(curWorld.y - cy, curWorld.x - cx) * (180 / Math.PI) + 90);
-    }
-    syncMediaOverlays();
-    refreshPropertiesInputsOnly();
-    return;
-  }
-
-  if (state.isDraggingCanvas) {
-    state.camX = state.dragStartCam.x + (e.clientX - state.dragStartScreen.x);
-    state.camY = state.dragStartCam.y + (e.clientY - state.dragStartScreen.y);
-    updateOverlayTransform();
-  }
-});
-
-function handlePointerUp(e) {
-  activeTouches.delete(e.pointerId);
-  if (activeTouches.size < 2) state.isPinching = false;
-
-  if (state.drawingStroke) {
-    const st = state.drawingStroke;
-    state.drawingStroke = null;
-    if (st.points.length > 1) {
-      state.objects.push(st);
-      pushHistory();
-    }
-    return;
-  }
-  if (state.activeObjDrag) {
-    state.activeObjDrag = null;
-    pushHistory();
-    return;
-  }
-  state.isDraggingCanvas = false;
-}
-
-canvas.addEventListener('pointerup', handlePointerUp);
-canvas.addEventListener('pointercancel', handlePointerUp);
-
-canvas.addEventListener('dblclick', (e) => {
-  const wPos = screenToWorld(e.clientX, e.clientY);
-  const hit = hitTestObject(wPos.x, wPos.y);
-  if (hit && ['text', 'sticky', 'mindnode', 'flownode', 'shape'].includes(hit.type)) {
-    selectOnly(hit.id);
-    startInlineTextEdit(hit);
-  }
-});
-
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
-  zoomAtScreenPoint(clampZoom(state.zoom * factor), e.clientX, e.clientY);
-}, { passive: false });
-
-function clampZoom(z) { return Math.max(state.minZoom, Math.min(state.maxZoom, z)); }
-
-function zoomAtScreenPoint(newZoom, sx, sy) {
-  const worldBefore = screenToWorld(sx, sy);
-  state.zoom = newZoom;
-  state.camX = sx - worldBefore.x * state.zoom;
-  state.camY = sy - worldBefore.y * state.zoom;
-  updateOverlayTransform();
-  updateZoomLabel();
-}
-
-function zoomBy(factor) { zoomAtScreenPoint(clampZoom(state.zoom * factor), canvas.clientWidth / 2, canvas.clientHeight / 2); }
-function updateZoomLabel() { document.getElementById('zoomPercent').textContent = Math.round(state.zoom * 100) + '%'; }
-
-function fitToScreen() {
-  const visible = state.objects.filter(o => !o.hidden);
-  if (!visible.length) {
-    state.zoom = 1; state.camX = canvas.clientWidth / 2; state.camY = canvas.clientHeight / 2;
-    updateOverlayTransform(); updateZoomLabel(); return;
-  }
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  visible.forEach(o => {
-    minX = Math.min(minX, o.x); minY = Math.min(minY, o.y);
-    maxX = Math.max(maxX, o.x + (o.w || 120)); maxY = Math.max(maxY, o.y + (o.h || 80));
-  });
-  const pad = 90;
-  state.zoom = clampZoom(Math.min((canvas.clientWidth - pad * 2) / Math.max(100, maxX - minX), (canvas.clientHeight - pad * 2) / Math.max(100, maxY - minY)));
-  state.camX = canvas.clientWidth / 2 - ((minX + maxX) / 2) * state.zoom;
-  state.camY = canvas.clientHeight / 2 - ((minY + maxY) / 2) * state.zoom;
-  updateOverlayTransform();
-  updateZoomLabel();
-}
-
-/* Properties & Layers */
-function refreshPropertiesPanel() {
-  const panel = document.getElementById('propertiesPanel');
-  const sel = getFirstSelected();
-  renderLayersList();
-  if (!sel) {
-    panel.classList.remove('visible');
-    document.getElementById('minimapBox').classList.remove('shifted');
-    return;
-  }
-  panel.classList.add('visible');
-  if (window.innerWidth > 900) document.getElementById('minimapBox').classList.add('shifted');
-  document.getElementById('propObjectTitle').textContent = sel.name || sel.type;
-  refreshPropertiesInputsOnly();
-}
-
-function refreshPropertiesInputsOnly() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  document.getElementById('propW').value = Math.round(sel.w || 100);
-  document.getElementById('propH').value = Math.round(sel.h || 100);
-  document.getElementById('propRot').value = Math.round(sel.rotation || 0);
-  const op = sel.opacity ?? 1;
-  document.getElementById('propOpacity').value = op;
-  document.getElementById('propOpacityVal').textContent = Math.round(op * 100) + '%';
-  if (sel.fill && sel.fill.startsWith('#')) document.getElementById('propFill').value = sel.fill;
-  if (sel.stroke && sel.stroke.startsWith('#')) document.getElementById('propStroke').value = sel.stroke;
-  document.getElementById('propStrokeW').value = sel.strokeWidth ?? 2;
-  document.getElementById('propFontFamily').value = sel.fontFamily || 'Inter, sans-serif';
-  document.getElementById('propFontSize').value = sel.fontSize || 20;
-  document.getElementById('btnBold').classList.toggle('active', !!sel.bold);
-  document.getElementById('btnItalic').classList.toggle('active', !!sel.italic);
-  document.getElementById('btnUnderline').classList.toggle('active', !!sel.underline);
-  document.getElementById('propAnimType').value = sel.animType || 'none';
-  document.getElementById('btnLockLayer').classList.toggle('active', !!sel.locked);
-  document.getElementById('btnHideLayer').classList.toggle('active', !!sel.hidden);
-}
-
-function updateSelectedFromInputs() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  sel.w = Math.max(20, Number(document.getElementById('propW').value) || sel.w);
-  sel.h = Math.max(20, Number(document.getElementById('propH').value) || sel.h);
-  sel.rotation = Number(document.getElementById('propRot').value) || 0;
-  sel.opacity = Number(document.getElementById('propOpacity').value);
-  document.getElementById('propOpacityVal').textContent = Math.round(sel.opacity * 100) + '%';
-  sel.fill = document.getElementById('propFill').value;
-  sel.stroke = document.getElementById('propStroke').value;
-  sel.strokeWidth = Number(document.getElementById('propStrokeW').value) || 0;
-  if (sel.type === 'pen') {
-    state.penColor = sel.stroke;
-    state.penWidth = sel.strokeWidth || 3.5;
-  }
-  sel.fontFamily = document.getElementById('propFontFamily').value;
-  sel.fontSize = Math.max(10, Number(document.getElementById('propFontSize').value) || 20);
-  sel.animType = document.getElementById('propAnimType').value;
-  syncMediaOverlays();
-  pushHistory();
-}
-
-function toggleTextStyle(prop) {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  sel[prop] = !sel[prop];
-  refreshPropertiesInputsOnly();
-  pushHistory();
-}
-
-function setTextAlign(align) {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  sel.align = align;
-  pushHistory();
-}
-
-function replayAnimationOnSelected() {
-  const sel = getFirstSelected();
-  if (sel) sel._animStart = performance.now();
-}
-
-function bringToFront() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  const i = state.objects.indexOf(sel);
-  if (i > -1) { state.objects.splice(i, 1); state.objects.push(sel); pushHistory(); renderLayersList(); }
-}
-
-function sendToBack() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  const i = state.objects.indexOf(sel);
-  if (i > -1) { state.objects.splice(i, 1); state.objects.unshift(sel); pushHistory(); renderLayersList(); }
-}
-
-function toggleLockSelected() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  sel.locked = !sel.locked;
-  refreshPropertiesInputsOnly();
-  pushHistory();
-}
-
-function toggleHideSelected() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  sel.hidden = !sel.hidden;
-  syncMediaOverlays();
-  refreshPropertiesInputsOnly();
-  pushHistory();
-}
-
-function renderLayersList() {
-  const container = document.getElementById('layersListContainer');
-  if (!container) return;
-  container.innerHTML = '';
-  [...state.objects].reverse().slice(0, 25).forEach(o => {
-    const row = document.createElement('div');
-    row.className = 'layer-item' + (state.selectedIds.has(o.id) ? ' active' : '');
-    row.innerHTML = `<span class="layer-item-title">${escapeHtml(o.name || o.type)}</span><span class="layer-item-actions"><button onclick="toggleObjLockById('${o.id}')"><i class="fa-solid ${o.locked ? 'fa-lock' : 'fa-lock-open'}"></i></button><button onclick="toggleObjHideById('${o.id}')"><i class="fa-solid ${o.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button></span>`;
-    row.querySelector('.layer-item-title').onclick = () => selectOnly(o.id);
-    container.appendChild(row);
-  });
-}
-
-function toggleObjLockById(id) { const o = getObjById(id); if (o) { o.locked = !o.locked; refreshPropertiesPanel(); pushHistory(); } }
-function toggleObjHideById(id) { const o = getObjById(id); if (o) { o.hidden = !o.hidden; syncMediaOverlays(); refreshPropertiesPanel(); pushHistory(); } }
-
-function duplicateSelected() {
-  const sel = getFirstSelected();
-  if (!sel) return;
-  const copy = cloneBasic(sel);
-  copy.id = uid();
-  copy.name = (sel.name || sel.type) + ' (copy)';
-  copy.x += 28; copy.y += 28;
-  if (copy.points) copy.points = copy.points.map(p => ({ x: p.x + 28, y: p.y + 28 }));
-  addObject(copy);
-}
-
-function deleteSelected() {
-  if (!state.selectedIds.size) return;
-  state.objects = state.objects.filter(o => !state.selectedIds.has(o.id) && !state.selectedIds.has(o.fromId) && !state.selectedIds.has(o.toId));
-  state.selectedIds.clear();
-  syncMediaOverlays();
-  refreshPropertiesPanel();
-  pushHistory();
-}
-
-function cloneBasic(o) { return JSON.parse(JSON.stringify(stripRuntimeProps(o))); }
-
-/* Presentation & Cinema */
-function getFrames() { return state.objects.filter(o => o.type === 'frame' && !o.hidden); }
-
-function startPresentationMode() {
-  const frames = getFrames();
-  if (!frames.length) { showToast('Алгач "Frame" түзүңүз'); return; }
-  state.presentationMode = true;
-  state.presentationIndex = 0;
-  document.getElementById('presentation-hud').classList.add('show');
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
-  focusFrame(frames[0], 0, frames.length);
-}
-
-function stopPresentationMode() {
-  state.presentationMode = false; state.cinemaMode = false; state.cinemaTarget = null;
-  document.getElementById('presentation-hud').classList.remove('show');
-  document.getElementById('cinemaBtn').classList.remove('active');
-  document.getElementById('cinemaAutoBtn').classList.remove('active');
-}
-
-function nextFrameSlide() {
-  const frames = getFrames();
-  if (!frames.length) return;
-  state.presentationIndex = (state.presentationIndex + 1) % frames.length;
-  focusFrame(frames[state.presentationIndex], state.presentationIndex, frames.length);
-}
-
-function prevFrameSlide() {
-  const frames = getFrames();
-  if (!frames.length) return;
-  state.presentationIndex = (state.presentationIndex - 1 + frames.length) % frames.length;
-  focusFrame(frames[state.presentationIndex], state.presentationIndex, frames.length);
-}
-
-function focusFrame(frame, idx, total) {
-  document.getElementById('slideCounter').textContent = `Frame ${idx + 1} / ${total}`;
-  const targetZoom = clampZoom(Math.min((canvas.clientWidth * 0.82) / Math.max(100, frame.w), (canvas.clientHeight * 0.82) / Math.max(100, frame.h)));
-  const cx = frame.x + frame.w / 2, cy = frame.y + frame.h / 2;
-  state.cinemaTarget = { zoom: targetZoom, camX: canvas.clientWidth / 2 - cx * targetZoom, camY: canvas.clientHeight / 2 - cy * targetZoom };
-}
-
-function toggleCinemaMode() {
-  state.cinemaMode = !state.cinemaMode;
-  document.getElementById('cinemaBtn').classList.toggle('active', state.cinemaMode);
-  document.getElementById('cinemaAutoBtn').classList.toggle('active', state.cinemaMode);
-  if (state.cinemaMode) document.getElementById('presentation-hud').classList.add('show');
-  else if (!state.presentationMode) document.getElementById('presentation-hud').classList.remove('show');
-}
-
-/* AI Assistant */
-function aiGenerateMindMap() {
-  const topic = (document.getElementById('aiTopicInput').value || 'Ньютондун закондору').trim();
-  closePopovers(); pushHistory();
-  const c = getViewportCenterWorld();
-  const root = createBaseObj('mindnode', { name: topic, text: topic, x: c.x - 100, y: c.y - 36, w: 200, h: 72, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true });
-  state.objects.push(root);
-  const branches = ['Негизги түшүнүк', 'Формула & Бирдик', 'Турмуштагы мисал', 'Маселе чыгаруу'];
-  branches.forEach((b, i) => {
-    const ang = -Math.PI / 2 + (i / (branches.length - 1)) * Math.PI;
-    const node = createBaseObj('mindnode', { name: b, text: b, x: root.x + Math.cos(ang) * 240, y: root.y + Math.sin(ang) * 165, w: 170, h: 62, fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', parentId: root.id });
-    state.objects.push(node, createBaseObj('connector', { fromId: root.id, toId: node.id, stroke: '#ec4899', strokeWidth: 2, fill: 'transparent', w: 10, h: 10 }));
-  });
-  selectOnly(root.id);
-  showToast(`AI Mind Map: "${topic}"`);
-}
-
-function aiGenerateLessonPlan() {
-  const topic = (document.getElementById('aiTopicInput').value || 'Гравитация').trim();
-  closePopovers(); pushHistory();
-  const c = getViewportCenterWorld();
-  const steps = [
-    { title: '1. Киришүү', color: '#facc15' },
-    { title: `2. Тема: ${topic}`, color: '#38bdf8' },
-    { title: '3. Практика', color: '#4ade80' },
-    { title: '4. Жыйынтык', color: '#f472b6' }
-  ];
-  steps.forEach((s, idx) => {
-    state.objects.push(createBaseObj('sticky', { name: s.title, text: s.title, x: c.x - 430 + idx * 220, y: c.y - 95, w: 195, h: 190, fill: s.color, stroke: 'rgba(255,255,255,0.25)', textColor: '#0f172a', fontSize: 16, bold: true }));
-  });
-  showToast('AI Сабак картасы кошулду');
-}
-
-function aiAutoCluster() {
-  closePopovers();
-  const stickies = state.objects.filter(o => o.type === 'sticky');
-  if (!stickies.length) { showToast('Стикерлер табылган жок'); return; }
-  pushHistory();
-  const c = getViewportCenterWorld();
-  const cols = Math.ceil(Math.sqrt(stickies.length));
-  stickies.forEach((s, i) => {
-    s.x = c.x - (cols * 210) / 2 + (i % cols) * 215;
-    s.y = c.y - 100 + Math.floor(i / cols) * 215;
-  });
-  showToast('Стикерлер иреттелди');
-}
-
-/* Save / Autosave / Export / Import */
-function getProjectPayload() {
-  return {
-    version: 1,
-    name: (document.getElementById('projectNameInput').value || 'Аталышсыз проект').trim(),
-    updatedAt: new Date().toISOString(),
-    camX: state.camX, camY: state.camY, zoom: state.zoom,
-    objects: state.objects.map(stripRuntimeProps)
-  };
-}
-
-function saveProjectManual() {
-  const payload = getProjectPayload();
-  const list = getSavedProjectsList();
-  const idx = list.findIndex(p => p.name === payload.name);
-  if (idx > -1) list[idx] = payload; else list.unshift(payload);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 30)));
-  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
-  document.getElementById('autosaveText').textContent = 'Сакталды ✓';
-  showToast(`"${payload.name}" сакталды`);
-}
-
-function getSavedProjectsList() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (_) { return []; }
-}
-
-function openProjectsModal() {
-  const list = getSavedProjectsList();
-  const box = document.getElementById('savedProjectsList');
-  box.innerHTML = list.length ? '' : '<p style="font-size:12px;color:#94a3b8">Сакталган проекттер жок.</p>';
-  list.forEach((proj, idx) => {
-    const row = document.createElement('div');
-    row.className = 'project-item';
-    row.innerHTML = `<div class="project-item-meta"><strong style="font-size:13px">${escapeHtml(proj.name)}</strong><small>${new Date(proj.updatedAt).toLocaleString()} · ${(proj.objects || []).length} объект</small></div><div style="display:flex;gap:6px"><button class="hud-btn accent" onclick="loadSavedProjectByIndex(${idx})">Ачуу</button><button class="hud-btn" onclick="deleteSavedProjectByIndex(${idx})"><i class="fa-solid fa-trash"></i></button></div>`;
-    box.appendChild(row);
-  });
-  document.getElementById('projectsModal').classList.add('show');
-}
-
-function loadSavedProjectByIndex(idx) { const p = getSavedProjectsList()[idx]; if (p) { applyProjectPayload(p); closeModal('projectsModal'); showToast(`"${p.name}" ачылды`); } }
-function deleteSavedProjectByIndex(idx) { const l = getSavedProjectsList(); l.splice(idx, 1); localStorage.setItem(STORAGE_KEY, JSON.stringify(l)); openProjectsModal(); }
-
-function applyProjectPayload(proj) {
-  if (proj.name) document.getElementById('projectNameInput').value = proj.name;
-  state.camX = proj.camX ?? canvas.clientWidth / 2;
-  state.camY = proj.camY ?? canvas.clientHeight / 2;
-  state.zoom = proj.zoom ?? 1;
-  loadObjectsArray(proj.objects || [], true);
-  updateOverlayTransform();
-  updateZoomLabel();
-}
-
-setInterval(() => {
-  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(getProjectPayload()));
-  document.getElementById('autosaveText').textContent = 'Auto ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}, 30000);
-
-function exportJSON() {
-  const payload = getProjectPayload();
-  downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }), `${slugify(payload.name)}.json`);
-  showToast('JSON экспорттолду');
-}
-
-function importJSON(event) {
-  const file = event.target.files && event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try { applyProjectPayload(JSON.parse(e.target.result)); showToast('JSON импорттолду'); }
-    catch (_) { showToast('JSON форматы туура эмес'); }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
-function exportImage(format = 'png') {
-  const name = slugify(document.getElementById('projectNameInput').value || 'board');
-  canvas.toBlob((blob) => {
-    if (blob) downloadBlob(blob, `${name}.${format === 'jpeg' ? 'jpg' : 'png'}`);
-    showToast(`${format.toUpperCase()} жүктөлдү`);
-  }, format === 'jpeg' ? 'image/jpeg' : 'image/png', 0.94);
-}
-
-function exportPDF() {
-  if (!window.jspdf || !window.jspdf.jsPDF) { showToast('PDF китепканасы жок'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
-  doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, canvas.width, canvas.height);
-  doc.save(`${slugify(document.getElementById('projectNameInput').value || 'board')}.pdf`);
-  showToast('PDF сакталды');
-}
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
-}
-
-/* UI & Hotkeys */
-function setTool(tool) {
-  state.tool = tool;
-  if (tool !== 'connector') state.connectorStartId = null;
-  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
-  if (tool === 'pen') canvas.style.cursor = 'crosshair';
-  else if (tool === 'eraser') canvas.style.cursor = 'cell';
-  else if (tool === 'text') canvas.style.cursor = 'text';
-  else if (tool === 'pan') canvas.style.cursor = 'grab';
-  else canvas.style.cursor = 'default';
-}
-
-function togglePinDock() {
-  state.dockPinned = !state.dockPinned;
-  document.getElementById('leftDock').classList.toggle('pinned', state.dockPinned);
-  document.getElementById('pinDockBtn').classList.toggle('active', state.dockPinned);
-}
-
-function togglePopover(id) {
-  const el = document.getElementById(id);
-  const wasShown = el.classList.contains('show');
-  closePopovers();
-  if (!wasShown) el.classList.add('show');
-}
-
-function closePopovers() { document.querySelectorAll('.sub-popover').forEach(p => p.classList.remove('show')); }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
-function toggleMinimap() {
-  const hidden = document.getElementById('minimapBox').classList.toggle('hidden');
-  document.getElementById('minimapToggleBtn').classList.toggle('active', !hidden);
-}
-function toggleFullScreen() {
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
-  else document.exitFullscreen?.().catch(() => {});
-}
-
-let draggingMinimap = false;
-minimapCanvas.addEventListener('pointerdown', (e) => { draggingMinimap = true; moveCameraFromMinimap(e); });
-window.addEventListener('pointermove', (e) => { if (draggingMinimap) moveCameraFromMinimap(e); });
-window.addEventListener('pointerup', () => { draggingMinimap = false; });
-
-function moveCameraFromMinimap(e) {
-  const rect = minimapCanvas.getBoundingClientRect();
-  const wx = ((e.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 3000;
-  const wy = ((e.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 3000;
-  state.camX = canvas.clientWidth / 2 - wx * state.zoom;
-  state.camY = canvas.clientHeight / 2 - wy * state.zoom;
-  updateOverlayTransform();
-}
-
-window.addEventListener('keydown', (e) => {
-  const tag = document.activeElement && document.activeElement.tagName;
-  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!state.editingTextId;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveProjectManual(); return; }
-  if (isTyping) return;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
-  else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) { e.preventDefault(); redo(); }
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') { const sel = getFirstSelected(); if (sel) { state.clipboard = [cloneBasic(sel)]; showToast('Көчүрүлдү'); } }
-  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') { if (state.clipboard.length) { const p = cloneBasic(state.clipboard[0]); p.id = uid(); p.x += 36; p.y += 36; addObject(p); showToast('Чапталды'); } }
-  else if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
-  else if (e.key === 'Escape') { closePopovers(); clearSelection(); }
-});
-
-/* Render Loop */
-function resizeCanvas() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = window.innerWidth, h = window.innerHeight;
-  canvas.width = Math.floor(w * dpr); canvas.height = Math.floor(h * dpr);
-  canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const mw = minimapCanvas.parentElement.clientWidth || 168;
-  const mh = minimapCanvas.parentElement.clientHeight || 112;
-  minimapCanvas.width = Math.floor(mw * dpr); minimapCanvas.height = Math.floor(mh * dpr);
-  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-}
-window.addEventListener('resize', resizeCanvas);
-
-function drawGrid(vw, vh) {
-  const step = 48 * state.zoom;
-  if (step < 8) return;
-  const offsetX = ((state.camX % step) + step) % step;
-  const offsetY = ((state.camY % step) + step) % step;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.065)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let x = offsetX; x < vw; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, vh); }
-  for (let y = offsetY; y < vh; y += step) { ctx.moveTo(0, y); ctx.lineTo(vw, y); }
-  ctx.stroke();
-  ctx.restore();
-}
-
-function computeAnimTransform(obj, now) {
-  const type = obj.animType || 'none';
-  if (type === 'none') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: 0 };
-  const t = Math.min(1, Math.max(0, (now - (obj._animStart || now)) / 1000) / 0.75);
-  const ease = 1 - Math.pow(1 - t, 3);
-  if (type === 'fade') return { alpha: (obj.opacity ?? 1) * ease, dx: 0, dy: 0, scale: 1, extraRot: 0 };
-  if (type === 'slide') return { alpha: obj.opacity ?? 1, dx: (1 - ease) * -60, dy: (1 - ease) * 24, scale: 1, extraRot: 0 };
-  if (type === 'zoom') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 0.4 + 0.6 * ease, extraRot: 0 };
-  if (type === 'bounce') return { alpha: obj.opacity ?? 1, dx: 0, dy: -(t < 1 ? Math.abs(Math.sin(t * Math.PI * 2.5)) * (1 - t) * 24 : 0), scale: 1, extraRot: 0 };
-  if (type === 'rotate') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: (1 - ease) * 45 };
-  return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: 0 };
-}
-
-function renderFrame(now) {
-  requestAnimationFrame(renderFrame);
-  const dt = Math.min(0.05, (now - state.lastFrameTime) / 1000);
-  state.lastFrameTime = now;
-
-  if (state.cinemaMode) {
-    state.cinemaTime += dt * 0.45;
-    const frames = getFrames();
-    if (frames.length) {
-      const fIdx = Math.floor(state.cinemaTime) % frames.length;
-      if (fIdx !== state.presentationIndex) { state.presentationIndex = fIdx; focusFrame(frames[fIdx], fIdx, frames.length); }
-    } else {
-      const targetZoom = 0.85 + Math.sin(state.cinemaTime * 0.7) * 0.25;
-      const wx = Math.cos(state.cinemaTime * 0.5) * 240, wy = Math.sin(state.cinemaTime * 0.4) * 150;
-      state.cinemaTarget = { zoom: targetZoom, camX: canvas.clientWidth / 2 - wx * targetZoom, camY: canvas.clientHeight / 2 - wy * targetZoom };
-    }
-  }
-
-  if (state.cinemaTarget) {
-    state.camX += (state.cinemaTarget.camX - state.camX) * 0.06;
-    state.camY += (state.cinemaTarget.camY - state.camY) * 0.06;
-    state.zoom += (state.cinemaTarget.zoom - state.zoom) * 0.06;
-    updateOverlayTransform();
-    updateZoomLabel();
-    if (Math.abs(state.cinemaTarget.camX - state.camX) < 0.4 && Math.abs(state.cinemaTarget.zoom - state.zoom) < 0.002 && !state.cinemaMode) {
-      state.cinemaTarget = null;
-    }
-  }
-
-  const vw = canvas.clientWidth, vh = canvas.clientHeight;
-  ctx.fillStyle = '#030712';
-  ctx.fillRect(0, 0, vw, vh);
-  drawGrid(vw, vh);
-
-  const viewMinX = -state.camX / state.zoom - 300;
-  const viewMinY = -state.camY / state.zoom - 300;
-  const viewMaxX = (vw - state.camX) / state.zoom + 300;
-  const viewMaxY = (vh - state.camY) / state.zoom + 300;
-
-  ctx.save();
-  ctx.translate(state.camX, state.camY);
-  ctx.scale(state.zoom, state.zoom);
-
-  for (let i = 0; i < state.objects.length; i++) {
-    const o = state.objects[i];
-    if (o.type !== 'frame' || o.hidden) continue;
-    if (o.x + o.w < viewMinX || o.x > viewMaxX || o.y + o.h < viewMinY || o.y > viewMaxY) continue;
-    drawFrameObj(o, now);
-  }
-
-  for (let i = 0; i < state.objects.length; i++) {
-    const o = state.objects[i];
-    if (o.type === 'connector' && !o.hidden) drawConnectorObj(o);
-  }
-
-  for (let i = 0; i < state.objects.length; i++) {
-    const o = state.objects[i];
-    if (o.hidden || o.type === 'frame' || o.type === 'connector' || ['video', 'audio', 'pdf'].includes(o.type)) continue;
-    if (o.type === 'pen' || o.type === 'eraser') { drawStrokeObj(o); continue; }
-    if (o.x + (o.w || 100) < viewMinX || o.x > viewMaxX || o.y + (o.h || 100) < viewMinY || o.y > viewMaxY) continue;
-    drawStandardObj(o, now);
-  }
-
-  if (state.drawingStroke) drawStrokeObj(state.drawingStroke);
-
-  const firstSel = getFirstSelected();
-  if (firstSel && !firstSel.hidden && firstSel.type !== 'pen' && firstSel.type !== 'connector') {
-    drawSelectionHandles(firstSel);
-  }
-
-  ctx.restore();
-  drawMinimap(vw, vh);
-}
-
-function drawFrameObj(o, now) {
-  const anim = computeAnimTransform(o, now);
-  ctx.save();
-  ctx.globalAlpha = anim.alpha;
-  ctx.translate(o.x + anim.dx, o.y + anim.dy);
-  ctx.fillStyle = o.fill || 'rgba(12,26,56,0.25)';
-  ctx.strokeStyle = state.selectedIds.has(o.id) ? '#00e5ff' : (o.stroke || '#ec4899');
-  ctx.lineWidth = state.selectedIds.has(o.id) ? 3 : (o.strokeWidth || 2);
-  roundRectPath(ctx, 0, 0, o.w, o.h, 16);
-  ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#f9a8d4';
-  ctx.font = '700 13px Inter, sans-serif';
-  ctx.fillText(o.text || o.name || 'Frame', 14, -8);
-  ctx.restore();
-}
-
-function drawConnectorObj(o) {
-  const a = getObjById(o.fromId), b = getObjById(o.toId);
-  if (!a || !b || a.hidden || b.hidden) return;
-  const x1 = a.x + a.w / 2, y1 = a.y + a.h / 2, x2 = b.x + b.w / 2, y2 = b.y + b.h / 2;
-  const ang = Math.atan2(y2 - y1, x2 - x1);
-  ctx.save();
-  ctx.strokeStyle = o.stroke || '#00e5ff';
-  ctx.fillStyle = o.stroke || '#00e5ff';
-  ctx.lineWidth = o.strokeWidth || 2.5;
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - 13 * Math.cos(ang - Math.PI / 6), y2 - 13 * Math.sin(ang - Math.PI / 6));
-  ctx.lineTo(x2 - 13 * Math.cos(ang + Math.PI / 6), y2 - 13 * Math.sin(ang + Math.PI / 6));
-  ctx.closePath(); ctx.fill();
-  ctx.restore();
-}
-
-function drawStrokeObj(o) {
-  if (!o.points || o.points.length < 2) return;
-  ctx.save();
-  ctx.strokeStyle = o.stroke || '#00e5ff';
-  ctx.lineWidth = o.strokeWidth || 3.5;
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(o.points[0].x, o.points[0].y);
-  for (let i = 1; i < o.points.length; i++) ctx.lineTo(o.points[i].x, o.points[i].y);
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawStandardObj(o, now) {
-  const anim = computeAnimTransform(o, now);
-  const cx = o.x + o.w / 2 + anim.dx, cy = o.y + o.h / 2 + anim.dy;
-  ctx.save();
-  ctx.globalAlpha = anim.alpha;
-  ctx.translate(cx, cy);
-  ctx.rotate(((o.rotation || 0) + anim.extraRot) * Math.PI / 180);
-  ctx.scale(anim.scale, anim.scale);
-
-  const hw = o.w / 2, hh = o.h / 2;
-  ctx.strokeStyle = o.stroke || '#00e5ff';
-  ctx.lineWidth = o.strokeWidth ?? 2;
-
-  if (o.type === 'image' && o.src) {
-    const cached = state.imageCache.get(o.src);
-    if (cached && cached.complete && cached.naturalWidth) ctx.drawImage(cached, -hw, -hh, o.w, o.h);
-    else loadImageCached(o.src);
-  } else if (o.type === 'table') {
-    ctx.fillStyle = o.fill || 'rgba(10,22,48,0.92)';
-    roundRectPath(ctx, -hw, -hh, o.w, o.h, 10);
-    ctx.fill(); ctx.stroke();
-    const rows = o.rows || [['A', 'B'], ['1', '2']];
-    const rCount = rows.length, cCount = Math.max(1, rows[0].length);
-    const cellW = o.w / cCount, cellH = o.h / rCount;
-    ctx.font = '600 12px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    for (let r = 0; r < rCount; r++) {
-      for (let c = 0; c < cCount; c++) {
-        const x0 = -hw + c * cellW, y0 = -hh + r * cellH;
-        if (r === 0) { ctx.fillStyle = 'rgba(0,229,255,0.18)'; ctx.fillRect(x0, y0, cellW, cellH); }
-        ctx.strokeRect(x0, y0, cellW, cellH);
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillText(String(rows[r][c] ?? ''), x0 + cellW / 2, y0 + cellH / 2);
-      }
-    }
-  } else if (o.type === 'shape' && o.shapeKind === 'circle') {
-    ctx.fillStyle = o.fill || 'transparent';
-    ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2); ctx.fill();
-    if (o.strokeWidth > 0) ctx.stroke();
-  } else if ((o.type === 'shape' && o.shapeKind === 'diamond') || (o.type === 'flownode' && o.flowShape === 'diamond')) {
-    ctx.fillStyle = o.fill || 'transparent';
-    ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(hw, 0); ctx.lineTo(0, hh); ctx.lineTo(-hw, 0); ctx.closePath(); ctx.fill();
-    if (o.strokeWidth > 0) ctx.stroke();
-  } else if (o.type === 'shape' && o.shapeKind === 'triangle') {
-    ctx.fillStyle = o.fill || 'transparent';
-    ctx.beginPath(); ctx.moveTo(0, -hh); ctx.lineTo(hw, hh); ctx.lineTo(-hw, hh); ctx.closePath(); ctx.fill();
-    if (o.strokeWidth > 0) ctx.stroke();
-  } else if (o.type === 'shape' && o.shapeKind === 'line') {
-    ctx.beginPath(); ctx.moveTo(-hw, 0); ctx.lineTo(hw, 0); ctx.stroke();
-  } else if (o.type === 'shape' && o.shapeKind === 'arrow') {
-    ctx.fillStyle = o.fill || 'transparent';
-    ctx.beginPath();
-    ctx.moveTo(-hw, -hh * 0.35); ctx.lineTo(hw * 0.35, -hh * 0.35); ctx.lineTo(hw * 0.35, -hh);
-    ctx.lineTo(hw, 0); ctx.lineTo(hw * 0.35, hh); ctx.lineTo(hw * 0.35, hh * 0.35); ctx.lineTo(-hw, hh * 0.35);
-    ctx.closePath(); ctx.fill();
-    if (o.strokeWidth > 0) ctx.stroke();
-  } else if (o.type !== 'text') {
-    ctx.fillStyle = o.fill || '#0b2246';
-    roundRectPath(ctx, -hw, -hh, o.w, o.h, o.type === 'mindnode' ? 22 : o.type === 'sticky' ? 14 : 10);
-    ctx.fill();
-    if (o.strokeWidth > 0) ctx.stroke();
-  }
-
-  if (o.text && o.type !== 'table') {
-    const fSize = o.fontSize || 20;
-    ctx.font = `${o.italic ? 'italic' : 'normal'} ${o.bold ? '800' : '500'} ${fSize}px ${o.fontFamily || 'Inter, sans-serif'}`;
-    ctx.fillStyle = o.textColor || '#f8fafc';
-    ctx.textAlign = o.align || 'center';
-    ctx.textBaseline = 'middle';
-    const lines = String(o.text).split('\n');
-    const lineH = fSize * 1.3;
-    const startY = -((lines.length - 1) * lineH) / 2;
-    const tx = o.align === 'left' ? -hw + 10 : o.align === 'right' ? hw - 10 : 0;
-    lines.forEach((line, idx) => {
-      const ly = startY + idx * lineH;
-      ctx.fillText(line, tx, ly);
-      if (o.underline) {
-        const w = ctx.measureText(line).width;
-        const ux = o.align === 'center' ? tx - w / 2 : o.align === 'right' ? tx - w : tx;
-        ctx.fillRect(ux, ly + fSize * 0.45, w, Math.max(1.5, fSize * 0.07));
-      }
-    });
-  }
-
-  ctx.restore();
-}
-
-function drawSelectionHandles(o) {
-  ctx.save();
-  ctx.strokeStyle = '#00e5ff';
-  ctx.lineWidth = 1.5 / state.zoom;
-  ctx.setLineDash([5 / state.zoom, 4 / state.zoom]);
-  ctx.strokeRect(o.x, o.y, o.w, o.h);
-  ctx.setLineDash([]);
-
-  const cx = o.x + o.w / 2, ry = o.y - 26 / state.zoom;
-  ctx.beginPath(); ctx.moveTo(cx, o.y); ctx.lineTo(cx, ry); ctx.stroke();
-  ctx.fillStyle = '#ec4899';
-  ctx.beginPath(); ctx.arc(cx, ry, 6 / state.zoom, 0, Math.PI * 2); ctx.fill();
-
-  ctx.fillStyle = '#00e5ff';
-  const hs = 9 / state.zoom;
-  ctx.fillRect(o.x + o.w - hs / 2, o.y + o.h - hs / 2, hs, hs);
-  ctx.restore();
-}
-
-function roundRectPath(c, x, y, w, h, r) {
-  const rad = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
-  c.beginPath();
-  c.moveTo(x + rad, y);
-  c.arcTo(x + w, y, x + w, y + h, rad);
-  c.arcTo(x + w, y + h, x, y + h, rad);
-  c.arcTo(x, y + h, x, y, rad);
-  c.arcTo(x, y, x + w, y, rad);
-  c.closePath();
-}
-
-function drawMinimap(vw, vh) {
-  const box = document.getElementById('minimapBox');
-  if (box.classList.contains('hidden')) return;
-  const mw = minimapCanvas.clientWidth || 168, mh = minimapCanvas.clientHeight || 112;
-  const span = 3000, scaleX = mw / span, scaleY = mh / span;
-  mctx.fillStyle = '#040a18';
-  mctx.fillRect(0, 0, mw, mh);
-  for (let i = 0; i < state.objects.length; i++) {
-    const o = state.objects[i];
-    if (o.hidden || o.type === 'connector') continue;
-    const mx = (o.x + (o.w || 40) / 2 + span / 2) * scaleX;
-    const my = (o.y + (o.h || 40) / 2 + span / 2) * scaleY;
-    mctx.fillStyle = o.type === 'frame' ? '#ec4899' : '#00e5ff';
-    mctx.fillRect(mx - 2, my - 2, Math.max(3, (o.w || 30) * scaleX), Math.max(3, (o.h || 20) * scaleY));
-  }
-  const tl = screenToWorld(0, 0), br = screenToWorld(vw, vh);
-  mctx.strokeStyle = '#ffbd58';
-  mctx.lineWidth = 1.5;
-  mctx.strokeRect((tl.x + span / 2) * scaleX, (tl.y + span / 2) * scaleY, (br.x - tl.x) * scaleX, (br.y - tl.y) * scaleY);
-}
-
-function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function slugify(s) { return String(s || 'board').trim().toLowerCase().replace(/[^a-zа-яөүң0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'bilimal-board'; }
-
-window.addEventListener('load', () => {
-  resizeCanvas();
-  state.camX = canvas.clientWidth / 2;
-  state.camY = canvas.clientHeight / 2;
-  updateOverlayTransform();
-  updateZoomLabel();
-
-  let loadedAuto = false;
-  try {
-    const rawAuto = localStorage.getItem(AUTOSAVE_KEY);
-    if (rawAuto) {
-      const parsed = JSON.parse(rawAuto);
-      if (parsed && Array.isArray(parsed.objects) && parsed.objects.length) {
-        applyProjectPayload(parsed);
-        loadedAuto = true;
-      }
-    }
-  } catch (_) {}
-
-  if (!loadedAuto) {
-    state.objects = [
-      createBaseObj('frame', { name: 'Frame 1: Киришүү', text: 'Frame 1: Физика 7-класс', x: -380, y: -220, w: 760, h: 440, stroke: '#ec4899' }),
-      createBaseObj('mindnode', { name: 'Кыймыл жана Күч', text: 'Кыймыл жана Күч', x: -110, y: -45, w: 220, h: 76, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true }),
-      createBaseObj('sticky', { name: 'Эскертме', text: 'v = s / t\nЫлдамдык формуласы', x: -320, y: 60, w: 185, h: 130, fill: '#facc15', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, bold: true }),
-      createBaseObj('sticky', { name: 'Гравитация', text: 'F = G·(m₁m₂)/r²\nТартылуу күчү', x: 135, y: 60, w: 185, h: 130, fill: '#38bdf8', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, bold: true })
-    ];
-    pushHistory();
-  }
-
-  requestAnimationFrame(renderFrame);
-});
+let spacePressed=false;window.addEventListener("keydown",e=>{if(e.code==="Space"&&!isTyping()){spacePressed=true;viewport.style.cursor="grab";e.preventDefault()}});window.addEventListener("keyup",e=>{if(e.code==="Space"){spacePressed=false;viewport.style.cursor=""}});
+viewport.addEventListener("pointermove",e=>{if(pan){state.panX=pan.px+(e.clientX-pan.x);state.panY=pan.py+(e.clientY-pan.y);updateView()}});viewport.addEventListener("pointerup",()=>{pan=null;viewport.classList.remove("panning")});
+viewport.addEventListener("wheel",e=>{e.preventDefault();let old=state.scale,delta=e.deltaY<0?1.1:.9;let ns=Math.max(.12,Math.min(4,old*delta));let r=viewport.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;state.panX=cx-(cx-state.panX)*(ns/old);state.panY=cy-(cy-state.panY)*(ns/old);state.scale=ns;updateView()},{passive:false});
+function setTool(t){state.tool=t;document.querySelectorAll(".tool-btn[data-tool]").forEach(b=>b.classList.toggle("active",b.dataset.tool===t));$("#status").textContent=t==="select"?"Select · Space + drag to pan · Double-click text to edit":`Tool: ${t} · Click on canvas to place`;}
+document.querySelectorAll(".tool-btn[data-tool]").forEach(b=>b.addEventListener("click",()=>{let t=b.dataset.tool;if(["image","pdf","video","audio"].includes(t)){state.tool=t;openFiles(t);return}if(t==="record"){startAudioRecord();return}if(t==="cinema"){cinemaMode();return}setTool(t)}));
+$("#pinTools").onclick=()=>{state.pinned=!state.pinned;$("#toolRail").classList.toggle("pinned",state.pinned);toast(state.pinned?"Toolbar pinned":"Toolbar auto-hide")};
+function openShapeDialog(p){modal("Choose shape",`<label>Shape</label><select id="shapeChoice">${["rectangle","circle","diamond","triangle","hexagon","arrow","line"].map(s=>`<option>${s}</option>`).join("")}</select><label>Text (optional)</label><input id="shapeText" placeholder="Shape label">`,()=>{createObj("shape",p.x,p.y,{w:150,h:110,shape:$("#shapeChoice").value,text:$("#shapeText").value,fill:"#ffffffaa",color:"#172033"});setTool("select")})}
+function modal(title,body,onOk){let m=$("#modal");$("#modalTitle").textContent=title;$("#modalBody").innerHTML=body;m.classList.add("show");$("#modalOK").onclick=()=>{m.classList.remove("show");onOk?.()};$("#modalCancel").onclick=()=>m.classList.remove("show")}
+function openFiles(type){let input=$("#fileInput");input.accept=type==="image"?"image/*":type==="pdf"?"application/pdf":type==="video"?"video/*":type==="audio"?"audio/*":"*/*";input.onchange=()=>{Array.from(input.files||[]).forEach(f=>readFileForObject(f,type));input.value=""};input.click()}
+function readFileForObject(f,type){let reader=new FileReader();reader.onload=()=>{let p=screenToWorld(viewport.clientWidth/2,viewport.clientHeight/2);let obj=createObj(type,p.x,p.y,{w:type==="image"?300:360,h:type==="image"?220:240,name:f.name,content:reader.result});if(type==="image")obj.alt=f.name};reader.readAsDataURL(f)}
+function addYouTube(){modal("Add video",`<label>YouTube URL or embed URL</label><input id="youtubeURL" placeholder="https://youtube.com/watch?v=...">`,()=>{let url=$("#youtubeURL").value.trim();if(!url)return;let id=extractYoutube(url);let src=id?`https://www.youtube-nocookie.com/embed/${id}`:url;let p=screenToWorld(viewport.clientWidth/2,viewport.clientHeight/2);createObj("video",p.x,p.y,{w:420,h:236,content:src,name:"YouTube video"})})}
+function extractYoutube(u){try{let url=new URL(u);return url.hostname.includes("youtu.be")?url.pathname.slice(1):url.searchParams.get("v")||url.pathname.split("/").pop()}catch{return null}}
+function buildMindMap(p){let root=createObj("mindnode",p.x,p.y,{w:180,h:80,text:"Негизги тема",fill:"#b9edff",fontSize:18});let nodes=[];for(let i=0;i<4;i++){let child=createObj("mindnode",p.x+260,p.y-150+i*110,{w:150,h:65,text:"Бөлүм "+(i+1),fill:colors[i]});nodes.push(child);state.connectors.push({a:root.id,b:child.id})}render();toast("Mind map created — edit nodes and add connections")}
+function buildFlow(p){let labels=["Start","Process","Decision","Output","End"];let arr=[];labels.forEach((t,i)=>{let o=createObj("flow",p.x+i*190,p.y,{w:145,h:85,text:t,fill:i===0||i===4?"#c8f7df":i===2?"#fff1a8":"#dceaff"});arr.push(o);if(i)state.connectors.push({a:arr[i-1].id,b:o.id})});render();toast("Flowchart blocks added")}
+let connectorStart=null;function startConnector(p){let nearest=nearestObject(p);if(!nearest){toast("Connector: click a starting object");return}connectorStart=nearest.id;toast("Now click destination object")}
+function nearestObject(p){return state.objects.filter(o=>o.type!=="frame").map(o=>({o,d:Math.hypot(o.x+o.w/2-p.x,o.y+o.h/2-p.y)})).sort((a,b)=>a.d-b.d)[0]?.o}
+viewport.addEventListener("click",e=>{if(state.tool==="connector"&&connectorStart){let p=screenToWorld(e.clientX,e.clientY),dest=nearestObject(p);if(dest&&dest.id!==connectorStart){pushUndo();state.connectors.push({a:connectorStart,b:dest.id});render();toast("Connector added")}connectorStart=null}});
+function renderDrawingPreview(){if(!state.draw)return;let pts=state.draw.points;if(pts.length<2)return;let d="M"+pts.map(p=>p.x+","+p.y).join(" L");let path=document.createElementNS("http://www.w3.org/2000/svg","path");path.setAttribute("d",d);path.setAttribute("stroke",state.draw.erase?"#f4f7fb":"#172033");path.setAttribute("stroke-width",state.draw.erase?30:3);path.setAttribute("fill","none");path.setAttribute("stroke-linecap","round");path.setAttribute("stroke-linejoin","round");path.classList.add("dynamic");svg.appendChild(path)}
+function finishDrawing(){let d=state.draw;state.draw=null;viewport.classList.remove("drawmode");if(!d||d.points.length<2)return;pushUndo();let minX=Math.min(...d.points.map(p=>p.x)),minY=Math.min(...d.points.map(p=>p.y)),maxX=Math.max(...d.points.map(p=>p.x)),maxY=Math.max(...d.points.map(p=>p.y));let points=d.points.map(p=>({x:p.x-minX,y:p.y-minY}));let path=`<svg xmlns="http://www.w3.org/2000/svg" width="${Math.max(2,maxX-minX)}" height="${Math.max(2,maxY-minY)}"><path d="M${points.map(p=>p.x+","+p.y).join(" L")}" stroke="#172033" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;if(!d.erase)state.objects.push({id:uid(),type:"drawing",x:minX,y:minY,w:Math.max(2,maxX-minX),h:Math.max(2,maxY-minY),content:path,z:1});else{state.objects=state.objects.filter(o=>!(o.x<maxX&&o.x+o.w>minX&&o.y<maxY&&o.y+o.h>minY))}render()}
+function renderMini(){let mini=$("#minimap");if(!mini.classList.contains("show"))return;let area=$("#miniWorld");area.innerHTML="";let objs=state.objects.filter(o=>!o.hidden);if(!objs.length)return;let minX=Math.min(...objs.map(o=>o.x)),minY=Math.min(...objs.map(o=>o.y)),maxX=Math.max(...objs.map(o=>o.x+o.w)),maxY=Math.max(...objs.map(o=>o.y+o.h));let spanX=Math.max(500,maxX-minX),spanY=Math.max(350,maxY-minY),scale=Math.min(mini.clientWidth/spanX,mini.clientHeight/spanY);objs.forEach(o=>{let d=document.createElement("div");d.className="mini-dot";d.style.left=((o.x-minX)*scale)+"px";d.style.top=((o.y-minY)*scale)+"px";d.style.width=Math.max(2,o.w*scale)+"px";d.style.height=Math.max(2,o.h*scale)+"px";area.appendChild(d)});let view=$("#miniView"),r=viewport.getBoundingClientRect(),w=r.width/state.scale,h=r.height/state.scale;let vx=(-state.panX/state.scale-minX)*scale,vy=(-state.panY/state.scale-minY)*scale;view.style.left=vx+"px";view.style.top=vy+"px";view.style.width=w*scale+"px";view.style.height=h*scale+"px"}
+$("#miniBtn").onclick=()=>{$("#minimap").classList.toggle("show");renderMini()};
+$("#miniView").addEventListener("pointerdown",e=>{e.stopPropagation();let r=$("#minimap").getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;let objs=state.objects;if(!objs.length)return;let minX=Math.min(...objs.map(o=>o.x)),minY=Math.min(...objs.map(o=>o.y)),maxX=Math.max(...objs.map(o=>o.x+o.w)),maxY=Math.max(...objs.map(o=>o.y+o.h)),scale=Math.min(r.width/Math.max(500,maxX-minX),r.height/Math.max(350,maxY-minY));state.panX=viewport.clientWidth/2-(mx/scale+minX)*state.scale;state.panY=viewport.clientHeight/2-(my/scale+minY)*state.scale;updateView()});
+function fitBoard(){if(!state.objects.length){state.scale=1;state.panX=viewport.clientWidth/2;state.panY=viewport.clientHeight/2;updateView();return}let minX=Math.min(...state.objects.map(o=>o.x)),minY=Math.min(...state.objects.map(o=>o.y)),maxX=Math.max(...state.objects.map(o=>o.x+o.w)),maxY=Math.max(...state.objects.map(o=>o.y+o.h));let pad=80,s=Math.min((viewport.clientWidth-pad*2)/Math.max(1,maxX-minX),(viewport.clientHeight-pad*2)/Math.max(1,maxY-minY));state.scale=Math.max(.12,Math.min(2,s));state.panX=(viewport.clientWidth-(maxX-minX)*state.scale)/2-minX*state.scale;state.panY=(viewport.clientHeight-(maxY-minY)*state.scale)/2-minY*state.scale;updateView()}
+$("#zoomIn").onclick=()=>zoomAt(1.15);$("#zoomOut").onclick=()=>zoomAt(.87);function zoomAt(f){let old=state.scale,ns=Math.max(.12,Math.min(4,old*f)),cx=viewport.clientWidth/2,cy=viewport.clientHeight/2;state.panX=cx-(cx-state.panX)*ns/old;state.panY=cy-(cy-state.panY)*ns/old;state.scale=ns;updateView()}
+$("#fitBtn").onclick=fitBoard;$("#fullscreenBtn").onclick=()=>document.fullscreenElement?document.exitFullscreen():workspace.requestFullscreen?.();
+$("#presBtn").onclick=startPresentation;$("#cinemaBtn").onclick=cinemaMode;$("#presExit").onclick=exitPresentation;$("#nextFrame").onclick=()=>moveFrame(1);$("#prevFrame").onclick=()=>moveFrame(-1);
+function getFrames(){return state.objects.filter(o=>o.type==="frame").sort((a,b)=>(a.z||0)-(b.z||0))}
+function startPresentation(){let frames=getFrames();if(!frames.length){toast("Create Frame objects first");return}state.frameIndex=0;$("#presentation").classList.add("show");showFrame()}
+function exitPresentation(){$("#presentation").classList.remove("show")}
+function showFrame(){let f=getFrames()[state.frameIndex];if(!f)return;let pc=$("#presCanvas");pc.innerHTML="";let s=Math.min(pc.clientWidth/f.w,pc.clientHeight/f.h);let container=document.createElement("div");container.style.cssText=`position:absolute;width:${f.w}px;height:${f.h}px;left:50%;top:50%;transform:translate(-50%,-50%) scale(${s});transform-origin:center;background:#fff;border:2px solid #d0d9e5;border-radius:10px;overflow:hidden`;state.objects.filter(o=>o.type!=="frame"&&o.x<f.x+f.w&&o.x+o.w>f.x&&o.y<f.y+f.h&&o.y+o.h>f.y).forEach(o=>{let el=objectEl({...o,id:"pres_"+o.id});el.classList.remove("selected");el.style.left=(o.x-f.x)+"px";el.style.top=(o.y-f.y)+"px";container.appendChild(el)});pc.appendChild(container);$("#frameCounter").textContent=`Frame ${state.frameIndex+1}/${getFrames().length} · ${f.text||"Frame"}`}
+function moveFrame(n){state.frameIndex=Math.max(0,Math.min(getFrames().length-1,state.frameIndex+n));showFrame()}
+function cinemaMode(){let frames=getFrames();if(!frames.length){toast("Add at least two Frames for Cinema mode");return}startPresentation();let idx=0;let advance=()=>{if(idx>=frames.length){exitPresentation();return}state.frameIndex=idx;showFrame();idx++;setTimeout(advance,2600)};advance()}
+$("#timelineBtn").onclick=()=>{$("#timeline").classList.toggle("show");state.timelineOn=$("#timeline").classList.contains("show");renderTimeline()};
+$("#timelineClose").onclick=()=>{$("#timeline").classList.remove("show");state.timelineOn=false};
+$("#addKeyframe").onclick=()=>{state.cameraKeyframes.push({time:state.cameraKeyframes.length*5,x:state.panX,y:state.panY,scale:state.scale});renderTimeline();toast("Camera keyframe saved")};
+function renderTimeline(){if(!state.timelineOn)return;let tracks=$("#timelineTracks");tracks.innerHTML="";let maxTime=Math.max(30,...state.objects.map(o=>(o.start||0)+(o.duration||10)),...state.cameraKeyframes.map(k=>k.time||0));state.objects.forEach(o=>{let tr=document.createElement("div");tr.className="track";let label=document.createElement("span");label.className="track-label";label.textContent=o.name||o.type;tr.appendChild(label);let clip=document.createElement("div");clip.className="clip";clip.style.left=(120+(o.start||0)/maxTime*75)+"%";clip.style.width=Math.max(3,(o.duration||10)/maxTime*75)+"%";clip.textContent=o.animation||o.type;tr.appendChild(clip);tracks.appendChild(tr)});state.cameraKeyframes.forEach((k,i)=>{let tr=document.createElement("div");tr.className="track";tr.innerHTML=`<span class="track-label">Camera key ${i+1}</span><div class="clip" style="left:${120+(k.time||0)/maxTime*75}%;width:12px">◆</div>`;tracks.appendChild(tr)})}
+$("#playTimeline").onclick=()=>playAnimations();
+function playAnimations(){let start=performance.now(),duration=Math.max(1000,...state.objects.map(o=>(o.start||0)+(o.duration||10))*1000);state.playing=true;function tick(now){if(!state.playing)return;let t=(now-start)/1000;$("#timeLabel").textContent="00:"+String(Math.floor(t)).padStart(2,"0");state.objects.forEach(o=>{let el=world.querySelector(`[data-id="${o.id}"]`);if(!el)return;let local=(t-(o.start||0))/(o.duration||10);if(t<(o.start||0)){el.style.opacity=0;return}el.style.opacity=o.animation==="fade"?Math.min(1,local*4):o.animation==="fadeOut"?Math.max(0,1-local):o.animation==="zoom"?Math.min(1,local*4):o.opacity??1;let anim=o.animation;if(anim==="slideLeft")el.style.transform=`translateX(${-Math.max(0,1-local)*80}px) rotate(${o.rotation||0}deg)`;if(anim==="slideRight")el.style.transform=`translateX(${Math.max(0,1-local)*80}px) rotate(${o.rotation||0}deg)`;if(anim==="slideUp")el.style.transform=`translateY(${Math.max(0,1-local)*80}px) rotate(${o.rotation||0}deg)`;if(anim==="slideDown")el.style.transform=`translateY(${-Math.max(0,1-local)*80}px) rotate(${o.rotation||0}deg)`;if(anim==="rotate")el.style.transform=`rotate(${(o.rotation||0)+360*local}deg)`;if(anim==="pulse")el.style.transform=`scale(${1+.08*Math.sin(now/160)}) rotate(${o.rotation||0}deg)`});if(t*1000<duration)requestAnimationFrame(tick);else{state.playing=false;render()}}requestAnimationFrame(tick)}
+$("#saveBtn").onclick=saveProject;function saveProject(){let data=snapshot();try{localStorage.setItem("bilimalInfiniteWorkspace",data);toast("Project saved locally")}catch(e){toast("Save failed — project may be too large. Export JSON instead.")}}
+function scheduleSave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(saveProject,30000)}
+$("#projectName").addEventListener("input",()=>{state.projectName=$("#projectName").value;scheduleSave()});
+$("#exportBtn").onclick=()=>exportJSON();function exportJSON(){let blob=new Blob([snapshot()],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(state.projectName||"bilimal-project").replace(/[^\w\- ]/g,"_")+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+$("#importBtn").onclick=()=>$("#importInput").click();$("#importInput").onchange=e=>{let f=e.target.files[0];if(!f)return;let reader=new FileReader();reader.onload=()=>restore(reader.result);reader.readAsText(f);e.target.value=""};
+$("#themeBtn").onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";document.body.classList.toggle("light",state.theme==="light");$("#themeBtn").textContent=state.theme==="light"?"☾":"☀"};
+$("#exitBtn").onclick=()=>{if(confirm("Return to Bilimal.org?"))location.href="/"};
+function exportCanvas(){let clone=world.cloneNode(true);clone.querySelectorAll(".selected,.resize-handle,.rotate-handle").forEach(e=>e.classList.remove("selected"));let b=new Blob([`<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml">${clone.outerHTML}</div></foreignObject></svg>`],{type:"image/svg+xml"});let u=URL.createObjectURL(b),im=new Image();im.onload=()=>{let c=document.createElement("canvas");c.width=1600;c.height=1000;let ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(im,0,0);c.toBlob(blob=>{let a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="bilimal-board.png";a.click();URL.revokeObjectURL(a.href)}, "image/png");URL.revokeObjectURL(u)};im.src=u}
+$("#exportBtn").addEventListener("contextmenu",e=>{e.preventDefault();exportCanvas()});
+workspace.addEventListener("dragover",e=>{e.preventDefault()});workspace.addEventListener("drop",e=>{e.preventDefault();let p=screenToWorld(e.clientX,e.clientY);Array.from(e.dataTransfer.files||[]).forEach(f=>{let type=f.type.startsWith("image/")?"image":f.type==="application/pdf"?"pdf":f.type.startsWith("video/")?"video":f.type.startsWith("audio/")?"audio":null;if(type)readFileForObject(f,type)})});
+window.addEventListener("paste",e=>{if(isTyping())return;let items=e.clipboardData?.items;if(!items)return;for(let item of items){if(item.type.startsWith("image/")){let f=item.getAsFile();if(f)readFileForObject(f,"image");return}if(item.kind==="string"&&item.type==="text/plain"){item.getAsString(text=>{let p=screenToWorld(viewport.clientWidth/2,viewport.clientHeight/2);createObj("text",p.x,p.y,{w:350,h:120,text,color:"#172033"})});return}}});
+function isTyping(){let el=document.activeElement;return el&&(el.tagName==="INPUT"||el.tagName==="TEXTAREA"||el.isContentEditable)}
+window.addEventListener("keydown",e=>{if(isTyping())return;let ctrl=e.ctrlKey||e.metaKey;if(ctrl&&e.key.toLowerCase()==="z"){e.preventDefault();undo()}if(ctrl&&e.key.toLowerCase()==="y"){e.preventDefault();redo()}if(ctrl&&e.key.toLowerCase()==="s"){e.preventDefault();saveProject()}if(ctrl&&e.key.toLowerCase()==="d"&&state.selected){e.preventDefault();duplicate(state.objects.find(o=>o.id===state.selected))}if(ctrl&&e.key.toLowerCase()==="c"&&state.selected){state.clipboard=JSON.stringify(state.objects.find(o=>o.id===state.selected))}if(ctrl&&e.key.toLowerCase()==="v"&&state.clipboard){try{let o=JSON.parse(state.clipboard);o.id=uid();o.x+=35;o.y+=35;pushUndo();state.objects.push(o);state.selected=o.id;render()}catch{}}if(e.key==="Delete"||e.key==="Backspace")deleteSelected();if(e.key.toLowerCase()==="t"){setTool("text")}if(e.key==="Escape")exitPresentation()});
+function startAudioRecord(){if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){toast("Audio recording is not supported in this browser");return}navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{let rec=new MediaRecorder(stream);let chunks=[];rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>{let blob=new Blob(chunks,{type:rec.mimeType||"audio/webm"}),url=URL.createObjectURL(blob),p=screenToWorld(viewport.clientWidth/2,viewport.clientHeight/2);createObj("audio",p.x,p.y,{w:300,h:70,content:url,name:"Voice recording"});stream.getTracks().forEach(t=>t.stop())};rec.start();modal("Voice recording",`<p>Recording microphone audio. Use the controls to finish.</p><button id="stopRec" class="active">Stop recording</button>`,()=>{if(rec.state!=="inactive")rec.stop()});$("#modalCancel").onclick=()=>{if(rec.state!=="inactive")rec.stop();$("#modal").classList.remove("show")};$("#stopRec").onclick=()=>{rec.stop();$("#modal").classList.remove("show")}}).catch(()=>toast("Microphone permission denied"))}
+function renderTimeline(){if(state.timelineOn)renderTimeline()}
+function init(){let saved=localStorage.getItem("bilimalInfiniteWorkspace");if(saved){try{let p=JSON.parse(saved);state.objects=p.objects||[];state.connectors=p.connectors||[];state.frames=p.frames||[];state.projectName=p.projectName||state.projectName;state.cameraKeyframes=p.cameraKeyframes||[];$("#projectName").value=state.projectName}catch{}}render();state.panX=viewport.clientWidth/2;state.panY=viewport.clientHeight/2;updateView();setTool("select");scheduleSave()}
+init();
+})();
 </script>
 </body>
 </html>
