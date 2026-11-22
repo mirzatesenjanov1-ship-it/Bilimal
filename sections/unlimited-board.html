@@ -1,1248 +1,2467 @@
-
 <!DOCTYPE html>
 <html lang="ky">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#0f172a">
-<title>Чексиз такта — Bilimal.org</title>
-
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#030712">
+<title>Bilimal.org — Чексиз Интерактивдүү Такта</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-:root {
-    --bg:#0b1120;
-    --panel:#151f32;
-    --panel2:#1e293b;
-    --accent:#06d6f5;
-    --text:#f8fafc;
-    --muted:#94a3b8;
-    --border:#334155;
+:root{
+  --bg-void:#030712;
+  --bg-deep:#060e21;
+  --glass:rgba(10,20,42,.74);
+  --glass-heavy:rgba(8,16,34,.90);
+  --glass-hover:rgba(16,31,64,.88);
+  --border:rgba(56,189,248,.22);
+  --border-neon:rgba(0,229,255,.55);
+  --accent-cyan:#00e5ff;
+  --accent-sky:#38bdf8;
+  --accent-pink:#ec4899;
+  --accent-purple:#8b5cf6;
+  --accent-gold:#ffbd58;
+  --accent-green:#10b981;
+  --text-main:#f8fafc;
+  --text-muted:#94a3b8;
+  --blur:blur(18px);
+  --shadow-lg:0 20px 60px rgba(0,0,0,.65),0 0 32px rgba(0,229,255,.12);
 }
-* {box-sizing:border-box}
-html,body {
-    width:100%;
-    height:100%;
-    margin:0;
-    overflow:hidden;
-    font-family:Arial,sans-serif;
-    background:var(--bg);
-    color:var(--text);
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg-void);color:var(--text-main);font-family:'Inter',system-ui,sans-serif}
+button,input,select,textarea{font:inherit;color:var(--text-main)}
+button{cursor:pointer;border:0;background:transparent}
+input,select,textarea{outline:none}
+
+/* Чексиз кенеп жана фон */
+#board-stage{position:fixed;inset:0;z-index:1;background:radial-gradient(ellipse 80% 60% at 20% 15%,rgba(0,229,255,.08),transparent 60%),radial-gradient(ellipse 75% 65% at 85% 20%,rgba(139,92,246,.09),transparent 60%),radial-gradient(ellipse 70% 60% at 50% 90%,rgba(236,72,153,.06),transparent 65%),#030712}
+#board-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+
+/* HTML overlay катмары: текст түзөтүү, YouTube iframe, локалдык видео, аудио, PDF preview */
+#overlay-layer{position:fixed;inset:0;z-index:2;pointer-events:none;transform-origin:0 0}
+.media-card{position:absolute;pointer-events:auto;border-radius:12px;overflow:hidden;border:1px solid rgba(56,189,248,.35);background:rgba(8,16,34,.92);box-shadow:0 12px 32px rgba(0,0,0,.55);display:flex;flex-direction:column}
+.media-card.selected{outline:2px solid var(--accent-cyan);box-shadow:0 0 24px rgba(0,229,255,.35)}
+.media-drag-bar{height:24px;background:rgba(15,29,58,.95);display:flex;align-items:center;justify-content:space-between;padding:0 8px;font-size:10px;color:var(--text-muted);cursor:grab;border-bottom:1px solid rgba(56,189,248,.18)}
+.media-drag-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.media-body{flex:1;position:relative;min-height:0;display:flex;align-items:center;justify-content:center;background:#040916}
+.media-body iframe,.media-body video{width:100%;height:100%;border:0;display:block}
+.audio-widget{width:100%;padding:12px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(135deg,rgba(14,28,58,.95),rgba(24,18,52,.95))}
+.audio-widget audio{width:100%;height:34px}
+.pdf-preview-wrap{width:100%;height:100%;display:flex;flex-direction:column;background:#071022}
+.pdf-preview-canvas{flex:1;max-width:100%;max-height:100%;object-fit:contain;margin:auto}
+.pdf-nav{display:flex;align-items:center;justify-content:center;gap:10px;padding:5px;background:rgba(6,13,28,.95);font-size:11px;border-top:1px solid rgba(56,189,248,.18)}
+.pdf-nav button{padding:3px 9px;border-radius:6px;background:rgba(0,229,255,.15);color:var(--accent-cyan);font-weight:700}
+
+/* Текст редактору (Double click) */
+#inline-text-editor{position:fixed;display:none;z-index:500;min-width:140px;min-height:42px;padding:8px 12px;border-radius:10px;background:rgba(6,14,32,.95);border:2px solid var(--accent-cyan);box-shadow:0 0 30px rgba(0,229,255,.35);resize:both;overflow:auto;line-height:1.35;white-space:pre-wrap}
+
+/* Үстүнкү компакттуу статус & проект тилкеси */
+.top-hud{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:40;display:flex;align-items:center;gap:8px;padding:7px 14px;border-radius:16px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);max-width:calc(100vw - 24px);flex-wrap:wrap}
+.brand-pill{display:flex;align-items:center;gap:8px;font-weight:800;font-size:12px;letter-spacing:.3px;background:linear-gradient(90deg,#fff,var(--accent-cyan),var(--accent-pink));-webkit-background-clip:text;background-clip:text;color:transparent;padding-right:6px;border-right:1px solid var(--border)}
+.project-name-input{background:rgba(4,10,24,.7);border:1px solid rgba(56,189,248,.22);border-radius:9px;padding:5px 10px;font-size:12px;font-weight:600;width:165px;transition:.2s}
+.project-name-input:focus{border-color:var(--accent-cyan);width:200px}
+.hud-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;font-size:11px;font-weight:700;background:rgba(15,30,62,.75);border:1px solid rgba(56,189,248,.2);transition:.2s}
+.hud-btn:hover{border-color:var(--accent-cyan);background:rgba(0,229,255,.16);transform:translateY(-1px)}
+.hud-btn.accent{background:linear-gradient(135deg,rgba(236,72,153,.28),rgba(139,92,246,.32));border-color:rgba(244,114,182,.55)}
+.save-status{font-size:10px;color:var(--accent-green);display:flex;align-items:center;gap:4px;padding:0 4px;font-weight:600}
+
+/* СОЛ ЧЕТ: Автоматтык жашынуучу вертикалдык панель */
+.left-dock-trigger{position:fixed;left:0;top:50%;transform:translateY(-50%);width:14px;height:140px;z-index:45;display:flex;align-items:center;justify-content:center}
+.left-dock-trigger::after{content:"";width:4px;height:54px;border-radius:99px;background:linear-gradient(180deg,var(--accent-cyan),var(--accent-pink));opacity:.65;transition:.25s}
+.left-dock{position:fixed;left:12px;top:50%;transform:translate3d(calc(-100% - 24px),-50%,0);z-index:50;width:68px;max-height:calc(100vh - 110px);overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding:10px 7px;border-radius:20px;background:var(--glass-heavy);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;align-items:center;gap:5px;transition:transform .28s cubic-bezier(.22,1,.36,1)}
+.left-dock::-webkit-scrollbar{display:none}
+.left-dock-trigger:hover + .left-dock,.left-dock:hover,.left-dock.open,.left-dock.pinned{transform:translate3d(0,-50%,0)}
+.dock-pin-btn{width:100%;padding:6px 4px;border-radius:10px;font-size:10px;font-weight:800;color:var(--text-muted);display:flex;align-items:center;justify-content:center;gap:4px;border:1px solid transparent;margin-bottom:2px}
+.dock-pin-btn.active,.dock-pin-btn:hover{color:var(--accent-cyan);background:rgba(0,229,255,.12);border-color:rgba(0,229,255,.3)}
+.tool-btn{position:relative;width:48px;height:44px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text-muted);font-size:15px;transition:.2s;flex-shrink:0}
+.tool-btn span{font-size:8.5px;font-weight:700;letter-spacing:-.2px;max-width:46px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tool-btn:hover{color:#fff;background:rgba(56,189,248,.14);transform:translateX(2px)}
+.tool-btn.active{color:#fff;background:linear-gradient(135deg,rgba(0,229,255,.26),rgba(139,92,246,.28));border:1px solid var(--border-neon);box-shadow:0 0 16px rgba(0,229,255,.25)}
+
+/* Көмөкчү кичинекей поповерлер (Shapes, MindMap, Flowchart, Layers, AI) */
+.sub-popover{position:fixed;left:88px;top:50%;transform:translateY(-50%);z-index:55;display:none;width:236px;padding:12px;border-radius:16px;background:var(--glass-heavy);backdrop-filter:var(--blur);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
+.sub-popover.show{display:block}
+.sub-popover h4{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-cyan);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.popover-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pop-chip{padding:8px 5px;border-radius:10px;background:rgba(15,31,64,.8);border:1px solid rgba(56,189,248,.2);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px}
+.pop-chip:hover{border-color:var(--accent-cyan);background:rgba(0,229,255,.16)}
+.pop-action-list{display:flex;flex-direction:column;gap:6px}
+.pop-act-btn{width:100%;padding:7px 10px;border-radius:9px;background:rgba(15,31,64,.85);border:1px solid rgba(56,189,248,.2);font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:space-between;text-align:left}
+.pop-act-btn:hover{border-color:var(--accent-pink);background:rgba(236,72,153,.15)}
+
+/* ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) */
+.properties-panel{position:fixed;right:14px;top:72px;bottom:78px;width:296px;z-index:48;display:none;flex-direction:column;gap:10px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(0,229,255,.3) transparent;padding:14px;border-radius:20px;background:var(--glass-heavy);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
+.properties-panel.visible{display:flex}
+.prop-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.prop-header h3{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--accent-cyan);display:flex;align-items:center;gap:7px}
+.prop-section{background:rgba(7,16,34,.65);border:1px solid rgba(56,189,248,.14);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.prop-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center}
+.prop-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.prop-row input[type="range"]{flex:1;accent-color:var(--accent-cyan)}
+.prop-row input[type="color"]{width:32px;height:28px;border-radius:7px;border:1px solid var(--border);background:transparent;cursor:pointer}
+.prop-row input[type="number"],.prop-row select{flex:1;background:rgba(4,10,24,.85);border:1px solid rgba(56,189,248,.24);border-radius:8px;padding:5px 8px;font-size:11px}
+.mini-toggle-group{display:flex;gap:4px}
+.mini-btn{flex:1;padding:6px;border-radius:8px;background:rgba(15,31,64,.8);border:1px solid rgba(56,189,248,.18);font-size:11px;font-weight:700}
+.mini-btn.active{background:rgba(0,229,255,.22);border-color:var(--accent-cyan);color:var(--accent-cyan)}
+.layer-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;border-radius:8px;background:rgba(12,25,52,.75);border:1px solid rgba(56,189,248,.12);font-size:11px}
+.layer-item.active{border-color:var(--accent-pink);background:rgba(236,72,153,.14)}
+.layer-item-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.layer-item-actions{display:flex;gap:4px}
+.layer-item-actions button{padding:3px 5px;border-radius:6px;font-size:10px;color:var(--text-muted)}
+.layer-item-actions button:hover{color:#fff;background:rgba(255,255,255,.1)}
+
+/* ТӨМӨН: Floating Navigation Bar */
+.bottom-nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:45;display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:16px;background:var(--glass);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg)}
+.nav-pill-btn{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border-radius:10px;font-size:11px;font-weight:700;color:var(--text-main);transition:.2s;white-space:nowrap}
+.nav-pill-btn:hover{background:rgba(0,229,255,.16);color:var(--accent-cyan)}
+.nav-pill-btn.active{background:linear-gradient(135deg,rgba(236,72,153,.35),rgba(0,229,255,.3));border:1px solid var(--border-neon)}
+.zoom-readout{font-size:11px;font-weight:800;color:var(--accent-cyan);min-width:44px;text-align:center;font-variant-numeric:tabular-nums}
+
+/* MINI MAP (Оң төмөн жакта) */
+.minimap-box{position:fixed;right:14px;bottom:14px;width:176px;height:118px;z-index:44;border-radius:14px;overflow:hidden;background:rgba(4,10,24,.88);backdrop-filter:var(--blur);border:1px solid var(--border);box-shadow:var(--shadow-lg);cursor:crosshair;transition:.25s}
+.minimap-box.hidden{display:none}
+.minimap-box.shifted{bottom:14px;right:322px}
+#minimap-canvas{width:100%;height:100%;display:block}
+.minimap-badge{position:absolute;top:5px;left:7px;font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--accent-cyan);pointer-events:none;text-transform:uppercase}
+
+/* Presentation & Cinema overlay */
+#presentation-hud{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:120;display:none;align-items:center;gap:10px;padding:10px 18px;border-radius:18px;background:rgba(6,13,28,.92);backdrop-filter:var(--blur);border:1px solid var(--accent-pink);box-shadow:0 12px 40px rgba(0,0,0,.75)}
+#presentation-hud.show{display:flex}
+
+/* Модалдык терезе (Сақталган проекттер / AI / Жардам) */
+.modal-backdrop{position:fixed;inset:0;z-index:200;display:none;align-items:center;justify-content:center;background:rgba(2,6,17,.78);backdrop-filter:blur(8px);padding:16px}
+.modal-backdrop.show{display:flex}
+.modal-card{width:min(540px,100%);max-height:85vh;overflow-y:auto;border-radius:20px;padding:20px;background:var(--glass-heavy);border:1px solid var(--border-neon);box-shadow:var(--shadow-lg)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal-head h3{font-size:15px;font-weight:800;color:var(--accent-cyan)}
+.project-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;background:rgba(14,28,58,.75);border:1px solid rgba(56,189,248,.16);margin-bottom:8px}
+.project-item-meta small{display:block;font-size:10px;color:var(--text-muted);margin-top:2px}
+
+/* Toast кабарлама */
+#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:300;opacity:0;pointer-events:none;padding:8px 16px;border-radius:12px;background:rgba(8,18,40,.94);border:1px solid var(--accent-cyan);font-size:12px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.6);transition:.25s}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Адаптивдүүлүк: Планшет жана Телефон */
+@media(max-width:900px){
+  .properties-panel{top:auto;bottom:72px;left:12px;right:12px;width:auto;max-height:42vh}
+  .minimap-box{width:132px;height:88px;bottom:70px;right:10px}
+  .minimap-box.shifted{bottom:calc(42vh + 80px);right:12px}
 }
-button,input {font:inherit}
-button {cursor:pointer}
-#app {
-    height:100%;
-    display:flex;
-    flex-direction:column;
-}
-.topbar {
-    min-height:65px;
-    background:var(--panel);
-    border-bottom:1px solid var(--border);
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:10px 18px;
-    gap:12px;
-    z-index:5;
-}
-.brand {
-    display:flex;
-    align-items:center;
-    gap:12px;
-    font-weight:bold;
-    font-size:18px;
-}
-.brand i {color:var(--accent);font-size:23px}
-.brand small {
-    display:block;
-    font-size:11px;
-    color:var(--muted);
-    margin-top:3px;
-}
-.top-actions {
-    display:flex;
-    align-items:center;
-    gap:8px;
-}
-.btn {
-    border:1px solid var(--border);
-    background:var(--panel2);
-    color:var(--text);
-    padding:10px 13px;
-    border-radius:8px;
-    transition:.2s;
-}
-.btn:hover {border-color:var(--accent);color:var(--accent)}
-.btn.active {
-    background:var(--accent);
-    color:#082032;
-    border-color:var(--accent);
-}
-.btn.danger:hover {color:#ef4444;border-color:#ef4444}
-.workspace {
-    flex:1;
-    position:relative;
-    overflow:hidden;
-    background:#fff;
-}
-#board {
-    display:block;
-    width:100%;
-    height:100%;
-    touch-action:none;
-    cursor:crosshair;
-}
-.toolbar {
-    position:absolute;
-    top:15px;
-    left:50%;
-    transform:translateX(-50%);
-    display:flex;
-    align-items:center;
-    gap:6px;
-    padding:8px;
-    border-radius:12px;
-    background:rgba(15,23,42,.96);
-    border:1px solid #334155;
-    box-shadow:0 5px 25px rgba(0,0,0,.2);
-    z-index:3;
-    max-width:calc(100% - 20px);
-    overflow-x:auto;
-}
-.tool {
-    width:42px;
-    height:42px;
-    flex-shrink:0;
-    border:1px solid transparent;
-    border-radius:8px;
-    background:transparent;
-    color:#cbd5e1;
-    font-size:17px;
-}
-.tool:hover {background:#26364d}
-.tool.active {
-    background:var(--accent);
-    color:#082032;
-}
-.separator {
-    height:28px;
-    width:1px;
-    background:#475569;
-    margin:0 3px;
-    flex-shrink:0;
-}
-.color-picker {
-    width:36px;
-    height:36px;
-    border:0;
-    padding:2px;
-    background:transparent;
-    cursor:pointer;
-}
-.size-select {
-    width:65px;
-    padding:9px 5px;
-    border-radius:7px;
-    background:#1e293b;
-    border:1px solid #475569;
-    color:white;
-}
-.bottom-info {
-    position:absolute;
-    bottom:15px;
-    left:15px;
-    padding:9px 13px;
-    background:rgba(15,23,42,.9);
-    color:#e2e8f0;
-    border-radius:8px;
-    font-size:12px;
-    pointer-events:none;
-}
-.zoom-controls {
-    position:absolute;
-    right:15px;
-    bottom:15px;
-    display:flex;
-    gap:5px;
-    padding:6px;
-    background:rgba(15,23,42,.95);
-    border-radius:10px;
-}
-.zoom-controls button {
-    width:38px;
-    height:38px;
-    background:#26364d;
-    color:white;
-    border:0;
-    border-radius:7px;
-}
-.zoom-controls button:hover {background:#087eaa}
-#zoomText {
-    min-width:55px;
-    text-align:center;
-    align-self:center;
-    font-size:13px;
-}
-.status {
-    padding:5px 10px;
-    border-radius:6px;
-    background:#064e3b;
-    color:#6ee7b7;
-    font-size:12px;
-}
-#authScreen {
-    position:fixed;
-    inset:0;
-    z-index:100;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:20px;
-    background:radial-gradient(circle at top,#1e3a5f,#0b1120 65%);
-}
-.auth-card {
-    width:100%;
-    max-width:420px;
-    padding:32px;
-    background:#151f32;
-    border:1px solid #334155;
-    border-radius:18px;
-    text-align:center;
-    box-shadow:0 20px 60px #0007;
-}
-.auth-icon {
-    font-size:45px;
-    color:var(--accent);
-    margin-bottom:15px;
-}
-.auth-card h2 {margin:0 0 10px}
-.auth-card p {
-    color:var(--muted);
-    line-height:1.6;
-    font-size:14px;
-}
-.auth-card input {
-    width:100%;
-    padding:14px;
-    margin:15px 0 10px;
-    border-radius:8px;
-    border:1px solid #475569;
-    background:#0b1120;
-    color:white;
-    outline:none;
-}
-.auth-card input:focus {border-color:var(--accent)}
-.auth-card button {
-    width:100%;
-    padding:13px;
-    background:var(--accent);
-    color:#082032;
-    border:0;
-    border-radius:8px;
-    font-weight:bold;
-}
-#authMessage {
-    margin-top:12px;
-    font-size:13px;
-    color:#fca5a5;
-}
-#loading {
-    position:fixed;
-    inset:0;
-    background:#0b1120;
-    z-index:110;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    flex-direction:column;
-    gap:15px;
-}
-.spinner {
-    width:40px;
-    height:40px;
-    border:4px solid #334155;
-    border-top-color:var(--accent);
-    border-radius:50%;
-    animation:spin .8s linear infinite;
-}
-@keyframes spin {to{transform:rotate(360deg)}}
-@media(max-width:650px) {
-    .topbar {padding:8px 10px;min-height:55px}
-    .brand {font-size:14px}
-    .brand small {font-size:10px}
-    .top-actions .desktop {display:none}
-    .toolbar {top:10px;gap:3px;padding:5px}
-    .tool {width:36px;height:38px;font-size:15px}
-    .size-select {width:55px}
-    .bottom-info {font-size:10px;bottom:10px;left:8px}
-    .zoom-controls {right:8px;bottom:8px}
+@media(max-width:640px){
+  .top-hud{top:8px;padding:6px 9px;gap:5px}
+  .project-name-input{width:112px;font-size:11px;padding:4px 7px}
+  .project-name-input:focus{width:136px}
+  .hud-btn span{display:none}
+  .bottom-nav{bottom:8px;padding:5px 6px;gap:2px;max-width:calc(100vw - 12px);overflow-x:auto}
+  .nav-pill-btn span{display:none}
+  .nav-pill-btn{padding:6px 8px}
+  .minimap-box{width:108px;height:74px;bottom:58px;right:8px}
+  .left-dock{width:62px;max-height:calc(100vh - 130px)}
+  .tool-btn{width:44px;height:40px;font-size:14px}
 }
 </style>
 </head>
-
 <body>
 
-<div id="loading">
-    <div class="spinner"></div>
-    <div>Bilimal.org жүктөлүүдө...</div>
+<div id="board-stage">
+  <canvas id="board-canvas"></canvas>
+  <div id="overlay-layer"></div>
 </div>
 
-<div id="authScreen" style="display:none">
-    <div class="auth-card">
-        <div class="auth-icon"><i class="fa-solid fa-chalkboard"></i></div>
-        <h2>Чексиз такта</h2>
-        <p>
-            Бул бөлүмгө VIP мүмкүнчүлүгү активдүү колдонуучулар гана кире алышат.
-            VIP аккаунтуңузга байланышкан электрондук почтаңызды киргизиңиз.
-        </p>
-        <input type="email" id="emailInput" placeholder="example@gmail.com">
-        <button onclick="verifyAccess()">
-            <i class="fa-solid fa-lock-open"></i> Кирүү
-        </button>
-        <div id="authMessage"></div>
-        <p style="margin-top:20px;font-size:12px">
-            <a href="/dashboard.html" style="color:#06d6f5;text-decoration:none">
-                <i class="fa-solid fa-arrow-left"></i> Башкы панелге кайтуу
-            </a>
-        </p>
+<textarea id="inline-text-editor" spellcheck="false"></textarea>
+<div id="toast"></div>
+
+<!-- Үстүнкү статус & проект тилкеси -->
+<header class="top-hud">
+  <div class="brand-pill"><i class="fa-solid fa-infinity"></i><span>BILIMAL BOARD</span></div>
+  <input type="text" id="projectNameInput" class="project-name-input" value="Физика 7-класс" placeholder="Проекттин аты...">
+  <button class="hud-btn" onclick="saveProjectManual()" title="Сактоо (Ctrl+S)"><i class="fa-solid fa-floppy-disk"></i><span>Сактоо</span></button>
+  <button class="hud-btn" onclick="openProjectsModal()" title="Сакталган проекттер"><i class="fa-solid fa-folder-open"></i><span>Проекттер</span></button>
+  <button class="hud-btn" onclick="exportJSON()" title="JSON экспорт"><i class="fa-solid fa-file-code"></i><span>JSON</span></button>
+  <button class="hud-btn" onclick="document.getElementById('importJsonInput').click()" title="JSON импорт"><i class="fa-solid fa-file-import"></i><span>Импорт</span></button>
+  <button class="hud-btn accent" onclick="exportImage('png')" title="PNG жүктөө"><i class="fa-solid fa-image"></i><span>PNG</span></button>
+  <button class="hud-btn" onclick="exportImage('jpeg')" title="JPG жүктөө"><i class="fa-solid fa-file-image"></i><span>JPG</span></button>
+  <button class="hud-btn" onclick="exportPDF()" title="PDF экспорт"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></button>
+  <div class="save-status" id="autosaveBadge"><i class="fa-solid fa-circle-check"></i><span id="autosaveText">Autosave 30s</span></div>
+</header>
+
+<!-- СОЛ ЧЕТ: Автоматтык жашынуучу вертикалдык панель -->
+<div class="left-dock-trigger" id="leftDockTrigger" aria-hidden="true"></div>
+<aside class="left-dock" id="leftDock" aria-label="Куралдар панели">
+  <button class="dock-pin-btn" id="pinDockBtn" onclick="togglePinDock()" title="Панелди бекитүү / ачуу"><i class="fa-solid fa-thumbtack"></i><span>Pin</span></button>
+
+  <button class="tool-btn active" data-tool="select" onclick="setTool('select')" title="Тандоо / Көчүрүү (V)"><i class="fa-solid fa-arrow-pointer"></i><span>Тандоо</span></button>
+  <button class="tool-btn" data-tool="pan" onclick="setTool('pan')" title="Кенепти жылдыруу (H)"><i class="fa-solid fa-hand"></i><span>Pan</span></button>
+  <button class="tool-btn" data-tool="pen" onclick="setTool('pen')" title="Калем (P)"><i class="fa-solid fa-pen"></i><span>Калем</span></button>
+  <button class="tool-btn" data-tool="eraser" onclick="setTool('eraser')" title="Өчүргүч (E)"><i class="fa-solid fa-eraser"></i><span>Өчүргүч</span></button>
+  <button class="tool-btn" data-tool="text" onclick="setTool('text')" title="Текст (T)"><i class="fa-solid fa-font"></i><span>Текст</span></button>
+  <button class="tool-btn" data-tool="image" onclick="triggerMediaUpload('image')" title="Сүрөт жүктөө"><i class="fa-solid fa-image"></i><span>Сүрөт</span></button>
+  <button class="tool-btn" data-tool="video" onclick="openVideoModal()" title="Видео (YouTube / Файл)"><i class="fa-solid fa-video"></i><span>Видео</span></button>
+  <button class="tool-btn" data-tool="audio" onclick="triggerMediaUpload('audio')" title="Аудио кошуу"><i class="fa-solid fa-headphones"></i><span>Аудио</span></button>
+  <button class="tool-btn" data-tool="pdf" onclick="triggerMediaUpload('pdf')" title="PDF кошуу"><i class="fa-solid fa-file-pdf"></i><span>PDF</span></button>
+  <button class="tool-btn" data-tool="shape" onclick="togglePopover('shapesPopover')" title="Формалар"><i class="fa-solid fa-shapes"></i><span>Формалар</span></button>
+  <button class="tool-btn" data-tool="sticky" onclick="createStickyNote()" title="Sticky Notes"><i class="fa-solid fa-note-sticky"></i><span>Стикер</span></button>
+  <button class="tool-btn" data-tool="connector" onclick="setTool('connector')" title="Байланыштыргыч жебе"><i class="fa-solid fa-share-nodes"></i><span>Connector</span></button>
+  <button class="tool-btn" data-tool="mindmap" onclick="togglePopover('mindmapPopover')" title="Mind Map"><i class="fa-solid fa-diagram-project"></i><span>Mind Map</span></button>
+  <button class="tool-btn" data-tool="flowchart" onclick="togglePopover('flowchartPopover')" title="Flowchart"><i class="fa-solid fa-sitemap"></i><span>Flowchart</span></button>
+  <button class="tool-btn" data-tool="table" onclick="createTableObject()" title="Таблица"><i class="fa-solid fa-table"></i><span>Table</span></button>
+  <button class="tool-btn" data-tool="frame" onclick="createFrameObject()" title="Презентация Frame"><i class="fa-solid fa-vector-square"></i><span>Frame</span></button>
+  <button class="tool-btn" data-tool="ai" onclick="togglePopover('aiPopover')" title="AI Assistant"><i class="fa-solid fa-wand-magic-sparkles"></i><span>AI</span></button>
+</aside>
+
+<!-- Көмөкчү Popover: Формалар -->
+<div class="sub-popover" id="shapesPopover">
+  <h4><span>Формалар</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
+  <div class="popover-grid">
+    <button class="pop-chip" onclick="addShape('rect')"><i class="fa-regular fa-square"></i><span>Rectangle</span></button>
+    <button class="pop-chip" onclick="addShape('circle')"><i class="fa-regular fa-circle"></i><span>Circle</span></button>
+    <button class="pop-chip" onclick="addShape('diamond')"><i class="fa-regular fa-gem"></i><span>Diamond</span></button>
+    <button class="pop-chip" onclick="addShape('triangle')"><i class="fa-solid fa-play" style="transform:rotate(-90deg)"></i><span>Triangle</span></button>
+    <button class="pop-chip" onclick="addShape('arrow')"><i class="fa-solid fa-arrow-right"></i><span>Arrow</span></button>
+    <button class="pop-chip" onclick="addShape('line')"><i class="fa-solid fa-minus"></i><span>Line</span></button>
+  </div>
+</div>
+
+<!-- Көмөкчү Popover: Mind Map -->
+<div class="sub-popover" id="mindmapPopover">
+  <h4><span>Mind Map</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
+  <div class="pop-action-list">
+    <button class="pop-act-btn" onclick="addMindNode('root')"><span>+ Жаңы Root Node</span><i class="fa-solid fa-circle-plus"></i></button>
+    <button class="pop-act-btn" onclick="addMindNode('child')"><span>+ Child Node кошуу</span><i class="fa-solid fa-turn-down"></i></button>
+    <button class="pop-act-btn" onclick="addMindNode('sibling')"><span>+ Sibling Node кошуу</span><i class="fa-solid fa-arrows-left-right"></i></button>
+    <button class="pop-act-btn" onclick="layoutMindMap('tree')"><span>Tree Layout (Auto Arrange)</span><i class="fa-solid fa-folder-tree"></i></button>
+    <button class="pop-act-btn" onclick="layoutMindMap('radial')"><span>Radial Layout (Auto Arrange)</span><i class="fa-solid fa-dharmachakra"></i></button>
+  </div>
+</div>
+
+<!-- Көмөкчү Popover: Flowchart -->
+<div class="sub-popover" id="flowchartPopover">
+  <h4><span>Flowchart Блок-схема</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
+  <div class="pop-action-list">
+    <button class="pop-act-btn" onclick="addFlowNode('start','Башталыш')"><span>Башталыш / Аягы</span><i class="fa-solid fa-play"></i></button>
+    <button class="pop-act-btn" onclick="addFlowNode('process','Процесс')"><span>Процесс блогу</span><i class="fa-regular fa-square"></i></button>
+    <button class="pop-act-btn" onclick="addFlowNode('decision','Шарт?')"><span>Шарт (Ромб)</span><i class="fa-regular fa-gem"></i></button>
+    <button class="pop-act-btn" onclick="addFlowNode('io','Киргизүү / Чыгаруу')"><span>Киргизүү / Чыгаруу</span><i class="fa-solid fa-parallelogram"></i></button>
+  </div>
+</div>
+
+<!-- Көмөкчү Popover: AI Assistant -->
+<div class="sub-popover" id="aiPopover">
+  <h4><span>AI Assistant</span><button onclick="closePopovers()"><i class="fa-solid fa-xmark"></i></button></h4>
+  <div class="pop-action-list">
+    <input type="text" id="aiTopicInput" placeholder="Тема (мис: Ньютон закондору)" style="background:rgba(4,10,24,.9);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-size:11px">
+    <button class="pop-act-btn" onclick="aiGenerateMindMap()"><span>AI Mind Map түзүү</span><i class="fa-solid fa-wand-magic-sparkles"></i></button>
+    <button class="pop-act-btn" onclick="aiGenerateLessonPlan()"><span>AI Сабак / План картасы</span><i class="fa-solid fa-graduation-cap"></i></button>
+    <button class="pop-act-btn" onclick="aiAutoCluster()"><span>Стикерлерди иреттөө</span><i class="fa-solid fa-layer-group"></i></button>
+  </div>
+</div>
+
+<!-- ОҢ ЖАК: Properties Panel (Объект тандалганда гана чыгат) -->
+<aside class="properties-panel" id="propertiesPanel" aria-label="Объекттин касиеттери">
+  <div class="prop-header">
+    <h3><i class="fa-solid fa-sliders"></i><span id="propObjectTitle">Касиеттер</span></h3>
+    <div style="display:flex;gap:4px">
+      <button class="mini-btn" onclick="duplicateSelected()" title="Көчүрмө (Ctrl+D)"><i class="fa-regular fa-copy"></i></button>
+      <button class="mini-btn" onclick="deleteSelected()" title="Өчүрүү (Delete)" style="color:#fda4af"><i class="fa-solid fa-trash"></i></button>
+      <button class="mini-btn" onclick="clearSelection()" title="Жабуу"><i class="fa-solid fa-xmark"></i></button>
     </div>
+  </div>
+
+  <div class="prop-section">
+    <div class="prop-label"><span>Өлчөм (W × H) & Айлантуу</span></div>
+    <div class="prop-row">
+      <input type="number" id="propW" min="20" max="3000" step="5" onchange="updateSelectedFromInputs()">
+      <input type="number" id="propH" min="20" max="3000" step="5" onchange="updateSelectedFromInputs()">
+      <input type="number" id="propRot" min="-360" max="360" step="1" title="Градус" onchange="updateSelectedFromInputs()">
+    </div>
+    <div class="prop-label"><span>Тунуктук (Opacity)</span><span id="propOpacityVal">100%</span></div>
+    <div class="prop-row">
+      <input type="range" id="propOpacity" min="0.05" max="1" step="0.01" value="1" oninput="updateSelectedFromInputs()">
+    </div>
+  </div>
+
+  <div class="prop-section">
+    <div class="prop-label"><span>Түс (Fill) & Чек ара (Border)</span></div>
+    <div class="prop-row">
+      <input type="color" id="propFill" value="#00e5ff" oninput="updateSelectedFromInputs()">
+      <input type="color" id="propStroke" value="#38bdf8" oninput="updateSelectedFromInputs()">
+      <input type="number" id="propStrokeW" min="0" max="24" step="1" value="2" title="Чек ара калыңдыгы" onchange="updateSelectedFromInputs()">
+    </div>
+  </div>
+
+  <div class="prop-section" id="textPropSection">
+    <div class="prop-label"><span>Текст & Шрифт</span></div>
+    <div class="prop-row">
+      <select id="propFontFamily" onchange="updateSelectedFromInputs()">
+        <option value="Inter, sans-serif">Inter</option>
+        <option value="'Playfair Display', serif">Playfair Display</option>
+        <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+        <option value="Georgia, serif">Georgia</option>
+      </select>
+      <input type="number" id="propFontSize" min="10" max="180" step="1" value="20" style="max-width:66px" onchange="updateSelectedFromInputs()">
+    </div>
+    <div class="mini-toggle-group">
+      <button class="mini-btn" id="btnBold" onclick="toggleTextStyle('bold')"><b>B</b></button>
+      <button class="mini-btn" id="btnItalic" onclick="toggleTextStyle('italic')"><i>I</i></button>
+      <button class="mini-btn" id="btnUnderline" onclick="toggleTextStyle('underline')"><u>U</u></button>
+      <button class="mini-btn" onclick="setTextAlign('left')"><i class="fa-solid fa-align-left"></i></button>
+      <button class="mini-btn" onclick="setTextAlign('center')"><i class="fa-solid fa-align-center"></i></button>
+      <button class="mini-btn" onclick="setTextAlign('right')"><i class="fa-solid fa-align-right"></i></button>
+    </div>
+  </div>
+
+  <div class="prop-section">
+    <div class="prop-label"><span>Анимация (Animation)</span></div>
+    <div class="prop-row">
+      <select id="propAnimType" onchange="updateSelectedFromInputs()">
+        <option value="none">Жок (None)</option>
+        <option value="fade">Fade</option>
+        <option value="slide">Slide</option>
+        <option value="zoom">Zoom</option>
+        <option value="bounce">Bounce</option>
+        <option value="rotate">Rotate</option>
+      </select>
+      <button class="mini-btn" onclick="replayAnimationOnSelected()"><i class="fa-solid fa-play"></i> Ойнотуу</button>
+    </div>
+  </div>
+
+  <div class="prop-section">
+    <div class="prop-label"><span>Катмарлар (Layers)</span></div>
+    <div class="mini-toggle-group">
+      <button class="mini-btn" onclick="bringToFront()" title="Алдыга чыгаруу">Front</button>
+      <button class="mini-btn" onclick="sendToBack()" title="Артка жылдыруу">Back</button>
+      <button class="mini-btn" id="btnLockLayer" onclick="toggleLockSelected()" title="Кулпулоо"><i class="fa-solid fa-lock"></i></button>
+      <button class="mini-btn" id="btnHideLayer" onclick="toggleHideSelected()" title="Жашыруу"><i class="fa-solid fa-eye"></i></button>
+    </div>
+    <div id="layersListContainer" style="display:flex;flex-direction:column;gap:4px;max-height:130px;overflow-y:auto;margin-top:4px"></div>
+  </div>
+</aside>
+
+<!-- ТӨМӨН: Floating Navigation Bar -->
+<nav class="bottom-nav" aria-label="Навигация">
+  <button class="nav-pill-btn" onclick="zoomBy(1.2)" title="Zoom +"><i class="fa-solid fa-magnifying-glass-plus"></i><span>Zoom +</span></button>
+  <span class="zoom-readout" id="zoomPercent">100%</span>
+  <button class="nav-pill-btn" onclick="zoomBy(1/1.2)" title="Zoom -"><i class="fa-solid fa-magnifying-glass-minus"></i><span>Zoom -</span></button>
+  <button class="nav-pill-btn" onclick="fitToScreen()" title="Fit Screen"><i class="fa-solid fa-maximize"></i><span>Fit</span></button>
+  <button class="nav-pill-btn active" id="minimapToggleBtn" onclick="toggleMinimap()" title="Mini Map"><i class="fa-solid fa-map"></i><span>Mini Map</span></button>
+  <button class="nav-pill-btn" id="presentBtn" onclick="startPresentationMode()" title="Presentation Mode"><i class="fa-solid fa-tv"></i><span>Presentation</span></button>
+  <button class="nav-pill-btn" id="cinemaBtn" onclick="toggleCinemaMode()" title="Cinema Mode (Prezi)"><i class="fa-solid fa-film"></i><span>Cinema</span></button>
+  <button class="nav-pill-btn" onclick="toggleFullScreen()" title="Full Screen"><i class="fa-solid fa-expand"></i><span>Full Screen</span></button>
+</nav>
+
+<!-- MINI MAP (Оң төмөн жакта) -->
+<div class="minimap-box" id="minimapBox" title="Басып же сүйрөп кенепте көчүңүз">
+  <div class="minimap-badge">MINI MAP</div>
+  <canvas id="minimap-canvas"></canvas>
 </div>
 
-<div id="app" style="display:none">
-
-    <header class="topbar">
-        <div class="brand">
-            <i class="fa-solid fa-chalkboard"></i>
-            <div>
-                Bilimal.org — Чексиз такта
-                <small id="userLabel">VIP колдонуучу</small>
-            </div>
-        </div>
-
-        <div class="top-actions">
-            <span class="status desktop">
-                <i class="fa-solid fa-crown"></i> VIP
-            </span>
-            <button class="btn desktop" onclick="saveBoard()">
-                <i class="fa-solid fa-floppy-disk"></i> Сактоо
-            </button>
-            <button class="btn desktop" onclick="exportImage()">
-                <i class="fa-solid fa-download"></i> PNG
-            </button>
-            <button class="btn danger" onclick="goBack()">
-                <i class="fa-solid fa-arrow-left"></i>
-                <span class="desktop">Чыгуу</span>
-            </button>
-        </div>
-    </header>
-
-    <main class="workspace">
-        <canvas id="board"></canvas>
-
-        <div class="toolbar">
-
-            <button class="tool active" id="penTool"
-                title="Калем" onclick="setTool('pen')">
-                <i class="fa-solid fa-pen"></i>
-            </button>
-
-            <button class="tool" id="eraserTool"
-                title="Өчүргүч" onclick="setTool('eraser')">
-                <i class="fa-solid fa-eraser"></i>
-            </button>
-
-            <button class="tool" id="handTool"
-                title="Такта жылдыруу" onclick="setTool('hand')">
-                <i class="fa-solid fa-hand"></i>
-            </button>
-
-            <div class="separator"></div>
-
-            <input type="color" id="colorPicker"
-                class="color-picker" value="#111827"
-                title="Калемдин түсү">
-
-            <select id="brushSize" class="size-select" title="Калемдин калыңдыгы">
-                <option value="2">Жука</option>
-                <option value="4" selected>Орто</option>
-                <option value="8">Калың</option>
-                <option value="14">Өтө калың</option>
-                <option value="22">Чоң</option>
-            </select>
-
-            <div class="separator"></div>
-
-            <button class="tool" onclick="undo()" title="Артка кайтаруу">
-                <i class="fa-solid fa-rotate-left"></i>
-            </button>
-
-            <button class="tool" onclick="redo()" title="Кайра кайталоо">
-                <i class="fa-solid fa-rotate-right"></i>
-            </button>
-
-            <button class="tool" onclick="clearBoard()" title="Тактанын баарын тазалоо">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-
-            <div class="separator"></div>
-
-            <button class="tool" onclick="saveBoard()" title="Сактоо">
-                <i class="fa-solid fa-floppy-disk"></i>
-            </button>
-
-            <button class="tool" onclick="exportImage()" title="PNG жүктөө">
-                <i class="fa-solid fa-image"></i>
-            </button>
-
-        </div>
-
-        <div class="bottom-info">
-            <i class="fa-solid fa-circle-info"></i>
-            Калем менен тартыңыз. Кол белгиси менен тактаны жылдырыңыз.
-        </div>
-
-        <div class="zoom-controls">
-            <button onclick="zoomAtCenter(1.2)" title="Чоңойтуу">
-                <i class="fa-solid fa-plus"></i>
-            </button>
-            <span id="zoomText">100%</span>
-            <button onclick="zoomAtCenter(0.8)" title="Кичирейтүү">
-                <i class="fa-solid fa-minus"></i>
-            </button>
-            <button onclick="resetView()" title="Баштапкы көрүнүш">
-                <i class="fa-solid fa-expand"></i>
-            </button>
-        </div>
-    </main>
-
+<!-- Presentation / Cinema башкаруу панели -->
+<div id="presentation-hud">
+  <span id="slideCounter" style="font-size:12px;font-weight:800;color:var(--accent-gold)">Frame 1 / 1</span>
+  <button class="hud-btn" onclick="prevFrameSlide()"><i class="fa-solid fa-chevron-left"></i> Мурунку</button>
+  <button class="hud-btn accent" onclick="nextFrameSlide()">Кийинки <i class="fa-solid fa-chevron-right"></i></button>
+  <button class="hud-btn" id="cinemaAutoBtn" onclick="toggleCinemaMode()"><i class="fa-solid fa-film"></i> Cinema</button>
+  <button class="hud-btn" onclick="stopPresentationMode()"><i class="fa-solid fa-xmark"></i> Чыгуу</button>
 </div>
+
+<!-- Сакталган проекттер модалы -->
+<div class="modal-backdrop" id="projectsModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3><i class="fa-solid fa-folder-open"></i> Сакталган Проекттер</h3>
+      <button class="mini-btn" style="flex:0 0 auto;padding:6px 10px" onclick="closeModal('projectsModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="savedProjectsList"></div>
+  </div>
+</div>
+
+<!-- Видео модал -->
+<div class="modal-backdrop" id="videoModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3><i class="fa-solid fa-video"></i> Видео кошуу (YouTube же Файл)</h3>
+      <button class="mini-btn" style="flex:0 0 auto;padding:6px 10px" onclick="closeModal('videoModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <input type="text" id="youtubeUrlInput" placeholder="YouTube шилтемесин чаптаңыз (https://youtube.com/watch?v=...)" style="background:rgba(4,10,24,.9);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="hud-btn accent" onclick="addYouTubeFromInput()"><i class="fa-brands fa-youtube"></i> YouTube кошуу</button>
+        <button class="hud-btn" onclick="triggerMediaUpload('video')"><i class="fa-solid fa-file-video"></i> Локалдык видео жүктөө</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Жашыруун файл input'тар -->
+<input type="file" id="imageFileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event,'image')">
+<input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="handleFileUpload(event,'video')">
+<input type="file" id="audioFileInput" accept="audio/*" style="display:none" onchange="handleFileUpload(event,'audio')">
+<input type="file" id="pdfFileInput" accept="application/pdf" style="display:none" onchange="handleFileUpload(event,'pdf')">
+<input type="file" id="importJsonInput" accept=".json,application/json" style="display:none" onchange="importJSON(event)">
 
 <script>
-// ================================================
-// 1. FIREBASE CONFIGURATION
-// ================================================
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
 
-const firebaseConfig = {
-    apiKey: "AIzaSyAsRjj_5VoQwZA7hSBWhkQ58UvUnct-b28",
-    authDomain: "bilimal-org.firebaseapp.com",
-    databaseURL: "https://bilimal-org-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "bilimal-org",
-    storageBucket: "bilimal-org.firebasestorage.app",
-    messagingSenderId: "241750360816",
-    appId: "1:241750360816:web:a991434eb5afbc470d7835",
-    measurementId: "G-9GSQV60QV0"
+/* ============================================================================
+   CORE STATE & PERFORMANCE ENGINE (Canvas + requestAnimationFrame + Culling)
+   10 000+ объект болсо да жайлабашы үчүн:
+   - Viewport culling (экрандан тышкары объекттер тартылбайт)
+   - Кэштелген сүрөттөр жана текстуралар (memory leak болбошу үчүн тазаланат)
+   - Undo / Redo тарыхы (чектүү стек)
+   ============================================================================ */
+const STORAGE_KEY = 'bilimal_unlimited_board_projects_v1';
+const AUTOSAVE_KEY = 'bilimal_unlimited_board_autosave_v1';
+
+const canvas = document.getElementById('board-canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+const overlayLayer = document.getElementById('overlay-layer');
+const minimapCanvas = document.getElementById('minimap-canvas');
+const mctx = minimapCanvas.getContext('2d');
+const inlineEditor = document.getElementById('inline-text-editor');
+
+const state = {
+  camX: 0,
+  camY: 0,
+  zoom: 1,
+  minZoom: 0.05,
+  maxZoom: 8,
+  tool: 'select',
+  shapeKind: 'rect',
+  objects: [],
+  selectedIds: new Set(),
+  clipboard: [],
+  undoStack: [],
+  redoStack: [],
+  maxHistory: 60,
+  dockPinned: false,
+  cinemaMode: false,
+  presentationMode: false,
+  presentationIndex: 0,
+  cinemaTime: 0,
+  cinemaTarget: null,
+  isDraggingCanvas: false,
+  isPinching: false,
+  pinchStartDist: 0,
+  pinchStartZoom: 1,
+  dragStartScreen: { x: 0, y: 0 },
+  dragStartCam: { x: 0, y: 0 },
+  activeObjDrag: null, // { id, mode: 'move'|'resize-br'|'rotate', startWorld, origObj }
+  drawingStroke: null,
+  connectorStartId: null,
+  editingTextId: null,
+  imageCache: new Map(), // src -> HTMLImageElement
+  lastFrameTime: performance.now(),
+  toastTimer: null
 };
 
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+function uid() {
+  return 'obj_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
 }
 
-const auth = firebase.auth();
-const db = firebase.database();
-
-// ================================================
-// 2. GLOBAL VARIABLES
-// ================================================
-
-const canvas = document.getElementById("board");
-const ctx = canvas.getContext("2d");
-
-let currentEmail = "";
-let currentTool = "pen";
-
-let strokes = [];
-let redoStack = [];
-
-let drawing = false;
-let panning = false;
-let lastPointer = null;
-let spacePressed = false;
-
-let zoom = 1;
-let panX = 0;
-let panY = 0;
-
-let pixelRatio = window.devicePixelRatio || 1;
-
-const MIN_ZOOM = 0.15;
-const MAX_ZOOM = 5;
-
-let saveTimer = null;
-
-// ================================================
-// 3. FIREBASE AUTHENTICATION
-// ================================================
-
-function ensureAuth() {
-    return new Promise((resolve, reject) => {
-
-        if (auth.currentUser) {
-            resolve(auth.currentUser);
-            return;
-        }
-
-        const unsubscribe = auth.onAuthStateChanged(user => {
-
-            unsubscribe();
-
-            if (user) {
-                resolve(user);
-            } else {
-                auth.signInAnonymously()
-                    .then(result => resolve(result.user))
-                    .catch(reject);
-            }
-        }, reject);
-    });
+function showToast(msg, ms = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => el.classList.remove('show'), ms);
 }
 
-function sanitizeEmail(email) {
-    return email.trim().toLowerCase()
-        .replace(/\./g, "_dot_")
-        .replace(/@/g, "_at_");
+/* Координата конвертациялоо */
+function screenToWorld(sx, sy) {
+  return {
+    x: (sx - state.camX) / state.zoom,
+    y: (sy - state.camY) / state.zoom
+  };
 }
 
-// ================================================
-// 4. VIP ACCESS CHECK
-// ================================================
-
-function verifyAccess() {
-
-    const email = document.getElementById("emailInput").value.trim().toLowerCase();
-    const message = document.getElementById("authMessage");
-
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        message.textContent = "Туура электрондук почта киргизиңиз.";
-        return;
-    }
-
-    message.style.color = "#94a3b8";
-    message.textContent = "VIP мүмкүнчүлүк текшерилүүдө...";
-
-    ensureAuth()
-        .then(() => {
-
-            const emailKey = sanitizeEmail(email);
-
-            return db.ref("applications/vip_users/" + emailKey).once("value")
-                .then(snapshot => {
-
-                    if (!snapshot.exists()) {
-                        throw new Error("Бул E-mail үчүн VIP мүмкүнчүлүк табылган жок.");
-                    }
-
-                    const data = snapshot.val();
-                    const expiry = new Date(data.expiresAt).getTime();
-
-                    if (
-                        data.status !== "active" ||
-                        !Number.isFinite(expiry) ||
-                        expiry <= Date.now()
-                    ) {
-                        throw new Error("VIP мөөнөтүңүз аяктаган. Мүмкүнчүлүктү жаңыртыңыз.");
-                    }
-
-                    currentEmail = email;
-
-                    localStorage.setItem("bilimal_user_email", email);
-
-                    document.getElementById("userLabel").textContent =
-                        email + " | VIP";
-
-                    document.getElementById("authScreen").style.display = "none";
-                    document.getElementById("app").style.display = "flex";
-
-                    initializeBoard();
-
-                });
-
-        })
-        .catch(error => {
-            console.error("VIP текшерүү катасы:", error);
-            message.style.color = "#fca5a5";
-            message.textContent = error.message ||
-                "Маалыматты текшерүү мүмкүн болгон жок. Кайра аракет кылыңыз.";
-        });
+function worldToScreen(wx, wy) {
+  return {
+    x: wx * state.zoom + state.camX,
+    y: wy * state.zoom + state.camY
+  };
 }
 
-// ================================================
-// 5. INITIALIZATION
-// ================================================
-
-window.addEventListener("DOMContentLoaded", async () => {
-
-    try {
-        await ensureAuth();
-
-        const savedEmail = localStorage.getItem("bilimal_user_email");
-
-        if (savedEmail) {
-            document.getElementById("emailInput").value = savedEmail;
-        }
-
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("authScreen").style.display = "flex";
-
-    } catch (error) {
-
-        console.error(error);
-
-        document.getElementById("loading").innerHTML =
-            "<p style='color:#fca5a5'>Firebase менен байланышуу мүмкүн болгон жок. Баракты жаңыртып көрүңүз.</p>";
-    }
-
-});
-
-// ================================================
-// 6. BOARD INITIALIZATION
-// ================================================
-
-function initializeBoard() {
-
-    resizeCanvas();
-
-    loadBoard();
-
-    drawBoard();
-
-    window.addEventListener("resize", () => {
-        resizeCanvas();
-        drawBoard();
-    });
+/* Undo / Redo */
+function pushHistory() {
+  const snapshot = JSON.stringify(state.objects.map(stripRuntimeProps));
+  if (state.undoStack[state.undoStack.length - 1] === snapshot) return;
+  state.undoStack.push(snapshot);
+  if (state.undoStack.length > state.maxHistory) state.undoStack.shift();
+  state.redoStack = [];
 }
 
-function resizeCanvas() {
-
-    const rect = canvas.getBoundingClientRect();
-
-    pixelRatio = window.devicePixelRatio || 1;
-
-    canvas.width = Math.round(rect.width * pixelRatio);
-    canvas.height = Math.round(rect.height * pixelRatio);
-
-    drawBoard();
+function stripRuntimeProps(o) {
+  const copy = Object.assign({}, o);
+  delete copy._animStart;
+  return copy;
 }
-
-// ================================================
-// 7. BOARD DRAWING
-// ================================================
-
-function drawBoard() {
-
-    const width = canvas.width / pixelRatio;
-    const height = canvas.height / pixelRatio;
-
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-
-    ctx.clearRect(0, 0, width, height);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-
-    drawGrid(width, height);
-
-    ctx.setTransform(
-        pixelRatio * zoom,
-        0,
-        0,
-        pixelRatio * zoom,
-        pixelRatio * panX,
-        pixelRatio * panY
-    );
-
-    strokes.forEach(stroke => drawStroke(stroke));
-
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-
-    document.getElementById("zoomText").textContent =
-        Math.round(zoom * 100) + "%";
-}
-
-function drawGrid(width, height) {
-
-    const gridSize = 40 * zoom;
-
-    if (gridSize < 8) return;
-
-    const startX = ((panX % gridSize) + gridSize) % gridSize;
-    const startY = ((panY % gridSize) + gridSize) % gridSize;
-
-    ctx.strokeStyle = "#e5e7eb";
-    ctx.lineWidth = 0.7;
-
-    ctx.beginPath();
-
-    for (let x = startX; x < width; x += gridSize) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-    }
-
-    for (let y = startY; y < height; y += gridSize) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-    }
-
-    ctx.stroke();
-}
-
-function drawStroke(stroke) {
-
-    if (!stroke.points || stroke.points.length === 0) return;
-
-    ctx.save();
-
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    ctx.globalCompositeOperation =
-        stroke.tool === "eraser" ? "destination-out" : "source-over";
-
-    ctx.strokeStyle = stroke.color || "#111827";
-    ctx.lineWidth = stroke.size || 4;
-
-    ctx.beginPath();
-
-    const points = stroke.points;
-
-    ctx.moveTo(points[0].x, points[0].y);
-
-    if (points.length === 1) {
-
-        ctx.lineTo(points[0].x + 0.01, points[0].y + 0.01);
-
-    } else {
-
-        for (let i = 1; i < points.length; i++) {
-            ctx.lineTo(points[i].x, points[i].y);
-        }
-    }
-
-    ctx.stroke();
-
-    ctx.restore();
-}
-
-// ================================================
-// 8. TOOL SELECTION
-// ================================================
-
-function setTool(tool) {
-
-    currentTool = tool;
-
-    document.querySelectorAll(".tool").forEach(btn => {
-        btn.classList.remove("active");
-    });
-
-    const selected = {
-        pen: "penTool",
-        eraser: "eraserTool",
-        hand: "handTool"
-    };
-
-    const button = document.getElementById(selected[tool]);
-
-    if (button) button.classList.add("active");
-
-    canvas.style.cursor =
-        tool === "hand" ? "grab" : "crosshair";
-}
-
-// ================================================
-// 9. POINTER COORDINATES
-// ================================================
-
-function getWorldPosition(event) {
-
-    const rect = canvas.getBoundingClientRect();
-
-    return {
-        x: (event.clientX - rect.left - panX) / zoom,
-        y: (event.clientY - rect.top - panY) / zoom
-    };
-}
-
-// ================================================
-// 10. POINTER EVENTS
-// ================================================
-
-canvas.addEventListener("pointerdown", event => {
-
-    if (!currentEmail) return;
-
-    canvas.setPointerCapture(event.pointerId);
-
-    const rect = canvas.getBoundingClientRect();
-
-    const screenPoint = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-    };
-
-    const useHand =
-        currentTool === "hand" ||
-        spacePressed ||
-        event.button === 1;
-
-    if (useHand) {
-
-        panning = true;
-        lastPointer = screenPoint;
-        canvas.style.cursor = "grabbing";
-
-        return;
-    }
-
-    if (event.button !== 0) return;
-
-    drawing = true;
-
-    const point = getWorldPosition(event);
-
-    const stroke = {
-        tool: currentTool,
-        color: document.getElementById("colorPicker").value,
-        size: Number(document.getElementById("brushSize").value),
-        points: [point]
-    };
-
-    strokes.push(stroke);
-
-    redoStack = [];
-
-    drawBoard();
-
-});
-
-canvas.addEventListener("pointermove", event => {
-
-    const rect = canvas.getBoundingClientRect();
-
-    const screenPoint = {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top
-    };
-
-    if (panning) {
-
-        panX += screenPoint.x - lastPointer.x;
-        panY += screenPoint.y - lastPointer.y;
-
-        lastPointer = screenPoint;
-
-        drawBoard();
-
-        return;
-    }
-
-    if (!drawing) return;
-
-    const point = getWorldPosition(event);
-
-    const stroke = strokes[strokes.length - 1];
-
-    if (stroke) {
-        stroke.points.push(point);
-        drawBoard();
-    }
-});
-
-function finishDrawing() {
-
-    if (drawing) {
-        drawing = false;
-        scheduleSave();
-    }
-
-    if (panning) {
-        panning = false;
-        canvas.style.cursor =
-            currentTool === "hand" ? "grab" : "crosshair";
-    }
-
-    lastPointer = null;
-}
-
-canvas.addEventListener("pointerup", finishDrawing);
-canvas.addEventListener("pointercancel", finishDrawing);
-canvas.addEventListener("lostpointercapture", finishDrawing);
-
-// ================================================
-// 11. ZOOM
-// ================================================
-
-canvas.addEventListener("wheel", event => {
-
-    event.preventDefault();
-
-    const rect = canvas.getBoundingClientRect();
-
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-
-    const factor = event.deltaY < 0 ? 1.12 : 0.89;
-
-    zoomAt(mouseX, mouseY, factor);
-
-}, { passive: false });
-
-function zoomAt(x, y, factor) {
-
-    const oldZoom = zoom;
-
-    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
-
-    const ratio = zoom / oldZoom;
-
-    panX = x - (x - panX) * ratio;
-    panY = y - (y - panY) * ratio;
-
-    drawBoard();
-    scheduleSave();
-}
-
-function zoomAtCenter(factor) {
-
-    const rect = canvas.getBoundingClientRect();
-
-    zoomAt(rect.width / 2, rect.height / 2, factor);
-}
-
-function resetView() {
-
-    zoom = 1;
-    panX = 0;
-    panY = 0;
-
-    drawBoard();
-    scheduleSave();
-}
-
-// ================================================
-// 12. UNDO / REDO
-// ================================================
 
 function undo() {
-
-    if (strokes.length === 0) return;
-
-    redoStack.push(strokes.pop());
-
-    drawBoard();
-    scheduleSave();
+  if (state.undoStack.length <= 1) { showToast('Артка кайтарууга кадам жок'); return; }
+  const current = state.undoStack.pop();
+  state.redoStack.push(current);
+  const prev = JSON.parse(state.undoStack[state.undoStack.length - 1]);
+  loadObjectsArray(prev, false);
+  showToast('Undo (Ctrl+Z)');
 }
 
 function redo() {
-
-    if (redoStack.length === 0) return;
-
-    strokes.push(redoStack.pop());
-
-    drawBoard();
-    scheduleSave();
+  if (!state.redoStack.length) { showToast('Алдыга жылдырууга кадам жок'); return; }
+  const next = state.redoStack.pop();
+  state.undoStack.push(next);
+  loadObjectsArray(JSON.parse(next), false);
+  showToast('Redo (Ctrl+Y)');
 }
 
-// ================================================
-// 13. CLEAR BOARD
-// ================================================
+function loadObjectsArray(arr, record = true) {
+  state.objects = Array.isArray(arr) ? arr : [];
+  state.selectedIds.clear();
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+  if (record) pushHistory();
+}
 
-function clearBoard() {
+/* ============================================================================
+   ОБЪЕКТ ТҮЗҮҮ ФУНКЦИЯЛАРЫ
+   ============================================================================ */
+function getViewportCenterWorld() {
+  return screenToWorld(canvas.clientWidth / 2, canvas.clientHeight / 2);
+}
 
-    if (strokes.length === 0) return;
+function createBaseObj(type, props = {}) {
+  const c = getViewportCenterWorld();
+  return Object.assign({
+    id: uid(),
+    type,
+    name: props.name || type.toUpperCase(),
+    x: c.x - (props.w || 180) / 2,
+    y: c.y - (props.h || 110) / 2,
+    w: props.w || 180,
+    h: props.h || 110,
+    rotation: 0,
+    opacity: 1,
+    fill: '#0b2246',
+    stroke: '#00e5ff',
+    strokeWidth: 2,
+    text: '',
+    fontSize: 18,
+    fontFamily: 'Inter, sans-serif',
+    bold: false,
+    italic: false,
+    underline: false,
+    align: 'center',
+    animType: 'none',
+    _animStart: performance.now(),
+    locked: false,
+    hidden: false,
+    parentId: null,
+    fromId: null,
+    toId: null,
+    points: [],
+    src: '',
+    youtubeId: '',
+    rows: [],
+    pdfPage: 1,
+    pdfPagesCount: 1
+  }, props);
+}
 
-    if (!confirm("Тактадагы бардык жазууларды өчүрөсүзбү?")) {
-        return;
+function addObject(obj, selectIt = true) {
+  obj._animStart = performance.now();
+  state.objects.push(obj);
+  if (selectIt) {
+    state.selectedIds.clear();
+    state.selectedIds.add(obj.id);
+  }
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+  pushHistory();
+  return obj;
+}
+
+function addShape(kind) {
+  closePopovers();
+  const defaults = {
+    rect: { w: 180, h: 110, fill: 'rgba(0,229,255,0.12)', stroke: '#00e5ff', name: 'Rectangle' },
+    circle: { w: 140, h: 140, fill: 'rgba(139,92,246,0.16)', stroke: '#8b5cf6', name: 'Circle' },
+    diamond: { w: 150, h: 150, fill: 'rgba(236,72,153,0.15)', stroke: '#ec4899', name: 'Diamond' },
+    triangle: { w: 150, h: 130, fill: 'rgba(255,189,88,0.15)', stroke: '#ffbd58', name: 'Triangle' },
+    arrow: { w: 200, h: 60, fill: 'rgba(0,229,255,0.2)', stroke: '#00e5ff', name: 'Arrow' },
+    line: { w: 200, h: 10, fill: 'transparent', stroke: '#38bdf8', strokeWidth: 3, name: 'Line' }
+  };
+  const d = defaults[kind] || defaults.rect;
+  addObject(createBaseObj('shape', Object.assign({ shapeKind: kind, text: '' }, d)));
+  setTool('select');
+}
+
+function createStickyNote(customText = 'Жаңы эскертме', customFill = '#facc15', customPos = null) {
+  closePopovers();
+  const c = customPos || getViewportCenterWorld();
+  const isDarkInk = ['#facc15', '#4ade80', '#38bdf8', '#f472b6'].includes(customFill);
+  addObject(createBaseObj('sticky', {
+    name: 'Sticky Note',
+    x: c.x - 95,
+    y: c.y - 95,
+    w: 190,
+    h: 190,
+    fill: customFill,
+    stroke: 'rgba(255,255,255,0.22)',
+    strokeWidth: 1,
+    text: customText,
+    fontSize: 16,
+    bold: false,
+    align: 'left',
+    textColor: isDarkInk ? '#0f172a' : '#f8fafc'
+  }));
+  setTool('select');
+}
+
+function createTableObject() {
+  closePopovers();
+  addObject(createBaseObj('table', {
+    name: 'Таблица (3×3)',
+    w: 360,
+    h: 180,
+    fill: 'rgba(10,22,48,0.92)',
+    stroke: '#38bdf8',
+    rows: [
+      ['Параметр', 'Мааниси', 'Бирдиги'],
+      ['Масса (m)', '5.97 × 10²⁴', 'кг'],
+      ['Гравитация (g)', '9.81', 'м/с²']
+    ]
+  }));
+  setTool('select');
+}
+
+function createFrameObject() {
+  closePopovers();
+  const idx = state.objects.filter(o => o.type === 'frame').length + 1;
+  addObject(createBaseObj('frame', {
+    name: `Frame ${idx}`,
+    text: `Frame ${idx}`,
+    w: 760,
+    h: 460,
+    fill: 'rgba(12,26,56,0.25)',
+    stroke: '#ec4899',
+    strokeWidth: 2,
+    fontSize: 16
+  }));
+  setTool('select');
+  showToast(`Frame ${idx} түзүлдү`);
+}
+
+/* Mind Map системасы */
+function addMindNode(relation = 'root') {
+  closePopovers();
+  const selected = getFirstSelected();
+  if (relation === 'root' || !selected || selected.type !== 'mindnode') {
+    const c = getViewportCenterWorld();
+    addObject(createBaseObj('mindnode', {
+      name: 'Негизги идея',
+      text: 'Негизги идея',
+      x: c.x - 90,
+      y: c.y - 36,
+      w: 180,
+      h: 72,
+      fill: 'rgba(139,92,246,0.28)',
+      stroke: '#a855f7',
+      bold: true
+    }));
+    setTool('select');
+    return;
+  }
+
+  let parentId = selected.parentId;
+  if (relation === 'child') parentId = selected.id;
+  if (relation === 'sibling') parentId = selected.parentId || null;
+
+  const newNode = createBaseObj('mindnode', {
+    name: relation === 'child' ? 'Бутак (Child)' : 'Катар түйүн',
+    text: relation === 'child' ? 'Бутак' : 'Түйүн',
+    x: selected.x + (relation === 'child' ? 230 : 0),
+    y: selected.y + (relation === 'child' ? 0 : 110),
+    w: 165,
+    h: 64,
+    fill: 'rgba(0,229,255,0.16)',
+    stroke: '#00e5ff',
+    parentId
+  });
+  addObject(newNode);
+  if (parentId) {
+    state.objects.push(createBaseObj('connector', {
+      name: 'Mind Link',
+      fromId: parentId,
+      toId: newNode.id,
+      stroke: '#a855f7',
+      strokeWidth: 2,
+      fill: 'transparent',
+      w: 10,
+      h: 10
+    }));
+  }
+  setTool('select');
+}
+
+function layoutMindMap(mode = 'tree') {
+  closePopovers();
+  const nodes = state.objects.filter(o => o.type === 'mindnode');
+  if (!nodes.length) { showToast('Mind Map түйүндөрү табылган жок'); return; }
+  pushHistory();
+  const roots = nodes.filter(n => !n.parentId);
+  const root = roots[0] || nodes[0];
+  const childrenMap = new Map();
+  nodes.forEach(n => {
+    if (n.parentId) {
+      if (!childrenMap.has(n.parentId)) childrenMap.set(n.parentId, []);
+      childrenMap.get(n.parentId).push(n);
     }
+  });
 
-    redoStack = [...strokes];
-    strokes = [];
-
-    drawBoard();
-    saveBoard();
-}
-
-// ================================================
-// 14. LOCAL STORAGE
-// ================================================
-
-function getStorageKey() {
-
-    return "bilimal_unlimited_board_" + sanitizeEmail(currentEmail);
-}
-
-function saveBoard() {
-
-    if (!currentEmail) return;
-
-    try {
-
-        const data = {
-            version: 1,
-            strokes: strokes,
-            zoom: zoom,
-            panX: panX,
-            panY: panY,
-            updatedAt: new Date().toISOString()
-        };
-
-        localStorage.setItem(getStorageKey(), JSON.stringify(data));
-
-        showToast("Такта ийгиликтүү сакталды!");
-
-    } catch (error) {
-
-        console.error("Сактоо катасы:", error);
-
-        showToast("Сактоо мүмкүн болгон жок. Маалымат өтө чоң болушу мүмкүн.");
+  if (mode === 'tree') {
+    let rowIdx = 0;
+    function placeTree(node, depth) {
+      const kids = childrenMap.get(node.id) || [];
+      node.x = root.x + depth * 240;
+      if (!kids.length) {
+        node.y = root.y + rowIdx * 95;
+        rowIdx++;
+      } else {
+        kids.forEach(k => placeTree(k, depth + 1));
+        const firstKid = kids[0];
+        const lastKid = kids[kids.length - 1];
+        node.y = (firstKid.y + lastKid.y) / 2;
+      }
     }
+    placeTree(root, 0);
+  } else {
+    const others = nodes.filter(n => n.id !== root.id);
+    const radius = Math.max(200, others.length * 36);
+    others.forEach((n, i) => {
+      const ang = (i / Math.max(1, others.length)) * Math.PI * 2;
+      n.x = root.x + Math.cos(ang) * radius;
+      n.y = root.y + Math.sin(ang) * radius;
+    });
+  }
+  showToast(`Mind Map (${mode.toUpperCase()}) иреттелди`);
 }
 
-function loadBoard() {
-
-    if (!currentEmail) return;
-
-    try {
-
-        const raw = localStorage.getItem(getStorageKey());
-
-        if (!raw) {
-            strokes = [];
-            zoom = 1;
-            panX = 0;
-            panY = 0;
-            return;
-        }
-
-        const data = JSON.parse(raw);
-
-        if (data.version !== 1 || !Array.isArray(data.strokes)) {
-            throw new Error("Тактанын маалымат форматы туура эмес.");
-        }
-
-        strokes = data.strokes;
-        zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(data.zoom) || 1));
-        panX = Number(data.panX) || 0;
-        panY = Number(data.panY) || 0;
-
-    } catch (error) {
-
-        console.error("Жүктөө катасы:", error);
-
-        strokes = [];
-        zoom = 1;
-        panX = 0;
-        panY = 0;
-    }
+/* Flowchart системасы */
+function addFlowNode(kind, label) {
+  closePopovers();
+  const prevFlow = [...state.objects].reverse().find(o => o.type === 'flownode');
+  const x = prevFlow ? prevFlow.x + 230 : getViewportCenterWorld().x - 85;
+  const y = prevFlow ? prevFlow.y : getViewportCenterWorld().y - 45;
+  const colors = {
+    start: { fill: 'rgba(16,185,129,0.2)', stroke: '#10b981', shape: 'round' },
+    process: { fill: 'rgba(56,189,248,0.16)', stroke: '#38bdf8', shape: 'rect' },
+    decision: { fill: 'rgba(255,189,88,0.18)', stroke: '#ffbd58', shape: 'diamond' },
+    io: { fill: 'rgba(236,72,153,0.18)', stroke: '#ec4899', shape: 'parallelogram' }
+  };
+  const c = colors[kind] || colors.process;
+  const node = addObject(createBaseObj('flownode', {
+    name: `Flow: ${label}`,
+    text: label,
+    x, y,
+    w: kind === 'decision' ? 140 : 175,
+    h: kind === 'decision' ? 110 : 76,
+    fill: c.fill,
+    stroke: c.stroke,
+    flowShape: c.shape
+  }));
+  if (prevFlow) {
+    state.objects.push(createBaseObj('connector', {
+      name: 'Flow Arrow',
+      fromId: prevFlow.id,
+      toId: node.id,
+      stroke: '#58d9ff',
+      strokeWidth: 2,
+      fill: 'transparent',
+      w: 10,
+      h: 10
+    }));
+  }
+  setTool('select');
 }
 
-function scheduleSave() {
+/* ============================================================================
+   MEDIA SYSTEM: Сүрөт, Видео (YouTube + Локалдык), Аудио, PDF
+   ============================================================================ */
+function triggerMediaUpload(kind) {
+  closePopovers();
+  const map = {
+    image: 'imageFileInput',
+    video: 'videoFileInput',
+    audio: 'audioFileInput',
+    pdf: 'pdfFileInput'
+  };
+  const el = document.getElementById(map[kind]);
+  if (el) { el.value = ''; el.click(); }
+}
 
-    clearTimeout(saveTimer);
+function openVideoModal() {
+  closePopovers();
+  document.getElementById('videoModal').classList.add('show');
+}
 
-    saveTimer = setTimeout(() => {
+function extractYouTubeId(url) {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : '';
+}
 
-        if (!currentEmail) return;
+function addYouTubeFromInput() {
+  const raw = document.getElementById('youtubeUrlInput').value.trim();
+  const vid = extractYouTubeId(raw);
+  if (!vid) { showToast('Туура YouTube шилтемесин жазыңыз'); return; }
+  closeModal('videoModal');
+  addObject(createBaseObj('video', {
+    name: 'YouTube Video',
+    youtubeId: vid,
+    w: 440,
+    h: 260
+  }));
+  document.getElementById('youtubeUrlInput').value = '';
+}
 
+function handleFileUpload(event, kind) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    if (kind === 'image') {
+      const img = await loadImageCached(dataUrl);
+      const ratio = img.width && img.height ? img.height / img.width : 0.75;
+      const w = Math.min(360, img.width || 300);
+      addObject(createBaseObj('image', {
+        name: file.name,
+        src: dataUrl,
+        w,
+        h: Math.round(w * ratio),
+        crop: { x: 0, y: 0, w: 1, h: 1 }
+      }));
+    } else if (kind === 'video') {
+      addObject(createBaseObj('video', {
+        name: file.name,
+        src: dataUrl,
+        w: 420,
+        h: 250
+      }));
+    } else if (kind === 'audio') {
+      addObject(createBaseObj('audio', {
+        name: file.name,
+        src: dataUrl,
+        w: 310,
+        h: 112
+      }));
+    } else if (kind === 'pdf') {
+      let pagesCount = 1;
+      if (window.pdfjsLib) {
         try {
-
-            const data = {
-                version: 1,
-                strokes: strokes,
-                zoom: zoom,
-                panX: panX,
-                panY: panY,
-                updatedAt: new Date().toISOString()
-            };
-
-            localStorage.setItem(getStorageKey(), JSON.stringify(data));
-
-        } catch (error) {
-            console.error("Автоматтык сактоо катасы:", error);
-        }
-
-    }, 700);
+          const pdfDoc = await pdfjsLib.getDocument(dataUrl).promise;
+          pagesCount = pdfDoc.numPages || 1;
+        } catch (_) {}
+      }
+      addObject(createBaseObj('pdf', {
+        name: file.name,
+        src: dataUrl,
+        w: 400,
+        h: 520,
+        pdfPage: 1,
+        pdfPagesCount: pagesCount
+      }));
+    }
+  };
+  reader.readAsDataURL(file);
 }
 
-// ================================================
-// 15. EXPORT PNG
-// ================================================
-
-function exportImage() {
-
-    if (!currentEmail) return;
-
-    try {
-
-        const link = document.createElement("a");
-
-        link.download =
-            "Bilimal-Chексиз-такта-" +
-            new Date().toISOString().slice(0, 10) +
-            ".png";
-
-        link.href = canvas.toDataURL("image/png");
-
-        link.click();
-
-        showToast("PNG сүрөт даяр!");
-
-    } catch (error) {
-
-        console.error(error);
-        showToast("Сүрөттү сактоо мүмкүн болгон жок.");
-    }
+function loadImageCached(src) {
+  return new Promise((resolve) => {
+    if (state.imageCache.has(src)) { resolve(state.imageCache.get(src)); return; }
+    const img = new Image();
+    img.onload = () => { state.imageCache.set(src, img); resolve(img); };
+    img.onerror = () => resolve({ width: 200, height: 150 });
+    img.src = src;
+  });
 }
 
-// ================================================
-// 16. KEYBOARD SHORTCUTS
-// ================================================
-
-document.addEventListener("keydown", event => {
-
-    if (event.target.tagName === "INPUT" ||
-        event.target.tagName === "SELECT") return;
-
-    if (event.code === "Space") {
-        event.preventDefault();
-        spacePressed = true;
-        canvas.style.cursor = "grab";
-    }
-
-    if ((event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "z") {
-
-        event.preventDefault();
-
-        if (event.shiftKey) redo();
-        else undo();
-    }
-
-    if ((event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "s") {
-
-        event.preventDefault();
-        saveBoard();
-    }
-
-    if (event.key.toLowerCase() === "p") setTool("pen");
-    if (event.key.toLowerCase() === "e") setTool("eraser");
-    if (event.key.toLowerCase() === "h") setTool("hand");
-
-    if (event.key === "Escape") {
-        finishDrawing();
-    }
+/* Drag & Drop сүрөт/файл таштоо */
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (!files || !files.length) return;
+  const file = files[0];
+  if (file.type.startsWith('image/')) {
+    handleFileUpload({ target: { files: [file] } }, 'image');
+  } else if (file.type.startsWith('video/')) {
+    handleFileUpload({ target: { files: [file] } }, 'video');
+  } else if (file.type.startsWith('audio/')) {
+    handleFileUpload({ target: { files: [file] } }, 'audio');
+  } else if (file.type === 'application/pdf') {
+    handleFileUpload({ target: { files: [file] } }, 'pdf');
+  }
 });
 
-document.addEventListener("keyup", event => {
+/* Media HTML Overlay синхрондоштуруу (YouTube, Video, Audio, PDF preview) */
+function syncMediaOverlays() {
+  const mediaTypes = new Set(['video', 'audio', 'pdf']);
+  const desired = state.objects.filter(o => mediaTypes.has(o.type) && !o.hidden);
+  const existingIds = new Set([...overlayLayer.children].map(el => el.dataset.id));
+  const desiredIds = new Set(desired.map(o => o.id));
 
-    if (event.code === "Space") {
+  [...overlayLayer.children].forEach(el => {
+    if (!desiredIds.has(el.dataset.id)) el.remove();
+  });
 
-        spacePressed = false;
-
-        canvas.style.cursor =
-            currentTool === "hand" ? "grab" : "crosshair";
-    }
-});
-
-// ================================================
-// 17. COLOR PICKER
-// ================================================
-
-document.getElementById("colorPicker").addEventListener("input", () => {
-
-    if (currentTool === "eraser") {
-        setTool("pen");
-    }
-});
-
-// ================================================
-// 18. TOAST NOTIFICATION
-// ================================================
-
-function showToast(message) {
-
-    let toast = document.getElementById("boardToast");
-
-    if (!toast) {
-
-        toast = document.createElement("div");
-
-        toast.id = "boardToast";
-
-        toast.style.cssText = `
-            position:fixed;
-            top:80px;
-            left:50%;
-            transform:translateX(-50%);
-            background:#064e3b;
-            color:white;
-            padding:12px 20px;
-            border-radius:9px;
-            z-index:200;
-            box-shadow:0 5px 20px #0005;
-            font-size:14px;
-            max-width:90%;
-            text-align:center;
-        `;
-
-        document.body.appendChild(toast);
-    }
-
-    toast.textContent = message;
-    toast.style.display = "block";
-
-    clearTimeout(toast.timer);
-
-    toast.timer = setTimeout(() => {
-        toast.style.display = "none";
-    }, 2500);
-}
-
-// ================================================
-// 19. EXIT
-// ================================================
-
-function goBack() {
-
-    if (!confirm("Чексиз тактадан чыгасызбы?")) return;
-
-    saveBoard();
-
-    window.location.href = "/dashboard.html";
-}
-
-// ================================================
-// 20. AUTO SAVE BEFORE LEAVING
-// ================================================
-
-window.addEventListener("beforeunload", () => {
-
-    if (!currentEmail) return;
-
-    try {
-
-        const data = {
-            version: 1,
-            strokes: strokes,
-            zoom: zoom,
-            panX: panX,
-            panY: panY,
-            updatedAt: new Date().toISOString()
+  desired.forEach(o => {
+    let card = overlayLayer.querySelector(`.media-card[data-id="${o.id}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'media-card';
+      card.dataset.id = o.id;
+      const bar = document.createElement('div');
+      bar.className = 'media-drag-bar';
+      bar.innerHTML = `<span>${escapeHtml(o.name)}</span><i class="fa-solid fa-up-down-left-right"></i>`;
+      bar.addEventListener('pointerdown', (ev) => {
+        ev.stopPropagation();
+        selectOnly(o.id);
+        const wPos = screenToWorld(ev.clientX, ev.clientY);
+        state.activeObjDrag = {
+          id: o.id,
+          mode: 'move',
+          startWorld: wPos,
+          origObj: cloneBasic(o)
         };
+      });
+      card.addEventListener('pointerdown', () => selectOnly(o.id));
 
-        localStorage.setItem(getStorageKey(), JSON.stringify(data));
-
-    } catch (error) {
-        console.error(error);
+      const body = document.createElement('div');
+      body.className = 'media-body';
+      if (o.type === 'video') {
+        if (o.youtubeId) {
+          body.innerHTML = `<iframe src="https://www.youtube.com/embed/${encodeURIComponent(o.youtubeId)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+        } else {
+          body.innerHTML = `<video src="${o.src}" controls playsinline></video>`;
+        }
+      } else if (o.type === 'audio') {
+        body.innerHTML = `<div class="audio-widget"><div style="font-size:11px;font-weight:700;color:#58d9ff"><i class="fa-solid fa-music"></i> ${escapeHtml(o.name)}</div><audio src="${o.src}" controls></audio></div>`;
+      } else if (o.type === 'pdf') {
+        body.innerHTML = `<div class="pdf-preview-wrap"><canvas class="pdf-preview-canvas"></canvas><div class="pdf-nav"><button class="pdf-prev">◀</button><span class="pdf-page-lbl">1/1</span><button class="pdf-next">▶</button></div></div>`;
+        renderPdfCardPage(card, o);
+        card.querySelector('.pdf-prev').onclick = (e) => {
+          e.stopPropagation();
+          if (o.pdfPage > 1) { o.pdfPage--; renderPdfCardPage(card, o); }
+        };
+        card.querySelector('.pdf-next').onclick = (e) => {
+          e.stopPropagation();
+          if (o.pdfPage < o.pdfPagesCount) { o.pdfPage++; renderPdfCardPage(card, o); }
+        };
+      }
+      card.append(bar, body);
+      overlayLayer.appendChild(card);
     }
+
+    card.style.left = o.x + 'px';
+    card.style.top = o.y + 'px';
+    card.style.width = o.w + 'px';
+    card.style.height = o.h + 'px';
+    card.style.opacity = o.opacity;
+    card.style.transform = `rotate(${o.rotation || 0}deg)`;
+    card.classList.toggle('selected', state.selectedIds.has(o.id));
+  });
+}
+
+async function renderPdfCardPage(card, obj) {
+  const lbl = card.querySelector('.pdf-page-lbl');
+  const pCanvas = card.querySelector('.pdf-preview-canvas');
+  if (lbl) lbl.textContent = `${obj.pdfPage || 1} / ${obj.pdfPagesCount || 1}`;
+  if (!window.pdfjsLib || !obj.src || !pCanvas) return;
+  try {
+    const doc = await pdfjsLib.getDocument(obj.src).promise;
+    obj.pdfPagesCount = doc.numPages;
+    const page = await doc.getPage(Math.min(Math.max(1, obj.pdfPage || 1), doc.numPages));
+    const vp = page.getViewport({ scale: 1.1 });
+    pCanvas.width = vp.width;
+    pCanvas.height = vp.height;
+    await page.render({ canvasContext: pCanvas.getContext('2d'), viewport: vp }).promise;
+    if (lbl) lbl.textContent = `${obj.pdfPage || 1} / ${doc.numPages}`;
+  } catch (_) {}
+}
+
+function updateOverlayTransform() {
+  overlayLayer.style.transform = `translate(${state.camX}px, ${state.camY}px) scale(${state.zoom})`;
+}
+
+/* ============================================================================
+   TEXT SYSTEM (Каалаган жерге коюу + Double Click түзөтүү)
+   ============================================================================ */
+function startInlineTextEdit(obj) {
+  if (obj.locked) return;
+  state.editingTextId = obj.id;
+  const scr = worldToScreen(obj.x, obj.y);
+  inlineEditor.style.display = 'block';
+  inlineEditor.style.left = scr.x + 'px';
+  inlineEditor.style.top = scr.y + 'px';
+  inlineEditor.style.width = Math.max(150, obj.w * state.zoom) + 'px';
+  inlineEditor.style.height = Math.max(46, obj.h * state.zoom) + 'px';
+  inlineEditor.style.fontFamily = obj.fontFamily || 'Inter, sans-serif';
+  inlineEditor.style.fontSize = Math.max(12, (obj.fontSize || 18) * state.zoom) + 'px';
+  inlineEditor.style.fontWeight = obj.bold ? '800' : '400';
+  inlineEditor.style.fontStyle = obj.italic ? 'italic' : 'normal';
+  inlineEditor.style.textDecoration = obj.underline ? 'underline' : 'none';
+  inlineEditor.style.textAlign = obj.align || 'left';
+  inlineEditor.style.color = obj.textColor || '#f8fafc';
+  inlineEditor.value = obj.text || '';
+  inlineEditor.focus();
+}
+
+function commitInlineTextEdit() {
+  if (!state.editingTextId) return;
+  const obj = state.objects.find(o => o.id === state.editingTextId);
+  if (obj) {
+    obj.text = inlineEditor.value;
+    pushHistory();
+  }
+  inlineEditor.style.display = 'none';
+  state.editingTextId = null;
+  refreshPropertiesPanel();
+}
+
+inlineEditor.addEventListener('blur', commitInlineTextEdit);
+inlineEditor.addEventListener('keydown', e => {
+  if (e.key === 'Escape') commitInlineTextEdit();
 });
 
+/* ============================================================================
+   POINTER & TOUCH INTERACTIONS (Pan, Zoom, Pinch, Drag, Resize, Rotate, Pen)
+   ============================================================================ */
+function getObjById(id) {
+  return state.objects.find(o => o.id === id);
+}
+
+function getFirstSelected() {
+  const id = [...state.selectedIds][0];
+  return id ? getObjById(id) : null;
+}
+
+function selectOnly(id) {
+  state.selectedIds.clear();
+  if (id) state.selectedIds.add(id);
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+}
+
+function clearSelection() {
+  commitInlineTextEdit();
+  state.selectedIds.clear();
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+}
+
+function hitTestObject(wx, wy) {
+  for (let i = state.objects.length - 1; i >= 0; i--) {
+    const o = state.objects[i];
+    if (o.hidden || o.type === 'connector' || o.type === 'frame') continue;
+    if (o.type === 'pen' && o.points && o.points.length > 1) {
+      for (let j = 0; j < o.points.length - 1; j++) {
+        const d = pointToSegmentDist(wx, wy, o.points[j].x, o.points[j].y, o.points[j + 1].x, o.points[j + 1].y);
+        if (d < Math.max(10, (o.strokeWidth || 3) * 2)) return o;
+      }
+      continue;
+    }
+    if (wx >= o.x && wx <= o.x + o.w && wy >= o.y && wy <= o.y + o.h) {
+      return o;
+    }
+  }
+  // Frame'ди эң акырында текшерүү (ичиндеги объекттерге тоскоол болбошу үчүн)
+  for (let i = state.objects.length - 1; i >= 0; i--) {
+    const o = state.objects[i];
+    if (!o.hidden && o.type === 'frame') {
+      if (wx >= o.x && wx <= o.x + o.w && wy >= o.y && wy <= o.y + o.h) return o;
+    }
+  }
+  return null;
+}
+
+function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq ? ((px - x1) * dx + (py - y1) * dy) / lenSq : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+
+function getHandleAt(wx, wy, obj) {
+  if (!obj || obj.locked) return null;
+  const rotHandleX = obj.x + obj.w / 2;
+  const rotHandleY = obj.y - 26 / state.zoom;
+  if (Math.hypot(wx - rotHandleX, wy - rotHandleY) < 12 / state.zoom) return 'rotate';
+  const brX = obj.x + obj.w;
+  const brY = obj.y + obj.h;
+  if (Math.hypot(wx - brX, wy - brY) < 13 / state.zoom) return 'resize-br';
+  return null;
+}
+
+const activeTouches = new Map();
+
+canvas.addEventListener('pointerdown', (e) => {
+  closePopovers();
+  commitInlineTextEdit();
+  activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (activeTouches.size === 2) {
+    const pts = [...activeTouches.values()];
+    state.isPinching = true;
+    state.isDraggingCanvas = false;
+    state.activeObjDrag = null;
+    state.pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    state.pinchStartZoom = state.zoom;
+    return;
+  }
+
+  const wPos = screenToWorld(e.clientX, e.clientY);
+
+  // Connector режими
+  if (state.tool === 'connector') {
+    const hit = hitTestObject(wPos.x, wPos.y);
+    if (hit) {
+      if (!state.connectorStartId) {
+        state.connectorStartId = hit.id;
+        selectOnly(hit.id);
+        showToast('Экинчи объектти басып байланыштырыңыз');
+      } else if (state.connectorStartId !== hit.id) {
+        state.objects.push(createBaseObj('connector', {
+          name: 'Connector',
+          fromId: state.connectorStartId,
+          toId: hit.id,
+          stroke: '#00e5ff',
+          strokeWidth: 2.5,
+          fill: 'transparent',
+          w: 10,
+          h: 10
+        }));
+        state.connectorStartId = null;
+        pushHistory();
+        setTool('select');
+        showToast('Объекттер жебе менен байланышты');
+      }
+    }
+    return;
+  }
+
+  // Текст коюу режими
+  if (state.tool === 'text') {
+    const textObj = addObject(createBaseObj('text', {
+      name: 'Текст',
+      text: 'Текст жазыңыз...',
+      x: wPos.x,
+      y: wPos.y,
+      w: 220,
+      h: 48,
+      fill: 'transparent',
+      stroke: 'transparent',
+      strokeWidth: 0,
+      fontSize: 22,
+      bold: true,
+      align: 'left'
+    }));
+    setTool('select');
+    startInlineTextEdit(textObj);
+    return;
+  }
+
+  // Калем же Өчүргүч
+  if (state.tool === 'pen' || state.tool === 'eraser') {
+    state.drawingStroke = {
+      id: uid(),
+      type: state.tool === 'eraser' ? 'eraser' : 'pen',
+      name: state.tool === 'eraser' ? 'Eraser' : 'Pen Stroke',
+      points: [wPos],
+      stroke: state.tool === 'eraser' ? '#030712' : '#00e5ff',
+      strokeWidth: state.tool === 'eraser' ? 24 : 3.5,
+      x: wPos.x, y: wPos.y, w: 10, h: 10,
+      opacity: 1, rotation: 0, fill: 'transparent',
+      _animStart: performance.now(),
+      locked: false, hidden: false
+    };
+    return;
+  }
+
+  // Pan режими же ортоңку баскыч
+  if (state.tool === 'pan' || e.button === 1) {
+    state.isDraggingCanvas = true;
+    state.dragStartScreen = { x: e.clientX, y: e.clientY };
+    state.dragStartCam = { x: state.camX, y: state.camY };
+    return;
+  }
+
+  // Тандалган объекттин туткаларын текшерүү (Resize / Rotate)
+  const firstSel = getFirstSelected();
+  if (firstSel && !firstSel.locked) {
+    const handle = getHandleAt(wPos.x, wPos.y, firstSel);
+    if (handle) {
+      state.activeObjDrag = {
+        id: firstSel.id,
+        mode: handle,
+        startWorld: wPos,
+        origObj: cloneBasic(firstSel)
+      };
+      return;
+    }
+  }
+
+  // Объектти табуу жана көчүрүү
+  const hit = hitTestObject(wPos.x, wPos.y);
+  if (hit) {
+    selectOnly(hit.id);
+    if (!hit.locked) {
+      state.activeObjDrag = {
+        id: hit.id,
+        mode: 'move',
+        startWorld: wPos,
+        origObj: cloneBasic(hit)
+      };
+    }
+  } else {
+    clearSelection();
+    state.isDraggingCanvas = true;
+    state.dragStartScreen = { x: e.clientX, y: e.clientY };
+    state.dragStartCam = { x: state.camX, y: state.camY };
+  }
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (activeTouches.has(e.pointerId)) {
+    activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+
+  if (state.isPinching && activeTouches.size === 2) {
+    const pts = [...activeTouches.values()];
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const midX = (pts[0].x + pts[1].x) / 2;
+    const midY = (pts[0].y + pts[1].y) / 2;
+    const nextZoom = clampZoom(state.pinchStartZoom * (dist / Math.max(10, state.pinchStartDist)));
+    zoomAtScreenPoint(nextZoom, midX, midY);
+    return;
+  }
+
+  if (state.drawingStroke) {
+    state.drawingStroke.points.push(screenToWorld(e.clientX, e.clientY));
+    return;
+  }
+
+  if (state.activeObjDrag) {
+    const { id, mode, startWorld, origObj } = state.activeObjDrag;
+    const obj = getObjById(id);
+    if (!obj) return;
+    const curWorld = screenToWorld(e.clientX, e.clientY);
+    const dx = curWorld.x - startWorld.x;
+    const dy = curWorld.y - startWorld.y;
+
+    if (mode === 'move') {
+      obj.x = origObj.x + dx;
+      obj.y = origObj.y + dy;
+      if (obj.type === 'pen' && origObj.points) {
+        obj.points = origObj.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+      }
+      if (obj.type === 'frame') {
+        // Frame ичиндеги объекттерди чогуу жылдыруу
+        state.objects.forEach(child => {
+          if (child.id !== obj.id && !child.locked &&
+              child.x >= origObj.x && child.y >= origObj.y &&
+              child.x + child.w <= origObj.x + origObj.w && child.y + child.h <= origObj.y + origObj.h) {
+            child.x = child._origFrameX !== undefined ? child._origFrameX + dx : child.x + dx;
+            child.y = child._origFrameY !== undefined ? child._origFrameY + dy : child.y + dy;
+          }
+        });
+      }
+    } else if (mode === 'resize-br') {
+      obj.w = Math.max(24, origObj.w + dx);
+      obj.h = Math.max(24, origObj.h + dy);
+    } else if (mode === 'rotate') {
+      const cx = obj.x + obj.w / 2;
+      const cy = obj.y + obj.h / 2;
+      const ang = Math.atan2(curWorld.y - cy, curWorld.x - cx) * (180 / Math.PI) + 90;
+      obj.rotation = Math.round(ang);
+    }
+    syncMediaOverlays();
+    refreshPropertiesInputsOnly();
+    return;
+  }
+
+  if (state.isDraggingCanvas) {
+    state.camX = state.dragStartCam.x + (e.clientX - state.dragStartScreen.x);
+    state.camY = state.dragStartCam.y + (e.clientY - state.dragStartScreen.y);
+    updateOverlayTransform();
+  }
+});
+
+function handlePointerUp(e) {
+  activeTouches.delete(e.pointerId);
+  if (activeTouches.size < 2) state.isPinching = false;
+
+  if (state.drawingStroke) {
+    const st = state.drawingStroke;
+    state.drawingStroke = null;
+    if (st.points.length > 1) {
+      state.objects.push(st);
+      pushHistory();
+    }
+    return;
+  }
+
+  if (state.activeObjDrag) {
+    state.activeObjDrag = null;
+    pushHistory();
+    return;
+  }
+
+  state.isDraggingCanvas = false;
+}
+
+canvas.addEventListener('pointerup', handlePointerUp);
+canvas.addEventListener('pointercancel', handlePointerUp);
+
+canvas.addEventListener('dblclick', (e) => {
+  const wPos = screenToWorld(e.clientX, e.clientY);
+  const hit = hitTestObject(wPos.x, wPos.y);
+  if (hit && (hit.type === 'text' || hit.type === 'sticky' || hit.type === 'mindnode' || hit.type === 'flownode' || hit.type === 'shape')) {
+    selectOnly(hit.id);
+    startInlineTextEdit(hit);
+  }
+});
+
+/* Дөңгөлөк менен Zoom (Google Maps сыяктуу курсорду көздөй) */
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.12 : 1 / 1.12;
+  zoomAtScreenPoint(clampZoom(state.zoom * factor), e.clientX, e.clientY);
+}, { passive: false });
+
+function clampZoom(z) {
+  return Math.max(state.minZoom, Math.min(state.maxZoom, z));
+}
+
+function zoomAtScreenPoint(newZoom, sx, sy) {
+  const worldBefore = screenToWorld(sx, sy);
+  state.zoom = newZoom;
+  state.camX = sx - worldBefore.x * state.zoom;
+  state.camY = sy - worldBefore.y * state.zoom;
+  updateOverlayTransform();
+  updateZoomLabel();
+}
+
+function zoomBy(factor) {
+  zoomAtScreenPoint(clampZoom(state.zoom * factor), canvas.clientWidth / 2, canvas.clientHeight / 2);
+}
+
+function updateZoomLabel() {
+  document.getElementById('zoomPercent').textContent = Math.round(state.zoom * 100) + '%';
+}
+
+function fitToScreen() {
+  const visible = state.objects.filter(o => !o.hidden);
+  if (!visible.length) {
+    state.zoom = 1;
+    state.camX = canvas.clientWidth / 2;
+    state.camY = canvas.clientHeight / 2;
+    updateOverlayTransform();
+    updateZoomLabel();
+    return;
+  }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  visible.forEach(o => {
+    minX = Math.min(minX, o.x);
+    minY = Math.min(minY, o.y);
+    maxX = Math.max(maxX, o.x + (o.w || 120));
+    maxY = Math.max(maxY, o.y + (o.h || 80));
+  });
+  const pad = 90;
+  const bw = Math.max(100, maxX - minX);
+  const bh = Math.max(100, maxY - minY);
+  state.zoom = clampZoom(Math.min((canvas.clientWidth - pad * 2) / bw, (canvas.clientHeight - pad * 2) / bh));
+  state.camX = canvas.clientWidth / 2 - ((minX + maxX) / 2) * state.zoom;
+  state.camY = canvas.clientHeight / 2 - ((minY + maxY) / 2) * state.zoom;
+  updateOverlayTransform();
+  updateZoomLabel();
+}
+
+/* ============================================================================
+   PROPERTIES PANEL & LAYERS & ANIMATION
+   ============================================================================ */
+function refreshPropertiesPanel() {
+  const panel = document.getElementById('propertiesPanel');
+  const sel = getFirstSelected();
+  renderLayersList();
+  if (!sel) {
+    panel.classList.remove('visible');
+    document.getElementById('minimapBox').classList.remove('shifted');
+    return;
+  }
+  panel.classList.add('visible');
+  if (window.innerWidth > 900) {
+    document.getElementById('minimapBox').classList.add('shifted');
+  }
+  document.getElementById('propObjectTitle').textContent = sel.name || sel.type;
+  refreshPropertiesInputsOnly();
+}
+
+function refreshPropertiesInputsOnly() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  document.getElementById('propW').value = Math.round(sel.w || 100);
+  document.getElementById('propH').value = Math.round(sel.h || 100);
+  document.getElementById('propRot').value = Math.round(sel.rotation || 0);
+  const op = sel.opacity ?? 1;
+  document.getElementById('propOpacity').value = op;
+  document.getElementById('propOpacityVal').textContent = Math.round(op * 100) + '%';
+  if (sel.fill && sel.fill.startsWith('#')) document.getElementById('propFill').value = sel.fill;
+  if (sel.stroke && sel.stroke.startsWith('#')) document.getElementById('propStroke').value = sel.stroke;
+  document.getElementById('propStrokeW').value = sel.strokeWidth ?? 2;
+  document.getElementById('propFontFamily').value = sel.fontFamily || 'Inter, sans-serif';
+  document.getElementById('propFontSize').value = sel.fontSize || 18;
+  document.getElementById('btnBold').classList.toggle('active', !!sel.bold);
+  document.getElementById('btnItalic').classList.toggle('active', !!sel.italic);
+  document.getElementById('btnUnderline').classList.toggle('active', !!sel.underline);
+  document.getElementById('propAnimType').value = sel.animType || 'none';
+  document.getElementById('btnLockLayer').classList.toggle('active', !!sel.locked);
+  document.getElementById('btnHideLayer').classList.toggle('active', !!sel.hidden);
+}
+
+function updateSelectedFromInputs() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel.w = Math.max(20, Number(document.getElementById('propW').value) || sel.w);
+  sel.h = Math.max(20, Number(document.getElementById('propH').value) || sel.h);
+  sel.rotation = Number(document.getElementById('propRot').value) || 0;
+  sel.opacity = Number(document.getElementById('propOpacity').value);
+  document.getElementById('propOpacityVal').textContent = Math.round(sel.opacity * 100) + '%';
+  sel.fill = document.getElementById('propFill').value;
+  sel.stroke = document.getElementById('propStroke').value;
+  sel.strokeWidth = Number(document.getElementById('propStrokeW').value) || 0;
+  sel.fontFamily = document.getElementById('propFontFamily').value;
+  sel.fontSize = Math.max(10, Number(document.getElementById('propFontSize').value) || 18);
+  sel.animType = document.getElementById('propAnimType').value;
+  syncMediaOverlays();
+  pushHistory();
+}
+
+function toggleTextStyle(prop) {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel[prop] = !sel[prop];
+  refreshPropertiesInputsOnly();
+  pushHistory();
+}
+
+function setTextAlign(align) {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel.align = align;
+  pushHistory();
+}
+
+function replayAnimationOnSelected() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel._animStart = performance.now();
+}
+
+function bringToFront() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  const idx = state.objects.indexOf(sel);
+  if (idx > -1) {
+    state.objects.splice(idx, 1);
+    state.objects.push(sel);
+    pushHistory();
+    renderLayersList();
+  }
+}
+
+function sendToBack() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  const idx = state.objects.indexOf(sel);
+  if (idx > -1) {
+    state.objects.splice(idx, 1);
+    state.objects.unshift(sel);
+    pushHistory();
+    renderLayersList();
+  }
+}
+
+function toggleLockSelected() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel.locked = !sel.locked;
+  refreshPropertiesInputsOnly();
+  pushHistory();
+}
+
+function toggleHideSelected() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  sel.hidden = !sel.hidden;
+  syncMediaOverlays();
+  refreshPropertiesInputsOnly();
+  pushHistory();
+}
+
+function renderLayersList() {
+  const container = document.getElementById('layersListContainer');
+  if (!container) return;
+  container.innerHTML = '';
+  [...state.objects].reverse().slice(0, 25).forEach(o => {
+    const row = document.createElement('div');
+    row.className = 'layer-item' + (state.selectedIds.has(o.id) ? ' active' : '');
+    row.innerHTML = `
+      <span class="layer-item-title">${escapeHtml(o.name || o.type)}</span>
+      <span class="layer-item-actions">
+        <button title="Lock" onclick="toggleObjLockById('${o.id}')"><i class="fa-solid ${o.locked ? 'fa-lock' : 'fa-lock-open'}"></i></button>
+        <button title="Hide" onclick="toggleObjHideById('${o.id}')"><i class="fa-solid ${o.hidden ? 'fa-eye-slash' : 'fa-eye'}"></i></button>
+      </span>
+    `;
+    row.querySelector('.layer-item-title').onclick = () => selectOnly(o.id);
+    container.appendChild(row);
+  });
+}
+
+function toggleObjLockById(id) {
+  const o = getObjById(id);
+  if (!o) return;
+  o.locked = !o.locked;
+  refreshPropertiesPanel();
+  pushHistory();
+}
+
+function toggleObjHideById(id) {
+  const o = getObjById(id);
+  if (!o) return;
+  o.hidden = !o.hidden;
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+  pushHistory();
+}
+
+function duplicateSelected() {
+  const sel = getFirstSelected();
+  if (!sel) return;
+  const copy = cloneBasic(sel);
+  copy.id = uid();
+  copy.name = (sel.name || sel.type) + ' (copy)';
+  copy.x += 28;
+  copy.y += 28;
+  copy._animStart = performance.now();
+  if (copy.points) copy.points = copy.points.map(p => ({ x: p.x + 28, y: p.y + 28 }));
+  addObject(copy);
+}
+
+function deleteSelected() {
+  if (!state.selectedIds.size) return;
+  state.objects = state.objects.filter(o => !state.selectedIds.has(o.id) && !state.selectedIds.has(o.fromId) && !state.selectedIds.has(o.toId));
+  state.selectedIds.clear();
+  syncMediaOverlays();
+  refreshPropertiesPanel();
+  pushHistory();
+}
+
+function cloneBasic(o) {
+  return JSON.parse(JSON.stringify(stripRuntimeProps(o)));
+}
+
+/* ============================================================================
+   PRESENTATION MODE & CINEMA MODE (Prezi стилинде)
+   ============================================================================ */
+function getFrames() {
+  return state.objects.filter(o => o.type === 'frame' && !o.hidden);
+}
+
+function startPresentationMode() {
+  const frames = getFrames();
+  if (!frames.length) {
+    showToast('Алгач "Frame" түзүңүз (сол панелдеги Frame баскычы)');
+    return;
+  }
+  state.presentationMode = true;
+  state.presentationIndex = 0;
+  document.getElementById('presentation-hud').classList.add('show');
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  focusFrame(frames[0], 0, frames.length);
+}
+
+function stopPresentationMode() {
+  state.presentationMode = false;
+  state.cinemaMode = false;
+  state.cinemaTarget = null;
+  document.getElementById('presentation-hud').classList.remove('show');
+  document.getElementById('presentBtn').classList.remove('active');
+  document.getElementById('cinemaBtn').classList.remove('active');
+  document.getElementById('cinemaAutoBtn').classList.remove('active');
+}
+
+function nextFrameSlide() {
+  const frames = getFrames();
+  if (!frames.length) return;
+  state.presentationIndex = (state.presentationIndex + 1) % frames.length;
+  focusFrame(frames[state.presentationIndex], state.presentationIndex, frames.length);
+}
+
+function prevFrameSlide() {
+  const frames = getFrames();
+  if (!frames.length) return;
+  state.presentationIndex = (state.presentationIndex - 1 + frames.length) % frames.length;
+  focusFrame(frames[state.presentationIndex], state.presentationIndex, frames.length);
+}
+
+function focusFrame(frame, idx, total) {
+  document.getElementById('slideCounter').textContent = `Frame ${idx + 1} / ${total}`;
+  const targetZoom = clampZoom(Math.min((canvas.clientWidth * 0.82) / Math.max(100, frame.w), (canvas.clientHeight * 0.82) / Math.max(100, frame.h)));
+  const cx = frame.x + frame.w / 2;
+  const cy = frame.y + frame.h / 2;
+  state.cinemaTarget = {
+    zoom: targetZoom,
+    camX: canvas.clientWidth / 2 - cx * targetZoom,
+    camY: canvas.clientHeight / 2 - cy * targetZoom
+  };
+}
+
+function toggleCinemaMode() {
+  state.cinemaMode = !state.cinemaMode;
+  document.getElementById('cinemaBtn').classList.toggle('active', state.cinemaMode);
+  document.getElementById('cinemaAutoBtn').classList.toggle('active', state.cinemaMode);
+  if (state.cinemaMode) {
+    document.getElementById('presentation-hud').classList.add('show');
+    showToast('Cinema Mode иштеди (Zoom / Pan / Focus)');
+  } else if (!state.presentationMode) {
+    document.getElementById('presentation-hud').classList.remove('show');
+  }
+}
+
+/* ============================================================================
+   AI ASSISTANT (Mind Map, Сабак картасы, Стикерлерди иреттөө)
+   ============================================================================ */
+function aiGenerateMindMap() {
+  const topic = (document.getElementById('aiTopicInput').value || 'Ньютондун закондору').trim();
+  closePopovers();
+  pushHistory();
+  const c = getViewportCenterWorld();
+  const root = createBaseObj('mindnode', {
+    name: topic, text: topic, x: c.x - 100, y: c.y - 36, w: 200, h: 72,
+    fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true
+  });
+  state.objects.push(root);
+  const branches = ['Негизги түшүнүк', 'Формула & Бирдик', 'Турмуштагы мисал', 'Маселе чыгаруу'];
+  branches.forEach((b, i) => {
+    const ang = -Math.PI / 2 + (i / (branches.length - 1)) * Math.PI;
+    const node = createBaseObj('mindnode', {
+      name: b, text: b,
+      x: root.x + Math.cos(ang) * 240,
+      y: root.y + Math.sin(ang) * 165,
+      w: 170, h: 62,
+      fill: 'rgba(0,229,255,0.16)', stroke: '#00e5ff', parentId: root.id
+    });
+    state.objects.push(node, createBaseObj('connector', {
+      fromId: root.id, toId: node.id, stroke: '#ec4899', strokeWidth: 2, fill: 'transparent', w: 10, h: 10
+    }));
+  });
+  selectOnly(root.id);
+  showToast(`AI Mind Map түзүлдү: "${topic}"`);
+}
+
+function aiGenerateLessonPlan() {
+  const topic = (document.getElementById('aiTopicInput').value || 'Гравитация жана Орбита').trim();
+  closePopovers();
+  pushHistory();
+  const c = getViewportCenterWorld();
+  const steps = [
+    { title: '1. Киришүү & Кызыктыруу', color: '#facc15' },
+    { title: `2. Жаңы тема: ${topic}`, color: '#38bdf8' },
+    { title: '3. Практика / Симуляция', color: '#4ade80' },
+    { title: '4. Жыйынтык & Үй тапшырма', color: '#f472b6' }
+  ];
+  steps.forEach((s, idx) => {
+    state.objects.push(createBaseObj('sticky', {
+      name: s.title, text: s.title,
+      x: c.x - 430 + idx * 220, y: c.y - 95,
+      w: 195, h: 190, fill: s.color, stroke: 'rgba(255,255,255,0.25)',
+      textColor: '#0f172a', fontSize: 16, bold: true
+    }));
+  });
+  showToast('AI Сабак картасы кошулду');
+}
+
+function aiAutoCluster() {
+  closePopovers();
+  const stickies = state.objects.filter(o => o.type === 'sticky');
+  if (!stickies.length) { showToast('Стикерлер табылган жок'); return; }
+  pushHistory();
+  const c = getViewportCenterWorld();
+  const cols = Math.ceil(Math.sqrt(stickies.length));
+  stickies.forEach((s, i) => {
+    s.x = c.x - (cols * 210) / 2 + (i % cols) * 215;
+    s.y = c.y - 100 + Math.floor(i / cols) * 215;
+  });
+  showToast('Стикерлер торчо боюнча иреттелди');
+}
+
+/* ============================================================================
+   SAVE / AUTOSAVE / EXPORT / IMPORT (JSON, PNG, JPG, PDF)
+   ============================================================================ */
+function getProjectPayload() {
+  return {
+    version: 1,
+    name: (document.getElementById('projectNameInput').value || 'Аталышсыз проект').trim(),
+    updatedAt: new Date().toISOString(),
+    camX: state.camX,
+    camY: state.camY,
+    zoom: state.zoom,
+    objects: state.objects.map(stripRuntimeProps)
+  };
+}
+
+function saveProjectManual() {
+  const payload = getProjectPayload();
+  const list = getSavedProjectsList();
+  const existingIdx = list.findIndex(p => p.name === payload.name);
+  if (existingIdx > -1) list[existingIdx] = payload;
+  else list.unshift(payload);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 30)));
+  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
+  document.getElementById('autosaveText').textContent = 'Сакталды ✓';
+  showToast(`"${payload.name}" сакталды`);
+}
+
+function getSavedProjectsList() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch (_) { return []; }
+}
+
+function openProjectsModal() {
+  const list = getSavedProjectsList();
+  const box = document.getElementById('savedProjectsList');
+  box.innerHTML = '';
+  if (!list.length) {
+    box.innerHTML = '<p style="font-size:12px;color:#94a3b8">Азырынча сакталган проекттер жок.</p>';
+  } else {
+    list.forEach((proj, idx) => {
+      const row = document.createElement('div');
+      row.className = 'project-item';
+      row.innerHTML = `
+        <div class="project-item-meta">
+          <strong style="font-size:13px">${escapeHtml(proj.name)}</strong>
+          <small>${new Date(proj.updatedAt).toLocaleString()} · ${(proj.objects || []).length} объект</small>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="hud-btn accent" onclick="loadSavedProjectByIndex(${idx})">Ачуу</button>
+          <button class="hud-btn" onclick="deleteSavedProjectByIndex(${idx})"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      `;
+      box.appendChild(row);
+    });
+  }
+  document.getElementById('projectsModal').classList.add('show');
+}
+
+function loadSavedProjectByIndex(idx) {
+  const list = getSavedProjectsList();
+  const proj = list[idx];
+  if (!proj) return;
+  applyProjectPayload(proj);
+  closeModal('projectsModal');
+  showToast(`"${proj.name}" ачылды`);
+}
+
+function deleteSavedProjectByIndex(idx) {
+  const list = getSavedProjectsList();
+  list.splice(idx, 1);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  openProjectsModal();
+}
+
+function applyProjectPayload(proj) {
+  if (proj.name) document.getElementById('projectNameInput').value = proj.name;
+  state.camX = proj.camX ?? canvas.clientWidth / 2;
+  state.camY = proj.camY ?? canvas.clientHeight / 2;
+  state.zoom = proj.zoom ?? 1;
+  loadObjectsArray(proj.objects || [], true);
+  updateOverlayTransform();
+  updateZoomLabel();
+}
+
+/* Автоматтык сактоо (ар бир 30 секунд сайын) */
+setInterval(() => {
+  const payload = getProjectPayload();
+  localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(payload));
+  const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('autosaveText').textContent = `Auto ${t}`;
+}, 30000);
+
+function exportJSON() {
+  const payload = getProjectPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `${slugify(payload.name)}.json`);
+  showToast('JSON файл жүктөлдү');
+}
+
+function importJSON(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      applyProjectPayload(data);
+      showToast('JSON проект ийгиликтүү импорттолду');
+    } catch (_) {
+      showToast('JSON форматы туура эмес');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function exportImage(format = 'png') {
+  const name = slugify(document.getElementById('projectNameInput').value || 'board');
+  const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const ext = format === 'jpeg' ? 'jpg' : 'png';
+  canvas.toBlob((blob) => {
+    if (blob) downloadBlob(blob, `${name}.${ext}`);
+    showToast(`${ext.toUpperCase()} экспорттолду`);
+  }, mime, 0.94);
+}
+
+function exportPDF() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showToast('PDF китепканасы жүктөлгөн эмес');
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] });
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  doc.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+  const name = slugify(document.getElementById('projectNameInput').value || 'board');
+  doc.save(`${name}.pdf`);
+  showToast('PDF файл сакталды');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+/* ============================================================================
+   UI HELPERS & HOTKEYS
+   ============================================================================ */
+function setTool(tool) {
+  state.tool = tool;
+  if (tool !== 'connector') state.connectorStartId = null;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+}
+
+function togglePinDock() {
+  state.dockPinned = !state.dockPinned;
+  const dock = document.getElementById('leftDock');
+  const btn = document.getElementById('pinDockBtn');
+  dock.classList.toggle('pinned', state.dockPinned);
+  btn.classList.toggle('active', state.dockPinned);
+  showToast(state.dockPinned ? 'Сол панель бекитилди' : 'Сол панель авто-жашынуу режиминде');
+}
+
+function togglePopover(id) {
+  const el = document.getElementById(id);
+  const wasShown = el.classList.contains('show');
+  closePopovers();
+  if (!wasShown) el.classList.add('show');
+}
+
+function closePopovers() {
+  document.querySelectorAll('.sub-popover').forEach(p => p.classList.remove('show'));
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+function toggleMinimap() {
+  const box = document.getElementById('minimapBox');
+  const btn = document.getElementById('minimapToggleBtn');
+  const hidden = box.classList.toggle('hidden');
+  btn.classList.toggle('active', !hidden);
+}
+
+function toggleFullScreen() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  else document.exitFullscreen?.().catch(() => {});
+}
+
+/* Mini Map басуу / сүйрөө менен кенепте көчүү */
+let draggingMinimap = false;
+minimapCanvas.addEventListener('pointerdown', (e) => {
+  draggingMinimap = true;
+  moveCameraFromMinimap(e);
+});
+window.addEventListener('pointermove', (e) => {
+  if (draggingMinimap) moveCameraFromMinimap(e);
+});
+window.addEventListener('pointerup', () => { draggingMinimap = false; });
+
+function moveCameraFromMinimap(e) {
+  const rect = minimapCanvas.getBoundingClientRect();
+  const nx = (e.clientX - rect.left) / Math.max(1, rect.width);
+  const ny = (e.clientY - rect.top) / Math.max(1, rect.height);
+  const span = 3000;
+  const wx = (nx - 0.5) * span;
+  const wy = (ny - 0.5) * span;
+  state.camX = canvas.clientWidth / 2 - wx * state.zoom;
+  state.camY = canvas.clientHeight / 2 - wy * state.zoom;
+  updateOverlayTransform();
+}
+
+/* Hotkeys: Ctrl+Z, Ctrl+Y, Ctrl+C, Ctrl+V, Delete, Ctrl+S */
+window.addEventListener('keydown', (e) => {
+  const tag = document.activeElement && document.activeElement.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || state.editingTextId;
+
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    saveProjectManual();
+    return;
+  }
+  if (isTyping) return;
+
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  } else if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z')) {
+    e.preventDefault();
+    redo();
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+    const sel = getFirstSelected();
+    if (sel) {
+      state.clipboard = [cloneBasic(sel)];
+      showToast('Көчүрүлдү (Ctrl+C)');
+    }
+  } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+    if (state.clipboard.length) {
+      const paste = cloneBasic(state.clipboard[0]);
+      paste.id = uid();
+      paste.x += 36;
+      paste.y += 36;
+      addObject(paste);
+      showToast('Чапталды (Ctrl+V)');
+    }
+  } else if (e.key === 'Delete' || e.key === 'Backspace') {
+    deleteSelected();
+  } else if (e.key === 'Escape') {
+    closePopovers();
+    clearSelection();
+  }
+});
+
+/* ============================================================================
+   RENDER LOOP (Canvas + Grid + Objects + Connectors + Animations + Minimap)
+   ============================================================================ */
+function resizeCanvas() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const mw = minimapCanvas.parentElement.clientWidth || 176;
+  const mh = minimapCanvas.parentElement.clientHeight || 118;
+  minimapCanvas.width = Math.floor(mw * dpr);
+  minimapCanvas.height = Math.floor(mh * dpr);
+  mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener('resize', resizeCanvas);
+
+function drawGrid(vw, vh) {
+  const step = 48 * state.zoom;
+  if (step < 8) return;
+  const offsetX = ((state.camX % step) + step) % step;
+  const offsetY = ((state.camY % step) + step) % step;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.065)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = offsetX; x < vw; x += step) {
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, vh);
+  }
+  for (let y = offsetY; y < vh; y += step) {
+    ctx.moveTo(0, y);
+    ctx.lineTo(vw, y);
+  }
+  ctx.stroke();
+
+  // Чекиттер
+  if (step >= 24) {
+    ctx.fillStyle = 'rgba(0, 229, 255, 0.14)';
+    for (let x = offsetX; x < vw; x += step) {
+      for (let y = offsetY; y < vh; y += step) {
+        ctx.fillRect(x - 1, y - 1, 2, 2);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+function computeAnimTransform(obj, now) {
+  const type = obj.animType || 'none';
+  if (type === 'none') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: 0 };
+  const elapsed = Math.max(0, (now - (obj._animStart || now)) / 1000);
+  const t = Math.min(1, elapsed / 0.75);
+  const ease = 1 - Math.pow(1 - t, 3);
+  if (type === 'fade') return { alpha: (obj.opacity ?? 1) * ease, dx: 0, dy: 0, scale: 1, extraRot: 0 };
+  if (type === 'slide') return { alpha: obj.opacity ?? 1, dx: (1 - ease) * -60, dy: (1 - ease) * 24, scale: 1, extraRot: 0 };
+  if (type === 'zoom') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 0.4 + 0.6 * ease, extraRot: 0 };
+  if (type === 'bounce') {
+    const b = t < 1 ? Math.abs(Math.sin(t * Math.PI * 2.5)) * (1 - t) * 24 : 0;
+    return { alpha: obj.opacity ?? 1, dx: 0, dy: -b, scale: 1, extraRot: 0 };
+  }
+  if (type === 'rotate') return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: (1 - ease) * 45 };
+  return { alpha: obj.opacity ?? 1, dx: 0, dy: 0, scale: 1, extraRot: 0 };
+}
+
+function renderFrame(now) {
+  requestAnimationFrame(renderFrame);
+  const dt = Math.min(0.05, (now - state.lastFrameTime) / 1000);
+  state.lastFrameTime = now;
+
+  // Cinema Mode автоматтык кыймылы
+  if (state.cinemaMode) {
+    state.cinemaTime += dt * 0.45;
+    const frames = getFrames();
+    if (frames.length) {
+      const fIdx = Math.floor(state.cinemaTime) % frames.length;
+      if (fIdx !== state.presentationIndex) {
+        state.presentationIndex = fIdx;
+        focusFrame(frames[fIdx], fIdx, frames.length);
+      }
+    } else {
+      const targetZoom = 0.85 + Math.sin(state.cinemaTime * 0.7) * 0.25;
+      const wx = Math.cos(state.cinemaTime * 0.5) * 260;
+      const wy = Math.sin(state.cinemaTime * 0.4) * 160;
+      state.cinemaTarget = {
+        zoom: targetZoom,
+        camX: canvas.clientWidth / 2 - wx * targetZoom,
+        camY: canvas.clientHeight / 2 - wy * targetZoom
+      };
+    }
+  }
+
+  if (state.cinemaTarget) {
+    state.camX += (state.cinemaTarget.camX - state.camX) * 0.06;
+    state.camY += (state.cinemaTarget.camY - state.camY) * 0.06;
+    state.zoom += (state.cinemaTarget.zoom - state.zoom) * 0.06;
+    updateOverlayTransform();
+    updateZoomLabel();
+    if (Math.abs(state.cinemaTarget.camX - state.camX) < 0.4 && Math.abs(state.cinemaTarget.zoom - state.zoom) < 0.002) {
+      if (!state.cinemaMode) state.cinemaTarget = null;
+    }
+  }
+
+  const vw = canvas.clientWidth;
+  const vh = canvas.clientHeight;
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(0, 0, vw, vh);
+
+  drawGrid(vw, vh);
+
+  // Көрүнүүчү аймак (Viewport Culling — 10 000+ объектте өтө тез иштейт)
+  const viewMinX = -state.camX / state.zoom - 300;
+  const viewMinY = -state.camY / state.zoom - 300;
+  const viewMaxX = (vw - state.camX) / state.zoom + 300;
+  const viewMaxY = (vh - state.camY) / state.zoom + 300;
+
+  ctx.save();
+  ctx.translate(state.camX, state.camY);
+  ctx.scale(state.zoom, state.zoom);
+
+  // 1. Frame'дер (эң арткы катмар)
+  for (let i = 0; i < state.objects.length; i++) {
+    const o = state.objects[i];
+    if (o.type !== 'frame' || o.hidden) continue;
+    if (o.x + o.w < viewMinX || o.x > viewMaxX || o.y + o.h < viewMinY || o.y > viewMaxY) continue;
+    drawFrameObj(o, now);
+  }
+
+  // 2. Connector жебелер
+  for (let i = 0; i < state.objects.length; i++) {
+    const o = state.objects[i];
+    if (o.type !== 'connector' || o.hidden) continue;
+    drawConnectorObj(o);
+  }
+
+  // 3. Калган объекттер (HTML overlay'деги видео/аудио/pdf'тен башкасы)
+  for (let i = 0; i < state.objects.length; i++) {
+    const o = state.objects[i];
+    if (o.hidden || o.type === 'frame' || o.type === 'connector') continue;
+    if (o.type === 'video' || o.type === 'audio' || o.type === 'pdf') continue;
+
+    if (o.type === 'pen' || o.type === 'eraser') {
+      drawStrokeObj(o);
+      continue;
+    }
+
+    if (o.x + (o.w || 100) < viewMinX || o.x > viewMaxX || o.y + (o.h || 100) < viewMinY || o.y > viewMaxY) continue;
+    drawStandardObj(o, now);
+  }
+
+  // Учурда тартылып жаткан калем/өчүргүч сызыгы
+  if (state.drawingStroke) {
+    drawStrokeObj(state.drawingStroke);
+  }
+
+  // Тандалган объекттин чек арасы жана Resize / Rotate туткалары
+  const firstSel = getFirstSelected();
+  if (firstSel && !firstSel.hidden && firstSel.type !== 'pen' && firstSel.type !== 'connector') {
+    drawSelectionHandles(firstSel);
+  }
+
+  ctx.restore();
+  drawMinimap(vw, vh);
+}
+
+function drawFrameObj(o, now) {
+  const anim = computeAnimTransform(o, now);
+  ctx.save();
+  ctx.globalAlpha = anim.alpha;
+  ctx.translate(o.x + anim.dx, o.y + anim.dy);
+  ctx.fillStyle = o.fill || 'rgba(12,26,56,0.25)';
+  ctx.strokeStyle = state.selectedIds.has(o.id) ? '#00e5ff' : (o.stroke || '#ec4899');
+  ctx.lineWidth = state.selectedIds.has(o.id) ? 3 : (o.strokeWidth || 2);
+  roundRectPath(ctx, 0, 0, o.w, o.h, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#f9a8d4';
+  ctx.font = '700 13px Inter, sans-serif';
+  ctx.fillText(o.text || o.name || 'Frame', 14, -8);
+  ctx.restore();
+}
+
+function drawConnectorObj(o) {
+  const a = getObjById(o.fromId);
+  const b = getObjById(o.toId);
+  if (!a || !b || a.hidden || b.hidden) return;
+  const x1 = a.x + a.w / 2;
+  const y1 = a.y + a.h / 2;
+  const x2 = b.x + b.w / 2;
+  const y2 = b.y + b.h / 2;
+  const ang = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = 13;
+
+  ctx.save();
+  ctx.strokeStyle = o.stroke || '#00e5ff';
+  ctx.fillStyle = o.stroke || '#00e5ff';
+  ctx.lineWidth = o.strokeWidth || 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(ang - Math.PI / 6), y2 - headLen * Math.sin(ang - Math.PI / 6));
+  ctx.lineTo(x2 - headLen * Math.cos(ang + Math.PI / 6), y2 - headLen * Math.sin(ang + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawStrokeObj(o) {
+  if (!o.points || o.points.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = o.stroke || '#00e5ff';
+  ctx.lineWidth = o.strokeWidth || 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(o.points[0].x, o.points[0].y);
+  for (let i = 1; i < o.points.length; i++) {
+    ctx.lineTo(o.points[i].x, o.points[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStandardObj(o, now) {
+  const anim = computeAnimTransform(o, now);
+  const cx = o.x + o.w / 2 + anim.dx;
+  const cy = o.y + o.h / 2 + anim.dy;
+
+  ctx.save();
+  ctx.globalAlpha = anim.alpha;
+  ctx.translate(cx, cy);
+  ctx.rotate(((o.rotation || 0) + anim.extraRot) * Math.PI / 180);
+  ctx.scale(anim.scale, anim.scale);
+
+  const hw = o.w / 2;
+  const hh = o.h / 2;
+  const strokeCol = o.stroke || '#00e5ff';
+  const fillCol = o.fill || '#0b2246';
+  ctx.strokeStyle = strokeCol;
+  ctx.lineWidth = o.strokeWidth ?? 2;
+
+  if (o.type === 'image' && o.src) {
+    const cached = state.imageCache.get(o.src);
+    if (cached && cached.complete && cached.naturalWidth) {
+      const cr = o.crop || { x: 0, y: 0, w: 1, h: 1 };
+      ctx.drawImage(
+        cached,
+        cr.x * cached.naturalWidth,
+        cr.y * cached.naturalHeight,
+        cr.w * cached.naturalWidth,
+        cr.h * cached.naturalHeight,
+        -hw, -hh, o.w, o.h
+      );
+    } else {
+      loadImageCached(o.src);
+    }
+  } else if (o.type === 'table') {
+    ctx.fillStyle = fillCol;
+    roundRectPath(ctx, -hw, -hh, o.w, o.h, 10);
+    ctx.fill();
+    ctx.stroke();
+    const rows = o.rows || [['A', 'B'], ['1', '2']];
+    const rCount = rows.length;
+    const cCount = Math.max(1, rows[0].length);
+    const cellW = o.w / cCount;
+    const cellH = o.h / rCount;
+    ctx.font = '600 12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let r = 0; r < rCount; r++) {
+      for (let c = 0; c < cCount; c++) {
+        const x0 = -hw + c * cellW;
+        const y0 = -hh + r * cellH;
+        if (r === 0) {
+          ctx.fillStyle = 'rgba(0,229,255,0.18)';
+          ctx.fillRect(x0, y0, cellW, cellH);
+        }
+        ctx.strokeRect(x0, y0, cellW, cellH);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(String(rows[r][c] ?? ''), x0 + cellW / 2, y0 + cellH / 2);
+      }
+    }
+  } else if (o.type === 'shape' && o.shapeKind === 'circle') {
+    ctx.fillStyle = fillCol;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (o.strokeWidth > 0) ctx.stroke();
+  } else if (o.type === 'shape' && o.shapeKind === 'diamond' || (o.type === 'flownode' && o.flowShape === 'diamond')) {
+    ctx.fillStyle = fillCol;
+    ctx.beginPath();
+    ctx.moveTo(0, -hh);
+    ctx.lineTo(hw, 0);
+    ctx.lineTo(0, hh);
+    ctx.lineTo(-hw, 0);
+    ctx.closePath();
+    ctx.fill();
+    if (o.strokeWidth > 0) ctx.stroke();
+  } else if (o.type === 'shape' && o.shapeKind === 'triangle') {
+    ctx.fillStyle = fillCol;
+    ctx.beginPath();
+    ctx.moveTo(0, -hh);
+    ctx.lineTo(hw, hh);
+    ctx.lineTo(-hw, hh);
+    ctx.closePath();
+    ctx.fill();
+    if (o.strokeWidth > 0) ctx.stroke();
+  } else if (o.type === 'shape' && o.shapeKind === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(-hw, 0);
+    ctx.lineTo(hw, 0);
+    ctx.stroke();
+  } else if (o.type === 'shape' && o.shapeKind === 'arrow') {
+    ctx.fillStyle = fillCol;
+    ctx.beginPath();
+    ctx.moveTo(-hw, -hh * 0.35);
+    ctx.lineTo(hw * 0.35, -hh * 0.35);
+    ctx.lineTo(hw * 0.35, -hh);
+    ctx.lineTo(hw, 0);
+    ctx.lineTo(hw * 0.35, hh);
+    ctx.lineTo(hw * 0.35, hh * 0.35);
+    ctx.lineTo(-hw, hh * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    if (o.strokeWidth > 0) ctx.stroke();
+  } else if (o.type !== 'text') {
+    const rad = o.type === 'mindnode' ? 22 : o.type === 'sticky' ? 14 : 10;
+    if (o.type === 'sticky') {
+      ctx.shadowColor = 'rgba(0,0,0,0.45)';
+      ctx.shadowBlur = 18;
+      ctx.shadowOffsetY = 8;
+    }
+    ctx.fillStyle = fillCol;
+    roundRectPath(ctx, -hw, -hh, o.w, o.h, rad);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    if (o.strokeWidth > 0) ctx.stroke();
+  }
+
+  // Текст мазмуну
+  if (o.text && o.type !== 'table') {
+    const fSize = o.fontSize || 18;
+    const weight = o.bold ? '800' : '500';
+    const style = o.italic ? 'italic' : 'normal';
+    ctx.font = `${style} ${weight} ${fSize}px ${o.fontFamily || 'Inter, sans-serif'}`;
+    ctx.fillStyle = o.textColor || '#f8fafc';
+    ctx.textAlign = o.align || 'center';
+    ctx.textBaseline = 'middle';
+
+    const lines = String(o.text).split('\n');
+    const lineH = fSize * 1.3;
+    const startY = -((lines.length - 1) * lineH) / 2;
+    const tx = o.align === 'left' ? -hw + 12 : o.align === 'right' ? hw - 12 : 0;
+
+    lines.forEach((line, idx) => {
+      const ly = startY + idx * lineH;
+      ctx.fillText(line, tx, ly);
+      if (o.underline) {
+        const w = ctx.measureText(line).width;
+        const ux = o.align === 'center' ? tx - w / 2 : o.align === 'right' ? tx - w : tx;
+        ctx.fillRect(ux, ly + fSize * 0.45, w, Math.max(1.5, fSize * 0.07));
+      }
+    });
+  }
+
+  ctx.restore();
+}
+
+function drawSelectionHandles(o) {
+  ctx.save();
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 1.5 / state.zoom;
+  ctx.setLineDash([5 / state.zoom, 4 / state.zoom]);
+  ctx.strokeRect(o.x, o.y, o.w, o.h);
+  ctx.setLineDash([]);
+
+  // Rotate туткасы (үстүндө)
+  const cx = o.x + o.w / 2;
+  const ry = o.y - 26 / state.zoom;
+  ctx.beginPath();
+  ctx.moveTo(cx, o.y);
+  ctx.lineTo(cx, ry);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ec4899';
+  ctx.beginPath();
+  ctx.arc(cx, ry, 6 / state.zoom, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Resize туткасы (оң төмөн)
+  ctx.fillStyle = '#00e5ff';
+  const hs = 9 / state.zoom;
+  ctx.fillRect(o.x + o.w - hs / 2, o.y + o.h - hs / 2, hs, hs);
+  ctx.restore();
+}
+
+function roundRectPath(c, x, y, w, h, r) {
+  const rad = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+  c.beginPath();
+  c.moveTo(x + rad, y);
+  c.arcTo(x + w, y, x + w, y + h, rad);
+  c.arcTo(x + w, y + h, x, y + h, rad);
+  c.arcTo(x, y + h, x, y, rad);
+  c.arcTo(x, y, x + w, y, rad);
+  c.closePath();
+}
+
+/* Mini Map чийүү */
+function drawMinimap(vw, vh) {
+  const box = document.getElementById('minimapBox');
+  if (box.classList.contains('hidden')) return;
+  const mw = minimapCanvas.clientWidth || 176;
+  const mh = minimapCanvas.clientHeight || 118;
+  const span = 3000;
+  const scaleX = mw / span;
+  const scaleY = mh / span;
+
+  mctx.fillStyle = '#040a18';
+  mctx.fillRect(0, 0, mw, mh);
+
+  // Объекттердин чекиттери
+  for (let i = 0; i < state.objects.length; i++) {
+    const o = state.objects[i];
+    if (o.hidden || o.type === 'connector') continue;
+    const mx = (o.x + (o.w || 40) / 2 + span / 2) * scaleX;
+    const my = (o.y + (o.h || 40) / 2 + span / 2) * scaleY;
+    mctx.fillStyle = o.type === 'frame' ? '#ec4899' : '#00e5ff';
+    mctx.fillRect(mx - 2, my - 2, Math.max(3, (o.w || 30) * scaleX), Math.max(3, (o.h || 20) * scaleY));
+  }
+
+  // Учурдагы камера рамкасы
+  const topLeftW = screenToWorld(0, 0);
+  const botRightW = screenToWorld(vw, vh);
+  const rx = (topLeftW.x + span / 2) * scaleX;
+  const ry = (topLeftW.y + span / 2) * scaleY;
+  const rw = (botRightW.x - topLeftW.x) * scaleX;
+  const rh = (botRightW.y - topLeftW.y) * scaleY;
+
+  mctx.strokeStyle = '#ffbd58';
+  mctx.lineWidth = 1.5;
+  mctx.strokeRect(rx, ry, rw, rh);
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function slugify(s) {
+  return String(s || 'board').trim().toLowerCase().replace(/[^a-zа-яөүң0-9-_]+/gi, '-').replace(/^-|-$/g, '') || 'bilimal-board';
+}
+
+/* Баштапкы инициализация */
+window.addEventListener('load', () => {
+  resizeCanvas();
+  state.camX = canvas.clientWidth / 2;
+  state.camY = canvas.clientHeight / 2;
+  updateOverlayTransform();
+  updateZoomLabel();
+
+  // Автосакталган же баштапкы демонстрациялык проект
+  let loadedAuto = false;
+  try {
+    const rawAuto = localStorage.getItem(AUTOSAVE_KEY);
+    if (rawAuto) {
+      const parsed = JSON.parse(rawAuto);
+      if (parsed && Array.isArray(parsed.objects) && parsed.objects.length) {
+        applyProjectPayload(parsed);
+        loadedAuto = true;
+      }
+    }
+  } catch (_) {}
+
+  if (!loadedAuto) {
+    state.objects = [
+      createBaseObj('frame', { name: 'Frame 1: Киришүү', text: 'Frame 1: Физика 7-класс', x: -380, y: -220, w: 760, h: 440, stroke: '#ec4899' }),
+      createBaseObj('mindnode', { name: 'Кыймыл жана Күч', text: 'Кыймыл жана Күч', x: -110, y: -45, w: 220, h: 76, fill: 'rgba(139,92,246,0.3)', stroke: '#a855f7', bold: true }),
+      createBaseObj('sticky', { name: 'Эскертме', text: 'v = s / t\nЫлдамдык формуласы', x: -320, y: 60, w: 185, h: 130, fill: '#facc15', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, bold: true }),
+      createBaseObj('sticky', { name: 'Гравитация', text: 'F = G·(m₁m₂)/r²\nТартылуу күчү', x: 135, y: 60, w: 185, h: 130, fill: '#38bdf8', stroke: 'rgba(255,255,255,0.2)', textColor: '#0f172a', fontSize: 15, bold: true })
+    ];
+    pushHistory();
+  }
+
+  requestAnimationFrame(renderFrame);
+});
 </script>
-<script src="/js/vip-access.js"></script>
 </body>
 </html>
