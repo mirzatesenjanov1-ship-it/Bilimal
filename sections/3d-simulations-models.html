@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="3D симуляциялар жана моделдер — интерактивдүү 3D физикалык моделдер, атомдук жана ядролук симуляциялар платформасы (Bilimal.org).">
+    <title>3D Симуляциялар жана Моделдер - Виртуалдык Физика Ааламы | Bilimal.org</title>
+
+    <!-- External Dependencies -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+
+    <style>
+        :root {
+            --bg-color: #030712;
+            --bg-deep: #050b1d;
+            --card-bg: rgba(11, 22, 46, 0.58);
+            --card-bg-hover: rgba(18, 35, 72, 0.80);
+            --accent-color: #00e5ff;
+            --accent-cyan: #38bdf8;
+            --accent-hover: #00b8d4;
+            --accent-pink: #ec4899;
+            --accent-purple: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(56, 189, 248, 0.24);
+            --neon-border: rgba(0, 229, 255, 0.58);
+            --neon-pink-border: rgba(236, 72, 153, 0.55);
+            --glass-blur: blur(18px);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px 20px 64px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(ellipse 85% 65% at 15% 10%, rgba(14, 165, 233, 0.22), transparent 55%),
+                radial-gradient(ellipse 80% 60% at 85% 18%, rgba(139, 92, 246, 0.22), transparent 55%),
+                radial-gradient(ellipse 75% 65% at 50% 85%, rgba(236, 72, 153, 0.16), transparent 60%),
+                linear-gradient(165deg, #02050f 0%, #050d24 45%, #071433 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Космостук туман (Nebula) жана технологиялык торчо */
+        .space-backdrop {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            transform: translateZ(0);
+        }
+
+        .nebula-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(85px);
+            opacity: 0.48;
+            will-change: transform, opacity;
+            animation: nebulaDrift 18s ease-in-out infinite alternate;
+        }
+
+        .nebula-1 {
+            width: 520px;
+            height: 520px;
+            top: -120px;
+            left: -120px;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.34), rgba(2, 132, 199, 0.08) 70%, transparent);
+        }
+
+        .nebula-2 {
+            width: 580px;
+            height: 580px;
+            top: 12%;
+            right: -160px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.34), rgba(236, 72, 153, 0.14) 65%, transparent);
+            animation-delay: -6s;
+        }
+
+        .nebula-3 {
+            width: 480px;
+            height: 480px;
+            bottom: -140px;
+            left: 25%;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.22), rgba(56, 189, 248, 0.12) 70%, transparent);
+            animation-delay: -11s;
+        }
+
+        .cyber-grid {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background-image:
+                linear-gradient(to right, rgba(56, 189, 248, 0.065) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(56, 189, 248, 0.065) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.22) 82%);
+            -webkit-mask-image: radial-gradient(circle at 50% 35%, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.22) 82%);
+        }
+
+        #cosmos-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            will-change: transform;
+        }
+
+        @keyframes nebulaDrift {
+            0% {
+                transform: translate3d(0, 0, 0) scale(1);
+                opacity: 0.42;
+            }
+            50% {
+                transform: translate3d(28px, -22px, 0) scale(1.07);
+                opacity: 0.58;
+            }
+            100% {
+                transform: translate3d(-24px, 24px, 0) scale(0.96);
+                opacity: 0.45;
+            }
+        }
+
+        @keyframes floatSlow {
+            0%, 100% {
+                transform: translate3d(0, 0, 0);
+            }
+            50% {
+                transform: translate3d(0, -8px, 0);
+            }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Үстүнкү навигация тилкеси */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .btn-back-labs {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 700;
+            font-size: 14px;
+            background: rgba(11, 22, 46, 0.72);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+        }
+
+        .btn-back-labs:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 24px rgba(0, 229, 255, 0.28);
+        }
+
+        .btn-back-labs:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 3px;
+        }
+
+        /* HERO SECTION */
+        .hero-section {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, rgba(12, 22, 54, 0.78) 0%, rgba(24, 22, 64, 0.68) 55%, rgba(9, 18, 42, 0.84) 100%);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid rgba(236, 72, 153, 0.36);
+            border-radius: 24px;
+            padding: 44px 36px;
+            margin-bottom: 34px;
+            box-shadow:
+                0 24px 60px rgba(0, 0, 0, 0.65),
+                0 0 42px rgba(139, 92, 246, 0.16),
+                inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            text-align: center;
+            transform: translateZ(0);
+        }
+
+        .hero-section::before {
+            content: "";
+            position: absolute;
+            top: -120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 580px;
+            height: 260px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.22), rgba(0, 229, 255, 0.18) 55%, transparent 75%);
+            filter: blur(36px);
+            pointer-events: none;
+        }
+
+        .hero-section::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(115deg, transparent 25%, rgba(255, 255, 255, 0.05) 45%, rgba(236, 72, 153, 0.08) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.9s ease;
+            pointer-events: none;
+        }
+
+        .hero-section:hover::after {
+            transform: translateX(100%);
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 999px;
+            background: rgba(236, 72, 153, 0.12);
+            border: 1px solid rgba(244, 114, 182, 0.42);
+            color: #f9a8d4;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.18);
+        }
+
+        .hero-title {
+            position: relative;
+            z-index: 1;
+            margin: 0 0 14px 0;
+            font-size: clamp(1.9rem, 4.2vw, 3.2rem);
+            font-weight: 900;
+            letter-spacing: -0.02em;
+            line-height: 1.15;
+            background: linear-gradient(90deg, #ffffff 0%, #7dd3fc 35%, #f472b6 70%, #00e5ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 36px rgba(236, 72, 153, 0.25);
+        }
+
+        .hero-subtitle {
+            position: relative;
+            z-index: 1;
+            max-width: 760px;
+            margin: 0 auto 28px auto;
+            font-size: clamp(1rem, 1.7vw, 1.18rem);
+            line-height: 1.65;
+            color: #cbd5e1;
+        }
+
+        .hero-actions {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .btn-hero-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 15px 28px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-decoration: none;
+            color: #ffffff;
+            background: linear-gradient(135deg, #ec4899 0%, #a855f7 52%, #2563eb 100%);
+            border: 1px solid rgba(244, 114, 182, 0.7);
+            box-shadow: 0 0 26px rgba(236, 72, 153, 0.42), 0 10px 26px rgba(37, 99, 235, 0.35);
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.28s ease;
+            will-change: transform;
+        }
+
+        .btn-hero-primary:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 0 40px rgba(236, 72, 153, 0.72), 0 14px 34px rgba(59, 130, 246, 0.5);
+            filter: brightness(1.08);
+        }
+
+        .btn-hero-primary:focus-visible {
+            outline: 2px solid #00e5ff;
+            outline-offset: 3px;
+        }
+
+        .btn-hero-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 15px 26px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-decoration: none;
+            color: #03101d;
+            background: linear-gradient(135deg, #00e5ff 0%, #38bdf8 60%, #0284c7 100%);
+            border: 1px solid rgba(125, 211, 252, 0.75);
+            box-shadow: 0 0 24px rgba(0, 229, 255, 0.38);
+            transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.28s ease, filter 0.28s ease;
+            will-change: transform;
+        }
+
+        .btn-hero-secondary:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 0 36px rgba(0, 229, 255, 0.7);
+            filter: brightness(1.06);
+        }
+
+        .btn-hero-secondary:focus-visible {
+            outline: 2px solid #ffffff;
+            outline-offset: 3px;
+        }
+
+        .section-header-title {
+            color: var(--accent-color);
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 0.28);
+        }
+
+        /* 3D Моделдердин торчосу */
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 26px;
+            perspective: 1100px;
+        }
+
+        .model-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 26px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-decoration: none;
+            color: var(--text-main);
+            transition:
+                transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.35s ease,
+                box-shadow 0.35s ease,
+                background 0.35s ease;
+            position: relative;
+            overflow: hidden;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .model-card.featured-3d {
+            border-color: rgba(236, 72, 153, 0.48);
+            box-shadow: 0 16px 38px rgba(0, 0, 0, 0.55), 0 0 26px rgba(236, 72, 153, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+
+        /* Light reflection sheen */
+        .model-card::before {
+            content: "";
+            position: absolute;
+            top: -40%;
+            left: -65%;
+            width: 55%;
+            height: 180%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), rgba(0, 229, 255, 0.15), transparent);
+            transform: rotate(22deg) translateX(0);
+            transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: none;
+        }
+
+        .model-card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 18px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.55), transparent 45%, rgba(0, 229, 255, 0.48));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0.5;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+
+        .model-card:hover {
+            transform: translate3d(0, -10px, 24px) rotateX(3deg) rotateY(-2deg);
+            background: var(--card-bg-hover);
+            border-color: var(--neon-border);
+            box-shadow:
+                0 24px 48px rgba(0, 0, 0, 0.65),
+                0 0 30px rgba(0, 229, 255, 0.28),
+                0 0 46px rgba(236, 72, 153, 0.18);
+        }
+
+        .model-card:hover::before {
+            transform: rotate(22deg) translateX(290%);
+        }
+
+        .model-card:hover::after {
+            opacity: 1;
+        }
+
+        .model-card:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 3px;
+        }
+
+        .model-card-icon {
+            font-size: 36px;
+            color: var(--accent-color);
+            margin-bottom: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 62px;
+            height: 62px;
+            border-radius: 16px;
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.28);
+            box-shadow: 0 0 22px rgba(0, 229, 255, 0.2);
+            animation: floatSlow 5.5s ease-in-out infinite;
+        }
+
+        .model-card.featured-3d .model-card-icon {
+            color: #f472b6;
+            background: rgba(236, 72, 153, 0.12);
+            border-color: rgba(244, 114, 182, 0.38);
+            box-shadow: 0 0 24px rgba(236, 72, 153, 0.25);
+        }
+
+        .model-card:nth-child(even) .model-card-icon {
+            animation-delay: -2.4s;
+        }
+
+        .model-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: var(--text-main);
+            line-height: 1.35;
+        }
+
+        .model-card p {
+            font-size: 13.5px;
+            color: var(--text-muted);
+            margin: 0 0 22px 0;
+            line-height: 1.55;
+        }
+
+        .model-btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 229, 255, 0.09);
+            color: var(--accent-color);
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            border: 1px solid rgba(0, 229, 255, 0.32);
+            transition: all 0.25s ease;
+        }
+
+        .model-card:hover .model-btn-action {
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 50%, #00e5ff 100%);
+            color: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 0 22px rgba(236, 72, 153, 0.38);
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 992px) {
+            .hero-section {
+                padding: 36px 24px;
+            }
+            .models-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px 14px 48px;
+            }
+            .hero-section {
+                padding: 28px 18px;
+                border-radius: 20px;
+                margin-bottom: 24px;
+            }
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+            .btn-hero-primary,
+            .btn-hero-secondary {
+                width: 100%;
+                padding: 14px 20px;
+            }
+            .models-grid {
+                grid-template-columns: 1fr;
+                gap: 18px;
+            }
+            .model-card:hover {
+                transform: translate3d(0, -6px, 0);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Космостук фон, туман жана санариптик бөлүкчөлөр -->
+    <div class="space-backdrop" aria-hidden="true">
+        <div class="nebula-orb nebula-1"></div>
+        <div class="nebula-orb nebula-2"></div>
+        <div class="nebula-orb nebula-3"></div>
+    </div>
+    <div class="cyber-grid" aria-hidden="true"></div>
+    <canvas id="cosmos-canvas" aria-hidden="true"></canvas>
+
+    <div class="container">
+        <!-- Үстүнкү навигация -->
+        <nav class="top-nav" aria-label="Навигация" data-aos="fade-up">
+            <a href="/sections/lab-works-vip.html" class="btn-back-labs">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Лабораториялык иштерге кайтуу</span>
+            </a>
+        </nav>
+
+        <!-- HERO SECTION -->
+        <header class="hero-section" data-aos="fade-up" data-aos-duration="750">
+            <div class="hero-badge">
+                <i class="fa-solid fa-cube"></i>
+                <span>3D QUANTUM · SPATIAL PHYSICS</span>
+            </div>
+            <h1 class="hero-title">3D Симуляциялар жана Моделдер</h1>
+            <p class="hero-subtitle">Интерактивдүү лабораториялык иштер, 3D симуляциялар жана санариптик моделдер аркылуу физиканы жаңы деңгээлде үйрөнүңүз</p>
+            <div class="hero-actions">
+                <a href="/sections/3d/atom-nucleus-quarks-3d.html" class="btn-hero-primary">
+                    <i class="fa-solid fa-atom"></i>
+                    <span>Атомдун, Ядронун жана Кварктардын 3D Модели</span>
+                </a>
+                <a href="#models-section" class="btn-hero-secondary">
+                    <i class="fa-solid fa-cubes"></i>
+                    <span>Бардык 3D Моделдер</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- 3D МОДЕЛДЕР БӨЛҮМҮ -->
+        <section id="models-section" aria-label="3D симуляциялар жана моделдер">
+            <div class="section-header-title" data-aos="fade-up">
+                <i class="fa-solid fa-cubes"></i> Интерактивдүү 3D Моделдер
+            </div>
+
+            <div class="models-grid">
+                <!-- Атомдун, Ядронун жана Кварктардын 3D Модели -->
+                <a href="/sections/3d/atom-nucleus-quarks-3d.html" class="model-card featured-3d" data-aos="zoom-in" data-aos-delay="50">
+                    <div>
+                        <div class="model-card-icon"><i class="fa-solid fa-atom"></i></div>
+                        <h3>Атомдун, Ядронун жана Кварктардын 3D Модели</h3>
+                        <p>Электрондук орбиталардын, протон-нейтрон ядросунун жана жогорку-төмөнкү кварктардын үч өлчөмдүү (3D) интерактивдүү түзүлүшү.</p>
+                    </div>
+                    <div class="model-btn-action">
+                        <span>3D Моделди Ачуу</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Механика жана Кыймылдын 3D Симуляциясы -->
+                <a href="/sections/3d/mechanics-3d.html" class="model-card" data-aos="fade-up" data-aos-delay="120">
+                    <div>
+                        <div class="model-card-icon"><i class="fa-solid fa-rocket"></i></div>
+                        <h3>Механика жана Кыймылдын 3D Симуляциясы</h3>
+                        <p>Бурчтук ыргытылган телонун траекториясы, күч векторлору, импульс жана 3D мейкиндиктеги динамикалык кыймыл моделдери.</p>
+                    </div>
+                    <div class="model-btn-action">
+                        <span>Симуляцияны Ачуу</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+
+                <!-- Астрофизика жана Планеталардын 3D Модели -->
+                <a href="/sections/3d/astrophysics-3d.html" class="model-card" data-aos="fade-up" data-aos-delay="190">
+                    <div>
+                        <div class="model-card-icon"><i class="fa-solid fa-globe"></i></div>
+                        <h3>Астрофизика жана Ааламдын 3D Модели</h3>
+                        <p>Күн системасынын орбиталары, гравитациялык тартылуу талаасы жана космостук объекттердин 3D визуализациясы.</p>
+                    </div>
+                    <div class="model-btn-action">
+                        <span>Симуляцияны Ачуу</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <!-- Космостук бөлүкчөлөр жана жылдыз талаасы -->
+    <script>
+        (function initCosmicUniverseCanvas() {
+            const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            const canvas = document.getElementById('cosmos-canvas');
+            if (!canvas || prefersReduced) return;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            let width = 0;
+            let height = 0;
+            let stars = [];
+            let particles = [];
+            let rafId = null;
+            let isPaused = false;
+
+            function createScene() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+
+                const starCount = Math.min(130, Math.max(45, Math.floor((width * height) / 14000)));
+                stars = Array.from({ length: starCount }, () => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    r: Math.random() * 1.65 + 0.4,
+                    alpha: Math.random() * 0.75 + 0.2,
+                    twinkleSpeed: Math.random() * 0.02 + 0.006,
+                    phase: Math.random() * Math.PI * 2
+                }));
+
+                const particleCount = Math.min(44, Math.max(16, Math.floor((width * height) / 42000)));
+                const palette = [
+                    'rgba(0, 229, 255, 0.75)',
+                    'rgba(56, 189, 248, 0.7)',
+                    'rgba(168, 85, 247, 0.65)',
+                    'rgba(236, 72, 153, 0.65)'
+                ];
+
+                particles = Array.from({ length: particleCount }, (_, idx) => ({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 0.35,
+                    vy: (Math.random() - 0.5) * 0.35,
+                    r: Math.random() * 2.2 + 1.1,
+                    color: palette[idx % palette.length]
+                }));
+            }
+
+            function renderFrame() {
+                if (isPaused) return;
+                ctx.clearRect(0, 0, width, height);
+
+                for (let i = 0; i < stars.length; i++) {
+                    const s = stars[i];
+                    s.phase += s.twinkleSpeed;
+                    const currentAlpha = Math.max(0.12, Math.min(0.95, s.alpha + Math.sin(s.phase) * 0.25));
+                    ctx.fillStyle = `rgba(226, 244, 255, ${currentAlpha.toFixed(3)})`;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                for (let i = 0; i < particles.length; i++) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    if (p.x < 0) p.x = width;
+                    else if (p.x > width) p.x = 0;
+                    if (p.y < 0) p.y = height;
+                    else if (p.y > height) p.y = 0;
+
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const q = particles[j];
+                        const dist = Math.hypot(p.x - q.x, p.y - q.y);
+                        if (dist < 125) {
+                            const lineAlpha = ((1 - dist / 125) * 0.16).toFixed(3);
+                            ctx.strokeStyle = `rgba(56, 189, 248, ${lineAlpha})`;
+                            ctx.lineWidth = 0.8;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(q.x, q.y);
+                            ctx.stroke();
+                        }
+                    }
+
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                rafId = requestAnimationFrame(renderFrame);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                isPaused = document.hidden;
+                if (!isPaused && !rafId) {
+                    rafId = requestAnimationFrame(renderFrame);
+                } else if (isPaused && rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+            });
+
+            let resizeTimer = null;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(createScene, 140);
+            });
+
+            createScene();
+            rafId = requestAnimationFrame(renderFrame);
+        })();
+    </script>
+
+    <!-- AOS Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.AOS) {
+                window.AOS.init({
+                    duration: 650,
+                    easing: 'ease-out-cubic',
+                    once: true,
+                    offset: 40,
+                    disable: function () {
+                        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
