@@ -1,313 +1,1739 @@
 <!DOCTYPE html>
 <html lang="ky">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Чагылгандын 3D симуляциясы — атмосферадагы электр разряддары, булуттардын заряддалышы жана чагылган физикасы (Bilimal.org).">
-    <title>Чагылган — 3D Симуляция | Bilimal.org</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="description" content="Bilimal.org — Чагылгандын пайда болушу жана жарык менен үндүн таралышы 3D симуляциясы" />
+    <title>Чагылгандын пайда болушу жана жарык менен үн — 3D Симуляция | Bilimal.org</title>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- Three.js ES Modules Import Map -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
     <style>
+        /* ==========================================================================
+           Bilimal.org — 3D Lightning Simulation Glassmorphism & Responsive Styles
+           ========================================================================== */
         :root {
-            --bg-color: #030712;
-            --card-bg: rgba(11, 22, 46, 0.68);
-            --accent-color: #00e5ff;
-            --accent-purple: #8b5cf6;
-            --accent-pink: #ec4899;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: rgba(56, 189, 248, 0.28);
-            --glass-blur: blur(16px);
+            --bg-dark: #030712;
+            --glass-bg: rgba(9, 18, 38, 0.65);
+            --glass-border: rgba(56, 189, 248, 0.28);
+            --neon-cyan: #00e5ff;
+            --neon-blue: #38bdf8;
+            --neon-purple: #a855f7;
+            --neon-pink: #ec4899;
+            --safe-green: #22c55e;
+            --danger-red: #ef4444;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --blur-val: blur(16px);
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
         }
-        * { box-sizing: border-box; }
-        body {
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
             margin: 0;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: radial-gradient(ellipse at 20% 10%, rgba(139, 92, 246, 0.2), transparent 55%),
-                        radial-gradient(ellipse at 80% 20%, rgba(0, 229, 255, 0.18), transparent 55%),
-                        linear-gradient(165deg, #02050f 0%, #050d24 55%, #071433 100%);
-            background-attachment: fixed;
-            color: var(--text-main);
-            min-height: 100vh;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            user-select: none;
         }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .top-nav {
+
+        #scene-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #scene-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: var(--blur-val);
+            -webkit-backdrop-filter: var(--blur-val);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        /* Top Bar */
+        .top-bar {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            z-index: 10;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
             gap: 12px;
-            margin-bottom: 20px;
+            padding: 10px 16px;
         }
-        .btn-back {
-            display: inline-flex;
+
+        .brand-group {
+            display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            border-radius: 12px;
-            text-decoration: none;
-            color: var(--text-main);
-            font-weight: 700;
-            font-size: 14px;
-            background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            gap: 12px;
+            min-width: 0;
         }
-        .btn-back:hover { transform: translateY(-2px); border-color: var(--accent-color); }
-        .header-box {
-            background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
-            padding: 24px 28px;
-            margin-bottom: 22px;
-        }
-        .header-box h1 {
-            margin: 0 0 8px 0;
-            font-size: clamp(1.6rem, 3.2vw, 2.4rem);
-            background: linear-gradient(90deg, #ffffff, #00e5ff, #c084fc);
+
+        .brand-group h1 {
+            margin: 0;
+            font-size: clamp(0.9rem, 1.75vw, 1.2rem);
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background: linear-gradient(90deg, #ffffff, var(--neon-cyan), var(--neon-purple));
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
         }
-        .header-box p { margin: 0; color: var(--text-muted); line-height: 1.6; }
-        .sim-layout {
-            display: grid;
-            grid-template-columns: 1fr 310px;
-            gap: 20px;
-        }
-        .canvas-card, .controls-card {
-            background: var(--card-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-color);
-            border-radius: 18px;
-            padding: 18px;
-        }
-        #lightningCanvas {
-            width: 100%;
-            height: 460px;
+
+        .subtitle {
             display: block;
-            border-radius: 12px;
-            background: linear-gradient(180deg, #04091a 0%, #0b1633 65%, #071926 100%);
-            border: 1px solid rgba(0, 229, 255, 0.2);
-            cursor: crosshair;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
         }
-        .control-group { margin-bottom: 16px; }
-        .control-group label {
+
+        .top-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .lang-switcher {
+            display: inline-flex;
+            background: rgba(2, 6, 23, 0.65);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            padding: 2px;
+        }
+
+        .lang-btn {
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 5px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, var(--neon-cyan), #0284c7);
+            color: #020617;
+        }
+
+        .fps-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 5px 9px;
+            border-radius: var(--radius-sm);
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.75);
+            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            transform: translateY(-1px);
+        }
+
+        /* Left HUD Column */
+        .hud-left {
+            position: fixed;
+            top: 80px;
+            left: 12px;
+            width: 325px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+
+        .hud-left::-webkit-scrollbar { width: 4px; }
+        .hud-left::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.35);
+            border-radius: 4px;
+        }
+
+        .edu-panel, .timer-panel, .safety-panel {
+            padding: 13px 15px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--neon-blue);
+            margin-bottom: 8px;
+        }
+
+        .stage-pill {
+            margin-left: auto;
+            font-size: 0.72rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(0, 229, 255, 0.16);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 229, 255, 0.35);
+        }
+
+        .stage-name {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .stage-desc {
+            margin: 0 0 8px 0;
+            font-size: 0.8rem;
+            line-height: 1.42;
+            color: var(--text-secondary);
+        }
+
+        .stage-progress {
+            height: 5px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .stage-progress-bar {
+            height: 100%;
+            width: 16.6%;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+            transition: width 0.25s ease;
+        }
+
+        /* Sensory Indicators */
+        .sensory-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .sensory-card {
+            background: rgba(2, 6, 23, 0.55);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: var(--radius-md);
+            padding: 9px 8px;
+            text-align: center;
+            transition: all 0.25s ease;
+        }
+
+        .sensory-card i {
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-secondary);
+        }
+
+        .sensory-card span {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .sensory-card small {
+            display: block;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .sensory-card.active-light {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 229, 255, 0.18);
+            box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
+        }
+
+        .sensory-card.active-light i,
+        .sensory-card.active-light span,
+        .sensory-card.active-light small { color: #ffffff; }
+
+        .sensory-card.active-sound {
+            border-color: var(--neon-purple);
+            background: rgba(168, 85, 247, 0.2);
+            box-shadow: 0 0 18px rgba(168, 85, 247, 0.35);
+        }
+
+        .sensory-card.active-sound i,
+        .sensory-card.active-sound span,
+        .sensory-card.active-sound small { color: #ffffff; }
+
+        .event-log {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.74rem;
+        }
+
+        .log-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            background: rgba(2, 6, 23, 0.45);
+            opacity: 0.48;
+            transition: opacity 0.25s ease, background 0.25s ease;
+        }
+
+        .log-item.reached {
+            opacity: 1;
+            background: rgba(15, 23, 42, 0.88);
+        }
+
+        .log-item .t {
+            font-weight: 800;
+            color: var(--neon-cyan);
+            min-width: 56px;
+        }
+
+        /* Safety List */
+        .safety-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.76rem;
+        }
+
+        .safety-list li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            background: rgba(2, 6, 23, 0.45);
+        }
+
+        .safety-list li.safe i { color: var(--safe-green); }
+        .safety-list li.danger i { color: var(--danger-red); }
+
+        /* Bottom Control Dock */
+        .control-dock {
+            position: fixed;
+            bottom: 12px;
+            left: 12px;
+            right: 12px;
+            z-index: 10;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px 16px;
+        }
+
+        .dock-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary, .btn-secondary, .btn-cinema {
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 9px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-cyan), #0284c7);
+            color: #020617;
+            box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
+        }
+        .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.08); }
+
+        .btn-secondary {
+            background: rgba(15, 23, 42, 0.82);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+        .btn-secondary:hover { border-color: var(--neon-blue); }
+
+        .btn-cinema {
+            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(236, 72, 153, 0.32);
+        }
+        .btn-cinema.active {
+            outline: 2px solid var(--neon-cyan);
+            box-shadow: 0 0 24px rgba(236, 72, 153, 0.68);
+        }
+
+        .distance-control {
+            flex: 1 1 240px;
+            max-width: 370px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
+        }
+
+        .distance-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.78rem;
+        }
+
+        .distance-header strong {
+            color: var(--neon-cyan);
+            font-size: 0.86rem;
+        }
+
+        .delay-badge {
+            font-size: 0.7rem;
+            color: #f9a8d4;
+            background: rgba(236, 72, 153, 0.15);
+            border: 1px solid rgba(236, 72, 153, 0.35);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+
+        #distanceSlider {
+            width: 100%;
+            accent-color: var(--neon-cyan);
+            cursor: pointer;
+        }
+
+        .distance-ticks {
             display: flex;
             justify-content: space-between;
-            font-size: 13px;
-            font-weight: 700;
-            color: #cbd5e1;
-            margin-bottom: 6px;
+            font-size: 0.64rem;
+            color: var(--text-secondary);
         }
-        .control-group input[type="range"] { width: 100%; accent-color: var(--accent-color); }
-        .btn-strike {
-            width: 100%;
-            padding: 13px;
-            border-radius: 12px;
+
+        .slowmo-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(2, 6, 23, 0.55);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 4px 8px;
+        }
+
+        .mini-label {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        .pill-btn {
             border: none;
-            font-weight: 800;
-            font-size: 14px;
-            color: #03101d;
-            background: linear-gradient(135deg, #00e5ff, #38bdf8);
-            cursor: pointer;
-            margin-bottom: 10px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-strike:hover { transform: translateY(-2px); box-shadow: 0 0 24px rgba(0, 229, 255, 0.45); }
-        .btn-auto {
-            width: 100%;
-            padding: 11px;
-            border-radius: 12px;
-            border: 1px solid rgba(192, 132, 252, 0.5);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
             font-weight: 700;
-            font-size: 13px;
-            color: #ffffff;
-            background: rgba(139, 92, 246, 0.22);
+            padding: 4px 8px;
+            border-radius: 6px;
             cursor: pointer;
+            transition: all 0.2s ease;
         }
-        .info-box {
-            margin-top: 16px;
-            padding-top: 14px;
-            border-top: 1px solid var(--border-color);
-            font-size: 12.5px;
-            color: var(--text-muted);
-            line-height: 1.55;
+
+        .pill-btn.active {
+            background: var(--neon-cyan);
+            color: #020617;
         }
-        @media (max-width: 900px) {
-            .sim-layout { grid-template-columns: 1fr; }
-            #lightningCanvas { height: 360px; }
+
+        @media (max-width: 1024px) {
+            .hud-left { width: 280px; }
+        }
+
+        @media (max-width: 768px) {
+            html, body { overflow: auto; }
+            .top-bar { padding: 8px 12px; top: 8px; left: 8px; right: 8px; }
+            .subtitle, .fps-badge { display: none; }
+            .hud-left {
+                position: static;
+                width: 100%;
+                max-height: none;
+                overflow: visible;
+                margin-top: 64px;
+                padding: 0 8px 10px 8px;
+            }
+            .control-dock {
+                position: static;
+                margin: 0 8px 18px 8px;
+                padding: 12px;
+                justify-content: center;
+            }
+            .distance-control { max-width: 100%; width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <nav class="top-nav">
-            <a href="/sections/3d-simulations-models.html" class="btn-back">
+    <!-- 3D WebGL Сахнасы -->
+    <div id="scene-container" aria-label="3D Lightning Simulation Scene"></div>
+
+    <!-- Үстүнкү Панель -->
+    <header class="top-bar glass-panel">
+        <div class="brand-group">
+            <a href="/sections/3d-simulations-models.html" class="icon-btn" id="backBtn" title="Back">
                 <i class="fa-solid fa-arrow-left"></i>
-                <span>3D Симуляцияларга кайтуу</span>
             </a>
-        </nav>
-
-        <header class="header-box">
-            <h1><i class="fa-solid fa-bolt-lightning"></i> Чагылган — Интерактивдүү Симуляция</h1>
-            <p>Булуттардагы электр заряддарынын топтолушун, потенциалдар айырмасын жана электр разрядынын пайда болуу процессин байкаңыз. Холсттун каалаган жерин басып, разрядды багыттасаңыз болот.</p>
-        </header>
-
-        <div class="sim-layout">
-            <div class="canvas-card">
-                <canvas id="lightningCanvas"></canvas>
+            <div>
+                <h1 id="appTitle">Чагылгандын пайда болушу жана жарык менен үн</h1>
+                <span class="subtitle" id="appSubtitle">Bilimal.org • 3D Физика Лабораториясы</span>
             </div>
-            <aside class="controls-card">
-                <div class="control-group">
-                    <label><span>Заряд интенсивдүүлүгү</span><span id="chargeVal">75%</span></label>
-                    <input type="range" id="chargeSlider" min="20" max="100" value="75">
-                </div>
-                <div class="control-group">
-                    <label><span>Тармакталуу (Бутактануу)</span><span id="branchVal">4</span></label>
-                    <input type="range" id="branchSlider" min="1" max="8" value="4">
-                </div>
-                <button class="btn-strike" id="strikeBtn"><i class="fa-solid fa-bolt"></i> Чагылган Чакыруу</button>
-                <button class="btn-auto" id="autoBtn"><i class="fa-solid fa-rotate"></i> Авто-режим: Өчүк</button>
-                <div class="info-box">
-                    <b>Физикалык маалымат:</b> Чагылган — атмосферадагы күчтүү электр разряды. Температурасы ~25 000–30 000 K чейин жетип, абанын тез кеңейиши күн күркүрөөсүн жаратат.
-                </div>
-            </aside>
         </div>
-    </div>
 
-    <script>
-        const canvas = document.getElementById('lightningCanvas');
-        const ctx = canvas.getContext('2d');
-        const chargeSlider = document.getElementById('chargeSlider');
-        const branchSlider = document.getElementById('branchSlider');
-        const chargeVal = document.getElementById('chargeVal');
-        const branchVal = document.getElementById('branchVal');
-        const strikeBtn = document.getElementById('strikeBtn');
-        const autoBtn = document.getElementById('autoBtn');
+        <div class="top-actions">
+            <div class="lang-switcher" role="group" aria-label="Language Switcher">
+                <button type="button" class="lang-btn active" data-lang="ky">KY</button>
+                <button type="button" class="lang-btn" data-lang="ru">RU</button>
+                <button type="button" class="lang-btn" data-lang="en">EN</button>
+            </div>
+            <div class="fps-badge" id="fpsCounter">60 FPS</div>
+            <button type="button" class="icon-btn" id="soundToggleBtn" aria-label="Sound Toggle">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button type="button" class="icon-btn" id="fullscreenBtn" aria-label="Fullscreen Toggle">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </header>
 
-        let bolts = [];
-        let flashAlpha = 0;
-        let autoMode = false;
-        let autoTimer = 0;
+    <!-- Сол Панель: Окутуу этабы, Таймер жана Коопсуздук -->
+    <aside class="hud-left">
+        <section class="glass-panel edu-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span id="eduTitle">Окутуу режими</span>
+                <span class="stage-pill" id="stageBadge">1/6</span>
+            </div>
+            <div class="stage-name" id="stageName">1-ЭТАП: Заряддардын бөлүнүшү</div>
+            <p class="stage-desc" id="stageDesc">Булуттун үстүндө оң (+), астында терс (-) заряддар бөлүнүүдө.</p>
+            <div class="stage-progress">
+                <div class="stage-progress-bar" id="stageProgressBar"></div>
+            </div>
+        </section>
 
-        function resizeCanvas() {
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+        <section class="glass-panel timer-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-stopwatch"></i>
+                <span id="timerTitle">Байкоо таймери</span>
+            </div>
+
+            <div class="sensory-row">
+                <div class="sensory-card" id="eyeIndicator">
+                    <i class="fa-solid fa-eye"></i>
+                    <span id="eyeText">Жарык көрүндү</span>
+                    <small id="lightTimeVal">0.01 сек</small>
+                </div>
+                <div class="sensory-card" id="earIndicator">
+                    <i class="fa-solid fa-ear-listen"></i>
+                    <span id="earText">Үн угулду</span>
+                    <small id="soundTimeVal">2.91 сек</small>
+                </div>
+            </div>
+
+            <div class="event-log" id="eventLog">
+                <div class="log-item"><span class="t" id="logStrikeTime">0.00 сек</span> <span id="logStrike">⚡ Чагылган пайда болду</span></div>
+                <div class="log-item" id="logLightRow"><span class="t" id="logLightTime">0.01 сек</span> <span id="logLight">👁 Жарык жетти (300 000 км/с)</span></div>
+                <div class="log-item" id="logSoundRow"><span class="t" id="logSoundTime">2.91 сек</span> <span id="logSound">👂 Үн жетти (343 м/с)</span></div>
+            </div>
+        </section>
+
+        <section class="glass-panel safety-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span id="safetyTitle">Чагылган учурундагы коопсуздук</span>
+            </div>
+            <ul class="safety-list" id="safetyList"></ul>
+        </section>
+    </aside>
+
+    <!-- Төмөнкү Башкаруу Панели -->
+    <nav class="control-dock glass-panel" aria-label="Simulation Controls">
+        <div class="dock-group primary-controls">
+            <button type="button" class="btn-primary" id="startBtn">
+                <i class="fa-solid fa-play"></i>
+                <span id="startText">Баштоо</span>
+            </button>
+            <button type="button" class="btn-secondary" id="pauseBtn">
+                <i class="fa-solid fa-pause"></i>
+                <span id="pauseText">Токтотуу</span>
+            </button>
+            <button type="button" class="btn-secondary" id="replayBtn">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span id="replayText">Кайра ойнотуу</span>
+            </button>
+        </div>
+
+        <div class="dock-group distance-control">
+            <div class="distance-header">
+                <label for="distanceSlider" id="distanceLabel">Аралык</label>
+                <strong id="distanceDisplay">1 км</strong>
+                <span class="delay-badge" id="delayDisplay">Үн кечигүүсү: 2.91 сек</span>
+            </div>
+            <input type="range" id="distanceSlider" min="0" max="6" step="1" value="2" />
+            <div class="distance-ticks">
+                <span>100м</span><span>500м</span><span>1км</span><span>2км</span><span>3км</span><span>5км</span><span>10км</span>
+            </div>
+        </div>
+
+        <div class="dock-group mode-controls">
+            <div class="slowmo-group" role="group" aria-label="Slow Motion">
+                <span class="mini-label" id="slowmoLabel">Slow Motion:</span>
+                <button type="button" class="pill-btn active" data-speed="1">Normal</button>
+                <button type="button" class="pill-btn" data-speed="0.5">0.5x</button>
+                <button type="button" class="pill-btn" data-speed="0.25">0.25x</button>
+                <button type="button" class="pill-btn" data-speed="0.1">0.1x</button>
+            </div>
+
+            <button type="button" class="btn-cinema" id="cinemaBtn">
+                <i class="fa-solid fa-film"></i>
+                <span id="cinemaText">YouTube / Cinematic Mode</span>
+            </button>
+        </div>
+    </nav>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        /* ======================================================================
+           1. PHYSICS & TRANSLATIONS (KY / RU / EN)
+           ====================================================================== */
+        const SPEED_OF_LIGHT_MPS = 300_000_000; // 300 000 км/с
+        const SPEED_OF_SOUND_MPS = 343;         // 343 м/с
+
+        const DISTANCE_STEPS = [
+            { meters: 100,   label: { ky: '100 м',  ru: '100 м',  en: '100 m' } },
+            { meters: 500,   label: { ky: '500 м',  ru: '500 м',  en: '500 m' } },
+            { meters: 1000,  label: { ky: '1 км',   ru: '1 км',   en: '1 km' } },
+            { meters: 2000,  label: { ky: '2 км',   ru: '2 км',   en: '2 km' } },
+            { meters: 3000,  label: { ky: '3 км',   ru: '3 км',   en: '3 km' } },
+            { meters: 5000,  label: { ky: '5 км',   ru: '5 км',   en: '5 km' } },
+            { meters: 10000, label: { ky: '10 км',  ru: '10 км',  en: '10 km' } }
+        ];
+
+        function calculateArrivalTimes(distanceMeters) {
+            const lightDelaySec = distanceMeters / SPEED_OF_LIGHT_MPS;
+            const soundDelaySec = distanceMeters / SPEED_OF_SOUND_MPS;
+            return {
+                lightDelaySec,
+                soundDelaySec,
+                soundDelayFormatted: soundDelaySec.toFixed(2)
+            };
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
 
-        chargeSlider.addEventListener('input', () => { chargeVal.textContent = chargeSlider.value + '%'; });
-        branchSlider.addEventListener('input', () => { branchVal.textContent = branchSlider.value; });
+        function calculateSoundAttenuation(distanceMeters) {
+            if (distanceMeters <= 100) return 1.0;
+            if (distanceMeters <= 500) return 0.85;
+            if (distanceMeters <= 1000) return 0.65;
+            if (distanceMeters <= 2000) return 0.48;
+            if (distanceMeters <= 3000) return 0.35;
+            if (distanceMeters <= 5000) return 0.22;
+            return 0.13;
+        }
 
-        function createBolt(targetX, targetY) {
-            const startX = canvas.width * (0.18 + Math.random() * 0.64);
-            const startY = 58;
-            const endX = targetX !== undefined ? targetX : canvas.width * (0.15 + Math.random() * 0.7);
-            const endY = targetY !== undefined ? targetY : canvas.height - 22;
+        const TRANSLATIONS = {
+            ky: {
+                appTitle: 'Чагылгандын пайда болушу жана жарык менен үн',
+                appSubtitle: 'Bilimal.org • 3D Физика Лабораториясы',
+                eduTitle: 'Окутуу режими',
+                timerTitle: 'Байкоо таймери',
+                eyeText: 'Жарык көрүндү',
+                earText: 'Үн угулду',
+                logStrike: '⚡ Чагылган пайда болду',
+                logLight: '👁 Жарык жетти (300 000 км/с)',
+                logSound: '👂 Үн жетти (343 м/с)',
+                safetyTitle: 'Чагылган учурундагы коопсуздук',
+                safety: [
+                    { safe: true,  text: 'Үй ичинде коопсуз' },
+                    { safe: true,  text: 'Унаа ичинде коопсуз' },
+                    { safe: false, text: 'Жалгыз бак астында коркунучтуу' },
+                    { safe: false, text: 'Ачык талаада коркунучтуу' },
+                    { safe: false, text: 'Металл объект жанында коркунучтуу' }
+                ],
+                startText: 'Баштоо',
+                pauseText: 'Токтотуу',
+                replayText: 'Кайра ойнотуу',
+                distanceLabel: 'Аралык',
+                delayPrefix: 'Үн кечигүүсү',
+                secUnit: 'сек',
+                slowmoLabel: 'Slow Motion:',
+                cinemaText: 'YouTube / Cinematic Mode',
+                stages: [
+                    { name: '1-ЭТАП: Заряддардын бөлүнүшү', desc: 'Булут ичинде үстүндө оң (+), астында терс (-) заряддар бөлүнүүдө.' },
+                    { name: '2-ЭТАП: Электр талаасынын күчөшү', desc: 'Булут менен жер ортосундагы электр талаасы күчөөдө.' },
+                    { name: '3-ЭТАП: Stepped Leader', desc: 'Stepped Leader жерди көздөй бутакталган канал болуп түшүүдө.' },
+                    { name: '4-ЭТАП: Upward Streamer', desc: 'Жерден каршы оң заряд (Upward Streamer) көтөрүлүүдө.' },
+                    { name: '5-ЭТАП: Контакт', desc: 'Лидер менен стример тийишкен учурда чоң жарк этүү болду.' },
+                    { name: '6-ЭТАП: Return Stroke & Толкундар', desc: 'Return Stroke жүрүүдө! Жарык дароо жетип, үн 343 м/с менен таралууда.' }
+                ]
+            },
+            ru: {
+                appTitle: 'Образование молнии и распространение света и звука',
+                appSubtitle: 'Bilimal.org • 3D Физическая Лаборатория',
+                eduTitle: 'Режим обучения',
+                timerTitle: 'Таймер наблюдения',
+                eyeText: 'Свет виден',
+                earText: 'Звук услышан',
+                logStrike: '⚡ Возникла молния',
+                logLight: '👁 Свет дошёл (300 000 км/с)',
+                logSound: '👂 Звук дошёл (343 м/с)',
+                safetyTitle: 'Безопасность при грозе',
+                safety: [
+                    { safe: true,  text: 'В помещении безопасно' },
+                    { safe: true,  text: 'В автомобиле безопасно' },
+                    { safe: false, text: 'Под одиноким деревом опасно' },
+                    { safe: false, text: 'На открытом поле опасно' },
+                    { safe: false, text: 'Рядом с металлом опасно' }
+                ],
+                startText: 'Старт',
+                pauseText: 'Пауза',
+                replayText: 'Повтор',
+                distanceLabel: 'Расстояние',
+                delayPrefix: 'Задержка звука',
+                secUnit: 'сек',
+                slowmoLabel: 'Slow Motion:',
+                cinemaText: 'YouTube / Cinematic Mode',
+                stages: [
+                    { name: 'ЭТАП 1: Разделение зарядов', desc: 'В облаке разделяются положительные (+) и отрицательные (-) заряды.' },
+                    { name: 'ЭТАП 2: Усиление электрического поля', desc: 'Растёт разность потенциалов, усиливается электрическое поле.' },
+                    { name: 'ЭТАП 3: Stepped Leader', desc: 'Ступенчатый лидер движется вниз ветвящимся каналом.' },
+                    { name: 'ЭТАП 4: Upward Streamer', desc: 'От земли поднимается встречный разряд — Upward Streamer.' },
+                    { name: 'ЭТАП 5: Контакт', desc: 'При замыкании лидера и стримера возникает яркая вспышка.' },
+                    { name: 'ЭТАП 6: Return Stroke и волны', desc: 'Главный разряд Return Stroke! Свет приходит быстро, звук идёт 343 м/с.' }
+                ]
+            },
+            en: {
+                appTitle: 'Lightning Formation & Propagation of Light and Sound',
+                appSubtitle: 'Bilimal.org • 3D Physics Laboratory',
+                eduTitle: 'Learning Mode',
+                timerTitle: 'Observation Timer',
+                eyeText: 'Light Seen',
+                earText: 'Sound Heard',
+                logStrike: '⚡ Lightning occurred',
+                logLight: '👁 Light arrived (300,000 km/s)',
+                logSound: '👂 Sound arrived (343 m/s)',
+                safetyTitle: 'Lightning Safety',
+                safety: [
+                    { safe: true,  text: 'Safe indoors' },
+                    { safe: true,  text: 'Safe inside a car' },
+                    { safe: false, text: 'Dangerous under an isolated tree' },
+                    { safe: false, text: 'Dangerous in an open field' },
+                    { safe: false, text: 'Dangerous near metal objects' }
+                ],
+                startText: 'Start',
+                pauseText: 'Pause',
+                replayText: 'Replay',
+                distanceLabel: 'Distance',
+                delayPrefix: 'Sound delay',
+                secUnit: 'sec',
+                slowmoLabel: 'Slow Motion:',
+                cinemaText: 'YouTube / Cinematic Mode',
+                stages: [
+                    { name: 'STAGE 1: Charge Separation', desc: 'Positive (+) and negative (-) charges separate inside the cloud.' },
+                    { name: 'STAGE 2: Electric Field Intensification', desc: 'Electric field strengthens between cloud and ground.' },
+                    { name: 'STAGE 3: Stepped Leader', desc: 'A branching stepped leader descends toward the ground.' },
+                    { name: 'STAGE 4: Upward Streamer', desc: 'An upward streamer rises from the ground to meet the leader.' },
+                    { name: 'STAGE 5: Attachment / Contact', desc: 'Leader and streamer connect with a bright contact flash.' },
+                    { name: 'STAGE 6: Return Stroke & Waves', desc: 'Return stroke illuminates the channel! Light arrives fast; sound travels at 343 m/s.' }
+                ]
+            }
+        };
 
-            const segments = [];
-            const steps = 16;
-            let prevX = startX;
-            let prevY = startY;
+        /* ======================================================================
+           2. SOUND ENGINE (Web Audio API: Electric Crack + Deep Thunder Roll)
+           ====================================================================== */
+        class LightningSoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.panner = null;
+                this.enabled = true;
+                this.noiseBuffer = null;
+            }
 
-            for (let i = 1; i <= steps; i++) {
-                const t = i / steps;
-                const jitter = (1 - t * 0.35) * (22 + chargeSlider.value * 0.25);
-                const nx = i === steps ? endX : startX + (endX - startX) * t + (Math.random() - 0.5) * jitter * 2;
-                const ny = i === steps ? endY : startY + (endY - startY) * t + (Math.random() - 0.5) * 10;
-                segments.push({ x1: prevX, y1: prevY, x2: nx, y2: ny, width: Math.max(1.2, (1 - t * 0.65) * 4.2) });
+            initContext() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = this.enabled ? 0.85 : 0.0;
+                    this.panner = this.ctx.createStereoPanner();
+                    this.panner.pan.value = 0;
+                    this.panner.connect(this.masterGain);
+                    this.masterGain.connect(this.ctx.destination);
+                    this.noiseBuffer = this._createNoiseBuffer(3.5);
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume().catch(() => {});
+                }
+            }
 
-                if (i > 2 && i < steps - 2 && Math.random() < branchSlider.value * 0.11) {
-                    let bx = nx, by = ny;
+            _createNoiseBuffer(durationSec) {
+                const length = Math.floor(this.ctx.sampleRate * durationSec);
+                const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let lastOut = 0;
+                for (let i = 0; i < length; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = (lastOut + 0.04 * white) / 1.04;
+                    lastOut = data[i];
+                    data[i] *= 2.4;
+                }
+                return buffer;
+            }
+
+            setEnabled(isEnabled) {
+                this.enabled = isEnabled;
+                if (this.masterGain && this.ctx) {
+                    this.masterGain.gain.setTargetAtTime(isEnabled ? 0.85 : 0.0, this.ctx.currentTime, 0.03);
+                }
+            }
+
+            setPan(panValue) {
+                if (this.panner && this.ctx) {
+                    this.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, panValue)), this.ctx.currentTime, 0.05);
+                }
+            }
+
+            playElectricCrack(distanceMeters = 1000, pan = 0) {
+                if (!this.enabled) return;
+                this.initContext();
+                this.setPan(pan);
+                const now = this.ctx.currentTime;
+                const atten = calculateSoundAttenuation(distanceMeters);
+
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.noiseBuffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(distanceMeters <= 500 ? 2200 : 1200, now);
+                filter.Q.setValueAtTime(1.4, now);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(Math.min(1.0, atten * 1.2), now + 0.008);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+                src.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.panner);
+                src.start(now, Math.random() * 1.0, 0.35);
+            }
+
+            playThunderRoll(distanceMeters = 1000, pan = 0) {
+                if (!this.enabled) return;
+                this.initContext();
+                this.setPan(pan);
+                const now = this.ctx.currentTime;
+                const atten = calculateSoundAttenuation(distanceMeters);
+
+                const cutoffHz =
+                    distanceMeters <= 100  ? 480 :
+                    distanceMeters <= 500  ? 360 :
+                    distanceMeters <= 1000 ? 260 :
+                    distanceMeters <= 2000 ? 200 :
+                    distanceMeters <= 3000 ? 160 :
+                    distanceMeters <= 5000 ? 125 : 95;
+
+                const duration = distanceMeters <= 500 ? 1.8 : distanceMeters <= 2000 ? 2.5 : 3.2;
+
+                const rumble = this.ctx.createBufferSource();
+                rumble.buffer = this.noiseBuffer;
+                rumble.loop = true;
+
+                const lowpass = this.ctx.createBiquadFilter();
+                lowpass.type = 'lowpass';
+                lowpass.frequency.setValueAtTime(cutoffHz, now);
+                lowpass.frequency.exponentialRampToValueAtTime(Math.max(55, cutoffHz * 0.45), now + duration);
+
+                const subOsc = this.ctx.createOscillator();
+                subOsc.type = 'sine';
+                subOsc.frequency.setValueAtTime(distanceMeters <= 500 ? 58 : 44, now);
+                subOsc.frequency.exponentialRampToValueAtTime(28, now + duration * 0.85);
+
+                const subGain = this.ctx.createGain();
+                subGain.gain.setValueAtTime(0.001, now);
+                subGain.gain.linearRampToValueAtTime(atten * 0.55, now + 0.08);
+                subGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.9);
+
+                const rumbleGain = this.ctx.createGain();
+                rumbleGain.gain.setValueAtTime(0.001, now);
+                rumbleGain.gain.linearRampToValueAtTime(atten * 0.95, now + 0.06);
+                rumbleGain.gain.setValueAtTime(atten * 0.72, now + duration * 0.35);
+                rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+                rumble.connect(lowpass);
+                lowpass.connect(rumbleGain);
+                rumbleGain.connect(this.panner);
+                subOsc.connect(subGain);
+                subGain.connect(this.panner);
+
+                rumble.start(now, Math.random() * 1.5);
+                rumble.stop(now + duration + 0.05);
+                subOsc.start(now);
+                subOsc.stop(now + duration + 0.05);
+            }
+        }
+
+        /* ======================================================================
+           3. LIGHTNING SYSTEM (6 Stages)
+           ====================================================================== */
+        class LightningSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.group = new THREE.Group();
+                this.scene.add(this.group);
+
+                this.chargeGroup = new THREE.Group();
+                this.group.add(this.chargeGroup);
+                this._buildCharges();
+
+                this.fieldGroup = new THREE.Group();
+                this.group.add(this.fieldGroup);
+                this._buildElectricField();
+
+                this.leaderGroup = new THREE.Group();
+                this.group.add(this.leaderGroup);
+
+                this.streamerLine = null;
+
+                this.contactFlash = new THREE.Mesh(
+                    new THREE.SphereGeometry(2.6, 20, 20),
+                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.0 })
+                );
+                this.group.add(this.contactFlash);
+
+                this.returnStrokeGroup = new THREE.Group();
+                this.group.add(this.returnStrokeGroup);
+
+                this.flashLight = new THREE.PointLight(0x7dd3fc, 0, 140, 1.5);
+                this.flashLight.position.set(0, 16, 0);
+                this.scene.add(this.flashLight);
+
+                this.mainPathPoints = [];
+                this.strikeAnchor = new THREE.Vector3(4, 0.2, -2);
+                this.reset();
+            }
+
+            _buildCharges() {
+                const posGeo = new THREE.SphereGeometry(0.42, 12, 12);
+                const posMat = new THREE.MeshBasicMaterial({ color: 0xff5252 });
+                const negGeo = new THREE.SphereGeometry(0.42, 12, 12);
+                const negMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+
+                for (let i = 0; i < 14; i++) {
+                    const m = new THREE.Mesh(posGeo, posMat);
+                    m.position.set((Math.random() - 0.5) * 18, 22.2 + (Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 8);
+                    this.chargeGroup.add(m);
+                }
+                for (let i = 0; i < 18; i++) {
+                    const m = new THREE.Mesh(negGeo, negMat);
+                    m.position.set((Math.random() - 0.5) * 18, 18.2 + (Math.random() - 0.5) * 1.8, (Math.random() - 0.5) * 8);
+                    this.chargeGroup.add(m);
+                }
+            }
+
+            _buildElectricField() {
+                const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
+                for (let i = -3; i <= 3; i++) {
+                    const pts = [
+                        new THREE.Vector3(i * 2.4, 17.5, 0),
+                        new THREE.Vector3(i * 1.7, 9.0, Math.sin(i) * 1.2),
+                        new THREE.Vector3(i * 1.1, 0.3, 0)
+                    ];
+                    this.fieldGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat.clone()));
+                }
+            }
+
+            generateBoltPath(targetPos = new THREE.Vector3(4, 0.2, -2)) {
+                this.strikeAnchor.copy(targetPos);
+                this._clearGroup(this.leaderGroup);
+                this._clearGroup(this.returnStrokeGroup);
+                if (this.streamerLine) {
+                    this.group.remove(this.streamerLine);
+                    this.streamerLine = null;
+                }
+
+                const start = new THREE.Vector3(targetPos.x + (Math.random() - 0.5) * 3.5, 18.0, targetPos.z + (Math.random() - 0.5) * 2.0);
+                const end = targetPos.clone();
+                const steps = 18;
+                this.mainPathPoints = [start.clone()];
+
+                for (let i = 1; i < steps; i++) {
+                    const t = i / steps;
+                    const jitter = (1 - t * 0.25) * 2.1;
+                    this.mainPathPoints.push(new THREE.Vector3(
+                        THREE.MathUtils.lerp(start.x, end.x, t) + (Math.random() - 0.5) * jitter,
+                        THREE.MathUtils.lerp(start.y, end.y, t),
+                        THREE.MathUtils.lerp(start.z, end.z, t) + (Math.random() - 0.5) * jitter * 0.7
+                    ));
+                }
+                this.mainPathPoints.push(end.clone());
+
+                for (let i = 3; i < steps - 4; i += 3) {
+                    const origin = this.mainPathPoints[i];
+                    const branchPts = [origin.clone()];
+                    let cur = origin.clone();
                     for (let b = 0; b < 5; b++) {
-                        const bnx = bx + (Math.random() - 0.5) * 55;
-                        const bny = by + 12 + Math.random() * 24;
-                        segments.push({ x1: bx, y1: by, x2: bnx, y2: bny, width: 1.3 });
-                        bx = bnx; by = bny;
+                        cur = cur.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3.2, -1.4 - Math.random() * 1.1, (Math.random() - 0.5) * 2.2));
+                        branchPts.push(cur.clone());
+                    }
+                    this.leaderGroup.add(new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints(branchPts),
+                        new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.75 })
+                    ));
+                }
+
+                const streamerPts = [
+                    end.clone(),
+                    end.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 1.5, 0)),
+                    end.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.2, 3.2, 0))
+                ];
+                this.streamerLine = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(streamerPts),
+                    new THREE.LineBasicMaterial({ color: 0xf472b6, transparent: true, opacity: 0.0 })
+                );
+                this.group.add(this.streamerLine);
+
+                this.returnStrokeGroup.add(new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(this.mainPathPoints),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0 })
+                ));
+
+                [new THREE.Vector3(0.08, 0, 0.08), new THREE.Vector3(-0.08, 0, -0.08)].forEach((off) => {
+                    const shifted = this.mainPathPoints.map((p) => p.clone().add(off));
+                    this.returnStrokeGroup.add(new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints(shifted),
+                        new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.0 })
+                    ));
+                });
+
+                this.contactFlash.position.copy(end).add(new THREE.Vector3(0, 2.2, 0));
+            }
+
+            _clearGroup(grp) {
+                while (grp.children.length > 0) {
+                    const child = grp.children[0];
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                    grp.remove(child);
+                }
+            }
+
+            reset() {
+                this.chargeGroup.visible = true;
+                this.fieldGroup.children.forEach((l) => { l.material.opacity = 0; });
+                this._clearGroup(this.leaderGroup);
+                this._clearGroup(this.returnStrokeGroup);
+                if (this.streamerLine) {
+                    this.group.remove(this.streamerLine);
+                    this.streamerLine = null;
+                }
+                this.contactFlash.material.opacity = 0;
+                this.contactFlash.scale.setScalar(0.2);
+                this.flashLight.intensity = 0;
+            }
+
+            update(simTime, elapsedReal) {
+                this.chargeGroup.children.forEach((c, idx) => {
+                    c.position.y += Math.sin(elapsedReal * 3 + idx) * 0.004;
+                });
+
+                const fieldOpacity = simTime >= 1.0 && simTime < 3.2
+                    ? Math.min(0.65, (simTime - 1.0) * 0.65)
+                    : Math.max(0, 0.65 - (simTime - 3.2) * 0.8);
+
+                this.fieldGroup.children.forEach((line, i) => {
+                    line.material.opacity = Math.max(0, fieldOpacity * (0.7 + 0.3 * Math.sin(elapsedReal * 8 + i)));
+                });
+
+                if (simTime >= 2.0 && this.mainPathPoints.length > 1) {
+                    const p = Math.min(1, (simTime - 2.0) / 1.2);
+                    const visibleCount = Math.max(2, Math.floor(p * this.mainPathPoints.length));
+                    const partialPts = this.mainPathPoints.slice(0, visibleCount);
+                    let leaderLine = this.leaderGroup.getObjectByName('mainLeader');
+                    if (!leaderLine) {
+                        leaderLine = new THREE.Line(
+                            new THREE.BufferGeometry().setFromPoints(partialPts),
+                            new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.95 })
+                        );
+                        leaderLine.name = 'mainLeader';
+                        this.leaderGroup.add(leaderLine);
+                    } else {
+                        leaderLine.geometry.dispose();
+                        leaderLine.geometry = new THREE.BufferGeometry().setFromPoints(partialPts);
                     }
                 }
-                prevX = nx; prevY = ny;
-            }
 
-            bolts.push({ segments, alpha: 1 });
-            flashAlpha = Math.min(0.35, chargeSlider.value / 300);
+                if (this.streamerLine && simTime >= 2.8) {
+                    const sp = Math.min(1, (simTime - 2.8) / 0.6);
+                    this.streamerLine.material.opacity = simTime < 3.6 ? sp : Math.max(0, 1 - (simTime - 3.6) * 2.5);
+                }
+
+                if (simTime >= 3.4 && simTime < 4.1) {
+                    const clamped = Math.max(0, 1 - Math.abs((simTime - 3.55) / 0.35));
+                    this.contactFlash.material.opacity = clamped * 0.9;
+                    this.contactFlash.scale.setScalar(0.5 + clamped * 2.2);
+                } else {
+                    this.contactFlash.material.opacity = 0;
+                }
+
+                if (simTime >= 3.5) {
+                    const age = simTime - 3.5;
+                    const pulse = Math.max(0, 1 - age * 0.85) + (age < 0.25 ? 0.35 * Math.sin(age * 60) : 0);
+                    const intensity = Math.max(0, Math.min(1, pulse));
+                    this.returnStrokeGroup.children.forEach((line, idx) => {
+                        line.material.opacity = idx === 0 ? intensity : intensity * 0.7;
+                    });
+                    this.flashLight.position.set(this.strikeAnchor.x, 10, this.strikeAnchor.z);
+                    this.flashLight.intensity = intensity * 18;
+                } else {
+                    this.flashLight.intensity = 0;
+                }
+            }
         }
 
-        strikeBtn.addEventListener('click', () => createBolt());
-        canvas.addEventListener('click', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            createBolt(e.clientX - rect.left, e.clientY - rect.top);
-        });
-        autoBtn.addEventListener('click', () => {
-            autoMode = !autoMode;
-            autoBtn.innerHTML = `<i class="fa-solid fa-rotate"></i> Авто-режим: ${autoMode ? 'Күйүк' : 'Өчүк'}`;
-        });
+        /* ======================================================================
+           4. ENVIRONMENT & EFFECTS (Clouds, Grass, Tree, House, Human, Light & Sound Waves)
+           ====================================================================== */
+        class EnvironmentAndEffects {
+            constructor(scene) {
+                this.scene = scene;
+                this.clouds = [];
+                this.humanGroup = new THREE.Group();
+                this.humanPos = new THREE.Vector3(-9, 0, 6);
+                this.strikePos = new THREE.Vector3(4, 0, -2);
 
-        function drawCloud() {
-            ctx.save();
-            ctx.fillStyle = 'rgba(30, 41, 75, 0.9)';
-            ctx.beginPath();
-            ctx.arc(canvas.width * 0.3, 46, 36, 0, Math.PI * 2);
-            ctx.arc(canvas.width * 0.45, 36, 48, 0, Math.PI * 2);
-            ctx.arc(canvas.width * 0.62, 42, 42, 0, Math.PI * 2);
-            ctx.arc(canvas.width * 0.75, 50, 32, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
-
-        function animate() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (flashAlpha > 0.005) {
-                ctx.fillStyle = `rgba(186, 230, 253, ${flashAlpha})`;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                flashAlpha *= 0.86;
+                this._buildTerrain();
+                this._buildClouds();
+                this._buildTree();
+                this._buildHouse();
+                this._buildHuman();
+                this._buildLightEffects();
+                this._buildSoundEffects();
             }
 
-            drawCloud();
+            _buildTerrain() {
+                const ground = new THREE.Mesh(
+                    new THREE.PlaneGeometry(140, 140, 24, 24).rotateX(-Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0x133824, roughness: 0.92, metalness: 0.05 })
+                );
+                this.scene.add(ground);
 
-            // Жер бети
-            ctx.fillStyle = '#071a1f';
-            ctx.fillRect(0, canvas.height - 18, canvas.width, 18);
+                const bladeGeo = new THREE.ConeGeometry(0.08, 0.55, 4).translate(0, 0.27, 0);
+                const bladeMat = new THREE.MeshStandardMaterial({ color: 0x226b3a, roughness: 0.8 });
+                const grassInst = new THREE.InstancedMesh(bladeGeo, bladeMat, 420);
+                const dummy = new THREE.Object3D();
+                for (let i = 0; i < 420; i++) {
+                    dummy.position.set((Math.random() - 0.5) * 44, 0, (Math.random() - 0.5) * 44);
+                    dummy.rotation.y = Math.random() * Math.PI * 2;
+                    const s = 0.7 + Math.random() * 0.9;
+                    dummy.scale.set(s, s, s);
+                    dummy.updateMatrix();
+                    grassInst.setMatrixAt(i, dummy.matrix);
+                }
+                this.scene.add(grassInst);
+            }
 
-            for (let i = bolts.length - 1; i >= 0; i--) {
-                const bolt = bolts[i];
-                ctx.save();
-                ctx.globalAlpha = bolt.alpha;
-                ctx.shadowColor = '#00e5ff';
-                ctx.shadowBlur = 18;
-                ctx.strokeStyle = '#e0f2fe';
-                bolt.segments.forEach(seg => {
-                    ctx.lineWidth = seg.width;
-                    ctx.beginPath();
-                    ctx.moveTo(seg.x1, seg.y1);
-                    ctx.lineTo(seg.x2, seg.y2);
-                    ctx.stroke();
+            _buildClouds() {
+                const clusters = [
+                    { x: -6, y: 20, z: -2, scale: 1.15 },
+                    { x: 4,  y: 20.5, z: -1, scale: 1.25 },
+                    { x: 13, y: 19.8, z: -3, scale: 1.05 }
+                ];
+                const puffGeo = new THREE.SphereGeometry(2.6, 16, 14);
+                const puffMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.95 });
+
+                clusters.forEach((cfg) => {
+                    const cluster = new THREE.Group();
+                    cluster.position.set(cfg.x, cfg.y, cfg.z);
+                    cluster.scale.setScalar(cfg.scale);
+                    [[-2.2, 0, 0, 0.85], [0, 0.6, 0.4, 1.05], [2.2, -0.1, -0.3, 0.9], [-1.0, 1.1, -0.5, 0.75], [1.2, 0.9, 0.5, 0.8]]
+                        .forEach(([ox, oy, oz, rScale]) => {
+                            const mesh = new THREE.Mesh(puffGeo, puffMat);
+                            mesh.position.set(ox, oy, oz);
+                            mesh.scale.setScalar(rScale);
+                            cluster.add(mesh);
+                        });
+                    this.scene.add(cluster);
+                    this.clouds.push({ group: cluster, baseX: cfg.x });
                 });
-                ctx.restore();
-
-                bolt.alpha -= 0.035;
-                if (bolt.alpha <= 0) bolts.splice(i, 1);
             }
 
-            if (autoMode) {
-                autoTimer++;
-                if (autoTimer > Math.max(25, 110 - chargeSlider.value)) {
-                    createBolt();
-                    autoTimer = 0;
+            _buildTree() {
+                const tree = new THREE.Group();
+                tree.position.set(8.5, 0, 4.5);
+                const trunk = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.25, 0.42, 3.2, 8),
+                    new THREE.MeshStandardMaterial({ color: 0x4a2e1b, roughness: 0.9 })
+                );
+                trunk.position.y = 1.6;
+                tree.add(trunk);
+
+                const foliage = new THREE.Mesh(
+                    new THREE.ConeGeometry(2.1, 4.6, 10),
+                    new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.85 })
+                );
+                foliage.position.y = 4.6;
+                tree.add(foliage);
+                this.scene.add(tree);
+            }
+
+            _buildHouse() {
+                const house = new THREE.Group();
+                house.position.set(-13.5, 0, -5.5);
+                const walls = new THREE.Mesh(
+                    new THREE.BoxGeometry(4.4, 3.0, 3.8),
+                    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75 })
+                );
+                walls.position.y = 1.5;
+                house.add(walls);
+
+                const roof = new THREE.Mesh(
+                    new THREE.ConeGeometry(3.4, 2.0, 4).rotateY(Math.PI / 4),
+                    new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.7 })
+                );
+                roof.position.y = 4.0;
+                house.add(roof);
+                this.scene.add(house);
+            }
+
+            _buildHuman() {
+                this.humanGroup.position.copy(this.humanPos);
+                const torso = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.28, 0.34, 1.05, 10),
+                    new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.5 })
+                );
+                torso.position.y = 1.15;
+                this.humanGroup.add(torso);
+
+                const head = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.26, 12, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.6 })
+                );
+                head.position.y = 1.95;
+                this.humanGroup.add(head);
+                this.scene.add(this.humanGroup);
+            }
+
+            _buildLightEffects() {
+                const positions = new Float32Array(120 * 3);
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                this.photonPoints = new THREE.Points(
+                    geo,
+                    new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.35, transparent: true, opacity: 0.0 })
+                );
+                this.scene.add(this.photonPoints);
+
+                this.lightWaveRing = new THREE.Mesh(
+                    new THREE.RingGeometry(0.4, 0.9, 32).rotateX(-Math.PI / 2),
+                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+                );
+                this.lightWaveRing.position.set(this.strikePos.x, 0.25, this.strikePos.z);
+                this.scene.add(this.lightWaveRing);
+            }
+
+            _buildSoundEffects() {
+                this.shockwaveSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, 24, 18),
+                    new THREE.MeshBasicMaterial({ color: 0xc084fc, wireframe: true, transparent: true, opacity: 0.0 })
+                );
+                this.shockwaveSphere.position.set(this.strikePos.x, 3.0, this.strikePos.z);
+                this.scene.add(this.shockwaveSphere);
+
+                this.soundRings = [];
+                for (let i = 0; i < 3; i++) {
+                    const ring = new THREE.Mesh(
+                        new THREE.RingGeometry(0.8, 1.15, 40).rotateX(-Math.PI / 2),
+                        new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+                    );
+                    ring.position.set(this.strikePos.x, 0.35, this.strikePos.z);
+                    this.scene.add(ring);
+                    this.soundRings.push(ring);
                 }
             }
 
-            requestAnimationFrame(animate);
+            resetWaves() {
+                this.photonPoints.material.opacity = 0;
+                this.lightWaveRing.material.opacity = 0;
+                this.lightWaveRing.scale.setScalar(0.1);
+                this.shockwaveSphere.material.opacity = 0;
+                this.shockwaveSphere.scale.setScalar(0.1);
+                this.soundRings.forEach((r) => { r.material.opacity = 0; r.scale.setScalar(0.1); });
+            }
+
+            update(simTime, elapsedReal, soundDelaySec) {
+                this.clouds.forEach((c, idx) => {
+                    c.group.position.x = c.baseX + Math.sin(elapsedReal * 0.25 + idx) * 1.4;
+                });
+
+                if (simTime >= 3.5) {
+                    const strikeAge = simTime - 3.5;
+                    const lightProgress = Math.min(1, strikeAge * 14);
+                    this.lightWaveRing.position.set(this.strikePos.x, 0.25, this.strikePos.z);
+                    this.lightWaveRing.scale.setScalar(1 + lightProgress * 22);
+                    this.lightWaveRing.material.opacity = Math.max(0, (1 - lightProgress) * 0.85);
+
+                    const posAttr = this.photonPoints.geometry.getAttribute('position');
+                    for (let i = 0; i < posAttr.count; i++) {
+                        const angle = (i / posAttr.count) * Math.PI * 2 + i * 0.37;
+                        const radius = Math.min(24, strikeAge * 42 * (0.4 + (i % 7) * 0.12));
+                        const y = 1.0 + ((i * 13) % 16) * (0.2 + lightProgress * 0.8);
+                        posAttr.setXYZ(i, this.strikePos.x + Math.cos(angle) * radius, y, this.strikePos.z + Math.sin(angle) * radius);
+                    }
+                    posAttr.needsUpdate = true;
+                    this.photonPoints.material.opacity = Math.max(0, 1 - strikeAge * 1.6);
+
+                    const visualSoundRate = Math.max(0.45, 2.6 / Math.max(0.3, soundDelaySec));
+                    const soundRadius = Math.max(0.2, strikeAge * visualSoundRate * 6.5);
+
+                    this.shockwaveSphere.position.set(this.strikePos.x, 3.0, this.strikePos.z);
+                    this.shockwaveSphere.scale.setScalar(soundRadius);
+                    this.shockwaveSphere.material.opacity = Math.max(0, 0.42 - soundRadius * 0.015);
+
+                    this.soundRings.forEach((ring, idx) => {
+                        const rScale = Math.max(0.1, soundRadius - idx * 2.4);
+                        ring.position.set(this.strikePos.x, 0.35 + idx * 0.2, this.strikePos.z);
+                        ring.scale.setScalar(rScale);
+                        ring.material.opacity = Math.max(0, 0.65 - rScale * 0.022);
+                    });
+                } else {
+                    this.resetWaves();
+                }
+            }
         }
 
-        createBolt();
-        animate();
+        /* ======================================================================
+           5. UI CONTROLLER
+           ====================================================================== */
+        class SimulationUI {
+            constructor(callbacks) {
+                this.callbacks = callbacks;
+                this.lang = 'ky';
+                this.distanceIndex = 2;
+                this.soundEnabled = true;
+                this.cinemaActive = false;
+
+                this.el = {
+                    appTitle: document.getElementById('appTitle'),
+                    appSubtitle: document.getElementById('appSubtitle'),
+                    eduTitle: document.getElementById('eduTitle'),
+                    stageBadge: document.getElementById('stageBadge'),
+                    stageName: document.getElementById('stageName'),
+                    stageDesc: document.getElementById('stageDesc'),
+                    stageProgressBar: document.getElementById('stageProgressBar'),
+                    timerTitle: document.getElementById('timerTitle'),
+                    eyeIndicator: document.getElementById('eyeIndicator'),
+                    earIndicator: document.getElementById('earIndicator'),
+                    eyeText: document.getElementById('eyeText'),
+                    earText: document.getElementById('earText'),
+                    lightTimeVal: document.getElementById('lightTimeVal'),
+                    soundTimeVal: document.getElementById('soundTimeVal'),
+                    logStrike: document.getElementById('logStrike'),
+                    logLight: document.getElementById('logLight'),
+                    logSound: document.getElementById('logSound'),
+                    logStrikeRow: document.querySelector('#eventLog .log-item:nth-child(1)'),
+                    logLightRow: document.getElementById('logLightRow'),
+                    logSoundRow: document.getElementById('logSoundRow'),
+                    logLightTime: document.getElementById('logLightTime'),
+                    logSoundTime: document.getElementById('logSoundTime'),
+                    safetyTitle: document.getElementById('safetyTitle'),
+                    safetyList: document.getElementById('safetyList'),
+                    startText: document.getElementById('startText'),
+                    pauseText: document.getElementById('pauseText'),
+                    replayText: document.getElementById('replayText'),
+                    distanceLabel: document.getElementById('distanceLabel'),
+                    distanceSlider: document.getElementById('distanceSlider'),
+                    distanceDisplay: document.getElementById('distanceDisplay'),
+                    delayDisplay: document.getElementById('delayDisplay'),
+                    slowmoLabel: document.getElementById('slowmoLabel'),
+                    cinemaBtn: document.getElementById('cinemaBtn'),
+                    cinemaText: document.getElementById('cinemaText'),
+                    soundToggleBtn: document.getElementById('soundToggleBtn'),
+                    fullscreenBtn: document.getElementById('fullscreenBtn'),
+                    fpsCounter: document.getElementById('fpsCounter')
+                };
+
+                this._bindEvents();
+                this.applyLanguage('ky');
+            }
+
+            _bindEvents() {
+                document.querySelectorAll('.lang-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.lang-btn').forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.applyLanguage(btn.dataset.lang);
+                    });
+                });
+
+                document.getElementById('startBtn').addEventListener('click', () => this.callbacks.onStart?.());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.callbacks.onPause?.());
+                document.getElementById('replayBtn').addEventListener('click', () => this.callbacks.onReplay?.());
+
+                this.el.distanceSlider.addEventListener('input', (e) => {
+                    this.distanceIndex = Number(e.target.value);
+                    this.updateDistanceDisplay();
+                    this.callbacks.onDistanceChange?.(this.getDistanceMeters());
+                });
+
+                document.querySelectorAll('.pill-btn').forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.pill-btn').forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.callbacks.onSpeedChange?.(Number(btn.dataset.speed));
+                    });
+                });
+
+                this.el.cinemaBtn.addEventListener('click', () => {
+                    this.cinemaActive = !this.cinemaActive;
+                    this.el.cinemaBtn.classList.toggle('active', this.cinemaActive);
+                    this.callbacks.onCinemaToggle?.(this.cinemaActive);
+                });
+
+                this.el.soundToggleBtn.addEventListener('click', () => {
+                    this.soundEnabled = !this.soundEnabled;
+                    this.el.soundToggleBtn.innerHTML = this.soundEnabled
+                        ? '<i class="fa-solid fa-volume-high"></i>'
+                        : '<i class="fa-solid fa-volume-xmark"></i>';
+                    this.callbacks.onSoundToggle?.(this.soundEnabled);
+                });
+
+                this.el.fullscreenBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen?.().catch(() => {});
+                    } else {
+                        document.exitFullscreen?.().catch(() => {});
+                    }
+                });
+            }
+
+            getDistanceMeters() {
+                return DISTANCE_STEPS[this.distanceIndex].meters;
+            }
+
+            applyLanguage(lang) {
+                this.lang = TRANSLATIONS[lang] ? lang : 'ky';
+                document.documentElement.lang = this.lang;
+                const t = TRANSLATIONS[this.lang];
+
+                this.el.appTitle.textContent = t.appTitle;
+                this.el.appSubtitle.textContent = t.appSubtitle;
+                this.el.eduTitle.textContent = t.eduTitle;
+                this.el.timerTitle.textContent = t.timerTitle;
+                this.el.eyeText.textContent = t.eyeText;
+                this.el.earText.textContent = t.earText;
+                this.el.logStrike.textContent = t.logStrike;
+                this.el.logLight.textContent = t.logLight;
+                this.el.logSound.textContent = t.logSound;
+                this.el.safetyTitle.textContent = t.safetyTitle;
+                this.el.startText.textContent = t.startText;
+                this.el.pauseText.textContent = t.pauseText;
+                this.el.replayText.textContent = t.replayText;
+                this.el.distanceLabel.textContent = t.distanceLabel;
+                this.el.slowmoLabel.textContent = t.slowmoLabel;
+                this.el.cinemaText.textContent = t.cinemaText;
+
+                this.el.safetyList.innerHTML = t.safety
+                    .map((item) => `<li class="${item.safe ? 'safe' : 'danger'}"><i class="fa-solid ${item.safe ? 'fa-check' : 'fa-xmark'}"></i><span>${item.text}</span></li>`)
+                    .join('');
+
+                this.updateDistanceDisplay();
+            }
+
+            updateDistanceDisplay() {
+                const t = TRANSLATIONS[this.lang];
+                const step = DISTANCE_STEPS[this.distanceIndex];
+                const times = calculateArrivalTimes(step.meters);
+
+                this.el.distanceDisplay.textContent = step.label[this.lang];
+                this.el.delayDisplay.textContent = `${t.delayPrefix}: ${times.soundDelayFormatted} ${t.secUnit}`;
+                this.el.lightTimeVal.textContent = `0.01 ${t.secUnit}`;
+                this.el.soundTimeVal.textContent = `${times.soundDelayFormatted} ${t.secUnit}`;
+                this.el.logLightTime.textContent = `0.01 ${t.secUnit}`;
+                this.el.logSoundTime.textContent = `${times.soundDelayFormatted} ${t.secUnit}`;
+            }
+
+            updateStage(stageIndex) {
+                const t = TRANSLATIONS[this.lang];
+                const stage = t.stages[Math.max(0, Math.min(5, stageIndex))];
+                this.el.stageBadge.textContent = `${stageIndex + 1}/6`;
+                this.el.stageName.textContent = stage.name;
+                this.el.stageDesc.textContent = stage.desc;
+                this.el.stageProgressBar.style.width = `${((stageIndex + 1) / 6) * 100}%`;
+            }
+
+            updateSensoryIndicators({ strikeOccurred, lightArrived, soundArrived }) {
+                this.el.logStrikeRow?.classList.toggle('reached', Boolean(strikeOccurred));
+                this.el.logLightRow?.classList.toggle('reached', Boolean(lightArrived));
+                this.el.eyeIndicator?.classList.toggle('active-light', Boolean(lightArrived));
+                this.el.logSoundRow?.classList.toggle('reached', Boolean(soundArrived));
+                this.el.earIndicator?.classList.toggle('active-sound', Boolean(soundArrived));
+            }
+
+            updateFPS(fps) {
+                if (this.el.fpsCounter) this.el.fpsCounter.textContent = `${Math.round(fps)} FPS`;
+            }
+        }
+
+        /* ======================================================================
+           6. MAIN APP & LOOP
+           ====================================================================== */
+        class LightningSimulationApp {
+            constructor() {
+                this.container = document.getElementById('scene-container');
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x030712);
+                this.scene.fog = new THREE.FogExp2(0x050d21, 0.016);
+
+                this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 260);
+                this.camera.position.set(0, 11, 28);
+
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                this.renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+                this.container.appendChild(this.renderer.domElement);
+
+                this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+                this.controls.enableDamping = true;
+                this.controls.dampingFactor = 0.06;
+                this.controls.maxPolarAngle = Math.PI * 0.485;
+                this.controls.minDistance = 8;
+                this.controls.maxDistance = 68;
+                this.controls.target.set(0, 8, 0);
+
+                this.scene.add(new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.9));
+                const dirLight = new THREE.DirectionalLight(0x93c5fd, 1.1);
+                dirLight.position.set(16, 28, 14);
+                this.scene.add(dirLight);
+
+                this.soundEngine = new LightningSoundEngine();
+                this.lightning = new LightningSystem(this.scene);
+                this.effects = new EnvironmentAndEffects(this.scene);
+
+                this.isPlaying = true;
+                this.speedMultiplier = 1;
+                this.cinemaMode = false;
+                this.simTime = 0;
+                this.elapsedReal = 0;
+                this.postStrikeTimer = 0;
+                this.distanceMeters = 1000;
+
+                this.strikeTriggered = false;
+                this.lightTriggered = false;
+                this.soundTriggered = false;
+                this.thunderRollTriggered = false;
+
+                this.frameCount = 0;
+                this.fpsLastTime = performance.now();
+                this.lastFrameTime = performance.now();
+
+                this.ui = new SimulationUI({
+                    onStart: () => { this.soundEngine.initContext(); this.isPlaying = true; },
+                    onPause: () => { this.isPlaying = false; },
+                    onReplay: () => this.replay(),
+                    onDistanceChange: (meters) => { this.distanceMeters = meters; },
+                    onSpeedChange: (speed) => { this.speedMultiplier = speed; },
+                    onCinemaToggle: (active) => { this.cinemaMode = active; this.controls.enabled = !active; },
+                    onSoundToggle: (enabled) => { this.soundEngine.setEnabled(enabled); }
+                });
+
+                this.lightning.generateBoltPath(this.effects.strikePos);
+
+                window.addEventListener('resize', () => {
+                    this.camera.aspect = window.innerWidth / window.innerHeight;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                this._animate(performance.now());
+            }
+
+            replay() {
+                this.soundEngine.initContext();
+                this.simTime = 0;
+                this.postStrikeTimer = 0;
+                this.strikeTriggered = false;
+                this.lightTriggered = false;
+                this.soundTriggered = false;
+                this.thunderRollTriggered = false;
+                this.isPlaying = true;
+                this.lightning.reset();
+                this.lightning.generateBoltPath(this.effects.strikePos);
+                this.effects.resetWaves();
+                this.ui.updateStage(0);
+                this.ui.updateSensoryIndicators({ strikeOccurred: false, lightArrived: false, soundArrived: false });
+            }
+
+            _updateStagesAndEvents(dt) {
+                let stageIdx = 0;
+                if (this.simTime < 1.0) stageIdx = 0;
+                else if (this.simTime < 2.0) stageIdx = 1;
+                else if (this.simTime < 2.8) stageIdx = 2;
+                else if (this.simTime < 3.4) stageIdx = 3;
+                else if (this.simTime < 3.55) stageIdx = 4;
+                else stageIdx = 5;
+
+                this.ui.updateStage(stageIdx);
+
+                if (this.simTime >= 3.5) {
+                    if (!this.strikeTriggered) {
+                        this.strikeTriggered = true;
+                        this.soundEngine.playElectricCrack(this.distanceMeters, 0.25);
+                    }
+                    if (!this.lightTriggered) {
+                        this.lightTriggered = true;
+                    }
+
+                    this.postStrikeTimer += dt;
+                    const { soundDelaySec } = calculateArrivalTimes(this.distanceMeters);
+                    const visualSoundArrival = Math.min(soundDelaySec, 4.5);
+
+                    if (this.postStrikeTimer >= visualSoundArrival && !this.soundTriggered) {
+                        this.soundTriggered = true;
+                    }
+                    if (this.postStrikeTimer >= soundDelaySec && !this.thunderRollTriggered) {
+                        this.thunderRollTriggered = true;
+                        this.soundEngine.playThunderRoll(this.distanceMeters, 0.25);
+                    }
+
+                    this.ui.updateSensoryIndicators({
+                        strikeOccurred: this.strikeTriggered,
+                        lightArrived: this.lightTriggered,
+                        soundArrived: this.soundTriggered
+                    });
+                }
+            }
+
+            _updateCinematicCamera() {
+                const t = this.elapsedReal * 0.35;
+                const radius = 24 + Math.sin(t * 0.7) * 5;
+                this.camera.position.x = Math.cos(t) * radius;
+                this.camera.position.z = Math.sin(t) * radius;
+                this.camera.position.y = 9.5 + Math.sin(t * 1.3) * 3.5;
+                this.camera.lookAt(0, 8.5, 0);
+            }
+
+            _animate(now) {
+                requestAnimationFrame((ts) => this._animate(ts));
+
+                const rawDt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
+                this.lastFrameTime = now;
+
+                this.frameCount++;
+                if (now - this.fpsLastTime >= 500) {
+                    this.ui.updateFPS((this.frameCount * 1000) / (now - this.fpsLastTime));
+                    this.frameCount = 0;
+                    this.fpsLastTime = now;
+                }
+
+                const effectiveDt = this.isPlaying ? rawDt * this.speedMultiplier : 0;
+                this.elapsedReal += rawDt * (this.isPlaying ? 1 : 0.2);
+
+                if (this.isPlaying) {
+                    this.simTime += effectiveDt;
+                    if (this.simTime > 7.5) {
+                        this.simTime = 0;
+                        this.postStrikeTimer = 0;
+                        this.strikeTriggered = false;
+                        this.lightTriggered = false;
+                        this.soundTriggered = false;
+                        this.thunderRollTriggered = false;
+                        this.lightning.reset();
+                        this.lightning.generateBoltPath(this.effects.strikePos);
+                        this.effects.resetWaves();
+                        this.ui.updateSensoryIndicators({ strikeOccurred: false, lightArrived: false, soundArrived: false });
+                    }
+                }
+
+                const { soundDelaySec } = calculateArrivalTimes(this.distanceMeters);
+                this._updateStagesAndEvents(effectiveDt);
+                this.lightning.update(this.simTime, this.elapsedReal);
+                this.effects.update(this.simTime, this.elapsedReal, soundDelaySec);
+
+                if (this.cinemaMode) {
+                    this._updateCinematicCamera();
+                } else {
+                    this.controls.update();
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new LightningSimulationApp();
+        });
     </script>
 </body>
 </html>
