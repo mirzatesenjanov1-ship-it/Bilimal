@@ -2,14 +2,12 @@
 <html lang="ky">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="description" content="Bilimal.org — Чагылгандын пайда болушу жана жарык менен үндүн таралышы 3D симуляциясы" />
-    <title>Чагылгандын пайда болушу жана жарык менен үн — 3D Симуляция | Bilimal.org</title>
+    <title>Чагылган — 3D Симуляция | Bilimal.org</title>
 
-    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <!-- Three.js ES Modules Import Map -->
     <script type="importmap">
     {
         "imports": {
@@ -20,25 +18,24 @@
     </script>
 
     <style>
-        /* ==========================================================================
-           Bilimal.org — 3D Lightning Simulation Glassmorphism & Responsive Styles
-           ========================================================================== */
         :root {
-            --bg-dark: #030712;
-            --glass-bg: rgba(9, 18, 38, 0.65);
-            --glass-border: rgba(56, 189, 248, 0.28);
-            --neon-cyan: #00e5ff;
-            --neon-blue: #38bdf8;
-            --neon-purple: #a855f7;
-            --neon-pink: #ec4899;
-            --safe-green: #22c55e;
-            --danger-red: #ef4444;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --blur-val: blur(16px);
-            --radius-lg: 18px;
-            --radius-md: 12px;
-            --radius-sm: 8px;
+            --safe-top: env(safe-area-inset-top, 12px);
+            --safe-bottom: env(safe-area-inset-bottom, 12px);
+            --safe-left: env(safe-area-inset-left, 12px);
+            --safe-right: env(safe-area-inset-right, 12px);
+
+            --glass-bg: rgba(8, 16, 36, 0.38);
+            --glass-bg-hover: rgba(14, 27, 58, 0.52);
+            --glass-border: rgba(125, 211, 252, 0.22);
+            --blur-val: blur(14px);
+
+            --cyan: #00e5ff;
+            --purple: #a855f7;
+            --pink: #ec4899;
+            --safe: #22c55e;
+            --danger: #ef4444;
+            --text: #f8fafc;
+            --muted: #cbd5e1;
         }
 
         * {
@@ -52,12 +49,13 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background: var(--bg-dark);
-            color: var(--text-primary);
+            background: #030712;
+            color: var(--text);
             font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             user-select: none;
         }
 
+        /* 3D Canvas — 85–95% / 100% Fullscreen Immersive View */
         #scene-container {
             position: fixed;
             inset: 0;
@@ -72,1158 +70,786 @@
             height: 100%;
         }
 
-        .glass-panel {
+        /* Floating Glassmorphism Surface (Opacity 30–50%) */
+        .float-glass {
             background: var(--glass-bg);
             backdrop-filter: var(--blur-val);
             -webkit-backdrop-filter: var(--blur-val);
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            transition: opacity 0.45s ease, transform 0.45s ease, background 0.2s ease, border-color 0.2s ease;
         }
 
-        /* Top Bar */
-        .top-bar {
+        .float-glass:hover {
+            background: var(--glass-bg-hover);
+            border-color: rgba(0, 229, 255, 0.42);
+        }
+
+        /* Auto-Hide UI state (3s inactivity) */
+        body.ui-hidden .hud-layer {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Presentation Mode (F key) & YouTube Creator Mode */
+        body.presentation-mode .hud-layer,
+        body.presentation-mode .subtitle-box,
+        body.youtube-mode .hud-layer,
+        body.youtube-mode .subtitle-box {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            visibility: hidden !important;
+        }
+
+        .hud-layer {
             position: fixed;
-            top: 12px;
-            left: 12px;
-            right: 12px;
+            inset: 0;
             z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 10px 16px;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.45s ease;
         }
 
-        .brand-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 0;
+        .hud-layer button,
+        .hud-layer a,
+        .hud-layer input {
+            pointer-events: auto;
         }
 
-        .brand-group h1 {
-            margin: 0;
-            font-size: clamp(0.9rem, 1.75vw, 1.2rem);
-            font-weight: 800;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            background: linear-gradient(90deg, #ffffff, var(--neon-cyan), var(--neon-purple));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        .subtitle {
-            display: block;
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-        }
-
-        .top-actions {
+        /* Top Corner Minimal Bar */
+        .top-corner-left {
+            position: fixed;
+            top: calc(var(--safe-top) + 8px);
+            left: calc(var(--safe-left) + 8px);
             display: flex;
             align-items: center;
             gap: 8px;
-            flex-shrink: 0;
+            padding: 6px 10px;
+            border-radius: 999px;
         }
 
-        .lang-switcher {
-            display: inline-flex;
-            background: rgba(2, 6, 23, 0.65);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-sm);
-            padding: 2px;
+        .top-corner-right {
+            position: fixed;
+            top: calc(var(--safe-top) + 8px);
+            right: calc(var(--safe-right) + 8px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 8px;
+            border-radius: 999px;
         }
 
-        .lang-btn {
+        .mini-btn {
             border: none;
             background: transparent;
-            color: var(--text-secondary);
+            color: var(--text);
+            font-size: 0.78rem;
             font-weight: 700;
-            font-size: 0.72rem;
             padding: 5px 8px;
-            border-radius: 6px;
+            border-radius: 999px;
             cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .lang-btn.active {
-            background: linear-gradient(135deg, var(--neon-cyan), #0284c7);
-            color: #020617;
-        }
-
-        .fps-badge {
-            font-size: 0.72rem;
-            font-weight: 700;
-            color: var(--neon-cyan);
-            background: rgba(0, 229, 255, 0.1);
-            border: 1px solid rgba(0, 229, 255, 0.3);
-            padding: 5px 9px;
-            border-radius: var(--radius-sm);
-        }
-
-        .icon-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--glass-border);
-            background: rgba(15, 23, 42, 0.75);
-            color: var(--text-primary);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
+            gap: 5px;
             text-decoration: none;
             transition: all 0.2s ease;
         }
 
-        .icon-btn:hover {
-            border-color: var(--neon-cyan);
-            color: var(--neon-cyan);
-            transform: translateY(-1px);
+        .mini-btn:hover {
+            color: var(--cyan);
+            background: rgba(255, 255, 255, 0.08);
         }
 
-        /* Left HUD Column */
-        .hud-left {
+        .mini-btn.active {
+            background: var(--cyan);
+            color: #030712;
+        }
+
+        .lang-pill-group {
+            display: inline-flex;
+            gap: 2px;
+            background: rgba(2, 6, 23, 0.45);
+            padding: 2px;
+            border-radius: 999px;
+        }
+
+        .fps-chip {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--cyan);
+            padding: 0 6px;
+        }
+
+        /* Left Slim Vertical Strip (Max 240px: Learning Mode, Stage, Progress only) */
+        .left-slim-bar {
             position: fixed;
-            top: 80px;
-            left: 12px;
-            width: 325px;
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding-right: 4px;
+            top: calc(var(--safe-top) + 56px);
+            left: calc(var(--safe-left) + 8px);
+            width: 224px;
+            max-width: 240px;
+            padding: 10px 12px;
+            border-radius: 14px;
         }
 
-        .hud-left::-webkit-scrollbar { width: 4px; }
-        .hud-left::-webkit-scrollbar-thumb {
-            background: rgba(56, 189, 248, 0.35);
-            border-radius: 4px;
-        }
-
-        .edu-panel, .timer-panel, .safety-panel {
-            padding: 13px 15px;
-        }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.78rem;
+        .slim-label {
+            font-size: 0.66rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--neon-blue);
-            margin-bottom: 8px;
+            letter-spacing: 0.06em;
+            color: var(--cyan);
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
         }
 
-        .stage-pill {
-            margin-left: auto;
-            font-size: 0.72rem;
-            padding: 2px 8px;
-            border-radius: 999px;
-            background: rgba(0, 229, 255, 0.16);
-            color: var(--neon-cyan);
-            border: 1px solid rgba(0, 229, 255, 0.35);
+        .slim-stage {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text);
+            line-height: 1.3;
+            margin-bottom: 7px;
         }
 
-        .stage-name {
-            font-size: 0.95rem;
-            font-weight: 800;
-            color: #ffffff;
-            margin-bottom: 5px;
-        }
-
-        .stage-desc {
-            margin: 0 0 8px 0;
-            font-size: 0.8rem;
-            line-height: 1.42;
-            color: var(--text-secondary);
-        }
-
-        .stage-progress {
-            height: 5px;
+        .slim-progress {
+            height: 4px;
             width: 100%;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.14);
             border-radius: 999px;
             overflow: hidden;
         }
 
-        .stage-progress-bar {
+        .slim-progress-fill {
             height: 100%;
             width: 16.6%;
-            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+            background: linear-gradient(90deg, var(--cyan), var(--purple));
             transition: width 0.25s ease;
         }
 
-        /* Sensory Indicators */
-        .sensory-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .sensory-card {
-            background: rgba(2, 6, 23, 0.55);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: var(--radius-md);
-            padding: 9px 8px;
-            text-align: center;
-            transition: all 0.25s ease;
-        }
-
-        .sensory-card i {
-            font-size: 1.2rem;
-            display: block;
-            margin-bottom: 4px;
-            color: var(--text-secondary);
-        }
-
-        .sensory-card span {
-            display: block;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-        }
-
-        .sensory-card small {
-            display: block;
-            font-size: 0.7rem;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .sensory-card.active-light {
-            border-color: var(--neon-cyan);
-            background: rgba(0, 229, 255, 0.18);
-            box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
-        }
-
-        .sensory-card.active-light i,
-        .sensory-card.active-light span,
-        .sensory-card.active-light small { color: #ffffff; }
-
-        .sensory-card.active-sound {
-            border-color: var(--neon-purple);
-            background: rgba(168, 85, 247, 0.2);
-            box-shadow: 0 0 18px rgba(168, 85, 247, 0.35);
-        }
-
-        .sensory-card.active-sound i,
-        .sensory-card.active-sound span,
-        .sensory-card.active-sound small { color: #ffffff; }
-
-        .event-log {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            font-size: 0.74rem;
-        }
-
-        .log-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
-            background: rgba(2, 6, 23, 0.45);
-            opacity: 0.48;
-            transition: opacity 0.25s ease, background 0.25s ease;
-        }
-
-        .log-item.reached {
-            opacity: 1;
-            background: rgba(15, 23, 42, 0.88);
-        }
-
-        .log-item .t {
-            font-weight: 800;
-            color: var(--neon-cyan);
-            min-width: 56px;
-        }
-
-        /* Safety List */
-        .safety-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-            font-size: 0.76rem;
-        }
-
-        .safety-list li {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 8px;
-            border-radius: var(--radius-sm);
-            background: rgba(2, 6, 23, 0.45);
-        }
-
-        .safety-list li.safe i { color: var(--safe-green); }
-        .safety-list li.danger i { color: var(--danger-red); }
-
-        /* Bottom Control Dock */
-        .control-dock {
+        /* Right Collapsed Info Panel */
+        .right-info-wrap {
             position: fixed;
-            bottom: 12px;
-            left: 12px;
-            right: 12px;
-            z-index: 10;
+            top: calc(var(--safe-top) + 56px);
+            right: calc(var(--safe-right) + 8px);
             display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 11px 16px;
-        }
-
-        .dock-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .btn-primary, .btn-secondary, .btn-cinema {
-            border: none;
-            border-radius: var(--radius-md);
-            padding: 9px 14px;
-            font-size: 0.8rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--neon-cyan), #0284c7);
-            color: #020617;
-            box-shadow: 0 0 18px rgba(0, 229, 255, 0.35);
-        }
-        .btn-primary:hover { transform: translateY(-1px); filter: brightness(1.08); }
-
-        .btn-secondary {
-            background: rgba(15, 23, 42, 0.82);
-            color: var(--text-primary);
-            border: 1px solid var(--glass-border);
-        }
-        .btn-secondary:hover { border-color: var(--neon-blue); }
-
-        .btn-cinema {
-            background: linear-gradient(135deg, var(--neon-pink), var(--neon-purple));
-            color: #ffffff;
-            box-shadow: 0 0 18px rgba(236, 72, 153, 0.32);
-        }
-        .btn-cinema.active {
-            outline: 2px solid var(--neon-cyan);
-            box-shadow: 0 0 24px rgba(236, 72, 153, 0.68);
-        }
-
-        .distance-control {
-            flex: 1 1 240px;
-            max-width: 370px;
             flex-direction: column;
-            align-items: stretch;
-            gap: 4px;
+            align-items: flex-end;
+            gap: 8px;
         }
 
-        .distance-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.78rem;
-        }
-
-        .distance-header strong {
-            color: var(--neon-cyan);
-            font-size: 0.86rem;
-        }
-
-        .delay-badge {
-            font-size: 0.7rem;
-            color: #f9a8d4;
-            background: rgba(236, 72, 153, 0.15);
-            border: 1px solid rgba(236, 72, 153, 0.35);
-            padding: 2px 8px;
+        .info-toggle-chip {
+            padding: 7px 12px;
             border-radius: 999px;
-        }
-
-        #distanceSlider {
-            width: 100%;
-            accent-color: var(--neon-cyan);
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--text);
             cursor: pointer;
-        }
-
-        .distance-ticks {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.64rem;
-            color: var(--text-secondary);
-        }
-
-        .slowmo-group {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            background: rgba(2, 6, 23, 0.55);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 4px 8px;
+            gap: 6px;
         }
 
-        .mini-label {
-            font-size: 0.72rem;
-            color: var(--text-secondary);
-            margin-right: 4px;
+        .info-drawer {
+            display: none;
+            width: 248px;
+            padding: 12px;
+            border-radius: 14px;
+            font-size: 0.75rem;
         }
 
-        .pill-btn {
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            font-size: 0.72rem;
+        .info-drawer.open {
+            display: block;
+        }
+
+        .info-grid-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .info-grid-row:last-of-type {
+            border-bottom: none;
+        }
+
+        .info-val {
             font-weight: 700;
-            padding: 4px 8px;
-            border-radius: 6px;
+            color: var(--cyan);
+        }
+
+        .info-val.lit {
+            color: #fef08a;
+        }
+
+        .info-val.heard {
+            color: #d8b4fe;
+        }
+
+        .distance-mini {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .distance-mini input[type="range"] {
+            width: 100%;
+            accent-color: var(--cyan);
+            margin-top: 4px;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
 
-        .pill-btn.active {
-            background: var(--neon-cyan);
-            color: #020617;
+        .safety-mini {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.7rem;
         }
 
-        @media (max-width: 1024px) {
-            .hud-left { width: 280px; }
+        .safety-mini .s-ok i { color: var(--safe); }
+        .safety-mini .s-no i { color: var(--danger); }
+
+        /* Subtitle Box (Bottom Corner Education Explanation, Auto-Fades) */
+        .subtitle-box {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 84px);
+            left: calc(var(--safe-left) + 12px);
+            max-width: 380px;
+            padding: 7px 12px;
+            border-radius: 10px;
+            font-size: 0.76rem;
+            color: var(--text);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
         }
 
+        .subtitle-box.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* MacOS Dock Style Floating Control Bar (Centered, 60–80px height) */
+        .mac-dock {
+            position: fixed;
+            bottom: calc(var(--safe-bottom) + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+            height: 64px;
+            max-height: 80px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            width: auto;
+            max-width: calc(100vw - 24px);
+            overflow-x: auto;
+        }
+
+        .mac-dock::-webkit-scrollbar { display: none; }
+
+        .dock-btn {
+            border: none;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+            height: 46px;
+            padding: 0 11px;
+            border-radius: 13px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            white-space: nowrap;
+            transition: transform 0.18s ease, background 0.2s ease, color 0.2s ease;
+        }
+
+        .dock-btn i {
+            font-size: 0.92rem;
+        }
+
+        .dock-btn:hover {
+            transform: translateY(-3px);
+            background: rgba(0, 229, 255, 0.16);
+            color: var(--cyan);
+        }
+
+        .dock-btn.active {
+            background: linear-gradient(135deg, var(--cyan), #0284c7);
+            color: #030712;
+        }
+
+        .dock-btn.cinema-btn.active {
+            background: linear-gradient(135deg, var(--pink), var(--purple));
+            color: #ffffff;
+        }
+
+        .dock-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.14);
+            margin: 0 2px;
+            flex-shrink: 0;
+        }
+
+        /* Responsive Rules: Desktop (90% sim), Tablet (95% sim), Mobile (97% sim, left bar auto-hidden) */
         @media (max-width: 768px) {
-            html, body { overflow: auto; }
-            .top-bar { padding: 8px 12px; top: 8px; left: 8px; right: 8px; }
-            .subtitle, .fps-badge { display: none; }
-            .hud-left {
-                position: static;
-                width: 100%;
-                max-height: none;
-                overflow: visible;
-                margin-top: 64px;
-                padding: 0 8px 10px 8px;
+            .left-slim-bar {
+                display: none !important;
             }
-            .control-dock {
-                position: static;
-                margin: 0 8px 18px 8px;
-                padding: 12px;
-                justify-content: center;
+
+            .top-corner-left .brand-label,
+            .fps-chip {
+                display: none;
             }
-            .distance-control { max-width: 100%; width: 100%; }
+
+            .mac-dock {
+                height: 60px;
+                padding: 5px 8px;
+                gap: 4px;
+            }
+
+            .dock-btn {
+                height: 44px;
+                padding: 0 8px;
+                font-size: 0.66rem;
+            }
+
+            .subtitle-box {
+                bottom: calc(var(--safe-bottom) + 78px);
+                max-width: calc(100vw - 24px);
+                font-size: 0.72rem;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- 3D WebGL Сахнасы -->
-    <div id="scene-container" aria-label="3D Lightning Simulation Scene"></div>
+    <!-- 3D Scene -->
+    <div id="scene-container"></div>
 
-    <!-- Үстүнкү Панель -->
-    <header class="top-bar glass-panel">
-        <div class="brand-group">
-            <a href="/sections/3d-simulations-models.html" class="icon-btn" id="backBtn" title="Back">
+    <!-- Subtitle (Auto-fading Stage Caption) -->
+    <div class="subtitle-box float-glass" id="subtitleBox"></div>
+
+    <!-- Floating HUD Layer -->
+    <div class="hud-layer" id="hudLayer">
+        <!-- Top-Left Minimal Brand / Back -->
+        <div class="top-corner-left float-glass">
+            <a href="/sections/3d-simulations-models.html" class="mini-btn" title="3D">
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
-            <div>
-                <h1 id="appTitle">Чагылгандын пайда болушу жана жарык менен үн</h1>
-                <span class="subtitle" id="appSubtitle">Bilimal.org • 3D Физика Лабораториясы</span>
-            </div>
+            <span class="brand-label" style="font-size:0.74rem;font-weight:700;">Bilimal.org • 3D</span>
         </div>
 
-        <div class="top-actions">
-            <div class="lang-switcher" role="group" aria-label="Language Switcher">
-                <button type="button" class="lang-btn active" data-lang="ky">KY</button>
-                <button type="button" class="lang-btn" data-lang="ru">RU</button>
-                <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <!-- Top-Right Language, FPS, YouTube Mode, Fullscreen -->
+        <div class="top-corner-right float-glass">
+            <div class="lang-pill-group">
+                <button type="button" class="mini-btn lang-btn active" data-lang="ky">KY</button>
+                <button type="button" class="mini-btn lang-btn" data-lang="ru">RU</button>
+                <button type="button" class="mini-btn lang-btn" data-lang="en">EN</button>
             </div>
-            <div class="fps-badge" id="fpsCounter">60 FPS</div>
-            <button type="button" class="icon-btn" id="soundToggleBtn" aria-label="Sound Toggle">
-                <i class="fa-solid fa-volume-high"></i>
+            <span class="fps-chip" id="fpsChip">60 FPS</span>
+            <button type="button" class="mini-btn" id="ytModeBtn" title="YouTube Creator Mode">
+                <i class="fa-brands fa-youtube"></i>
             </button>
-            <button type="button" class="icon-btn" id="fullscreenBtn" aria-label="Fullscreen Toggle">
+            <button type="button" class="mini-btn" id="fullscreenBtn" title="Fullscreen (F)">
                 <i class="fa-solid fa-expand"></i>
             </button>
         </div>
-    </header>
 
-    <!-- Сол Панель: Окутуу этабы, Таймер жана Коопсуздук -->
-    <aside class="hud-left">
-        <section class="glass-panel edu-panel">
-            <div class="panel-header">
-                <i class="fa-solid fa-graduation-cap"></i>
-                <span id="eduTitle">Окутуу режими</span>
-                <span class="stage-pill" id="stageBadge">1/6</span>
+        <!-- Left Slim Vertical Strip (<= 240px: Learning Mode, Current Stage, Progress) -->
+        <aside class="left-slim-bar float-glass" id="leftSlimBar">
+            <div class="slim-label">
+                <span id="eduModeLabel">Окутуу режими</span>
+                <span id="stageNumText">1/6</span>
             </div>
-            <div class="stage-name" id="stageName">1-ЭТАП: Заряддардын бөлүнүшү</div>
-            <p class="stage-desc" id="stageDesc">Булуттун үстүндө оң (+), астында терс (-) заряддар бөлүнүүдө.</p>
-            <div class="stage-progress">
-                <div class="stage-progress-bar" id="stageProgressBar"></div>
+            <div class="slim-stage" id="slimStageTitle">1-ЭТАП</div>
+            <div class="slim-progress">
+                <div class="slim-progress-fill" id="slimProgressFill"></div>
             </div>
-        </section>
+        </aside>
 
-        <section class="glass-panel timer-panel">
-            <div class="panel-header">
-                <i class="fa-solid fa-stopwatch"></i>
-                <span id="timerTitle">Байкоо таймери</span>
-            </div>
+        <!-- Right Collapsed Info Panel -->
+        <aside class="right-info-wrap">
+            <button type="button" class="info-toggle-chip float-glass" id="infoToggleBtn">
+                <i class="fa-solid fa-sliders"></i>
+                <span id="infoChipLabel">⚡ 👁 🔊 📏 ⏱</span>
+            </button>
 
-            <div class="sensory-row">
-                <div class="sensory-card" id="eyeIndicator">
-                    <i class="fa-solid fa-eye"></i>
-                    <span id="eyeText">Жарык көрүндү</span>
-                    <small id="lightTimeVal">0.01 сек</small>
+            <div class="info-drawer float-glass" id="infoDrawer">
+                <div class="info-grid-row">
+                    <span>⚡ <span id="lblStage">Этап</span></span>
+                    <span class="info-val" id="valStage">1/6</span>
                 </div>
-                <div class="sensory-card" id="earIndicator">
-                    <i class="fa-solid fa-ear-listen"></i>
-                    <span id="earText">Үн угулду</span>
-                    <small id="soundTimeVal">2.91 сек</small>
+                <div class="info-grid-row">
+                    <span>👁 <span id="lblLight">Жарык</span></span>
+                    <span class="info-val" id="valLight">300 000 км/с</span>
                 </div>
-            </div>
+                <div class="info-grid-row">
+                    <span>🔊 <span id="lblSound">Үн</span></span>
+                    <span class="info-val" id="valSound">343 м/с</span>
+                </div>
+                <div class="info-grid-row">
+                    <span>📏 <span id="lblDist">Аралык</span></span>
+                    <span class="info-val" id="valDist">1 км</span>
+                </div>
+                <div class="info-grid-row">
+                    <span>⏱ <span id="lblDelay">Кечигүү</span></span>
+                    <span class="info-val" id="valDelay">2.91 сек</span>
+                </div>
 
-            <div class="event-log" id="eventLog">
-                <div class="log-item"><span class="t" id="logStrikeTime">0.00 сек</span> <span id="logStrike">⚡ Чагылган пайда болду</span></div>
-                <div class="log-item" id="logLightRow"><span class="t" id="logLightTime">0.01 сек</span> <span id="logLight">👁 Жарык жетти (300 000 км/с)</span></div>
-                <div class="log-item" id="logSoundRow"><span class="t" id="logSoundTime">2.91 сек</span> <span id="logSound">👂 Үн жетти (343 м/с)</span></div>
-            </div>
-        </section>
+                <div class="distance-mini">
+                    <input type="range" id="distanceSlider" min="0" max="6" step="1" value="2" />
+                </div>
 
-        <section class="glass-panel safety-panel">
-            <div class="panel-header">
-                <i class="fa-solid fa-shield-halved"></i>
-                <span id="safetyTitle">Чагылган учурундагы коопсуздук</span>
+                <div class="safety-mini" id="safetyMini"></div>
             </div>
-            <ul class="safety-list" id="safetyList"></ul>
-        </section>
-    </aside>
+        </aside>
 
-    <!-- Төмөнкү Башкаруу Панели -->
-    <nav class="control-dock glass-panel" aria-label="Simulation Controls">
-        <div class="dock-group primary-controls">
-            <button type="button" class="btn-primary" id="startBtn">
+        <!-- Bottom Center MacOS Dock Floating Control Bar (60–80px) -->
+        <nav class="mac-dock float-glass" aria-label="Control Dock">
+            <button type="button" class="dock-btn active" id="playBtn">
                 <i class="fa-solid fa-play"></i>
-                <span id="startText">Баштоо</span>
+                <span id="txtPlay">Play</span>
             </button>
-            <button type="button" class="btn-secondary" id="pauseBtn">
+            <button type="button" class="dock-btn" id="pauseBtn">
                 <i class="fa-solid fa-pause"></i>
-                <span id="pauseText">Токтотуу</span>
+                <span id="txtPause">Pause</span>
             </button>
-            <button type="button" class="btn-secondary" id="replayBtn">
-                <i class="fa-solid fa-rotate-right"></i>
-                <span id="replayText">Кайра ойнотуу</span>
+            <button type="button" class="dock-btn" id="restartBtn">
+                <i class="fa-solid fa-rotate-left"></i>
+                <span id="txtRestart">Restart</span>
             </button>
-        </div>
 
-        <div class="dock-group distance-control">
-            <div class="distance-header">
-                <label for="distanceSlider" id="distanceLabel">Аралык</label>
-                <strong id="distanceDisplay">1 км</strong>
-                <span class="delay-badge" id="delayDisplay">Үн кечигүүсү: 2.91 сек</span>
-            </div>
-            <input type="range" id="distanceSlider" min="0" max="6" step="1" value="2" />
-            <div class="distance-ticks">
-                <span>100м</span><span>500м</span><span>1км</span><span>2км</span><span>3км</span><span>5км</span><span>10км</span>
-            </div>
-        </div>
+            <div class="dock-divider"></div>
 
-        <div class="dock-group mode-controls">
-            <div class="slowmo-group" role="group" aria-label="Slow Motion">
-                <span class="mini-label" id="slowmoLabel">Slow Motion:</span>
-                <button type="button" class="pill-btn active" data-speed="1">Normal</button>
-                <button type="button" class="pill-btn" data-speed="0.5">0.5x</button>
-                <button type="button" class="pill-btn" data-speed="0.25">0.25x</button>
-                <button type="button" class="pill-btn" data-speed="0.1">0.1x</button>
-            </div>
-
-            <button type="button" class="btn-cinema" id="cinemaBtn">
+            <button type="button" class="dock-btn cinema-btn" id="cinemaBtn">
                 <i class="fa-solid fa-film"></i>
-                <span id="cinemaText">YouTube / Cinematic Mode</span>
+                <span id="txtCinema">Cinematic</span>
             </button>
-        </div>
-    </nav>
+
+            <button type="button" class="dock-btn" id="slowmoBtn" data-speed-idx="0">
+                <i class="fa-solid fa-turtle"></i>
+                <span id="txtSlowmo">Normal</span>
+            </button>
+
+            <button type="button" class="dock-btn active" id="soundBtn">
+                <i class="fa-solid fa-volume-high"></i>
+                <span id="txtSound">Sound</span>
+            </button>
+        </nav>
+    </div>
 
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
         /* ======================================================================
-           1. PHYSICS & TRANSLATIONS (KY / RU / EN)
+           PHYSICS & 3-LANGUAGE DICTIONARY (KY / RU / EN)
            ====================================================================== */
-        const SPEED_OF_LIGHT_MPS = 300_000_000; // 300 000 км/с
-        const SPEED_OF_SOUND_MPS = 343;         // 343 м/с
-
-        const DISTANCE_STEPS = [
-            { meters: 100,   label: { ky: '100 м',  ru: '100 м',  en: '100 m' } },
-            { meters: 500,   label: { ky: '500 м',  ru: '500 м',  en: '500 m' } },
-            { meters: 1000,  label: { ky: '1 км',   ru: '1 км',   en: '1 km' } },
-            { meters: 2000,  label: { ky: '2 км',   ru: '2 км',   en: '2 km' } },
-            { meters: 3000,  label: { ky: '3 км',   ru: '3 км',   en: '3 km' } },
-            { meters: 5000,  label: { ky: '5 км',   ru: '5 км',   en: '5 km' } },
-            { meters: 10000, label: { ky: '10 км',  ru: '10 км',  en: '10 km' } }
+        const SPEED_OF_SOUND = 343; // м/с
+        const DISTANCES = [
+            { m: 100,   ky: '100 м',  ru: '100 м',  en: '100 m' },
+            { m: 500,   ky: '500 м',  ru: '500 м',  en: '500 m' },
+            { m: 1000,  ky: '1 км',   ru: '1 км',   en: '1 km' },
+            { m: 2000,  ky: '2 км',   ru: '2 км',   en: '2 km' },
+            { m: 3000,  ky: '3 км',   ru: '3 км',   en: '3 km' },
+            { m: 5000,  ky: '5 км',   ru: '5 км',   en: '5 km' },
+            { m: 10000, ky: '10 км',  ru: '10 км',  en: '10 km' }
         ];
+        const SLOWMO_SPEEDS = [1, 0.5, 0.25, 0.1];
+        const SLOWMO_LABELS = ['Normal', '0.5x', '0.25x', '0.1x'];
 
-        function calculateArrivalTimes(distanceMeters) {
-            const lightDelaySec = distanceMeters / SPEED_OF_LIGHT_MPS;
-            const soundDelaySec = distanceMeters / SPEED_OF_SOUND_MPS;
-            return {
-                lightDelaySec,
-                soundDelaySec,
-                soundDelayFormatted: soundDelaySec.toFixed(2)
-            };
-        }
-
-        function calculateSoundAttenuation(distanceMeters) {
-            if (distanceMeters <= 100) return 1.0;
-            if (distanceMeters <= 500) return 0.85;
-            if (distanceMeters <= 1000) return 0.65;
-            if (distanceMeters <= 2000) return 0.48;
-            if (distanceMeters <= 3000) return 0.35;
-            if (distanceMeters <= 5000) return 0.22;
-            return 0.13;
-        }
-
-        const TRANSLATIONS = {
+        const I18N = {
             ky: {
-                appTitle: 'Чагылгандын пайда болушу жана жарык менен үн',
-                appSubtitle: 'Bilimal.org • 3D Физика Лабораториясы',
-                eduTitle: 'Окутуу режими',
-                timerTitle: 'Байкоо таймери',
-                eyeText: 'Жарык көрүндү',
-                earText: 'Үн угулду',
-                logStrike: '⚡ Чагылган пайда болду',
-                logLight: '👁 Жарык жетти (300 000 км/с)',
-                logSound: '👂 Үн жетти (343 м/с)',
-                safetyTitle: 'Чагылган учурундагы коопсуздук',
+                eduMode: 'Окутуу режими',
+                stage: 'Этап',
+                light: 'Жарык',
+                sound: 'Үн',
+                dist: 'Аралык',
+                delay: 'Кечигүү',
+                sec: 'сек',
+                play: 'Play',
+                pause: 'Pause',
+                restart: 'Restart',
+                cinema: 'Cinematic',
+                soundLbl: 'Sound',
+                lightSeen: 'Жарык көрүндү',
+                soundHeard: 'Үн угулду',
                 safety: [
-                    { safe: true,  text: 'Үй ичинде коопсуз' },
-                    { safe: true,  text: 'Унаа ичинде коопсуз' },
-                    { safe: false, text: 'Жалгыз бак астында коркунучтуу' },
-                    { safe: false, text: 'Ачык талаада коркунучтуу' },
-                    { safe: false, text: 'Металл объект жанында коркунучтуу' }
+                    { ok: true,  t: 'Үй ичинде коопсуз' },
+                    { ok: true,  t: 'Унаа ичинде коопсуз' },
+                    { ok: false, t: 'Жалгыз бак астында коркунучтуу' },
+                    { ok: false, t: 'Ачык талаада коркунучтуу' },
+                    { ok: false, t: 'Металл жанында коркунучтуу' }
                 ],
-                startText: 'Баштоо',
-                pauseText: 'Токтотуу',
-                replayText: 'Кайра ойнотуу',
-                distanceLabel: 'Аралык',
-                delayPrefix: 'Үн кечигүүсү',
-                secUnit: 'сек',
-                slowmoLabel: 'Slow Motion:',
-                cinemaText: 'YouTube / Cinematic Mode',
                 stages: [
-                    { name: '1-ЭТАП: Заряддардын бөлүнүшү', desc: 'Булут ичинде үстүндө оң (+), астында терс (-) заряддар бөлүнүүдө.' },
-                    { name: '2-ЭТАП: Электр талаасынын күчөшү', desc: 'Булут менен жер ортосундагы электр талаасы күчөөдө.' },
-                    { name: '3-ЭТАП: Stepped Leader', desc: 'Stepped Leader жерди көздөй бутакталган канал болуп түшүүдө.' },
-                    { name: '4-ЭТАП: Upward Streamer', desc: 'Жерден каршы оң заряд (Upward Streamer) көтөрүлүүдө.' },
-                    { name: '5-ЭТАП: Контакт', desc: 'Лидер менен стример тийишкен учурда чоң жарк этүү болду.' },
-                    { name: '6-ЭТАП: Return Stroke & Толкундар', desc: 'Return Stroke жүрүүдө! Жарык дароо жетип, үн 343 м/с менен таралууда.' }
+                    '1-ЭТАП: Булут ичинде заряддар бөлүнүүдө (+ / -)',
+                    '2-ЭТАП: Электр талаасы күчөөдө',
+                    '3-ЭТАП: Stepped Leader жерди көздөй түшүүдө',
+                    '4-ЭТАП: Upward Streamer көтөрүлүүдө',
+                    '5-ЭТАП: Контакт — жарк этүү',
+                    '6-ЭТАП: Return Stroke & Үн толкуну таралууда'
                 ]
             },
             ru: {
-                appTitle: 'Образование молнии и распространение света и звука',
-                appSubtitle: 'Bilimal.org • 3D Физическая Лаборатория',
-                eduTitle: 'Режим обучения',
-                timerTitle: 'Таймер наблюдения',
-                eyeText: 'Свет виден',
-                earText: 'Звук услышан',
-                logStrike: '⚡ Возникла молния',
-                logLight: '👁 Свет дошёл (300 000 км/с)',
-                logSound: '👂 Звук дошёл (343 м/с)',
-                safetyTitle: 'Безопасность при грозе',
+                eduMode: 'Обучение',
+                stage: 'Этап',
+                light: 'Свет',
+                sound: 'Звук',
+                dist: 'Аралык',
+                delay: 'Задержка',
+                sec: 'сек',
+                play: 'Play',
+                pause: 'Pause',
+                restart: 'Restart',
+                cinema: 'Cinematic',
+                soundLbl: 'Sound',
+                lightSeen: 'Свет виден',
+                soundHeard: 'Звук слышен',
                 safety: [
-                    { safe: true,  text: 'В помещении безопасно' },
-                    { safe: true,  text: 'В автомобиле безопасно' },
-                    { safe: false, text: 'Под одиноким деревом опасно' },
-                    { safe: false, text: 'На открытом поле опасно' },
-                    { safe: false, text: 'Рядом с металлом опасно' }
+                    { ok: true,  t: 'В помещении безопасно' },
+                    { ok: true,  t: 'В авто безопасно' },
+                    { ok: false, t: 'Под одиноким деревом опасно' },
+                    { ok: false, t: 'В открытом поле опасно' },
+                    { ok: false, t: 'У металла опасно' }
                 ],
-                startText: 'Старт',
-                pauseText: 'Пауза',
-                replayText: 'Повтор',
-                distanceLabel: 'Расстояние',
-                delayPrefix: 'Задержка звука',
-                secUnit: 'сек',
-                slowmoLabel: 'Slow Motion:',
-                cinemaText: 'YouTube / Cinematic Mode',
                 stages: [
-                    { name: 'ЭТАП 1: Разделение зарядов', desc: 'В облаке разделяются положительные (+) и отрицательные (-) заряды.' },
-                    { name: 'ЭТАП 2: Усиление электрического поля', desc: 'Растёт разность потенциалов, усиливается электрическое поле.' },
-                    { name: 'ЭТАП 3: Stepped Leader', desc: 'Ступенчатый лидер движется вниз ветвящимся каналом.' },
-                    { name: 'ЭТАП 4: Upward Streamer', desc: 'От земли поднимается встречный разряд — Upward Streamer.' },
-                    { name: 'ЭТАП 5: Контакт', desc: 'При замыкании лидера и стримера возникает яркая вспышка.' },
-                    { name: 'ЭТАП 6: Return Stroke и волны', desc: 'Главный разряд Return Stroke! Свет приходит быстро, звук идёт 343 м/с.' }
+                    'ЭТАП 1: В облаке разделяются заряды (+ / -)',
+                    'ЭТАП 2: Усиливается электрическое поле',
+                    'ЭТАП 3: Stepped Leader идёт вниз',
+                    'ЭТАП 4: Поднимается Upward Streamer',
+                    'ЭТАП 5: Контакт и вспышка',
+                    'ЭТАП 6: Return Stroke и волна звука'
                 ]
             },
             en: {
-                appTitle: 'Lightning Formation & Propagation of Light and Sound',
-                appSubtitle: 'Bilimal.org • 3D Physics Laboratory',
-                eduTitle: 'Learning Mode',
-                timerTitle: 'Observation Timer',
-                eyeText: 'Light Seen',
-                earText: 'Sound Heard',
-                logStrike: '⚡ Lightning occurred',
-                logLight: '👁 Light arrived (300,000 km/s)',
-                logSound: '👂 Sound arrived (343 m/s)',
-                safetyTitle: 'Lightning Safety',
+                eduMode: 'Learning',
+                stage: 'Stage',
+                light: 'Light',
+                sound: 'Sound',
+                dist: 'Distance',
+                delay: 'Delay',
+                sec: 'sec',
+                play: 'Play',
+                pause: 'Pause',
+                restart: 'Restart',
+                cinema: 'Cinematic',
+                soundLbl: 'Sound',
+                lightSeen: 'Light Seen',
+                soundHeard: 'Sound Heard',
                 safety: [
-                    { safe: true,  text: 'Safe indoors' },
-                    { safe: true,  text: 'Safe inside a car' },
-                    { safe: false, text: 'Dangerous under an isolated tree' },
-                    { safe: false, text: 'Dangerous in an open field' },
-                    { safe: false, text: 'Dangerous near metal objects' }
+                    { ok: true,  t: 'Safe indoors' },
+                    { ok: true,  t: 'Safe inside a car' },
+                    { ok: false, t: 'Dangerous under isolated tree' },
+                    { ok: false, t: 'Dangerous in open field' },
+                    { ok: false, t: 'Dangerous near metal' }
                 ],
-                startText: 'Start',
-                pauseText: 'Pause',
-                replayText: 'Replay',
-                distanceLabel: 'Distance',
-                delayPrefix: 'Sound delay',
-                secUnit: 'sec',
-                slowmoLabel: 'Slow Motion:',
-                cinemaText: 'YouTube / Cinematic Mode',
                 stages: [
-                    { name: 'STAGE 1: Charge Separation', desc: 'Positive (+) and negative (-) charges separate inside the cloud.' },
-                    { name: 'STAGE 2: Electric Field Intensification', desc: 'Electric field strengthens between cloud and ground.' },
-                    { name: 'STAGE 3: Stepped Leader', desc: 'A branching stepped leader descends toward the ground.' },
-                    { name: 'STAGE 4: Upward Streamer', desc: 'An upward streamer rises from the ground to meet the leader.' },
-                    { name: 'STAGE 5: Attachment / Contact', desc: 'Leader and streamer connect with a bright contact flash.' },
-                    { name: 'STAGE 6: Return Stroke & Waves', desc: 'Return stroke illuminates the channel! Light arrives fast; sound travels at 343 m/s.' }
+                    'STAGE 1: Charge separation inside cloud (+ / -)',
+                    'STAGE 2: Electric field intensifies',
+                    'STAGE 3: Stepped Leader descends',
+                    'STAGE 4: Upward Streamer rises',
+                    'STAGE 5: Contact flash',
+                    'STAGE 6: Return Stroke & Sound wave'
                 ]
             }
         };
 
         /* ======================================================================
-           2. SOUND ENGINE (Web Audio API: Electric Crack + Deep Thunder Roll)
+           WEB AUDIO ENGINE (Crack + Deep Thunder Roll + Distance & Stereo Pan)
            ====================================================================== */
-        class LightningSoundEngine {
+        class SoundSystem {
             constructor() {
                 this.ctx = null;
-                this.masterGain = null;
+                this.master = null;
                 this.panner = null;
+                this.noise = null;
                 this.enabled = true;
-                this.noiseBuffer = null;
             }
 
-            initContext() {
+            ensure() {
                 if (!this.ctx) {
-                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                    this.ctx = new AudioCtx();
-                    this.masterGain = this.ctx.createGain();
-                    this.masterGain.gain.value = this.enabled ? 0.85 : 0.0;
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AC();
+                    this.master = this.ctx.createGain();
+                    this.master.gain.value = this.enabled ? 0.85 : 0;
                     this.panner = this.ctx.createStereoPanner();
-                    this.panner.pan.value = 0;
-                    this.panner.connect(this.masterGain);
-                    this.masterGain.connect(this.ctx.destination);
-                    this.noiseBuffer = this._createNoiseBuffer(3.5);
+                    this.panner.connect(this.master);
+                    this.master.connect(this.ctx.destination);
+
+                    const len = this.ctx.sampleRate * 3.5;
+                    this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                    const ch = this.noise.getChannelData(0);
+                    let last = 0;
+                    for (let i = 0; i < len; i++) {
+                        last = (last + 0.04 * (Math.random() * 2 - 1)) / 1.04;
+                        ch[i] = last * 2.4;
+                    }
                 }
-                if (this.ctx.state === 'suspended') {
-                    this.ctx.resume().catch(() => {});
+                if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+            }
+
+            setEnabled(v) {
+                this.enabled = v;
+                if (this.master && this.ctx) {
+                    this.master.gain.setTargetAtTime(v ? 0.85 : 0, this.ctx.currentTime, 0.03);
                 }
             }
 
-            _createNoiseBuffer(durationSec) {
-                const length = Math.floor(this.ctx.sampleRate * durationSec);
-                const buffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
-                const data = buffer.getChannelData(0);
-                let lastOut = 0;
-                for (let i = 0; i < length; i++) {
-                    const white = Math.random() * 2 - 1;
-                    data[i] = (lastOut + 0.04 * white) / 1.04;
-                    lastOut = data[i];
-                    data[i] *= 2.4;
-                }
-                return buffer;
+            _atten(m) {
+                if (m <= 100) return 1.0;
+                if (m <= 500) return 0.85;
+                if (m <= 1000) return 0.65;
+                if (m <= 2000) return 0.48;
+                if (m <= 3000) return 0.35;
+                if (m <= 5000) return 0.22;
+                return 0.13;
             }
 
-            setEnabled(isEnabled) {
-                this.enabled = isEnabled;
-                if (this.masterGain && this.ctx) {
-                    this.masterGain.gain.setTargetAtTime(isEnabled ? 0.85 : 0.0, this.ctx.currentTime, 0.03);
-                }
-            }
-
-            setPan(panValue) {
-                if (this.panner && this.ctx) {
-                    this.panner.pan.setTargetAtTime(Math.max(-1, Math.min(1, panValue)), this.ctx.currentTime, 0.05);
-                }
-            }
-
-            playElectricCrack(distanceMeters = 1000, pan = 0) {
+            playCrack(meters, pan = 0.2) {
                 if (!this.enabled) return;
-                this.initContext();
-                this.setPan(pan);
+                this.ensure();
                 const now = this.ctx.currentTime;
-                const atten = calculateSoundAttenuation(distanceMeters);
+                this.panner.pan.setTargetAtTime(pan, now, 0.04);
+                const att = this._atten(meters);
 
                 const src = this.ctx.createBufferSource();
-                src.buffer = this.noiseBuffer;
+                src.buffer = this.noise;
 
-                const filter = this.ctx.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.setValueAtTime(distanceMeters <= 500 ? 2200 : 1200, now);
-                filter.Q.setValueAtTime(1.4, now);
+                const bp = this.ctx.createBiquadFilter();
+                bp.type = 'bandpass';
+                bp.frequency.setValueAtTime(meters <= 500 ? 2200 : 1200, now);
 
-                const gain = this.ctx.createGain();
-                gain.gain.setValueAtTime(0.001, now);
-                gain.gain.linearRampToValueAtTime(Math.min(1.0, atten * 1.2), now + 0.008);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+                const g = this.ctx.createGain();
+                g.gain.setValueAtTime(0.001, now);
+                g.gain.linearRampToValueAtTime(Math.min(1, att * 1.2), now + 0.008);
+                g.gain.exponentialRampToValueAtTime(0.001, now + 0.26);
 
-                src.connect(filter);
-                filter.connect(gain);
-                gain.connect(this.panner);
-                src.start(now, Math.random() * 1.0, 0.35);
+                src.connect(bp);
+                bp.connect(g);
+                g.connect(this.panner);
+                src.start(now, Math.random() * 1.0, 0.32);
             }
 
-            playThunderRoll(distanceMeters = 1000, pan = 0) {
+            playThunder(meters, pan = 0.2) {
                 if (!this.enabled) return;
-                this.initContext();
-                this.setPan(pan);
+                this.ensure();
                 const now = this.ctx.currentTime;
-                const atten = calculateSoundAttenuation(distanceMeters);
+                this.panner.pan.setTargetAtTime(pan, now, 0.05);
+                const att = this._atten(meters);
 
-                const cutoffHz =
-                    distanceMeters <= 100  ? 480 :
-                    distanceMeters <= 500  ? 360 :
-                    distanceMeters <= 1000 ? 260 :
-                    distanceMeters <= 2000 ? 200 :
-                    distanceMeters <= 3000 ? 160 :
-                    distanceMeters <= 5000 ? 125 : 95;
+                const cutoff = meters <= 100 ? 480 : meters <= 500 ? 360 : meters <= 1000 ? 260 :
+                               meters <= 2000 ? 200 : meters <= 3000 ? 160 : meters <= 5000 ? 125 : 95;
+                const dur = meters <= 500 ? 1.8 : meters <= 2000 ? 2.5 : 3.2;
 
-                const duration = distanceMeters <= 500 ? 1.8 : distanceMeters <= 2000 ? 2.5 : 3.2;
+                const src = this.ctx.createBufferSource();
+                src.buffer = this.noise;
+                src.loop = true;
 
-                const rumble = this.ctx.createBufferSource();
-                rumble.buffer = this.noiseBuffer;
-                rumble.loop = true;
+                const lp = this.ctx.createBiquadFilter();
+                lp.type = 'lowpass';
+                lp.frequency.setValueAtTime(cutoff, now);
+                lp.frequency.exponentialRampToValueAtTime(Math.max(55, cutoff * 0.45), now + dur);
 
-                const lowpass = this.ctx.createBiquadFilter();
-                lowpass.type = 'lowpass';
-                lowpass.frequency.setValueAtTime(cutoffHz, now);
-                lowpass.frequency.exponentialRampToValueAtTime(Math.max(55, cutoffHz * 0.45), now + duration);
+                const sub = this.ctx.createOscillator();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(meters <= 500 ? 58 : 44, now);
+                sub.frequency.exponentialRampToValueAtTime(28, now + dur * 0.85);
 
-                const subOsc = this.ctx.createOscillator();
-                subOsc.type = 'sine';
-                subOsc.frequency.setValueAtTime(distanceMeters <= 500 ? 58 : 44, now);
-                subOsc.frequency.exponentialRampToValueAtTime(28, now + duration * 0.85);
+                const subG = this.ctx.createGain();
+                subG.gain.setValueAtTime(0.001, now);
+                subG.gain.linearRampToValueAtTime(att * 0.55, now + 0.08);
+                subG.gain.exponentialRampToValueAtTime(0.001, now + dur * 0.9);
 
-                const subGain = this.ctx.createGain();
-                subGain.gain.setValueAtTime(0.001, now);
-                subGain.gain.linearRampToValueAtTime(atten * 0.55, now + 0.08);
-                subGain.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.9);
+                const g = this.ctx.createGain();
+                g.gain.setValueAtTime(0.001, now);
+                g.gain.linearRampToValueAtTime(att * 0.95, now + 0.06);
+                g.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
-                const rumbleGain = this.ctx.createGain();
-                rumbleGain.gain.setValueAtTime(0.001, now);
-                rumbleGain.gain.linearRampToValueAtTime(atten * 0.95, now + 0.06);
-                rumbleGain.gain.setValueAtTime(atten * 0.72, now + duration * 0.35);
-                rumbleGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                src.connect(lp);
+                lp.connect(g);
+                g.connect(this.panner);
+                sub.connect(subG);
+                subG.connect(this.panner);
 
-                rumble.connect(lowpass);
-                lowpass.connect(rumbleGain);
-                rumbleGain.connect(this.panner);
-                subOsc.connect(subGain);
-                subGain.connect(this.panner);
-
-                rumble.start(now, Math.random() * 1.5);
-                rumble.stop(now + duration + 0.05);
-                subOsc.start(now);
-                subOsc.stop(now + duration + 0.05);
+                src.start(now, Math.random() * 1.4);
+                src.stop(now + dur + 0.05);
+                sub.start(now);
+                sub.stop(now + dur + 0.05);
             }
         }
 
         /* ======================================================================
-           3. LIGHTNING SYSTEM (6 Stages)
+           3D SCENE: CLOUDS, GRASS, TREE, HOUSE, HUMAN, LIGHT & SOUND WAVES
            ====================================================================== */
-        class LightningSystem {
-            constructor(scene) {
-                this.scene = scene;
-                this.group = new THREE.Group();
-                this.scene.add(this.group);
-
-                this.chargeGroup = new THREE.Group();
-                this.group.add(this.chargeGroup);
-                this._buildCharges();
-
-                this.fieldGroup = new THREE.Group();
-                this.group.add(this.fieldGroup);
-                this._buildElectricField();
-
-                this.leaderGroup = new THREE.Group();
-                this.group.add(this.leaderGroup);
-
-                this.streamerLine = null;
-
-                this.contactFlash = new THREE.Mesh(
-                    new THREE.SphereGeometry(2.6, 20, 20),
-                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0.0 })
-                );
-                this.group.add(this.contactFlash);
-
-                this.returnStrokeGroup = new THREE.Group();
-                this.group.add(this.returnStrokeGroup);
-
-                this.flashLight = new THREE.PointLight(0x7dd3fc, 0, 140, 1.5);
-                this.flashLight.position.set(0, 16, 0);
-                this.scene.add(this.flashLight);
-
-                this.mainPathPoints = [];
-                this.strikeAnchor = new THREE.Vector3(4, 0.2, -2);
-                this.reset();
-            }
-
-            _buildCharges() {
-                const posGeo = new THREE.SphereGeometry(0.42, 12, 12);
-                const posMat = new THREE.MeshBasicMaterial({ color: 0xff5252 });
-                const negGeo = new THREE.SphereGeometry(0.42, 12, 12);
-                const negMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
-
-                for (let i = 0; i < 14; i++) {
-                    const m = new THREE.Mesh(posGeo, posMat);
-                    m.position.set((Math.random() - 0.5) * 18, 22.2 + (Math.random() - 0.5) * 2.2, (Math.random() - 0.5) * 8);
-                    this.chargeGroup.add(m);
-                }
-                for (let i = 0; i < 18; i++) {
-                    const m = new THREE.Mesh(negGeo, negMat);
-                    m.position.set((Math.random() - 0.5) * 18, 18.2 + (Math.random() - 0.5) * 1.8, (Math.random() - 0.5) * 8);
-                    this.chargeGroup.add(m);
-                }
-            }
-
-            _buildElectricField() {
-                const lineMat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.0 });
-                for (let i = -3; i <= 3; i++) {
-                    const pts = [
-                        new THREE.Vector3(i * 2.4, 17.5, 0),
-                        new THREE.Vector3(i * 1.7, 9.0, Math.sin(i) * 1.2),
-                        new THREE.Vector3(i * 1.1, 0.3, 0)
-                    ];
-                    this.fieldGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lineMat.clone()));
-                }
-            }
-
-            generateBoltPath(targetPos = new THREE.Vector3(4, 0.2, -2)) {
-                this.strikeAnchor.copy(targetPos);
-                this._clearGroup(this.leaderGroup);
-                this._clearGroup(this.returnStrokeGroup);
-                if (this.streamerLine) {
-                    this.group.remove(this.streamerLine);
-                    this.streamerLine = null;
-                }
-
-                const start = new THREE.Vector3(targetPos.x + (Math.random() - 0.5) * 3.5, 18.0, targetPos.z + (Math.random() - 0.5) * 2.0);
-                const end = targetPos.clone();
-                const steps = 18;
-                this.mainPathPoints = [start.clone()];
-
-                for (let i = 1; i < steps; i++) {
-                    const t = i / steps;
-                    const jitter = (1 - t * 0.25) * 2.1;
-                    this.mainPathPoints.push(new THREE.Vector3(
-                        THREE.MathUtils.lerp(start.x, end.x, t) + (Math.random() - 0.5) * jitter,
-                        THREE.MathUtils.lerp(start.y, end.y, t),
-                        THREE.MathUtils.lerp(start.z, end.z, t) + (Math.random() - 0.5) * jitter * 0.7
-                    ));
-                }
-                this.mainPathPoints.push(end.clone());
-
-                for (let i = 3; i < steps - 4; i += 3) {
-                    const origin = this.mainPathPoints[i];
-                    const branchPts = [origin.clone()];
-                    let cur = origin.clone();
-                    for (let b = 0; b < 5; b++) {
-                        cur = cur.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3.2, -1.4 - Math.random() * 1.1, (Math.random() - 0.5) * 2.2));
-                        branchPts.push(cur.clone());
-                    }
-                    this.leaderGroup.add(new THREE.Line(
-                        new THREE.BufferGeometry().setFromPoints(branchPts),
-                        new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.75 })
-                    ));
-                }
-
-                const streamerPts = [
-                    end.clone(),
-                    end.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.8, 1.5, 0)),
-                    end.clone().add(new THREE.Vector3((Math.random() - 0.5) * 1.2, 3.2, 0))
-                ];
-                this.streamerLine = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints(streamerPts),
-                    new THREE.LineBasicMaterial({ color: 0xf472b6, transparent: true, opacity: 0.0 })
-                );
-                this.group.add(this.streamerLine);
-
-                this.returnStrokeGroup.add(new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints(this.mainPathPoints),
-                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0 })
-                ));
-
-                [new THREE.Vector3(0.08, 0, 0.08), new THREE.Vector3(-0.08, 0, -0.08)].forEach((off) => {
-                    const shifted = this.mainPathPoints.map((p) => p.clone().add(off));
-                    this.returnStrokeGroup.add(new THREE.Line(
-                        new THREE.BufferGeometry().setFromPoints(shifted),
-                        new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.0 })
-                    ));
-                });
-
-                this.contactFlash.position.copy(end).add(new THREE.Vector3(0, 2.2, 0));
-            }
-
-            _clearGroup(grp) {
-                while (grp.children.length > 0) {
-                    const child = grp.children[0];
-                    if (child.geometry) child.geometry.dispose();
-                    if (child.material) child.material.dispose();
-                    grp.remove(child);
-                }
-            }
-
-            reset() {
-                this.chargeGroup.visible = true;
-                this.fieldGroup.children.forEach((l) => { l.material.opacity = 0; });
-                this._clearGroup(this.leaderGroup);
-                this._clearGroup(this.returnStrokeGroup);
-                if (this.streamerLine) {
-                    this.group.remove(this.streamerLine);
-                    this.streamerLine = null;
-                }
-                this.contactFlash.material.opacity = 0;
-                this.contactFlash.scale.setScalar(0.2);
-                this.flashLight.intensity = 0;
-            }
-
-            update(simTime, elapsedReal) {
-                this.chargeGroup.children.forEach((c, idx) => {
-                    c.position.y += Math.sin(elapsedReal * 3 + idx) * 0.004;
-                });
-
-                const fieldOpacity = simTime >= 1.0 && simTime < 3.2
-                    ? Math.min(0.65, (simTime - 1.0) * 0.65)
-                    : Math.max(0, 0.65 - (simTime - 3.2) * 0.8);
-
-                this.fieldGroup.children.forEach((line, i) => {
-                    line.material.opacity = Math.max(0, fieldOpacity * (0.7 + 0.3 * Math.sin(elapsedReal * 8 + i)));
-                });
-
-                if (simTime >= 2.0 && this.mainPathPoints.length > 1) {
-                    const p = Math.min(1, (simTime - 2.0) / 1.2);
-                    const visibleCount = Math.max(2, Math.floor(p * this.mainPathPoints.length));
-                    const partialPts = this.mainPathPoints.slice(0, visibleCount);
-                    let leaderLine = this.leaderGroup.getObjectByName('mainLeader');
-                    if (!leaderLine) {
-                        leaderLine = new THREE.Line(
-                            new THREE.BufferGeometry().setFromPoints(partialPts),
-                            new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.95 })
-                        );
-                        leaderLine.name = 'mainLeader';
-                        this.leaderGroup.add(leaderLine);
-                    } else {
-                        leaderLine.geometry.dispose();
-                        leaderLine.geometry = new THREE.BufferGeometry().setFromPoints(partialPts);
-                    }
-                }
-
-                if (this.streamerLine && simTime >= 2.8) {
-                    const sp = Math.min(1, (simTime - 2.8) / 0.6);
-                    this.streamerLine.material.opacity = simTime < 3.6 ? sp : Math.max(0, 1 - (simTime - 3.6) * 2.5);
-                }
-
-                if (simTime >= 3.4 && simTime < 4.1) {
-                    const clamped = Math.max(0, 1 - Math.abs((simTime - 3.55) / 0.35));
-                    this.contactFlash.material.opacity = clamped * 0.9;
-                    this.contactFlash.scale.setScalar(0.5 + clamped * 2.2);
-                } else {
-                    this.contactFlash.material.opacity = 0;
-                }
-
-                if (simTime >= 3.5) {
-                    const age = simTime - 3.5;
-                    const pulse = Math.max(0, 1 - age * 0.85) + (age < 0.25 ? 0.35 * Math.sin(age * 60) : 0);
-                    const intensity = Math.max(0, Math.min(1, pulse));
-                    this.returnStrokeGroup.children.forEach((line, idx) => {
-                        line.material.opacity = idx === 0 ? intensity : intensity * 0.7;
-                    });
-                    this.flashLight.position.set(this.strikeAnchor.x, 10, this.strikeAnchor.z);
-                    this.flashLight.intensity = intensity * 18;
-                } else {
-                    this.flashLight.intensity = 0;
-                }
-            }
-        }
-
-        /* ======================================================================
-           4. ENVIRONMENT & EFFECTS (Clouds, Grass, Tree, House, Human, Light & Sound Waves)
-           ====================================================================== */
-        class EnvironmentAndEffects {
+        class SceneWorld {
             constructor(scene) {
                 this.scene = scene;
                 this.clouds = [];
-                this.humanGroup = new THREE.Group();
+                this.strikePos = new THREE.Vector3(4, 0.2, -2);
                 this.humanPos = new THREE.Vector3(-9, 0, 6);
-                this.strikePos = new THREE.Vector3(4, 0, -2);
 
-                this._buildTerrain();
+                this._buildGround();
                 this._buildClouds();
                 this._buildTree();
                 this._buildHouse();
                 this._buildHuman();
-                this._buildLightEffects();
-                this._buildSoundEffects();
+                this._buildWaves();
             }
 
-            _buildTerrain() {
+            _buildGround() {
                 const ground = new THREE.Mesh(
-                    new THREE.PlaneGeometry(140, 140, 24, 24).rotateX(-Math.PI / 2),
-                    new THREE.MeshStandardMaterial({ color: 0x133824, roughness: 0.92, metalness: 0.05 })
+                    new THREE.PlaneGeometry(150, 150, 20, 20).rotateX(-Math.PI / 2),
+                    new THREE.MeshStandardMaterial({ color: 0x133824, roughness: 0.92 })
                 );
                 this.scene.add(ground);
 
                 const bladeGeo = new THREE.ConeGeometry(0.08, 0.55, 4).translate(0, 0.27, 0);
                 const bladeMat = new THREE.MeshStandardMaterial({ color: 0x226b3a, roughness: 0.8 });
-                const grassInst = new THREE.InstancedMesh(bladeGeo, bladeMat, 420);
-                const dummy = new THREE.Object3D();
-                for (let i = 0; i < 420; i++) {
-                    dummy.position.set((Math.random() - 0.5) * 44, 0, (Math.random() - 0.5) * 44);
-                    dummy.rotation.y = Math.random() * Math.PI * 2;
+                const inst = new THREE.InstancedMesh(bladeGeo, bladeMat, 360);
+                const d = new THREE.Object3D();
+                for (let i = 0; i < 360; i++) {
+                    d.position.set((Math.random() - 0.5) * 44, 0, (Math.random() - 0.5) * 44);
+                    d.rotation.y = Math.random() * Math.PI * 2;
                     const s = 0.7 + Math.random() * 0.9;
-                    dummy.scale.set(s, s, s);
-                    dummy.updateMatrix();
-                    grassInst.setMatrixAt(i, dummy.matrix);
+                    d.scale.set(s, s, s);
+                    d.updateMatrix();
+                    inst.setMatrixAt(i, d.matrix);
                 }
-                this.scene.add(grassInst);
+                this.scene.add(inst);
             }
 
             _buildClouds() {
-                const clusters = [
-                    { x: -6, y: 20, z: -2, scale: 1.15 },
-                    { x: 4,  y: 20.5, z: -1, scale: 1.25 },
-                    { x: 13, y: 19.8, z: -3, scale: 1.05 }
+                const specs = [
+                    { x: -6, y: 20, z: -2, s: 1.15 },
+                    { x: 4,  y: 20.5, z: -1, s: 1.25 },
+                    { x: 13, y: 19.8, z: -3, s: 1.05 }
                 ];
-                const puffGeo = new THREE.SphereGeometry(2.6, 16, 14);
+                const puffGeo = new THREE.SphereGeometry(2.6, 14, 12);
                 const puffMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.95 });
 
-                clusters.forEach((cfg) => {
-                    const cluster = new THREE.Group();
-                    cluster.position.set(cfg.x, cfg.y, cfg.z);
-                    cluster.scale.setScalar(cfg.scale);
+                specs.forEach((c) => {
+                    const grp = new THREE.Group();
+                    grp.position.set(c.x, c.y, c.z);
+                    grp.scale.setScalar(c.s);
                     [[-2.2, 0, 0, 0.85], [0, 0.6, 0.4, 1.05], [2.2, -0.1, -0.3, 0.9], [-1.0, 1.1, -0.5, 0.75], [1.2, 0.9, 0.5, 0.8]]
-                        .forEach(([ox, oy, oz, rScale]) => {
-                            const mesh = new THREE.Mesh(puffGeo, puffMat);
-                            mesh.position.set(ox, oy, oz);
-                            mesh.scale.setScalar(rScale);
-                            cluster.add(mesh);
+                        .forEach(([ox, oy, oz, r]) => {
+                            const m = new THREE.Mesh(puffGeo, puffMat);
+                            m.position.set(ox, oy, oz);
+                            m.scale.setScalar(r);
+                            grp.add(m);
                         });
-                    this.scene.add(cluster);
-                    this.clouds.push({ group: cluster, baseX: cfg.x });
+                    this.scene.add(grp);
+                    this.clouds.push({ grp, baseX: c.x });
                 });
             }
 
@@ -1235,14 +861,12 @@
                     new THREE.MeshStandardMaterial({ color: 0x4a2e1b, roughness: 0.9 })
                 );
                 trunk.position.y = 1.6;
-                tree.add(trunk);
-
-                const foliage = new THREE.Mesh(
+                const crown = new THREE.Mesh(
                     new THREE.ConeGeometry(2.1, 4.6, 10),
                     new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.85 })
                 );
-                foliage.position.y = 4.6;
-                tree.add(foliage);
+                crown.position.y = 4.6;
+                tree.add(trunk, crown);
                 this.scene.add(tree);
             }
 
@@ -1254,116 +878,110 @@
                     new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75 })
                 );
                 walls.position.y = 1.5;
-                house.add(walls);
-
                 const roof = new THREE.Mesh(
                     new THREE.ConeGeometry(3.4, 2.0, 4).rotateY(Math.PI / 4),
                     new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.7 })
                 );
                 roof.position.y = 4.0;
-                house.add(roof);
+                house.add(walls, roof);
                 this.scene.add(house);
             }
 
             _buildHuman() {
-                this.humanGroup.position.copy(this.humanPos);
+                const human = new THREE.Group();
+                human.position.copy(this.humanPos);
                 const torso = new THREE.Mesh(
                     new THREE.CylinderGeometry(0.28, 0.34, 1.05, 10),
                     new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.5 })
                 );
                 torso.position.y = 1.15;
-                this.humanGroup.add(torso);
-
                 const head = new THREE.Mesh(
                     new THREE.SphereGeometry(0.26, 12, 12),
                     new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.6 })
                 );
                 head.position.y = 1.95;
-                this.humanGroup.add(head);
-                this.scene.add(this.humanGroup);
+                human.add(torso, head);
+                this.scene.add(human);
             }
 
-            _buildLightEffects() {
-                const positions = new Float32Array(120 * 3);
-                const geo = new THREE.BufferGeometry();
-                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                this.photonPoints = new THREE.Points(
-                    geo,
-                    new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.35, transparent: true, opacity: 0.0 })
+            _buildWaves() {
+                const photonPos = new Float32Array(100 * 3);
+                const pGeo = new THREE.BufferGeometry();
+                pGeo.setAttribute('position', new THREE.BufferAttribute(photonPos, 3));
+                this.photons = new THREE.Points(
+                    pGeo,
+                    new THREE.PointsMaterial({ color: 0x7dd3fc, size: 0.35, transparent: true, opacity: 0 })
                 );
-                this.scene.add(this.photonPoints);
+                this.scene.add(this.photons);
 
-                this.lightWaveRing = new THREE.Mesh(
+                this.lightRing = new THREE.Mesh(
                     new THREE.RingGeometry(0.4, 0.9, 32).rotateX(-Math.PI / 2),
-                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide, transparent: true, opacity: 0 })
                 );
-                this.lightWaveRing.position.set(this.strikePos.x, 0.25, this.strikePos.z);
-                this.scene.add(this.lightWaveRing);
-            }
+                this.scene.add(this.lightRing);
 
-            _buildSoundEffects() {
-                this.shockwaveSphere = new THREE.Mesh(
-                    new THREE.SphereGeometry(1, 24, 18),
-                    new THREE.MeshBasicMaterial({ color: 0xc084fc, wireframe: true, transparent: true, opacity: 0.0 })
+                this.shockwave = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, 20, 16),
+                    new THREE.MeshBasicMaterial({ color: 0xc084fc, wireframe: true, transparent: true, opacity: 0 })
                 );
-                this.shockwaveSphere.position.set(this.strikePos.x, 3.0, this.strikePos.z);
-                this.scene.add(this.shockwaveSphere);
+                this.scene.add(this.shockwave);
 
-                this.soundRings = [];
-                for (let i = 0; i < 3; i++) {
-                    const ring = new THREE.Mesh(
-                        new THREE.RingGeometry(0.8, 1.15, 40).rotateX(-Math.PI / 2),
-                        new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+                this.soundRings = [0, 1, 2].map(() => {
+                    const r = new THREE.Mesh(
+                        new THREE.RingGeometry(0.8, 1.15, 36).rotateX(-Math.PI / 2),
+                        new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0 })
                     );
-                    ring.position.set(this.strikePos.x, 0.35, this.strikePos.z);
-                    this.scene.add(ring);
-                    this.soundRings.push(ring);
-                }
+                    this.scene.add(r);
+                    return r;
+                });
             }
 
             resetWaves() {
-                this.photonPoints.material.opacity = 0;
-                this.lightWaveRing.material.opacity = 0;
-                this.lightWaveRing.scale.setScalar(0.1);
-                this.shockwaveSphere.material.opacity = 0;
-                this.shockwaveSphere.scale.setScalar(0.1);
+                this.photons.material.opacity = 0;
+                this.lightRing.material.opacity = 0;
+                this.lightRing.scale.setScalar(0.1);
+                this.shockwave.material.opacity = 0;
+                this.shockwave.scale.setScalar(0.1);
                 this.soundRings.forEach((r) => { r.material.opacity = 0; r.scale.setScalar(0.1); });
             }
 
-            update(simTime, elapsedReal, soundDelaySec) {
-                this.clouds.forEach((c, idx) => {
-                    c.group.position.x = c.baseX + Math.sin(elapsedReal * 0.25 + idx) * 1.4;
+            update(simTime, realTime, soundDelaySec) {
+                this.clouds.forEach((c, i) => {
+                    c.grp.position.x = c.baseX + Math.sin(realTime * 0.25 + i) * 1.4;
                 });
 
                 if (simTime >= 3.5) {
-                    const strikeAge = simTime - 3.5;
-                    const lightProgress = Math.min(1, strikeAge * 14);
-                    this.lightWaveRing.position.set(this.strikePos.x, 0.25, this.strikePos.z);
-                    this.lightWaveRing.scale.setScalar(1 + lightProgress * 22);
-                    this.lightWaveRing.material.opacity = Math.max(0, (1 - lightProgress) * 0.85);
+                    const age = simTime - 3.5;
 
-                    const posAttr = this.photonPoints.geometry.getAttribute('position');
-                    for (let i = 0; i < posAttr.count; i++) {
-                        const angle = (i / posAttr.count) * Math.PI * 2 + i * 0.37;
-                        const radius = Math.min(24, strikeAge * 42 * (0.4 + (i % 7) * 0.12));
-                        const y = 1.0 + ((i * 13) % 16) * (0.2 + lightProgress * 0.8);
-                        posAttr.setXYZ(i, this.strikePos.x + Math.cos(angle) * radius, y, this.strikePos.z + Math.sin(angle) * radius);
+                    // Light wave (300 000 km/s -> near-instant expansion)
+                    const lp = Math.min(1, age * 14);
+                    this.lightRing.position.set(this.strikePos.x, 0.25, this.strikePos.z);
+                    this.lightRing.scale.setScalar(1 + lp * 22);
+                    this.lightRing.material.opacity = Math.max(0, (1 - lp) * 0.85);
+
+                    const attr = this.photons.geometry.getAttribute('position');
+                    for (let i = 0; i < attr.count; i++) {
+                        const ang = (i / attr.count) * Math.PI * 2 + i * 0.37;
+                        const rad = Math.min(24, age * 42 * (0.4 + (i % 7) * 0.12));
+                        const y = 1.0 + ((i * 13) % 16) * (0.2 + lp * 0.8);
+                        attr.setXYZ(i, this.strikePos.x + Math.cos(ang) * rad, y, this.strikePos.z + Math.sin(ang) * rad);
                     }
-                    posAttr.needsUpdate = true;
-                    this.photonPoints.material.opacity = Math.max(0, 1 - strikeAge * 1.6);
+                    attr.needsUpdate = true;
+                    this.photons.material.opacity = Math.max(0, 1 - age * 1.6);
 
-                    const visualSoundRate = Math.max(0.45, 2.6 / Math.max(0.3, soundDelaySec));
-                    const soundRadius = Math.max(0.2, strikeAge * visualSoundRate * 6.5);
+                    // Sound wave (343 m/s -> expanding rings & shockwave)
+                    const rate = Math.max(0.45, 2.6 / Math.max(0.3, soundDelaySec));
+                    const rad = Math.max(0.2, age * rate * 6.5);
 
-                    this.shockwaveSphere.position.set(this.strikePos.x, 3.0, this.strikePos.z);
-                    this.shockwaveSphere.scale.setScalar(soundRadius);
-                    this.shockwaveSphere.material.opacity = Math.max(0, 0.42 - soundRadius * 0.015);
+                    this.shockwave.position.set(this.strikePos.x, 3.0, this.strikePos.z);
+                    this.shockwave.scale.setScalar(rad);
+                    this.shockwave.material.opacity = Math.max(0, 0.42 - rad * 0.015);
 
-                    this.soundRings.forEach((ring, idx) => {
-                        const rScale = Math.max(0.1, soundRadius - idx * 2.4);
-                        ring.position.set(this.strikePos.x, 0.35 + idx * 0.2, this.strikePos.z);
-                        ring.scale.setScalar(rScale);
-                        ring.material.opacity = Math.max(0, 0.65 - rScale * 0.022);
+                    this.soundRings.forEach((r, idx) => {
+                        const s = Math.max(0.1, rad - idx * 2.4);
+                        r.position.set(this.strikePos.x, 0.35 + idx * 0.2, this.strikePos.z);
+                        r.scale.setScalar(s);
+                        r.material.opacity = Math.max(0, 0.65 - s * 0.022);
                     });
                 } else {
                     this.resetWaves();
@@ -1372,357 +990,528 @@
         }
 
         /* ======================================================================
-           5. UI CONTROLLER
+           6-STAGE LIGHTNING SYSTEM
            ====================================================================== */
-        class SimulationUI {
-            constructor(callbacks) {
-                this.callbacks = callbacks;
-                this.lang = 'ky';
-                this.distanceIndex = 2;
-                this.soundEnabled = true;
-                this.cinemaActive = false;
+        class LightningBoltSystem {
+            constructor(scene) {
+                this.scene = scene;
+                this.group = new THREE.Group();
+                this.scene.add(this.group);
 
-                this.el = {
-                    appTitle: document.getElementById('appTitle'),
-                    appSubtitle: document.getElementById('appSubtitle'),
-                    eduTitle: document.getElementById('eduTitle'),
-                    stageBadge: document.getElementById('stageBadge'),
-                    stageName: document.getElementById('stageName'),
-                    stageDesc: document.getElementById('stageDesc'),
-                    stageProgressBar: document.getElementById('stageProgressBar'),
-                    timerTitle: document.getElementById('timerTitle'),
-                    eyeIndicator: document.getElementById('eyeIndicator'),
-                    earIndicator: document.getElementById('earIndicator'),
-                    eyeText: document.getElementById('eyeText'),
-                    earText: document.getElementById('earText'),
-                    lightTimeVal: document.getElementById('lightTimeVal'),
-                    soundTimeVal: document.getElementById('soundTimeVal'),
-                    logStrike: document.getElementById('logStrike'),
-                    logLight: document.getElementById('logLight'),
-                    logSound: document.getElementById('logSound'),
-                    logStrikeRow: document.querySelector('#eventLog .log-item:nth-child(1)'),
-                    logLightRow: document.getElementById('logLightRow'),
-                    logSoundRow: document.getElementById('logSoundRow'),
-                    logLightTime: document.getElementById('logLightTime'),
-                    logSoundTime: document.getElementById('logSoundTime'),
-                    safetyTitle: document.getElementById('safetyTitle'),
-                    safetyList: document.getElementById('safetyList'),
-                    startText: document.getElementById('startText'),
-                    pauseText: document.getElementById('pauseText'),
-                    replayText: document.getElementById('replayText'),
-                    distanceLabel: document.getElementById('distanceLabel'),
-                    distanceSlider: document.getElementById('distanceSlider'),
-                    distanceDisplay: document.getElementById('distanceDisplay'),
-                    delayDisplay: document.getElementById('delayDisplay'),
-                    slowmoLabel: document.getElementById('slowmoLabel'),
-                    cinemaBtn: document.getElementById('cinemaBtn'),
-                    cinemaText: document.getElementById('cinemaText'),
-                    soundToggleBtn: document.getElementById('soundToggleBtn'),
-                    fullscreenBtn: document.getElementById('fullscreenBtn'),
-                    fpsCounter: document.getElementById('fpsCounter')
-                };
+                this.charges = new THREE.Group();
+                this.group.add(this.charges);
+                this._initCharges();
 
-                this._bindEvents();
-                this.applyLanguage('ky');
+                this.fieldLines = new THREE.Group();
+                this.group.add(this.fieldLines);
+                this._initField();
+
+                this.leaderGroup = new THREE.Group();
+                this.group.add(this.leaderGroup);
+
+                this.streamer = null;
+                this.flashSphere = new THREE.Mesh(
+                    new THREE.SphereGeometry(2.6, 18, 18),
+                    new THREE.MeshBasicMaterial({ color: 0xe0f2fe, transparent: true, opacity: 0 })
+                );
+                this.group.add(this.flashSphere);
+
+                this.returnGroup = new THREE.Group();
+                this.group.add(this.returnGroup);
+
+                this.light = new THREE.PointLight(0x7dd3fc, 0, 140, 1.5);
+                this.scene.add(this.light);
+
+                this.points = [];
+                this.anchor = new THREE.Vector3(4, 0.2, -2);
             }
 
-            _bindEvents() {
-                document.querySelectorAll('.lang-btn').forEach((btn) => {
-                    btn.addEventListener('click', () => {
-                        document.querySelectorAll('.lang-btn').forEach((b) => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.applyLanguage(btn.dataset.lang);
-                    });
-                });
+            _initCharges() {
+                const posGeo = new THREE.SphereGeometry(0.4, 10, 10);
+                const posMat = new THREE.MeshBasicMaterial({ color: 0xff5252 });
+                const negGeo = new THREE.SphereGeometry(0.4, 10, 10);
+                const negMat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
 
-                document.getElementById('startBtn').addEventListener('click', () => this.callbacks.onStart?.());
-                document.getElementById('pauseBtn').addEventListener('click', () => this.callbacks.onPause?.());
-                document.getElementById('replayBtn').addEventListener('click', () => this.callbacks.onReplay?.());
+                for (let i = 0; i < 12; i++) {
+                    const m = new THREE.Mesh(posGeo, posMat);
+                    m.position.set((Math.random() - 0.5) * 18, 22.2 + (Math.random() - 0.5) * 2.0, (Math.random() - 0.5) * 8);
+                    this.charges.add(m);
+                }
+                for (let i = 0; i < 16; i++) {
+                    const m = new THREE.Mesh(negGeo, negMat);
+                    m.position.set((Math.random() - 0.5) * 18, 18.2 + (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 8);
+                    this.charges.add(m);
+                }
+            }
 
-                this.el.distanceSlider.addEventListener('input', (e) => {
-                    this.distanceIndex = Number(e.target.value);
-                    this.updateDistanceDisplay();
-                    this.callbacks.onDistanceChange?.(this.getDistanceMeters());
-                });
+            _initField() {
+                const mat = new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0 });
+                for (let i = -3; i <= 3; i++) {
+                    const pts = [
+                        new THREE.Vector3(i * 2.4, 17.5, 0),
+                        new THREE.Vector3(i * 1.7, 9.0, Math.sin(i) * 1.2),
+                        new THREE.Vector3(i * 1.1, 0.3, 0)
+                    ];
+                    this.fieldLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat.clone()));
+                }
+            }
 
-                document.querySelectorAll('.pill-btn').forEach((btn) => {
-                    btn.addEventListener('click', () => {
-                        document.querySelectorAll('.pill-btn').forEach((b) => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        this.callbacks.onSpeedChange?.(Number(btn.dataset.speed));
-                    });
-                });
+            _clear(grp) {
+                while (grp.children.length) {
+                    const c = grp.children[0];
+                    c.geometry?.dispose();
+                    c.material?.dispose();
+                    grp.remove(c);
+                }
+            }
 
-                this.el.cinemaBtn.addEventListener('click', () => {
-                    this.cinemaActive = !this.cinemaActive;
-                    this.el.cinemaBtn.classList.toggle('active', this.cinemaActive);
-                    this.callbacks.onCinemaToggle?.(this.cinemaActive);
-                });
+            generate(target) {
+                this.anchor.copy(target);
+                this._clear(this.leaderGroup);
+                this._clear(this.returnGroup);
+                if (this.streamer) {
+                    this.group.remove(this.streamer);
+                    this.streamer = null;
+                }
 
-                this.el.soundToggleBtn.addEventListener('click', () => {
-                    this.soundEnabled = !this.soundEnabled;
-                    this.el.soundToggleBtn.innerHTML = this.soundEnabled
-                        ? '<i class="fa-solid fa-volume-high"></i>'
-                        : '<i class="fa-solid fa-volume-xmark"></i>';
-                    this.callbacks.onSoundToggle?.(this.soundEnabled);
-                });
+                const start = new THREE.Vector3(target.x + (Math.random() - 0.5) * 3.5, 18.0, target.z + (Math.random() - 0.5) * 2.0);
+                const end = target.clone();
+                const steps = 18;
+                this.points = [start.clone()];
 
-                this.el.fullscreenBtn.addEventListener('click', () => {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen?.().catch(() => {});
-                    } else {
-                        document.exitFullscreen?.().catch(() => {});
+                for (let i = 1; i < steps; i++) {
+                    const t = i / steps;
+                    const j = (1 - t * 0.25) * 2.1;
+                    this.points.push(new THREE.Vector3(
+                        THREE.MathUtils.lerp(start.x, end.x, t) + (Math.random() - 0.5) * j,
+                        THREE.MathUtils.lerp(start.y, end.y, t),
+                        THREE.MathUtils.lerp(start.z, end.z, t) + (Math.random() - 0.5) * j * 0.7
+                    ));
+                }
+                this.points.push(end.clone());
+
+                for (let i = 3; i < steps - 4; i += 3) {
+                    const bPts = [this.points[i].clone()];
+                    let cur = this.points[i].clone();
+                    for (let b = 0; b < 5; b++) {
+                        cur = cur.clone().add(new THREE.Vector3((Math.random() - 0.5) * 3.2, -1.4 - Math.random(), (Math.random() - 0.5) * 2.2));
+                        bPts.push(cur.clone());
                     }
+                    this.leaderGroup.add(new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints(bPts),
+                        new THREE.LineBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.75 })
+                    ));
+                }
+
+                this.streamer = new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints([
+                        end.clone(),
+                        end.clone().add(new THREE.Vector3(-0.4, 1.6, 0)),
+                        end.clone().add(new THREE.Vector3(0.5, 3.2, 0))
+                    ]),
+                    new THREE.LineBasicMaterial({ color: 0xf472b6, transparent: true, opacity: 0 })
+                );
+                this.group.add(this.streamer);
+
+                this.returnGroup.add(new THREE.Line(
+                    new THREE.BufferGeometry().setFromPoints(this.points),
+                    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 })
+                ));
+                [new THREE.Vector3(0.08, 0, 0.08), new THREE.Vector3(-0.08, 0, -0.08)].forEach((off) => {
+                    this.returnGroup.add(new THREE.Line(
+                        new THREE.BufferGeometry().setFromPoints(this.points.map((p) => p.clone().add(off))),
+                        new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0 })
+                    ));
                 });
+
+                this.flashSphere.position.copy(end).add(new THREE.Vector3(0, 2.2, 0));
             }
 
-            getDistanceMeters() {
-                return DISTANCE_STEPS[this.distanceIndex].meters;
+            reset() {
+                this.fieldLines.children.forEach((l) => { l.material.opacity = 0; });
+                this._clear(this.leaderGroup);
+                this._clear(this.returnGroup);
+                if (this.streamer) {
+                    this.group.remove(this.streamer);
+                    this.streamer = null;
+                }
+                this.flashSphere.material.opacity = 0;
+                this.light.intensity = 0;
             }
 
-            applyLanguage(lang) {
-                this.lang = TRANSLATIONS[lang] ? lang : 'ky';
-                document.documentElement.lang = this.lang;
-                const t = TRANSLATIONS[this.lang];
+            update(simTime, realTime) {
+                this.charges.children.forEach((c, idx) => {
+                    c.position.y += Math.sin(realTime * 3 + idx) * 0.004;
+                });
 
-                this.el.appTitle.textContent = t.appTitle;
-                this.el.appSubtitle.textContent = t.appSubtitle;
-                this.el.eduTitle.textContent = t.eduTitle;
-                this.el.timerTitle.textContent = t.timerTitle;
-                this.el.eyeText.textContent = t.eyeText;
-                this.el.earText.textContent = t.earText;
-                this.el.logStrike.textContent = t.logStrike;
-                this.el.logLight.textContent = t.logLight;
-                this.el.logSound.textContent = t.logSound;
-                this.el.safetyTitle.textContent = t.safetyTitle;
-                this.el.startText.textContent = t.startText;
-                this.el.pauseText.textContent = t.pauseText;
-                this.el.replayText.textContent = t.replayText;
-                this.el.distanceLabel.textContent = t.distanceLabel;
-                this.el.slowmoLabel.textContent = t.slowmoLabel;
-                this.el.cinemaText.textContent = t.cinemaText;
+                const fOp = simTime >= 1.0 && simTime < 3.2
+                    ? Math.min(0.65, (simTime - 1.0) * 0.65)
+                    : Math.max(0, 0.65 - (simTime - 3.2) * 0.8);
+                this.fieldLines.children.forEach((l, i) => {
+                    l.material.opacity = Math.max(0, fOp * (0.7 + 0.3 * Math.sin(realTime * 8 + i)));
+                });
 
-                this.el.safetyList.innerHTML = t.safety
-                    .map((item) => `<li class="${item.safe ? 'safe' : 'danger'}"><i class="fa-solid ${item.safe ? 'fa-check' : 'fa-xmark'}"></i><span>${item.text}</span></li>`)
-                    .join('');
+                if (simTime >= 2.0 && this.points.length > 1) {
+                    const p = Math.min(1, (simTime - 2.0) / 1.2);
+                    const count = Math.max(2, Math.floor(p * this.points.length));
+                    const sub = this.points.slice(0, count);
+                    let line = this.leaderGroup.getObjectByName('mainLeader');
+                    if (!line) {
+                        line = new THREE.Line(
+                            new THREE.BufferGeometry().setFromPoints(sub),
+                            new THREE.LineBasicMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.95 })
+                        );
+                        line.name = 'mainLeader';
+                        this.leaderGroup.add(line);
+                    } else {
+                        line.geometry.dispose();
+                        line.geometry = new THREE.BufferGeometry().setFromPoints(sub);
+                    }
+                }
 
-                this.updateDistanceDisplay();
-            }
+                if (this.streamer && simTime >= 2.8) {
+                    const sp = Math.min(1, (simTime - 2.8) / 0.6);
+                    this.streamer.material.opacity = simTime < 3.6 ? sp : Math.max(0, 1 - (simTime - 3.6) * 2.5);
+                }
 
-            updateDistanceDisplay() {
-                const t = TRANSLATIONS[this.lang];
-                const step = DISTANCE_STEPS[this.distanceIndex];
-                const times = calculateArrivalTimes(step.meters);
+                if (simTime >= 3.4 && simTime < 4.1) {
+                    const cl = Math.max(0, 1 - Math.abs((simTime - 3.55) / 0.35));
+                    this.flashSphere.material.opacity = cl * 0.9;
+                    this.flashSphere.scale.setScalar(0.5 + cl * 2.2);
+                } else {
+                    this.flashSphere.material.opacity = 0;
+                }
 
-                this.el.distanceDisplay.textContent = step.label[this.lang];
-                this.el.delayDisplay.textContent = `${t.delayPrefix}: ${times.soundDelayFormatted} ${t.secUnit}`;
-                this.el.lightTimeVal.textContent = `0.01 ${t.secUnit}`;
-                this.el.soundTimeVal.textContent = `${times.soundDelayFormatted} ${t.secUnit}`;
-                this.el.logLightTime.textContent = `0.01 ${t.secUnit}`;
-                this.el.logSoundTime.textContent = `${times.soundDelayFormatted} ${t.secUnit}`;
-            }
-
-            updateStage(stageIndex) {
-                const t = TRANSLATIONS[this.lang];
-                const stage = t.stages[Math.max(0, Math.min(5, stageIndex))];
-                this.el.stageBadge.textContent = `${stageIndex + 1}/6`;
-                this.el.stageName.textContent = stage.name;
-                this.el.stageDesc.textContent = stage.desc;
-                this.el.stageProgressBar.style.width = `${((stageIndex + 1) / 6) * 100}%`;
-            }
-
-            updateSensoryIndicators({ strikeOccurred, lightArrived, soundArrived }) {
-                this.el.logStrikeRow?.classList.toggle('reached', Boolean(strikeOccurred));
-                this.el.logLightRow?.classList.toggle('reached', Boolean(lightArrived));
-                this.el.eyeIndicator?.classList.toggle('active-light', Boolean(lightArrived));
-                this.el.logSoundRow?.classList.toggle('reached', Boolean(soundArrived));
-                this.el.earIndicator?.classList.toggle('active-sound', Boolean(soundArrived));
-            }
-
-            updateFPS(fps) {
-                if (this.el.fpsCounter) this.el.fpsCounter.textContent = `${Math.round(fps)} FPS`;
+                if (simTime >= 3.5) {
+                    const age = simTime - 3.5;
+                    const pulse = Math.max(0, 1 - age * 0.85) + (age < 0.25 ? 0.35 * Math.sin(age * 60) : 0);
+                    const inty = Math.max(0, Math.min(1, pulse));
+                    this.returnGroup.children.forEach((l, i) => {
+                        l.material.opacity = i === 0 ? inty : inty * 0.7;
+                    });
+                    this.light.position.set(this.anchor.x, 10, this.anchor.z);
+                    this.light.intensity = inty * 18;
+                } else {
+                    this.light.intensity = 0;
+                }
             }
         }
 
         /* ======================================================================
-           6. MAIN APP & LOOP
+           APP CONTROLLER (Auto-Hide 3s, Presentation Mode 'F', YouTube Mode)
            ====================================================================== */
-        class LightningSimulationApp {
+        class LightningApp {
             constructor() {
+                this.lang = 'ky';
+                this.distIdx = 2;
+                this.speedIdx = 0;
+                this.isPlaying = true;
+                this.cinema = false;
+                this.ytMode = false;
+                this.simTime = 0;
+                this.realTime = 0;
+                this.postStrike = 0;
+                this.lastStage = -1;
+                this.subtitleTimer = null;
+
+                this.firedCrack = false;
+                this.firedLight = false;
+                this.firedSound = false;
+                this.firedThunder = false;
+
                 this.container = document.getElementById('scene-container');
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x030712);
-                this.scene.fog = new THREE.FogExp2(0x050d21, 0.016);
+                this.scene.fog = new THREE.FogExp2(0x050d21, 0.015);
 
                 this.camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 260);
                 this.camera.position.set(0, 11, 28);
 
-                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                this.renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
-                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2));
+                const isMob = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                this.renderer = new THREE.WebGLRenderer({ antialias: !isMob, powerPreference: 'high-performance' });
+                this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isMob ? 1.5 : 2));
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.outputColorSpace = THREE.SRGBColorSpace;
                 this.container.appendChild(this.renderer.domElement);
 
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
-                this.controls.dampingFactor = 0.06;
                 this.controls.maxPolarAngle = Math.PI * 0.485;
                 this.controls.minDistance = 8;
                 this.controls.maxDistance = 68;
                 this.controls.target.set(0, 8, 0);
 
                 this.scene.add(new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.9));
-                const dirLight = new THREE.DirectionalLight(0x93c5fd, 1.1);
-                dirLight.position.set(16, 28, 14);
-                this.scene.add(dirLight);
+                const dir = new THREE.DirectionalLight(0x93c5fd, 1.1);
+                dir.position.set(16, 28, 14);
+                this.scene.add(dir);
 
-                this.soundEngine = new LightningSoundEngine();
-                this.lightning = new LightningSystem(this.scene);
-                this.effects = new EnvironmentAndEffects(this.scene);
+                this.sound = new SoundSystem();
+                this.world = new SceneWorld(this.scene);
+                this.bolt = new LightningBoltSystem(this.scene);
+                this.bolt.generate(this.world.strikePos);
 
-                this.isPlaying = true;
-                this.speedMultiplier = 1;
-                this.cinemaMode = false;
-                this.simTime = 0;
-                this.elapsedReal = 0;
-                this.postStrikeTimer = 0;
-                this.distanceMeters = 1000;
+                this._bindUI();
+                this._bindAutoHideAndKeys();
+                this._applyLang();
+                this._updateDist();
 
-                this.strikeTriggered = false;
-                this.lightTriggered = false;
-                this.soundTriggered = false;
-                this.thunderRollTriggered = false;
+                this.frames = 0;
+                this.fpsTick = performance.now();
+                this.prevNow = performance.now();
+                requestAnimationFrame((t) => this._loop(t));
+            }
 
-                this.frameCount = 0;
-                this.fpsLastTime = performance.now();
-                this.lastFrameTime = performance.now();
-
-                this.ui = new SimulationUI({
-                    onStart: () => { this.soundEngine.initContext(); this.isPlaying = true; },
-                    onPause: () => { this.isPlaying = false; },
-                    onReplay: () => this.replay(),
-                    onDistanceChange: (meters) => { this.distanceMeters = meters; },
-                    onSpeedChange: (speed) => { this.speedMultiplier = speed; },
-                    onCinemaToggle: (active) => { this.cinemaMode = active; this.controls.enabled = !active; },
-                    onSoundToggle: (enabled) => { this.soundEngine.setEnabled(enabled); }
+            _bindUI() {
+                document.querySelectorAll('.lang-btn').forEach((b) => {
+                    b.addEventListener('click', () => {
+                        document.querySelectorAll('.lang-btn').forEach((x) => x.classList.remove('active'));
+                        b.classList.add('active');
+                        this.lang = b.dataset.lang;
+                        this._applyLang();
+                    });
                 });
 
-                this.lightning.generateBoltPath(this.effects.strikePos);
+                document.getElementById('playBtn').addEventListener('click', () => {
+                    this.sound.ensure();
+                    this.isPlaying = true;
+                    document.getElementById('playBtn').classList.add('active');
+                    document.getElementById('pauseBtn').classList.remove('active');
+                });
+
+                document.getElementById('pauseBtn').addEventListener('click', () => {
+                    this.isPlaying = false;
+                    document.getElementById('pauseBtn').classList.add('active');
+                    document.getElementById('playBtn').classList.remove('active');
+                });
+
+                document.getElementById('restartBtn').addEventListener('click', () => this._restart());
+
+                document.getElementById('cinemaBtn').addEventListener('click', (e) => {
+                    this.cinema = !this.cinema;
+                    this.controls.enabled = !this.cinema;
+                    e.currentTarget.classList.toggle('active', this.cinema);
+                });
+
+                document.getElementById('slowmoBtn').addEventListener('click', (e) => {
+                    this.speedIdx = (this.speedIdx + 1) % SLOWMO_SPEEDS.length;
+                    document.getElementById('txtSlowmo').textContent = SLOWMO_LABELS[this.speedIdx];
+                    e.currentTarget.classList.toggle('active', this.speedIdx > 0);
+                });
+
+                document.getElementById('soundBtn').addEventListener('click', (e) => {
+                    const next = !this.sound.enabled;
+                    this.sound.setEnabled(next);
+                    e.currentTarget.classList.toggle('active', next);
+                    e.currentTarget.querySelector('i').className = next ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark';
+                });
+
+                document.getElementById('infoToggleBtn').addEventListener('click', () => {
+                    document.getElementById('infoDrawer').classList.toggle('open');
+                });
+
+                document.getElementById('distanceSlider').addEventListener('input', (e) => {
+                    this.distIdx = Number(e.target.value);
+                    this._updateDist();
+                });
+
+                document.getElementById('ytModeBtn').addEventListener('click', (e) => {
+                    this.ytMode = !this.ytMode;
+                    document.body.classList.toggle('youtube-mode', this.ytMode);
+                    e.currentTarget.classList.toggle('active', this.ytMode);
+                });
+
+                document.getElementById('fullscreenBtn').addEventListener('click', () => {
+                    this._togglePresentationFullscreen();
+                });
 
                 window.addEventListener('resize', () => {
                     this.camera.aspect = window.innerWidth / window.innerHeight;
                     this.camera.updateProjectionMatrix();
                     this.renderer.setSize(window.innerWidth, window.innerHeight);
                 });
-
-                this._animate(performance.now());
             }
 
-            replay() {
-                this.soundEngine.initContext();
+            _togglePresentationFullscreen() {
+                const entering = !document.body.classList.contains('presentation-mode');
+                document.body.classList.toggle('presentation-mode', entering);
+                if (entering && !document.fullscreenElement) {
+                    document.documentElement.requestFullscreen?.().catch(() => {});
+                } else if (!entering && document.fullscreenElement) {
+                    document.exitFullscreen?.().catch(() => {});
+                }
+            }
+
+            _bindAutoHideAndKeys() {
+                let hideTimer = null;
+                const resetHide = () => {
+                    document.body.classList.remove('ui-hidden');
+                    clearTimeout(hideTimer);
+                    hideTimer = setTimeout(() => {
+                        if (!document.getElementById('infoDrawer').classList.contains('open')) {
+                            document.body.classList.add('ui-hidden');
+                        }
+                    }, 3000);
+                };
+
+                ['pointermove', 'pointerdown', 'keydown', 'touchstart'].forEach((ev) => {
+                    window.addEventListener(ev, resetHide, { passive: true });
+                });
+                resetHide();
+
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'f' || e.key === 'F' || e.key === 'а' || e.key === 'А') {
+                        this._togglePresentationFullscreen();
+                    }
+                });
+            }
+
+            _applyLang() {
+                const t = I18N[this.lang];
+                document.documentElement.lang = this.lang;
+                document.getElementById('eduModeLabel').textContent = t.eduMode;
+                document.getElementById('lblStage').textContent = t.stage;
+                document.getElementById('lblLight').textContent = t.light;
+                document.getElementById('lblSound').textContent = t.sound;
+                document.getElementById('lblDist').textContent = t.dist;
+                document.getElementById('lblDelay').textContent = t.delay;
+                document.getElementById('txtPlay').textContent = t.play;
+                document.getElementById('txtPause').textContent = t.pause;
+                document.getElementById('txtRestart').textContent = t.restart;
+                document.getElementById('txtCinema').textContent = t.cinema;
+                document.getElementById('txtSound').textContent = t.soundLbl;
+
+                document.getElementById('safetyMini').innerHTML = t.safety
+                    .map((s) => `<div class="${s.ok ? 's-ok' : 's-no'}"><i class="fa-solid ${s.ok ? 'fa-check' : 'fa-xmark'}"></i> ${s.t}</div>`)
+                    .join('');
+
+                this._updateDist();
+                if (this.lastStage >= 0) {
+                    const prev = this.lastStage;
+                    this.lastStage = -1;
+                    this._setStage(prev);
+                }
+            }
+
+            _updateDist() {
+                const t = I18N[this.lang];
+                const d = DISTANCES[this.distIdx];
+                const delay = (d.m / SPEED_OF_SOUND).toFixed(2);
+                document.getElementById('valDist').textContent = d[this.lang];
+                document.getElementById('valDelay').textContent = `${delay} ${t.sec}`;
+            }
+
+            _showSubtitle(text) {
+                const box = document.getElementById('subtitleBox');
+                box.textContent = text;
+                box.classList.add('visible');
+                clearTimeout(this.subtitleTimer);
+                this.subtitleTimer = setTimeout(() => {
+                    box.classList.remove('visible');
+                }, 2600);
+            }
+
+            _setStage(idx) {
+                if (idx === this.lastStage) return;
+                this.lastStage = idx;
+                const t = I18N[this.lang];
+                const label = t.stages[idx];
+                document.getElementById('stageNumText').textContent = `${idx + 1}/6`;
+                document.getElementById('valStage').textContent = `${idx + 1}/6`;
+                document.getElementById('slimStageTitle').textContent = label.split(':')[0];
+                document.getElementById('slimProgressFill').style.width = `${((idx + 1) / 6) * 100}%`;
+                this._showSubtitle(label);
+            }
+
+            _restart() {
+                this.sound.ensure();
                 this.simTime = 0;
-                this.postStrikeTimer = 0;
-                this.strikeTriggered = false;
-                this.lightTriggered = false;
-                this.soundTriggered = false;
-                this.thunderRollTriggered = false;
+                this.postStrike = 0;
+                this.lastStage = -1;
+                this.firedCrack = false;
+                this.firedLight = false;
+                this.firedSound = false;
+                this.firedThunder = false;
                 this.isPlaying = true;
-                this.lightning.reset();
-                this.lightning.generateBoltPath(this.effects.strikePos);
-                this.effects.resetWaves();
-                this.ui.updateStage(0);
-                this.ui.updateSensoryIndicators({ strikeOccurred: false, lightArrived: false, soundArrived: false });
+                this.bolt.reset();
+                this.bolt.generate(this.world.strikePos);
+                this.world.resetWaves();
+                document.getElementById('valLight').textContent = '300 000 км/с';
+                document.getElementById('valLight').classList.remove('lit');
+                document.getElementById('valSound').textContent = '343 м/с';
+                document.getElementById('valSound').classList.remove('heard');
             }
 
-            _updateStagesAndEvents(dt) {
-                let stageIdx = 0;
-                if (this.simTime < 1.0) stageIdx = 0;
-                else if (this.simTime < 2.0) stageIdx = 1;
-                else if (this.simTime < 2.8) stageIdx = 2;
-                else if (this.simTime < 3.4) stageIdx = 3;
-                else if (this.simTime < 3.55) stageIdx = 4;
-                else stageIdx = 5;
+            _loop(now) {
+                requestAnimationFrame((t) => this._loop(t));
 
-                this.ui.updateStage(stageIdx);
+                const rawDt = Math.min(0.05, (now - this.prevNow) / 1000);
+                this.prevNow = now;
 
-                if (this.simTime >= 3.5) {
-                    if (!this.strikeTriggered) {
-                        this.strikeTriggered = true;
-                        this.soundEngine.playElectricCrack(this.distanceMeters, 0.25);
-                    }
-                    if (!this.lightTriggered) {
-                        this.lightTriggered = true;
-                    }
-
-                    this.postStrikeTimer += dt;
-                    const { soundDelaySec } = calculateArrivalTimes(this.distanceMeters);
-                    const visualSoundArrival = Math.min(soundDelaySec, 4.5);
-
-                    if (this.postStrikeTimer >= visualSoundArrival && !this.soundTriggered) {
-                        this.soundTriggered = true;
-                    }
-                    if (this.postStrikeTimer >= soundDelaySec && !this.thunderRollTriggered) {
-                        this.thunderRollTriggered = true;
-                        this.soundEngine.playThunderRoll(this.distanceMeters, 0.25);
-                    }
-
-                    this.ui.updateSensoryIndicators({
-                        strikeOccurred: this.strikeTriggered,
-                        lightArrived: this.lightTriggered,
-                        soundArrived: this.soundTriggered
-                    });
-                }
-            }
-
-            _updateCinematicCamera() {
-                const t = this.elapsedReal * 0.35;
-                const radius = 24 + Math.sin(t * 0.7) * 5;
-                this.camera.position.x = Math.cos(t) * radius;
-                this.camera.position.z = Math.sin(t) * radius;
-                this.camera.position.y = 9.5 + Math.sin(t * 1.3) * 3.5;
-                this.camera.lookAt(0, 8.5, 0);
-            }
-
-            _animate(now) {
-                requestAnimationFrame((ts) => this._animate(ts));
-
-                const rawDt = Math.min(0.05, (now - this.lastFrameTime) / 1000);
-                this.lastFrameTime = now;
-
-                this.frameCount++;
-                if (now - this.fpsLastTime >= 500) {
-                    this.ui.updateFPS((this.frameCount * 1000) / (now - this.fpsLastTime));
-                    this.frameCount = 0;
-                    this.fpsLastTime = now;
+                this.frames++;
+                if (now - this.fpsTick >= 500) {
+                    document.getElementById('fpsChip').textContent = `${Math.round((this.frames * 1000) / (now - this.fpsTick))} FPS`;
+                    this.frames = 0;
+                    this.fpsTick = now;
                 }
 
-                const effectiveDt = this.isPlaying ? rawDt * this.speedMultiplier : 0;
-                this.elapsedReal += rawDt * (this.isPlaying ? 1 : 0.2);
+                const speed = SLOWMO_SPEEDS[this.speedIdx];
+                const dt = this.isPlaying ? rawDt * speed : 0;
+                this.realTime += rawDt * (this.isPlaying ? 1 : 0.2);
 
                 if (this.isPlaying) {
-                    this.simTime += effectiveDt;
+                    this.simTime += dt;
                     if (this.simTime > 7.5) {
-                        this.simTime = 0;
-                        this.postStrikeTimer = 0;
-                        this.strikeTriggered = false;
-                        this.lightTriggered = false;
-                        this.soundTriggered = false;
-                        this.thunderRollTriggered = false;
-                        this.lightning.reset();
-                        this.lightning.generateBoltPath(this.effects.strikePos);
-                        this.effects.resetWaves();
-                        this.ui.updateSensoryIndicators({ strikeOccurred: false, lightArrived: false, soundArrived: false });
+                        this._restart();
                     }
                 }
 
-                const { soundDelaySec } = calculateArrivalTimes(this.distanceMeters);
-                this._updateStagesAndEvents(effectiveDt);
-                this.lightning.update(this.simTime, this.elapsedReal);
-                this.effects.update(this.simTime, this.elapsedReal, soundDelaySec);
+                let stage = 0;
+                if (this.simTime < 1.0) stage = 0;
+                else if (this.simTime < 2.0) stage = 1;
+                else if (this.simTime < 2.8) stage = 2;
+                else if (this.simTime < 3.4) stage = 3;
+                else if (this.simTime < 3.55) stage = 4;
+                else stage = 5;
+                this._setStage(stage);
 
-                if (this.cinemaMode) {
-                    this._updateCinematicCamera();
+                const meters = DISTANCES[this.distIdx].m;
+                const soundDelay = meters / SPEED_OF_SOUND;
+                const t = I18N[this.lang];
+
+                if (this.simTime >= 3.5) {
+                    if (!this.firedCrack) {
+                        this.firedCrack = true;
+                        this.sound.playCrack(meters, 0.25);
+                    }
+                    if (!this.firedLight) {
+                        this.firedLight = true;
+                        const lEl = document.getElementById('valLight');
+                        lEl.textContent = `0.01 ${t.sec} • ${t.lightSeen}`;
+                        lEl.classList.add('lit');
+                    }
+
+                    this.postStrike += dt;
+                    const visDelay = Math.min(soundDelay, 4.2);
+                    if (this.postStrike >= visDelay && !this.firedSound) {
+                        this.firedSound = true;
+                        const sEl = document.getElementById('valSound');
+                        sEl.textContent = `${soundDelay.toFixed(2)} ${t.sec} • ${t.soundHeard}`;
+                        sEl.classList.add('heard');
+                    }
+                    if (this.postStrike >= soundDelay && !this.firedThunder) {
+                        this.firedThunder = true;
+                        this.sound.playThunder(meters, 0.25);
+                    }
+                }
+
+                this.bolt.update(this.simTime, this.realTime);
+                this.world.update(this.simTime, this.realTime, soundDelay);
+
+                if (this.cinema) {
+                    const ang = this.realTime * 0.35;
+                    const rad = 24 + Math.sin(ang * 0.7) * 5;
+                    this.camera.position.set(Math.cos(ang) * rad, 9.5 + Math.sin(ang * 1.3) * 3.5, Math.sin(ang) * rad);
+                    this.camera.lookAt(0, 8.5, 0);
                 } else {
                     this.controls.update();
                 }
@@ -1731,9 +1520,7 @@
             }
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            new LightningSimulationApp();
-        });
+        window.addEventListener('DOMContentLoaded', () => new LightningApp());
     </script>
 </body>
 </html>
