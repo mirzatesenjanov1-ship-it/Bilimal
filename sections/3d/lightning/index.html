@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ky">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="description" content="Bilimal.org — Чагылгандын пайда болушу жана жарык менен үндүн таралышы 3D симуляциясы" />
+    <title>Чагылган — 3D Симуляция | Bilimal.org</title>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <!-- Simulation Styles -->
+    <link rel="stylesheet" href="./style.css" />
+
+    <!-- Three.js Import Map (ES6 Modules) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- 3D WebGL Canvas Container -->
+    <div id="scene-container" aria-label="3D Lightning Simulation Scene"></div>
+
+    <!-- Top Bar: Language, Title, FPS & Fullscreen -->
+    <header class="top-bar glass-panel">
+        <div class="brand-group">
+            <a href="/sections/3d-simulations-models.html" class="icon-btn" id="backBtn" title="Back">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+                <h1 id="appTitle">Чагылгандын пайда болушу жана жарык менен үн</h1>
+                <span class="subtitle" id="appSubtitle">Bilimal.org • 3D Физика Лабораториясы</span>
+            </div>
+        </div>
+
+        <div class="top-actions">
+            <div class="lang-switcher" role="group" aria-label="Language Switcher">
+                <button type="button" class="lang-btn active" data-lang="ky">KY</button>
+                <button type="button" class="lang-btn" data-lang="ru">RU</button>
+                <button type="button" class="lang-btn" data-lang="en">EN</button>
+            </div>
+            <div class="fps-badge" id="fpsCounter">60 FPS</div>
+            <button type="button" class="icon-btn" id="soundToggleBtn" aria-label="Sound Toggle">
+                <i class="fa-solid fa-volume-high"></i>
+            </button>
+            <button type="button" class="icon-btn" id="fullscreenBtn" aria-label="Fullscreen Toggle">
+                <i class="fa-solid fa-expand"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Left Column: Education Stage, Event Timeline & Safety Panel -->
+    <aside class="hud-left">
+        <!-- Окутуу режими / Этаптар -->
+        <section class="glass-panel edu-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-graduation-cap"></i>
+                <span id="eduTitle">Окутуу режими</span>
+                <span class="stage-pill" id="stageBadge">1/6</span>
+            </div>
+            <div class="stage-name" id="stageName">1-ЭТАП: Заряддардын бөлүнүшү</div>
+            <p class="stage-desc" id="stageDesc">Булуттун үстүндө оң (+), астында терс (-) заряддар топтолууда.</p>
+            <div class="stage-progress">
+                <div class="stage-progress-bar" id="stageProgressBar"></div>
+            </div>
+        </section>
+
+        <!-- Адамга жетүү таймери (Көз / Кулак) -->
+        <section class="glass-panel timer-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-stopwatch"></i>
+                <span id="timerTitle">Байкоо таймери</span>
+            </div>
+
+            <div class="sensory-row">
+                <div class="sensory-card" id="eyeIndicator">
+                    <i class="fa-solid fa-eye"></i>
+                    <span id="eyeText">Жарык көрүндү</span>
+                    <small id="lightTimeVal">0.00 сек</small>
+                </div>
+                <div class="sensory-card" id="earIndicator">
+                    <i class="fa-solid fa-ear-listen"></i>
+                    <span id="earText">Үн угулду</span>
+                    <small id="soundTimeVal">2.91 сек</small>
+                </div>
+            </div>
+
+            <div class="event-log" id="eventLog">
+                <div class="log-item"><span class="t">0.00 сек</span> <span id="logStrike">⚡ Чагылган пайда болду</span></div>
+                <div class="log-item" id="logLightRow"><span class="t" id="logLightTime">0.00 сек</span> <span id="logLight">👁 Жарык жетти (300 000 км/с)</span></div>
+                <div class="log-item" id="logSoundRow"><span class="t" id="logSoundTime">2.91 сек</span> <span id="logSound">👂 Үн жетти (343 м/с)</span></div>
+            </div>
+        </section>
+
+        <!-- Коопсуздук бөлүгү -->
+        <section class="glass-panel safety-panel">
+            <div class="panel-header">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span id="safetyTitle">Чагылган учурундагы коопсуздук</span>
+            </div>
+            <ul class="safety-list" id="safetyList">
+                <li class="safe"><i class="fa-solid fa-check"></i> <span>Үй ичинде коопсуз</span></li>
+                <li class="safe"><i class="fa-solid fa-check"></i> <span>Унаа ичинде коопсуз</span></li>
+                <li class="danger"><i class="fa-solid fa-xmark"></i> <span>Жалгыз бак астында коркунучтуу</span></li>
+                <li class="danger"><i class="fa-solid fa-xmark"></i> <span>Ачык талаада коркунучтуу</span></li>
+                <li class="danger"><i class="fa-solid fa-xmark"></i> <span>Металл объект жанында коркунучтуу</span></li>
+            </ul>
+        </section>
+    </aside>
+
+    <!-- Bottom Control Dock -->
+    <nav class="control-dock glass-panel" aria-label="Simulation Controls">
+        <div class="dock-group primary-controls">
+            <button type="button" class="btn-primary" id="startBtn">
+                <i class="fa-solid fa-play"></i>
+                <span id="startText">Баштоо</span>
+            </button>
+            <button type="button" class="btn-secondary" id="pauseBtn">
+                <i class="fa-solid fa-pause"></i>
+                <span id="pauseText">Токтотуу</span>
+            </button>
+            <button type="button" class="btn-secondary" id="replayBtn">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span id="replayText">Кайра ойнотуу</span>
+            </button>
+        </div>
+
+        <div class="dock-group distance-control">
+            <div class="distance-header">
+                <label for="distanceSlider" id="distanceLabel">Аралык</label>
+                <strong id="distanceDisplay">1 км</strong>
+                <span class="delay-badge" id="delayDisplay">Үн кечигүүсү: 2.91 сек</span>
+            </div>
+            <input type="range" id="distanceSlider" min="0" max="6" step="1" value="2" />
+            <div class="distance-ticks">
+                <span>100м</span><span>500м</span><span>1км</span><span>2км</span><span>3км</span><span>5км</span><span>10км</span>
+            </div>
+        </div>
+
+        <div class="dock-group mode-controls">
+            <div class="slowmo-group" role="group" aria-label="Slow Motion">
+                <span class="mini-label" id="slowmoLabel">Slow Motion:</span>
+                <button type="button" class="pill-btn active" data-speed="1">Normal</button>
+                <button type="button" class="pill-btn" data-speed="0.5">0.5x</button>
+                <button type="button" class="pill-btn" data-speed="0.25">0.25x</button>
+                <button type="button" class="pill-btn" data-speed="0.1">0.1x</button>
+            </div>
+
+            <button type="button" class="btn-cinema" id="cinemaBtn">
+                <i class="fa-solid fa-film"></i>
+                <span id="cinemaText">YouTube / Cinematic Mode</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Entry Point -->
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
